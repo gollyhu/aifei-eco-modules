@@ -1,0 +1,8 @@
+# ===== Dashboard 模式示例配置（用 start-demo.bat dashboard 启动）=====
+# 前置：启动官方 Sentinel 控制台（端口 8858，须与下面 sentinel.dashboard.server 一致）：
+#   start-dashboard.bat  （或 java -Dserver.port=8858 -jar sentinel-dashboard-1.8.10.jar）
+# 之后在控制台改规则，SDK 自动回写 sentinel-rules.json（重启不丢），业务代码零改造
+sentinel.enable = true
+sentinel.rules.file = sentinel-rules.json
+sentinel.dashboard.server = 127.0.0.1:8858
+sentinel.app.name = aifei-sentinel-demo

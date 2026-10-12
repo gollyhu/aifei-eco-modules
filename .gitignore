@@ -1,11 +1,27 @@
+# maven #
+target/
+
 # Compiled class file
 *.class
 
 # Log file
+log
 *.log
 
 # BlueJ files
 *.ctxt
+
+# eclipse #
+.settings
+.project
+.classpath
+.log
+
+# windows #
+Thumbs.db
+
+# Mac #
+.DS_Store
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
@@ -22,3 +38,11 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# AI
+./codebuddy
+./workbuddy
+
+# IDE
+/.idea/.gitignore
+/.idea/

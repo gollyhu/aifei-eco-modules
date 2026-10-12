@@ -1,0 +1,11 @@
+{
+  "flowRules": [
+    {"resource": "cn.demo.service.DemoService#index", "grade": 1, "count": 2.0, "strategy": 0, "controlBehavior": 0}
+  ],
+  "degradeRules": [
+    {"resource": "cn.demo.service.DemoService#slow", "grade": 0, "count": 500.0, "timeWindow": 10}
+  ],
+  "paramFlowRules": [
+    {"resource": "cn.demo.service.DemoService#detail", "grade": 1, "count": 5.0, "paramIdx": 0, "controlBehavior": 0}
+  ]
+}

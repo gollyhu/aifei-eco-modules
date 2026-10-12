@@ -1,0 +1,9 @@
+# ===== Sentinel 运行模式（两种互斥，详见 docs/开发规范/Sentinel接入指南.md §5）=====
+# 本地模式（默认）：规则来自 sentinel-rules.json，改文件秒级热生效，无需重启
+sentinel.enable = true
+sentinel.rules.file = sentinel-rules.json
+
+# Dashboard 模式：取消下面两行注释即可切换（需先启动官方控制台：start-dashboard.bat，监听 8858）
+# 规则由控制台推送，SDK 自动回写 sentinel-rules.json，重启不丢
+# sentinel.dashboard.server = 127.0.0.1:8858
+# sentinel.app.name = aifei-sentinel-demo
