@@ -8,23 +8,17 @@ package cn.aifei.satoken.dao;
 
 import cn.dev33.satoken.dao.SaTokenDao;
 import cn.dev33.satoken.session.SaSession;
-import cn.hg.aifei.cache.Cache;
-import cn.hg.aifei.cache.CacheKeyMatchType;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-/** aifei-cache 持久层：秒级超时约定换算、对象与会话委托、搜索分页 */
+/** 持久层（纯缓存形态）：秒级超时约定换算、对象与会话委托、搜索分页 */
 public class SaTokenDaoForCacheTest {
 
-    private final InMemoryCache cache = new InMemoryCache();
+    private final InMemoryCacheStub cache = new InMemoryCacheStub();
     private final SaTokenDao dao = new SaTokenDaoForCache(cache);
 
     // ─────────── 字符串读写与超时约定 ───────────
@@ -201,122 +195,5 @@ public class SaTokenDaoForCacheTest {
         dao.set("satoken:login:token:b", "1", 100);
         dao.set("satoken:login:token:a", "1", 100);
         dao.set("satoken:login:session:1", "1", 100);
-    }
-
-    /**
-     * 仅覆盖本用例所需能力的内存桩：不模拟过期淘汰（未过期项一律可见），
-     * {@code keys} 复刻 aifei-cache 的「筛选 + 字典序排序 + 分页」语义。
-     */
-    private static final class InMemoryCache implements Cache {
-
-        private final Map<String, Object> values = new LinkedHashMap<>();
-        private final Map<String, Duration> ttls = new LinkedHashMap<>();
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public <T> T get(String cacheName, String key) {
-            return (T) values.get(key);
-        }
-
-        @Override
-        public boolean exists(String cacheName, String key) {
-            return values.containsKey(key);
-        }
-
-        @Override
-        public void put(String cacheName, String key, Object value, Duration ttl) {
-            values.put(key, value);
-            ttls.put(key, ttl);
-        }
-
-        @Override
-        public boolean putIfAbsent(String cacheName, String key, Object value, Duration ttl) {
-            if (values.containsKey(key)) {
-                return false;
-            }
-            put(cacheName, key, value, ttl);
-            return true;
-        }
-
-        @Override
-        public boolean expire(String cacheName, String key, Duration ttl) {
-            if (!values.containsKey(key)) {
-                return false;
-            }
-            ttls.put(key, ttl);
-            return true;
-        }
-
-        @Override
-        public void remove(String cacheName, String key) {
-            values.remove(key);
-            ttls.remove(key);
-        }
-
-        @Override
-        public void clear(String cacheName) {
-            values.clear();
-            ttls.clear();
-        }
-
-        @Override
-        public Duration getTtl(String cacheName, String key) {
-            return values.containsKey(key) ? ttls.get(key) : null;
-        }
-
-        @Override
-        public List<String> keys(String cacheName, int offset, int limit, String pattern,
-                                 CacheKeyMatchType matchType) {
-            List<String> sorted = new ArrayList<>(values.keySet());
-            Collections.sort(sorted);
-
-            List<String> matched = new ArrayList<>();
-            boolean filtering = pattern != null && !pattern.isEmpty();
-            for (String key : sorted) {
-                if (!filtering || matches(key, pattern, matchType)) {
-                    matched.add(key);
-                }
-            }
-
-            if (offset >= matched.size()) {
-                return new ArrayList<>();
-            }
-            int count = Math.min(limit, matched.size() - offset);
-            return new ArrayList<>(matched.subList(offset, offset + count));
-        }
-
-        private static boolean matches(String key, String pattern, CacheKeyMatchType matchType) {
-            switch (matchType) {
-                case EQUALS:
-                    return key.equals(pattern);
-                case STARTS_WITH:
-                    return key.startsWith(pattern);
-                case ENDS_WITH:
-                    return key.endsWith(pattern);
-                case CONTAINS:
-                default:
-                    return key.contains(pattern);
-            }
-        }
-
-        @Override
-        public Set<String> cacheNames() {
-            return Collections.singleton("satoken");
-        }
-
-        @Override
-        public Duration ttl() {
-            return Duration.ofSeconds(3600);
-        }
-
-        @Override
-        public boolean cacheNull() {
-            return false;
-        }
-
-        @Override
-        public String namespace() {
-            return "test";
-        }
     }
 }

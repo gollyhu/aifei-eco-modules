@@ -161,9 +161,12 @@ public class AppStpInterface implements StpInterface {
 }
 ```
 
-## 多实例会话
+## 会话持久层
 
-默认登录态存于 Sa-Token 内置内存实现，单机可用、零依赖。**多实例部署时各实例的登录态不互通**，需要换成基于 [aifei-cache](https://github.com/gollyhu/aifei-cache) 的持久层。
+默认登录态存于 Sa-Token 内置内存实现，单机可用、零依赖。两种情况需要换成基于 [aifei-cache](https://github.com/gollyhu/aifei-cache) 的持久层：
+
+- **多实例部署**：各实例的登录态互不相通；
+- **登录态需要落库**：例如审计日志、在线用户列表、按账号反查踢人等功能要直接查库。
 
 ### 1. 显式引入 aifei-cache
 
@@ -185,7 +188,9 @@ public class AppStpInterface implements StpInterface {
 
 ### 3. 换上持久层实现
 
-在 `onStart()` 中设置（此时各插件均已启动）：
+在 `onStart()` 中设置（此时各插件均已启动）。按是否需要「登录态落库」二选一。
+
+**形态一：纯缓存**（登录态只存在于缓存）
 
 ```java
 @Override
@@ -194,12 +199,31 @@ public void onStart() {
 }
 ```
 
-换实现只改这一处，业务代码与鉴权规则都不受影响。
+适用于「登录态无需落库」的部署；多实例共享登录态的前提是缓存后端为 Redis。
+
+**形态二：缓存加速 + 权威持久层**（登录态落库，Redis 只做加速）
+
+```java
+@Override
+public void onStart() {
+    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheUtil.use(), new MySaTokenDao()));
+}
+```
+
+`MySaTokenDao` 是你基于自己业务表实现的 `SaTokenDao`（本 SDK 不可能内置你的表结构）。此时：
+
+- 委托层是**权威**，缓存只做加速：读未命中回源并回填、写先落委托层再刷新缓存、超时以委托层为准、`searchData` 直接委托；
+- 委托层只以 `SaTokenDao` 接口形态传入，本 SDK 不引入 JDBC 依赖，你的实现可以用任意持久化方式。
+
+两种形态都只改这一处装配，业务代码与鉴权规则不受影响。
 
 ### 使用须知
 
-- **`update` 非原子**：aifei-cache 未提供「只改值、保留 TTL」的原子操作，更新值为「读剩余有效期 → 写回」，并发下存在窗口；
-- **`searchData` 开销**：Redis 后端为全量 SCAN，键量大时开销显著；该能力不在登录鉴权热路径上；
+- **`update` 非原子**（纯缓存形态）：aifei-cache 未提供「只改值、保留 TTL」的原子操作，更新值为「读剩余有效期 → 写回」，并发下存在窗口；
+- **`getTimeout` 不走缓存**（有委托层时）：Sa-Token 默认 `autoRenew=true`，每次 `getLoginId()` 都要查超时以决定续签，这部分请求会落到委托层上，请确保该查询足够轻量；
+- **无空值缓存**：token 无效或不存在时会回源委托层，高频非法请求可能给委托层带来压力；
+- **`searchData` 开销**（纯缓存形态）：Redis 后端为全量 SCAN，键量大时开销显著；该能力不在登录鉴权热路径上；
+- **`init` / `destroy` 不转发**：委托层的初始化与释放需你在装配处自行处理；
 - **超时换算**：Sa-Token 的 `-1`（永不过期）换算为 aifei-cache 允许的最长有效期（约 68 年）。
 
 ## 路径规则语法
@@ -218,7 +242,7 @@ public void onStart() {
 ## 已知限制
 
 - **仅支持 Undertow**：桥接层基于 `HttpServerExchange`，换其他 Server 需新增桥接实现。
-- **登录态默认单机内存存储**：多实例部署需换成 `SaTokenDaoForCache`，见「多实例会话」一节。
+- **登录态默认单机内存存储**：多实例部署或需要落库时换成 `SaTokenDaoForCache`，见「会话持久层」一节。
 - **上下文基于 ThreadLocal**：在业务中新开线程后调用 Sa-Token API 拿不到当前请求上下文。
 - **`SaRequest.getParamMap()` / `getParamNames()` 只覆盖查询串**：aifei 的 `Input` 接口不支持枚举参数名；Sa-Token 读取 token 走的是单值取值与请求头 / Cookie，不受影响。
 - **不支持服务端 forward**：Undertow 桥接层调用 `forward` 会抛 `UnsupportedOperationException`。

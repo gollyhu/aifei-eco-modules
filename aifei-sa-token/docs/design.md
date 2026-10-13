@@ -26,7 +26,7 @@ aifei 的两个特征使常见接法都不成立：
 | 装配入口 | 实现 `cn.aifei.plugin.Plugin`，构造期只持 `Prop` | 对齐仓库根 `CODEBUDDY.md` 的框架集成共性：配置解析发生在 `start()`，不留半装配状态 |
 | 路由匹配 | 自研 `PathPatternMatcher`（Ant 风格），**不覆盖** `SaStrategy.instance.routeMatcher` | aifei 的 `cn.aifei.router.Router` 只做精确匹配、`cn.aifei.util.PathUtil` 是文件系统工具，无 URL 通配匹配可复用；自研后无需污染 Sa-Token 全局策略 |
 | 鉴权失败响应 | 默认置 HTTP 401（未登录）/ 403（其余），可经 SPI 换成业务码 | 挂载点在 Dispatcher 层，拿到 `HttpServerExchange` 后状态码可直接写；同时保留"HTTP 恒 200 + 业务码"这一本仓库既有语义的替换通道 |
-| 会话持久层 | 默认用 Sa-Token 内置内存实现；多实例时换用基于 `aifei-cache` 的 `SaTokenDaoForCache` | 单机零依赖即可跑通；换实现只改装配一处，业务代码不变 |
+| 会话持久层 | 默认用 Sa-Token 内置内存实现；多实例或需落库时换用 `SaTokenDaoForCache`（纯缓存 / 缓存加速 + 权威委托两种形态） | 单机零依赖即可跑通；换实现只改装配一处，业务代码不变 |
 | Java 版本 | 1.8 | 仓库硬约束；Sa-Token 1.46.0 本身即以 `maven.compiler.release=8` 发布 |
 
 ### 2.1 为什么挂载在 Dispatcher 层
@@ -257,13 +257,34 @@ public void start() {
 
 ### 4.9 持久层：`SaTokenDaoForCache`
 
-登录态默认存于 Sa-Token 内置内存实现（单机可用、零依赖）。需要多实例共享时换上本类：
+登录态默认存于 Sa-Token 内置内存实现（单机可用、零依赖）。需要多实例共享、或需要「登录态落库 + 缓存加速」时换上本类。它支持两种装配形态：
+
+| 形态 | 装配方式 | 适用场景 |
+|---|---|---|
+| 纯缓存 | `new SaTokenDaoForCache(CacheUtil.use())` | 登录态无需落库；多实例需缓存后端为 Redis |
+| 缓存加速 + 权威委托 | `new SaTokenDaoForCache(CacheUtil.use(), delegate)` | 登录态需要落库（审计、在线用户列表、按账号反查踢人等），Redis 只做加速层 |
 
 ```java
 public void onStart() {
-    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheUtil.use()));
+    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheUtil.use(), new MySaTokenDao()));
 }
 ```
+
+**委托层语义（delegate 非空时）**：委托层为**权威**，缓存只做加速。
+
+| 操作 | 行为 |
+|---|---|
+| 读（`get` / `getObject` / `getSession`） | 先查缓存；未命中则回源委托层，命中则按委托层的剩余超时回填缓存 |
+| 写（`set` / `setObject` / `setSession`） | 先落委托层，再刷新缓存 |
+| 更新（`update` / `updateObject` / `updateSession`） | 先更新委托层，再按委托层的剩余超时刷新缓存 |
+| 删除（`delete` / `deleteObject` / `deleteSession`） | 先删委托层，再删缓存 |
+| 超时读写（三个 timeout 方法） | 一律以委托层为准 |
+| 搜索（`searchData`） | 直接委托（缓存可能只覆盖部分键，缓存侧结果会不完整） |
+| `init` / `destroy` | **不转发**，见下文「生命周期」 |
+
+委托层只以 `SaTokenDao` 接口形态出现，本类不对其存储形态做假设，因此不引入 JDBC 或消费方类型依赖 —— 消费方基于自有表实现的关系库持久层可直接作为 delegate 传入，而本模块的架构门禁（`java.sql.*` 零引用）仍然成立。
+
+**生命周期**：本类**不覆盖** `init()` 与 `destroy()`，因此不会转发给委托层。Sa-Token 在没有官方 starter 的场景下不会自动调用 `SaTokenDao.init()`，故委托层的初始化与释放须由消费方在装配处（或其自身插件中）自行处理。
 
 **key 映射**：Sa-Token 的 key 是扁平字符串（如 `satoken:login:token:xxx`），而 `aifei-cache` 是「缓存名 + 键」两级结构。本实现把 Sa-Token 的 key 整体作为缓存键，全部数据落在固定缓存名 `satoken` 下；命名空间与后端（Caffeine / Redis）由消费方的 aifei-cache 配置决定，本类不做存储形态假设。
 
@@ -280,13 +301,16 @@ public void onStart() {
 
 **写入路径复用**：字符串与对象两套接口共用同一实现（`set`/`setObject` → `store`，`update`/`updateObject` → `rewrite`，`updateTimeout`/`updateObjectTimeout` → `resetTtl`）；`SaSession` 读写全部委托对象读写。
 
-**已知行为差异**：
+**已知行为差异与注意点**：
 
 | 项 | 说明 |
 |---|---|
-| `update` / `updateObject` 非原子 | aifei-cache 未提供「只改值、保留 TTL」的原子操作，实现为「读剩余有效期 → 写回」，并发下存在窗口；该项不存在或已过期时跳过写入 |
-| `searchData` 的开销 | 委托 `Cache.keys` 做前缀下推，返回后再按关键字过滤与分页；Redis 后端为全量 SCAN，键量大时开销显著。该能力不在登录鉴权热路径上 |
-| 不覆盖 `init` / `destroy` | 缓存实例的建立与释放由 aifei-cache 插件负责 |
+| `update` / `updateObject` 非原子（纯缓存形态） | aifei-cache 未提供「只改值、保留 TTL」的原子操作，实现为「读剩余有效期 → 写回」，并发下存在窗口；该项不存在或已过期时跳过写入 |
+| 有委托层时 timeout 每次都打委托层 | 三个 timeout 方法都不走缓存。Sa-Token 默认 `autoRenew=true`，每次 `getLoginId()` 都要查超时以决定续签，这部分压力会落到委托层上，缓存加速在该路径不生效 |
+| 无空值缓存 | 读未命中即回源委托层。token 无效或不存在属高频场景，可能把大量无效查询透传到委托层 |
+| `delete` 的顺序 | 先删委托层再删缓存；极端情况下（删缓存失败）会读到陈旧的登录态。这是分布式缓存的固有问题 |
+| `updateTimeout` 的边界 | `timeout <= 0` 时会转发给委托层，但**不调整缓存 TTL**，两侧可能不一致。Sa-Token 实际只传正数续期，风险低 |
+| `searchData` 的开销（纯缓存形态） | 委托 `Cache.keys` 做前缀下推，返回后再按关键字过滤与分页；Redis 后端为全量 SCAN，键量大时开销显著。该能力不在登录鉴权热路径上 |
 
 ## 5. 接口契约
 

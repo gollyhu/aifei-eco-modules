@@ -89,7 +89,7 @@ mvn clean test
 | `defaultErrorHandlerToleratesMissingExchange` | 无请求上下文时默认策略返回 null 且不抛异常 |
 | `rejectsNullDelegate` | 构造时拒绝 null delegate |
 
-### 3.6 `SaTokenDaoForCacheTest`（18 例）
+### 3.6 `SaTokenDaoForCacheTest`（纯缓存形态，18 例）
 
 | 用例 | 断言 |
 |---|---|
@@ -113,6 +113,28 @@ mvn clean test
 | `rejectsNullCache` | 构造时拒绝 null 缓存 |
 
 用例以内存桩承担 `Cache` 角色，**不依赖 Redis 或 aifei-cache 插件**。
+
+### 3.7 `SaTokenDaoForCacheDelegateTest`（缓存加速 + 权威委托，15 例）
+
+| 用例 | 断言 |
+|---|---|
+| `readsThroughToDelegateAndBackfillsCache` | 缓存未命中回源委托层，并把结果回填缓存 |
+| `backfilledTtlComesFromDelegate` | 回填所用 TTL 取自委托层的剩余超时 |
+| `servesFromCacheWithoutHittingDelegate` | 缓存命中时不再访问委托层 |
+| `missesReturnNullWhenBothLayersEmpty` | 两层皆无数据时返回 null |
+| `writesThroughToBothLayers` | 写入同时落到委托层与缓存 |
+| `updatePropagatesToBothLayers` | 更新同时作用于两层 |
+| `deletesFromBothLayers` | 删除同时作用于两层 |
+| `timeoutComesFromDelegate` | 超时读取以委托层为准 |
+| `updateTimeoutAppliesToBothLayers` | 超时修改同时作用于两层 |
+| `searchDataComesFromDelegate` | 搜索结果完整来自委托层 |
+| `objectReadsThroughAndBackfills` | 对象回源回填，并支持按类型读取 |
+| `objectWritesThroughToBothLayers` | 对象写穿 |
+| `sessionReadsThroughAndBackfills` | 会话回源回填 |
+| `sessionWritesAndDeletesThroughBothLayers` | 会话写穿与删穿 |
+| `sessionUpdateKeepsAuthorityValue` | 会话更新后两层值一致 |
+
+委托层使用 Sa-Token 内置的内存实现 `SaTokenDaoDefaultImpl`，使两侧语义都是真实的 Sa-Token 契约，而非测试自造的近似；超时断言带 1 秒容差（委托层按秒计算剩余时间）。
 
 ## 4. 回归要求
 
