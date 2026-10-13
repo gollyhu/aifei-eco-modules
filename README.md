@@ -40,7 +40,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - Api 客户端：`ApiCaller` 及菜单 / 用户 / 素材 / 模板消息 / OAuth2 / 二维码 / JsTicket
 - 小程序：`MiniAppApi`（code2Session / 订阅消息 / 手机号 / 小程序码）
 - 微信支付 V3：`PayApi` 下单查单退款 + `PayNotifyKit` 回调验签解密，RSA / GCM / mTLS 纯 JDK 实现
-- 接入前必读 [docs/开发规范/微信接入规范.md](aifei-weixin/docs/开发规范/微信接入规范.md)
+- 接入前必读 [docs/design.md](aifei-weixin/docs/design.md)
 
 ## 构建
 
