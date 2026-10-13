@@ -6,12 +6,13 @@
 
 package cn.hg.aifei.cache.internal;
 
+import cn.hg.aifei.cache.CacheKeyMatchType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * keys 区间换算与切片的唯一定义点，语义对齐 Redis {@code LRANGE}。
+ * keys 的筛选、排序与分页的唯一定义点，两后端实现共用。
  */
 public final class KeyRanges {
 
@@ -19,30 +20,47 @@ public final class KeyRanges {
     }
 
     /**
-     * 对已排序键列表做闭区间切片：{@code begin} 与 {@code end} 均包含，负数从末尾计数，
-     * 越界钳制；空列表或换算后 {@code begin > end} 返回空列表。
+     * 对键集合做「筛选 + 字典序排序 + 分页」：{@code pattern} 为 {@code null} 或空串时跳过筛选；
+     * {@code offset} 是跳过的条数、{@code limit} 是返回条数上限，越界自动截断，不抛异常。
      *
-     * @param sortedKeys 已按字典序升序排序的键列表
-     * @param begin 起始索引（包含），负数从末尾计数
-     * @param end 结束索引（包含），负数从末尾计数
-     * @return 区间切片；不为 {@code null}
+     * @param keys 待处理键集合，顺序不限
+     * @param offset 跳过的键条数，从 0 开始
+     * @param limit 返回的键条数上限
+     * @param pattern 匹配串；{@code null} 或空串表示不筛选
+     * @param matchType 匹配类型
+     * @return 筛选并排序后的分页结果；不为 {@code null}
      */
-    public static List<String> slice(List<String> sortedKeys, int begin, int end) {
-        int size = sortedKeys.size();
-        if (size == 0) {
+    public static List<String> select(List<String> keys, int offset, int limit,
+                                      String pattern, CacheKeyMatchType matchType) {
+        boolean filtering = pattern != null && !pattern.isEmpty();
+        List<String> matched = new ArrayList<>();
+        for (String key : keys) {
+            if (!filtering || matches(key, pattern, matchType)) {
+                matched.add(key);
+            }
+        }
+        Collections.sort(matched);
+        if (offset >= matched.size()) {
             return Collections.emptyList();
         }
-        int from = begin < 0 ? size + begin : begin;
-        int to = end < 0 ? size + end : end;
-        if (from < 0) {
-            from = 0;
+        int count = Math.min(limit, matched.size() - offset);
+        return new ArrayList<>(matched.subList(offset, offset + count));
+    }
+
+    /**
+     * 按匹配类型判定键与匹配串是否吻合，匹配基于键的字符串形态。
+     */
+    private static boolean matches(String key, String pattern, CacheKeyMatchType matchType) {
+        switch (matchType) {
+            case EQUALS:
+                return key.equals(pattern);
+            case STARTS_WITH:
+                return key.startsWith(pattern);
+            case ENDS_WITH:
+                return key.endsWith(pattern);
+            case CONTAINS:
+            default:
+                return key.contains(pattern);
         }
-        if (to >= size) {
-            to = size - 1;
-        }
-        if (from > to) {
-            return Collections.emptyList();
-        }
-        return new ArrayList<>(sortedKeys.subList(from, to + 1));
     }
 }

@@ -329,25 +329,65 @@ public class CacheContractTest {
     }
 
     /**
-     * {@code keys} 的区间语义对齐 Redis {@code LRANGE}：闭区间含两端、负索引从末尾计数、
-     * 越界钳制、{@code begin > end} 或空缓存返回空列表；先按字典序排序再切片。
+     * {@code keys} 的分页语义：先按字典序排序，再跳过 {@code offset} 条取下 {@code limit} 条；
+     * 越界自动截断，空缓存返回空列表。
      */
     @Test
-    public void shouldSliceKeysWithLrangeSemantics() {
+    public void shouldPageKeysByOffsetAndLimit() {
         Cache cache = newCache(false);
-        assertTrue("空缓存返回空列表", cache.keys("user", 0, -1).isEmpty());
+        assertTrue("空缓存返回空列表", cache.keys("user", 0, 10).isEmpty());
 
         for (String key : new String[]{"e", "a", "c", "b", "d"}) {
             cache.put("user", key, "v", Duration.ofSeconds(30));
         }
 
-        assertEquals(Arrays.asList("a", "b", "c", "d", "e"), cache.keys("user", 0, -1));
-        assertEquals("索引 1..3 对应 b..d", Arrays.asList("b", "c", "d"), cache.keys("user", 1, 3));
-        assertEquals("begin == end 返回单元素", Arrays.asList("c"), cache.keys("user", 2, 2));
-        assertEquals("负索引从末尾计数", Arrays.asList("d", "e"), cache.keys("user", -2, -1));
-        assertEquals("end 越界钳制", Arrays.asList("d", "e"), cache.keys("user", 3, 100));
-        assertEquals("begin 负索引越界钳制", Arrays.asList("a", "b"), cache.keys("user", -100, 1));
-        assertTrue("begin > end 返回空列表", cache.keys("user", 3, 1).isEmpty());
+        assertEquals("排序后全量返回", Arrays.asList("a", "b", "c", "d", "e"), cache.keys("user", 0, 10));
+        assertEquals("offset 跳过前一条", Arrays.asList("b", "c", "d", "e"), cache.keys("user", 1, 10));
+        assertEquals("limit 截断返回条数", Arrays.asList("a", "b", "c"), cache.keys("user", 0, 3));
+        assertEquals("offset 与 limit 组合", Arrays.asList("c", "d"), cache.keys("user", 2, 2));
+        assertEquals("limit 超出剩余条数自动截断", Arrays.asList("d", "e"), cache.keys("user", 3, 100));
+        assertTrue("offset 越界返回空列表", cache.keys("user", 5, 10).isEmpty());
+    }
+
+    /**
+     * {@code keys} 的非法分页或匹配类型参数抛 {@code IllegalArgumentException}。
+     */
+    @Test
+    public void shouldRejectInvalidKeysArguments() {
+        Cache cache = newCache(false);
+        cache.put("user", "1", "v", Duration.ofSeconds(30));
+
+        assertThrows(IllegalArgumentException.class, () -> cache.keys("user", -1, 10));
+        assertThrows(IllegalArgumentException.class, () -> cache.keys("user", 0, 0));
+        assertThrows(IllegalArgumentException.class, () -> cache.keys("user", 0, -1));
+        assertThrows(IllegalArgumentException.class, () -> cache.keys("user", 0, 10, "1", null));
+    }
+
+    /**
+     * {@code pattern} 按 {@link CacheKeyMatchType} 筛选 key，筛选先于分页；{@code pattern} 为
+     * {@code null} 或空串时不筛选。
+     */
+    @Test
+    public void shouldFilterKeysByMatchType() {
+        Cache cache = newCache(false);
+        for (String key : new String[]{"user:1", "user:2", "order:1", "xuser"}) {
+            cache.put("user", key, "v", Duration.ofSeconds(30));
+        }
+
+        assertEquals("前缀匹配", Arrays.asList("user:1", "user:2"),
+                cache.keys("user", 0, 100, "user:", CacheKeyMatchType.STARTS_WITH));
+        assertEquals("后缀匹配", Arrays.asList("order:1", "user:1"),
+                cache.keys("user", 0, 100, ":1", CacheKeyMatchType.ENDS_WITH));
+        assertEquals("包含匹配", Arrays.asList("user:1", "user:2", "xuser"),
+                cache.keys("user", 0, 100, "user", CacheKeyMatchType.CONTAINS));
+        assertEquals("完全相等", Arrays.asList("xuser"),
+                cache.keys("user", 0, 100, "xuser", CacheKeyMatchType.EQUALS));
+        assertEquals("筛选先于分页", Arrays.asList("user:2"),
+                cache.keys("user", 1, 1, "user:", CacheKeyMatchType.STARTS_WITH));
+        assertEquals("空 pattern 不筛选", Arrays.asList("order:1", "user:1", "user:2", "xuser"),
+                cache.keys("user", 0, 100, "", CacheKeyMatchType.EQUALS));
+        assertEquals("null pattern 不筛选", Arrays.asList("order:1", "user:1", "user:2", "xuser"),
+                cache.keys("user", 0, 100, null, CacheKeyMatchType.CONTAINS));
     }
 
     /**
@@ -361,14 +401,14 @@ public class CacheContractTest {
         cache.put("users", "1", "v", Duration.ofSeconds(30));
         cache.put("session", "1", "v", Duration.ofSeconds(30));
 
-        assertEquals(Arrays.asList("1", "2"), cache.keys("user", 0, -1));
-        assertEquals("前缀相近的名称不受影响", Arrays.asList("1"), cache.keys("users", 0, -1));
+        assertEquals(Arrays.asList("1", "2"), cache.keys("user", 0, 100));
+        assertEquals("前缀相近的名称不受影响", Arrays.asList("1"), cache.keys("users", 0, 100));
 
         cache.clear("user");
-        assertTrue("clear 后为空", cache.keys("user", 0, -1).isEmpty());
+        assertTrue("clear 后为空", cache.keys("user", 0, 100).isEmpty());
 
-        assertThrows(IllegalArgumentException.class, () -> cache.keys(" ", 0, -1));
-        assertThrows(IllegalArgumentException.class, () -> cache.keys("user:x", 0, -1));
+        assertThrows(IllegalArgumentException.class, () -> cache.keys(" ", 0, 100));
+        assertThrows(IllegalArgumentException.class, () -> cache.keys("user:x", 0, 100));
     }
 
     /**
@@ -380,7 +420,7 @@ public class CacheContractTest {
         cache.put("user", "ghost", null, Duration.ofSeconds(30));
         cache.put("user", "real", "v", Duration.ofSeconds(30));
 
-        assertEquals(Arrays.asList("ghost", "real"), cache.keys("user", 0, -1));
+        assertEquals(Arrays.asList("ghost", "real"), cache.keys("user", 0, 100));
     }
 
     /**
@@ -392,14 +432,32 @@ public class CacheContractTest {
         cache.put("user*", "1", "v", Duration.ofSeconds(30));
         cache.put("users", "1", "v", Duration.ofSeconds(30));
 
-        assertEquals(Arrays.asList("1"), cache.keys("user*", 0, -1));
-        assertEquals(Arrays.asList("1"), cache.keys("users", 0, -1));
+        assertEquals(Arrays.asList("1"), cache.keys("user*", 0, 100));
+        assertEquals(Arrays.asList("1"), cache.keys("users", 0, 100));
+    }
+
+    /**
+     * {@code pattern} 中的 glob 特殊字符按字面量匹配，不当作通配符或字符类。
+     */
+    @Test
+    public void shouldTreatGlobCharactersInPatternLiterally() {
+        Cache cache = newCache(false);
+        for (String key : new String[]{"a*b", "aXb", "[x]", "x"}) {
+            cache.put("user", key, "v", Duration.ofSeconds(30));
+        }
+
+        assertEquals("包含：* 不当通配符", Arrays.asList("a*b"),
+                cache.keys("user", 0, 100, "a*b", CacheKeyMatchType.CONTAINS));
+        assertEquals("前缀：[ 不当字符类", Arrays.asList("[x]"),
+                cache.keys("user", 0, 100, "[", CacheKeyMatchType.STARTS_WITH));
+        assertEquals("完全相等：pattern 含 glob 字符", Arrays.asList("[x]"),
+                cache.keys("user", 0, 100, "[x]", CacheKeyMatchType.EQUALS));
     }
 
     /**
      * 场景回归：{@code key} 含 {@code :} 分级（{@code page:active} / {@code page:removed}）时，
      * {@code put} 写入的 key 经 {@code keys} 按缓存名精确枚举、原样返回并按字典序排序；
-     * 范围超出条目数被钳制；前缀相近的缓存名不受影响；{@code get} 经同一物理 key 取回。
+     * 前缀相近的缓存名不受影响；{@code get} 经同一物理 key 取回。
      */
     @Test
     public void shouldReturnColonSeparatedKeysPutByUser() {
@@ -409,12 +467,12 @@ public class CacheContractTest {
 
         assertEquals("keys 原样返回 put 写入的 key，字典序排序",
                 Arrays.asList("page:active:queryXxx", "page:removed:queryXxx"),
-                cache.keys("user", 0, 10));
+                cache.keys("user", 0, 100));
 
         assertEquals("put 与 get 经同一物理 key 对应",
                 "page", cache.get("user", "page:active:queryXxx"));
 
-        assertTrue("范围起点越界返回空列表", cache.keys("user", 5, 9).isEmpty());
-        assertTrue("前缀相近的缓存名不受影响", cache.keys("users", 0, 10).isEmpty());
+        assertTrue("offset 越界返回空列表", cache.keys("user", 5, 10).isEmpty());
+        assertTrue("前缀相近的缓存名不受影响", cache.keys("users", 0, 100).isEmpty());
     }
 }

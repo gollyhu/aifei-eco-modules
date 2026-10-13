@@ -7,6 +7,7 @@
 package cn.hg.aifei.cache.internal;
 
 import cn.hg.aifei.cache.Cache;
+import cn.hg.aifei.cache.CacheKeyMatchType;
 import cn.hg.aifei.cache.Counter;
 import java.lang.reflect.Method;
 import java.time.Duration;
@@ -304,7 +305,8 @@ public class CacheManagerTest {
         }
 
         @Override
-        public List<String> keys(String cacheName, int begin, int end) {
+        public List<String> keys(String cacheName, int offset, int limit, String pattern,
+                                 CacheKeyMatchType matchType) {
             return Collections.emptyList();
         }
 
@@ -372,7 +374,8 @@ public class CacheManagerTest {
         }
 
         @Override
-        public List<String> keys(String cacheName, int begin, int end) {
+        public List<String> keys(String cacheName, int offset, int limit, String pattern,
+                                 CacheKeyMatchType matchType) {
             return Collections.emptyList();
         }
 

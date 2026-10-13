@@ -6,6 +6,7 @@
 
 package cn.hg.aifei.cache.redis;
 
+import cn.hg.aifei.cache.CacheKeyMatchType;
 import cn.hg.aifei.cache.Counter;
 import cn.hg.aifei.cache.internal.*;
 import redis.clients.jedis.RedisClient;
@@ -16,7 +17,6 @@ import redis.clients.jedis.resps.ScanResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -218,16 +218,21 @@ public class RedisCache extends AbstractCache implements AutoCloseable, CounterF
     }
 
     /**
-     * 返回该缓存名下指定区间的键，按字典序升序；切片语义见 {@link KeyRanges#slice}。
+     * 返回该缓存名下按 {@code pattern} 筛选并分页后的键，按字典序升序。匹配条件先下推为 SCAN
+     * 的 glob 以缩小收集范围，收集后再做精确筛选与分页，语义见 {@link KeyRanges#select}。
      */
     @Override
-    public List<String> keys(String cacheName, int begin, int end) {
+    public List<String> keys(String cacheName, int offset, int limit, String pattern,
+                             CacheKeyMatchType matchType) {
         String validCacheName = CacheValidator.requireCacheName(cacheName);
+        CacheValidator.requireOffset(offset);
+        CacheValidator.requireLimit(limit);
+        CacheValidator.requireMatchType(matchType);
         String prefix = physicalKey(namespace, validCacheName, "");
-        byte[] pattern = bytes(escapeRedisGlob(prefix) + "*");
+        byte[] scanPattern = bytes(redisKeyPattern(prefix, pattern, matchType));
         List<String> keys = new ArrayList<>();
         byte[] cursor = ScanParams.SCAN_POINTER_START_BINARY;
-        ScanParams scanParams = new ScanParams().match(pattern).count(SCAN_COUNT);
+        ScanParams scanParams = new ScanParams().match(scanPattern).count(SCAN_COUNT);
         ScanResult<byte[]> page;
         do {
             page = client.scan(cursor, scanParams);
@@ -236,8 +241,30 @@ public class RedisCache extends AbstractCache implements AutoCloseable, CounterF
             }
             cursor = page.getCursorAsBytes();
         } while (!page.isCompleteIteration());
-        Collections.sort(keys);
-        return KeyRanges.slice(keys, begin, end);
+        return KeyRanges.select(keys, offset, limit, pattern, matchType);
+    }
+
+    /**
+     * 生成 SCAN 的下推匹配模式：key 匹配针对业务 key，下推的 glob 作用于整个物理 key，因此
+     * 它是「业务 key 匹配」的超集（{@code CONTAINS} 可能只命中前缀部分），结果仍须经精确筛选。
+     */
+    private static String redisKeyPattern(String prefix, String pattern, CacheKeyMatchType matchType) {
+        String escapedPrefix = escapeRedisGlob(prefix);
+        if (pattern == null || pattern.isEmpty()) {
+            return escapedPrefix + "*";
+        }
+        String escaped = escapeRedisGlob(pattern);
+        switch (matchType) {
+            case EQUALS:
+                return escapedPrefix + escaped;
+            case STARTS_WITH:
+                return escapedPrefix + escaped + "*";
+            case ENDS_WITH:
+                return escapedPrefix + "*" + escaped;
+            case CONTAINS:
+            default:
+                return escapedPrefix + "*" + escaped + "*";
+        }
     }
 
     /**

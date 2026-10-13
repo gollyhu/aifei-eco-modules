@@ -7,6 +7,7 @@
 package cn.hg.aifei.cache.redis;
 
 import cn.hg.aifei.cache.Cache;
+import cn.hg.aifei.cache.CacheKeyMatchType;
 import cn.hg.aifei.cache.Counter;
 import cn.hg.aifei.cache.elementvalue.ElementValue;
 import cn.hg.aifei.cache.internal.AbstractCache;
@@ -255,26 +256,58 @@ public class RedisCacheIntegrationTest {
     }
 
     /**
-     * {@code keys} 的区间与精确匹配语义在 Redis 侧生效：SCAN 收集、字典序排序、切片，
-     * glob 字符缓存名经转义后不误伤前缀相近名称。
+     * {@code keys} 的分页语义在 Redis 侧生效：SCAN 收集、字典序排序、分页；glob 字符缓存名经
+     * 转义后不误伤前缀相近名称。
      */
     @Test
-    public void shouldSliceKeysWithLrangeSemanticsOnRedis() {
+    public void shouldPageKeysOnRedis() {
         for (String key : new String[]{"e", "a", "c", "b", "d"}) {
             cacheA.put("user", key, "v", Duration.ofSeconds(60));
         }
         cacheA.put("users", "1", "v", Duration.ofSeconds(60));
         cacheA.put("user*", "1", "v", Duration.ofSeconds(60));
 
-        assertEquals(Arrays.asList("a", "b", "c", "d", "e"), cacheA.keys("user", 0, -1));
-        assertEquals("begin == end 返回单元素", Arrays.asList("c"), cacheA.keys("user", 2, 2));
-        assertEquals("负索引从末尾计数", Arrays.asList("d", "e"), cacheA.keys("user", -2, -1));
-        assertTrue("begin > end 返回空列表", cacheA.keys("user", 3, 1).isEmpty());
-        assertEquals("glob 字符缓存名精确匹配", Arrays.asList("1"), cacheA.keys("user*", 0, -1));
-        assertEquals("前缀相近的名称不受影响", Arrays.asList("1"), cacheA.keys("users", 0, -1));
+        assertEquals(Arrays.asList("a", "b", "c", "d", "e"), cacheA.keys("user", 0, 100));
+        assertEquals("offset 与 limit 组合", Arrays.asList("c", "d"), cacheA.keys("user", 2, 2));
+        assertTrue("offset 越界返回空列表", cacheA.keys("user", 5, 10).isEmpty());
+        assertEquals("glob 字符缓存名精确匹配", Arrays.asList("1"), cacheA.keys("user*", 0, 100));
+        assertEquals("前缀相近的名称不受影响", Arrays.asList("1"), cacheA.keys("users", 0, 100));
 
         cacheA.clear("user");
-        assertTrue("clear 后为空", cacheA.keys("user", 0, -1).isEmpty());
+        assertTrue("clear 后为空", cacheA.keys("user", 0, 100).isEmpty());
+    }
+
+    /**
+     * Redis 侧按匹配类型下推 glob 后仍以业务 key 精确筛选：{@code pattern} 只命中物理 key 的
+     * 前缀（命名空间 / 缓存名）时不误报。
+     */
+    @Test
+    public void shouldFilterKeysByMatchTypeOnRedis() {
+        cacheA.put("user", "1", "v", Duration.ofSeconds(60));
+        cacheA.put("user", "2", "v", Duration.ofSeconds(60));
+        cacheA.put("user", "other", "v", Duration.ofSeconds(60));
+
+        assertEquals("前缀匹配", Arrays.asList("1"),
+                cacheA.keys("user", 0, 100, "1", CacheKeyMatchType.STARTS_WITH));
+        assertEquals("后缀匹配", Arrays.asList("other"),
+                cacheA.keys("user", 0, 100, "r", CacheKeyMatchType.ENDS_WITH));
+        assertTrue("pattern 只命中物理 key 前缀时不误报",
+                cacheA.keys("user", 0, 100, "user", CacheKeyMatchType.CONTAINS).isEmpty());
+    }
+
+    /**
+     * Redis 侧下推 glob 前对 {@code pattern} 中的 glob 特殊字符转义，避免被当作通配符。
+     */
+    @Test
+    public void shouldTreatGlobCharactersInPatternLiterallyOnRedis() {
+        cacheA.put("user", "a*b", "v", Duration.ofSeconds(60));
+        cacheA.put("user", "aXb", "v", Duration.ofSeconds(60));
+        cacheA.put("user", "[x]", "v", Duration.ofSeconds(60));
+
+        assertEquals("包含：* 不当通配符", Arrays.asList("a*b"),
+                cacheA.keys("user", 0, 100, "a*b", CacheKeyMatchType.CONTAINS));
+        assertEquals("前缀：[ 不当字符类", Arrays.asList("[x]"),
+                cacheA.keys("user", 0, 100, "[", CacheKeyMatchType.STARTS_WITH));
     }
 
     /**
@@ -287,7 +320,7 @@ public class RedisCacheIntegrationTest {
         cacheA.put("user", "page:removed:queryXxx", "page", Duration.ofSeconds(60));
 
         assertEquals(Arrays.asList("page:active:queryXxx", "page:removed:queryXxx"),
-                cacheA.keys("user", 0, 10));
+                cacheA.keys("user", 0, 100));
         assertEquals("page", cacheA.get("user", "page:active:queryXxx"));
     }
 

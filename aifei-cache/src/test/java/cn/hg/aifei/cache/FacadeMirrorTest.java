@@ -186,8 +186,8 @@ public class FacadeMirrorTest {
     }
 
     /**
-     * 根包对外只暴露 5 个公共类型：{@link Cache} / {@link Counter} / {@link CacheUtil} /
-     * {@link CounterUtil} / {@link CachePlugin}。
+     * 根包对外只暴露 6 个公共类型：{@link Cache} / {@link Counter} / {@link CacheUtil} /
+     * {@link CounterUtil} / {@link CachePlugin} / {@link CacheKeyMatchType}。
      *
      * <p>包内还有一个包私有的哨兵类型，它不构成公共面。公共类型集合是对外承诺的一部分，
      * 因此在此钉死，防止无意间扩张。</p>
@@ -197,7 +197,7 @@ public class FacadeMirrorTest {
      * {@code getResource("")} 会枚举到测试类所在的目录。</p>
      */
     @Test
-    public void shouldExposeExactlyFivePublicTypes() throws Exception {
+    public void shouldExposeExactlySixPublicTypes() throws Exception {
         File classesDirectory =
                 new File(Cache.class.getProtectionDomain().getCodeSource().getLocation().toURI());
         File packageDirectory =
@@ -219,7 +219,8 @@ public class FacadeMirrorTest {
         }
 
         assertEquals(new TreeSet<>(Arrays.asList(
-                "Cache", "CacheUtil", "CachePlugin", "Counter", "CounterUtil")), publicTypes);
+                "Cache", "CacheKeyMatchType", "CacheUtil", "CachePlugin", "Counter", "CounterUtil")),
+                publicTypes);
     }
 
     private static void assertMirrors(Class<?> contract, Class<?> facade, Set<String> contractOnly) {

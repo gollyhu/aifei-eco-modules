@@ -174,10 +174,19 @@ public final class CacheUtil {
     }
 
     /**
-     * 返回主缓存中该缓存名下指定区间的键集合；规则同 {@link Cache#keys(String, int, int)}。
+     * 返回主缓存中该缓存名下按匹配类型筛选并分页后的键集合；规则同
+     * {@link Cache#keys(String, int, int, String, CacheKeyMatchType)}。
      */
-    public static List<String> keys(String cacheName, int begin, int end) {
-        return use().keys(cacheName, begin, end);
+    public static List<String> keys(String cacheName, int offset, int limit,
+                                    String pattern, CacheKeyMatchType matchType) {
+        return use().keys(cacheName, offset, limit, pattern, matchType);
+    }
+
+    /**
+     * 返回主缓存中该缓存名下的键分页，不做筛选；规则同 {@link Cache#keys(String, int, int)}。
+     */
+    public static List<String> keys(String cacheName, int offset, int limit) {
+        return use().keys(cacheName, offset, limit);
     }
 
     /**

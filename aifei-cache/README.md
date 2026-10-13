@@ -400,7 +400,7 @@ Set<String> names = CacheUtil.use("mem").cacheNames();
 | `remove` 参数非法 | 不执行任何操作 |
 | `putIfAbsent` 命中 | `false`，不覆盖原值、不重置原 TTL |
 | `expire` 目标不存在或已过期 | `false`，**不复活过期项** |
-| `keys` 空缓存、区间为空或越界钳制后为空 | 空列表（**不返回 `null`**） |
+| `keys` 空缓存、筛选后无条目或 `offset` 越界 | 空列表（**不返回 `null`**） |
 | `Counter` 的增减方法遇到未命中 | 按当前值 `0` 创建新计数项，并使用传入的 TTL |
 
 ### 异常契约
@@ -408,7 +408,7 @@ Set<String> names = CacheUtil.use("mem").cacheNames();
 | 场景 | 抛出 |
 | --- | --- |
 | 写路径参数校验失败：`put` / `putIfAbsent` / `expire` / `clear` / 带 `loader` 的 `get` / `Counter` 四种增减 | `IllegalArgumentException` |
-| `keys` 的 `cacheName` 空白或含 `:` | `IllegalArgumentException`（`begin` / `end` 任意 `int` 值均合法） |
+| `keys` 的 `cacheName` 空白或含 `:`，或 `offset < 0` / `limit <= 0` / `matchType` 为 `null` | `IllegalArgumentException` |
 | 读路径参数非法：`get` / `exists` / `remove` / `getTtl` | **不抛**，走「不可能命中」路径 |
 | 计数结果超出 `long` 范围 | `ArithmeticException`，且不改变数值与 TTL |
 | `Counter.get` 读到外部直接写入、无 TTL 或非整数的计数项 | `IllegalStateException`（**仅 jedis 后端**） |
@@ -442,14 +442,15 @@ Set<String> names = CacheUtil.use("mem").cacheNames();
 - `clear("user")` 的数据清理**非原子、尽力清理**，执行期间可能读到部分已删除的状态。
 - 被移除的名称在**下次写入时重新登记**，集合随时可增可减。
 
-### 键区间查询（仅 `Cache`）
+### 键分页与筛选查询（仅 `Cache`）
 
-- `keys(cacheName, begin, end)` 返回该缓存名下全部键的指定区间，**按业务 key 字典序升序**排列，分页结果因此可复现；两后端语义一致。
-- **区间为闭区间**，`begin` 与 `end` 均包含，语义对齐 Redis `LRANGE`；**负数索引从末尾计数**（`-1` 为最后一项）。
-- **越界自动钳制**：换算后 `begin < 0` 按 `0` 处理、`end` 超过最后一项按最后一项处理；空缓存或换算后 `begin > end` 返回**空列表**（不返回 `null`）。
+- `keys(cacheName, offset, limit, pattern, matchType)` 返回该缓存名下**按业务 key 字典序升序**排列、经 `pattern` 筛选后的分页结果，分页结果因此可复现；两后端语义一致。
+- **分页为「跳过 + 取上限」**：`offset` 是跳过的键条数（从 0 开始）、`limit` 是返回条数上限；越界自动截断（`limit` 超过剩余条数按剩余条数返回、`offset` 不小于总条数返回**空列表**，不返回 `null`）。
+- **分页参数非法抛异常**：`offset < 0` 或 `limit <= 0` 抛 `IllegalArgumentException`。
+- **筛选先于排序与分页**，匹配基于业务 key 的字符串形态：`pattern` 为 `null` 或空串时**不筛选**；否则按 `CacheKeyMatchType` 的 `EQUALS`（完全相等）/ `CONTAINS`（包含，省略重载用的默认值）/ `STARTS_WITH`（前缀）/ `ENDS_WITH`（后缀）判定，`matchType` 为 `null` 抛 `IllegalArgumentException`。省略 `pattern` 与 `matchType` 的 `keys(cacheName, offset, limit)` 等价于不筛选。
 - **弱一致快照**：扫描期间的并发写入、过期或容量淘汰可能使相邻两次分页重叠或遗漏，属尽力而为。
 - 键枚举只看键是否存在：`cacheNull = true` 写入的否定结果（哨兵）条目，其 key 照常返回。
-- **开销随后端与键量而变**：jedis 侧对物理 key 做 `SCAN` 全量收集后再切片，键量大时开销显著，不适合高频调用；caffeine 侧遍历进程内条目。
+- **开销随后端与键量而变**：jedis 侧对物理 key 做 `SCAN` 全量收集（按 `matchType` 下推 glob 缩小收集范围）后再筛选与分页，键量大时开销显著，不适合高频调用；caffeine 侧遍历进程内条目。
 
 ### 命名责任
 

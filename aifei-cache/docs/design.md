@@ -6,12 +6,12 @@
 
 应用代码只依赖缓存抽象接口，不依赖任何具体缓存实现；单实例与多实例、本地与分布式之间的差别，全部通过配置表达。
 
-- 公共 API 面固定 5 个类型：`Cache`、`Counter`、`CacheUtil`、`CounterUtil`、`CachePlugin`。
+- 公共 API 面固定 6 个类型：`Cache`、`Counter`、`CacheUtil`、`CounterUtil`、`CachePlugin`、`CacheKeyMatchType`。
 - 实例划分：`internal`（非承诺 API）、`caffeine`（本地实现）、`redis`（分布式实现）。
 - 存储与编解码：Caffeine（本地）、Jedis（Redis）；Redis 的 value 序列化固定用 Fury。
 - 依赖注入：aifei；主缓存与主计数器可通过 `@Inject` 注入。
 - **物理 key**：缓存为三段式 `namespace:cacheName:key`，计数为 `namespace:COUNTER:counterName:key`；**不做转义、不做编码**。命名空间与名字（`cacheName` / `counterName`）不得含 `:`，否则该段会被解析成分级；`key` 不受此限。
-- **契约基线与变更纪律**：`internal.CacheValidator` 的 9 个校验方法（含命名空间校验）已内联为本项目源码，其规则与异常消息属**冻结契约**（见「异常模型」）；其余契约语义在本项目内定义，可自主演进。**不依赖 `cn.aifei:aifei-cache` 构件**，唯一保留的 aifei 依赖是框架核心 `cn.aifei:aifei`。
+- **契约基线与变更纪律**：`internal.CacheValidator` 的 12 个校验方法（含命名空间校验）已内联为本项目源码，其规则与异常消息属**冻结契约**（见「异常模型」）；其余契约语义在本项目内定义，可自主演进。**不依赖 `cn.aifei:aifei-cache` 构件**，唯一保留的 aifei 依赖是框架核心 `cn.aifei:aifei`。
 
 设计原则六条：
 
@@ -78,13 +78,13 @@ public interface Cache {
     void remove(String cacheName, String key);
     void clear(String cacheName);
     Duration getTtl(String cacheName, String key);
-    List<String> keys(String cacheName, int begin, int end);
+    List<String> keys(String cacheName, int offset, int limit, String pattern, CacheKeyMatchType matchType);
     Set<String> cacheNames();
     Duration ttl();
     boolean cacheNull();
     String namespace();
 
-    // default 方法：秒重载、Loader 委托与省略 TTL 重载
+    // default 方法：秒重载、Loader 委托、省略 TTL 重载与省略筛选条件的 keys 重载
     // TTL：Duration 参数是毫秒精度（毫秒级的缓存时间用它）；int ttlSeconds 只能表达整秒
     <T> T get(String cacheName, String key, Duration ttl, Supplier<T> loader);
     <T> T get(String cacheName, String key, int ttlSeconds, Supplier<T> loader);
@@ -95,6 +95,7 @@ public interface Cache {
     boolean putIfAbsent(String cacheName, String key, Object value);      // TTL 取实例默认
     boolean expire(String cacheName, String key, int ttlSeconds);
     boolean expire(String cacheName, String key);                         // TTL 取实例默认
+    List<String> keys(String cacheName, int offset, int limit);           // 不筛选
 }
 ```
 
@@ -104,7 +105,7 @@ public interface Cache {
 - `exists`：参数非法或不存在返回 `false`；这是**存储级**判定，命中哨兵必须返回 `true`，不得用 `get(...) != null` 实现。
 - `remove`：参数非法时不执行任何操作、不抛异常。`clear` 与其余写路径**参数非法时抛 `IllegalArgumentException`**。
 - `getTtl`：返回剩余有效期；条目不存在、已过期或参数非法返回 `null`；没有过期时间的条目（Redis `PTTL == -1`）返回 `Integer.MAX_VALUE` 秒。
-- `keys`：返回该缓存名下键的指定区间，见「行为契约」的键区间查询。
+- `keys`：返回该缓存名下按 `pattern` 筛选后的键分页，见「行为契约」的键分页与筛选查询。
 - `cacheNames`：见「`cacheNames()` / `counterNames()` 集合的存储」。
 - `ttl` / `cacheNull` / `namespace`：只读配置自述，无运行期 setter。
 - 带 `loader` 的 `get`：`loader` 为 `null` 或 `cacheName` / `key` / TTL 非法时抛 `IllegalArgumentException` 且**不调用** `loader`；校验顺序为 `loader` → `cacheName` → `key` → TTL。
@@ -118,7 +119,7 @@ public interface Cache {
 - **`null` 的判定与转换只有一个定义点**：`internal.AbstractCache.toStoredValue(value, cacheNull)`。非 `null` 值原样返回；`null` 且 `cacheNull = true` 返回哨兵；`null` 且 `cacheNull = false` 返回 `null`，表示不应写入。`fromStoredValue` 负责读取侧的还原。
 - **回源单飞（`loader` 语义）**：带 `loader` 的 `get` 在未命中时按**物理 key** 做同 JVM 回源单飞 —— 同一缓存项的并发未命中收敛为一次 `loader` 调用，其余线程复用其返回结果（含 `null`，不受 `cacheNull` 影响）。边界：只覆盖单个 JVM，多实例部署时每个实例各自装载一次；等待被中断的线程退化为自行回源；`loader` 内不得对**同一缓存实例**的其它 key 再走带 `loader` 的 `get`（交叉等待可能成环）；`loader` 抛出的 `RuntimeException` / `Error` 原样传递给该批跟随者。定义点在 `internal.SingleFlight`，实现类不参与。
 - **清理语义**：`clear(cacheName)` 清空该名称下的全部缓存项并把该名称移出 `cacheNames()`，非原子、尽力清理。名字不得含 `:`，故不存在「下级名称」，数据清理范围与名称移除范围一致。
-- **键区间查询（`keys`）**：返回该缓存名下全部键的指定区间，先按业务 key 字典序升序排序再切片 —— 排序是分页可复现的前提。区间为闭区间（两端均包含）、负数索引从末尾计数（`-1` 为最后一项）、越界钳制、换算后 `begin > end` 或无条目返回空列表，语义对齐 Redis `LRANGE`；换算与切片的唯一定义点在 `internal.KeyRanges`。`cacheName` 非法抛 `IllegalArgumentException`；`begin` / `end` 任意 int 值均合法。结果是弱一致快照：扫描期间并发写入可能使相邻两次分页重叠或遗漏；键枚举只看键存在，哨兵条目的 key 照常返回。
+- **键分页与筛选查询（`keys`）**：返回该缓存名下按 `pattern` 筛选后的键分页，先按业务 key 字典序升序排序，再跳过 `offset` 条取 `limit` 条 —— 排序是分页可复现的前提。筛选先于排序与分页，匹配基于业务 key 的字符串形态：`pattern` 为 `null` 或空串时不筛选，否则按 `CacheKeyMatchType`（`EQUALS` / `CONTAINS` / `STARTS_WITH` / `ENDS_WITH`）判定。`cacheName` 非法、`offset < 0`、`limit <= 0` 或 `matchType` 为 `null` 抛 `IllegalArgumentException`；`offset` 不小于筛选后条目数或无条目返回空列表（不返回 `null`）。筛选、排序与分页的唯一定义点在 `internal.KeyRanges`；jedis 侧另按 `matchType` 把匹配下推为 `SCAN` 的 glob 以缩小收集范围，但下推是业务 key 匹配的超集，收集后仍须经 `KeyRanges` 精确筛选。结果是弱一致快照：扫描期间并发写入可能使相邻两次分页重叠或遗漏；键枚举只看键存在，哨兵条目的 key 照常返回。
 - **TTL 精度与上下限**：配置与接口取值均为毫秒；合法范围 `[1, 2147483647000]`（1 毫秒 ~ `Integer.MAX_VALUE` 秒）；超限不截断、直接抛 `IllegalArgumentException`；`int ttlSeconds` 重载必须大于 0。
 - **命名责任（调用方约束）**：必须保证各实例 `namespace` 互不相同。名字也不得含 `:`（由参数校验拒绝）；`key` 可以含 `:`、不参与分级，也不因此被拒绝 —— 三段都不携带分段符，拼接因此是单射的。
 
@@ -222,8 +223,8 @@ public interface Counter {
 
 | # | 承载方式 | 承载内容 |
 | --- | --- | --- |
-| 1 | `internal` 静态工具类 | `CacheValidator`（接口参数校验）、`Config`（配置域与框架级常量）、`SingleFlight`（回源单飞）、`KeyRanges`（`keys` 区间换算与切片） |
-| 2 | 接口 `default` 方法 | 秒重载、省略 TTL 重载与 `loader` 委托 |
+| 1 | `internal` 静态工具类 | `CacheValidator`（接口参数校验）、`Config`（配置域与框架级常量）、`SingleFlight`（回源单飞）、`KeyRanges`（`keys` 的筛选、排序与分页） |
+| 2 | 接口 `default` 方法 | 秒重载、省略 TTL 重载、省略筛选条件的 `keys` 重载与 `loader` 委托 |
 | 3 | 实现类自身 | 各后端专有逻辑 |
 | 4 | `internal.AbstractCacheProvider` | **仅**两个后端 provider 的通用配置装配（`initConfig`）；不得承载实现逻辑，不得被实现类继承 |
 | 5 | `internal.AbstractCache` | `Cache` 两实现类共用的**无行为元数据基类**：只承载 `namespace` / `ttl` / `cacheNull` 自述，以及哨兵编解码与物理 key 拼装。不得承载存储读写逻辑，`Counter` 实现类不继承它 |
@@ -238,7 +239,7 @@ public interface Counter {
 - 并发：同 key 的 `get` / `exists` / `put` / `putIfAbsent` / `expire` / `remove` 共用同一套 128 把分段锁；`expire` 的存活检查与 TTL 更新在同一把锁内完成。
 - `exists` 用底层条目存在性判定（命中哨兵也返回 `true`）。
 - `clear(cacheName)` 先按「命名空间 + 缓存名」收集匹配条目，再逐条 `invalidate`，最后移除名称登记。
-- `keys` 遍历底层 `keySet` 按 `belongsTo` 过滤、取组合键的业务 key，排序后经 `internal.KeyRanges.slice` 切片；不持分段锁，弱一致。
+- `keys` 遍历底层 `keySet` 按 `belongsTo` 过滤、取组合键的业务 key，再经 `internal.KeyRanges.select` 做筛选、排序与分页；不持分段锁，弱一致。
 - 不实现 `AutoCloseable`（条目全在进程内、由 GC 回收，不持有需要显式释放的资源），也不实现 `internal.UniqueNameAware`（进程内缓存各自独占存储，不参与启动期排他判定）。
 - 容量与命名空间校验在构造期完成（容量先于命名空间）；`namespace` 不能为空白，也不得含 `:`。
 - 实现包内 `internal.CounterFactory`，`createCounter()` 返回同 `namespace` / 同配置的 `CaffeineCounter`。
@@ -259,7 +260,7 @@ public interface Counter {
 - 读取结果先过 `AbstractCache.fromStoredValue`，写入值先过 `AbstractCache.toStoredValue`；后者返回 `null` 时直接返回、不发任何命令。
 - `exists` 用 `EXISTS`，不得用 `get(...) != null`。
 - `clear` 用 `SCAN MATCH ... COUNT 1000` 逐页 `UNLINK`，不使用 `KEYS`；glob 转义字符集为 `* ? [ ] \`。
-- `keys` 用 `SCAN MATCH`（前缀经与 `clear` 同源的 glob 转义）收集物理 key、剥前缀还原业务 key，排序后经 `KeyRanges.slice` 切片；不使用 `KEYS`。
+- `keys` 用 `SCAN MATCH` 收集物理 key、剥前缀还原业务 key，再经 `KeyRanges.select` 做筛选、排序与分页；匹配条件按 `matchType` 下推为 glob（前缀经与 `clear` 同源的转义），下推是业务 key 匹配的超集，精确筛选仍由 `KeyRanges` 完成；不使用 `KEYS`。
 - 实现 `AutoCloseable`：`close()` 关闭连接池，重复调用不重复关闭。
 - 实现 `internal.UniqueNameAware`：唯一名取自 `RedisConfig#uniqueName()`，构造期算好并固定，本类不保留 `RedisConfig`。
 - 实现包内 `internal.CounterFactory`，`createCounter()` 返回共享同一客户端的 `RedisCounter`。
@@ -334,8 +335,8 @@ public interface Counter {
   7. 回源单飞：并发未命中只调用一次 `loader`；`cacheNull = false` 且装载结果为 `null` 时同样复用；胜者失败向跟随者传播；等待被中断者退化为自行回源。
   8. 名称与清理：名字含 `:` 时写路径抛 `IllegalArgumentException`、读路径静默走「不可能命中」；`clear` 清空该名称下的全部数据并精确移除该名称，`remove` 只删条目、完全不改动名称集合；`clear("user")` 不误伤前缀相近的 `users`；清除后再次写入能重新登记；派生计数器继承同源缓存的默认 TTL，省略 TTL 的重载随之生效。
   9. 保留名语义：`__CACHE_NAMES__` / `__COUNTER_NAMES__` 作为业务名与普通名称同等对待（可写入、可读、登记进名称集合、`clear` 真正生效）；Caffeine 侧的名称集合存于实例字段，容量远小于写入量时名称仍完整。
-  10. `keys` 的区间语义：闭区间含两端、负索引从末尾计数、越界钳制、空列表不返回 `null`；字典序排序；`cacheName` 非法抛 `IllegalArgumentException`；glob 字符缓存名经转义后精确匹配、不误伤前缀相近名称；`clear` 后为空；哨兵条目的 key 照常返回。
-- **门面完整性**：反射比对 `CacheUtil` / `CounterUtil` 与 `Cache` / `Counter` 的方法集合（`namespace()` 白名单放行，含反向用例）；并钉住 `Cache` / `Counter` 既不声明 `static` 方法也不声明常量；根包公共类型恒为 5 个。
+  10. `keys` 的分页与筛选语义：`offset` / `limit` 分页、越界截断、空列表不返回 `null`；字典序排序；`pattern` 为 `null` / 空串不筛选，`EQUALS` / `CONTAINS` / `STARTS_WITH` / `ENDS_WITH` 四种匹配基于业务 key；`cacheName` 非法、`offset < 0`、`limit <= 0`、`matchType` 为 `null` 抛 `IllegalArgumentException`；glob 字符缓存名经转义后精确匹配、不误伤前缀相近名称；Redis 侧下推 glob 但以业务 key 精确筛选（`pattern` 只命中物理 key 前缀时不误报）；`clear` 后为空；哨兵条目的 key 照常返回。
+- **门面完整性**：反射比对 `CacheUtil` / `CounterUtil` 与 `Cache` / `Counter` 的方法集合（`namespace()` 白名单放行，含反向用例）；并钉住 `Cache` / `Counter` 既不声明 `static` 方法也不声明常量；根包公共类型恒为 6 个。
 - **字节码约束**：主 JAR 内全部 class 的 major version 必须为 52。
 
 ## 附 A：依赖与构建约束

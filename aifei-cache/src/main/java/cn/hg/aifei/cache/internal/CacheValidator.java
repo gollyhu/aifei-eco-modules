@@ -7,6 +7,7 @@
 package cn.hg.aifei.cache.internal;
 
 import cn.aifei.util.StrUtil;
+import cn.hg.aifei.cache.CacheKeyMatchType;
 import java.time.Duration;
 
 /**
@@ -101,6 +102,36 @@ public final class CacheValidator {
             throw new IllegalArgumentException("key can not be blank");
         }
         return key;
+    }
+
+    /**
+     * 校验键分页的偏移量不小于 0。
+     */
+    public static int requireOffset(int offset) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("offset must not be negative");
+        }
+        return offset;
+    }
+
+    /**
+     * 校验键分页的条数上限大于 0。
+     */
+    public static int requireLimit(int limit) {
+        if (limit <= 0) {
+            throw new IllegalArgumentException("limit must be greater than zero");
+        }
+        return limit;
+    }
+
+    /**
+     * 校验键匹配类型不为 {@code null}。
+     */
+    public static CacheKeyMatchType requireMatchType(CacheKeyMatchType matchType) {
+        if (matchType == null) {
+            throw new IllegalArgumentException("matchType can not be null");
+        }
+        return matchType;
     }
 
     /**

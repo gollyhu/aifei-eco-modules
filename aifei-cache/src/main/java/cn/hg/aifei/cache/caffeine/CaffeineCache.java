@@ -6,6 +6,7 @@
 
 package cn.hg.aifei.cache.caffeine;
 
+import cn.hg.aifei.cache.CacheKeyMatchType;
 import cn.hg.aifei.cache.Counter;
 import cn.hg.aifei.cache.internal.AbstractCache;
 import cn.hg.aifei.cache.internal.CacheValidator;
@@ -17,7 +18,6 @@ import com.github.benmanes.caffeine.cache.Policy;
 import com.github.benmanes.caffeine.cache.Ticker;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -251,19 +251,23 @@ public class CaffeineCache extends AbstractCache implements CounterFactory {
     }
 
     /**
-     * 返回该缓存名下指定区间的键，按字典序升序；切片语义见 {@link KeyRanges#slice}。
+     * 返回该缓存名下按 {@code pattern} 筛选并分页后的键，按字典序升序；筛选与分页语义见
+     * {@link KeyRanges#select}。
      */
     @Override
-    public List<String> keys(String cacheName, int begin, int end) {
+    public List<String> keys(String cacheName, int offset, int limit, String pattern,
+                             CacheKeyMatchType matchType) {
         String validCacheName = CacheValidator.requireCacheName(cacheName);
+        CacheValidator.requireOffset(offset);
+        CacheValidator.requireLimit(limit);
+        CacheValidator.requireMatchType(matchType);
         List<String> keys = new ArrayList<>();
         for (CaffeineCacheKey cacheKey : cache.asMap().keySet()) {
             if (cacheKey.belongsTo(namespace, validCacheName)) {
                 keys.add(cacheKey.key());
             }
         }
-        Collections.sort(keys);
-        return KeyRanges.slice(keys, begin, end);
+        return KeyRanges.select(keys, offset, limit, pattern, matchType);
     }
 
     /**

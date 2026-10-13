@@ -111,18 +111,21 @@ public interface Cache {
     Duration getTtl(String cacheName, String key);
 
     /**
-     * 返回该缓存名下全部键的指定区间，按字典序升序排列；区间、排序与一致性规则见「接口通用规则」。
+     * 返回该缓存名下按 {@code pattern} 筛选后的键分页，按字典序升序排列；筛选、排序、分页与
+     * 一致性规则见「接口通用规则」。
      *
      * <p>结果为弱一致快照，扫描期间的并发写入可能使相邻两次分页重叠或遗漏；Redis 后端为全量
      * 扫描，键量大时开销显著。</p>
      *
      * @param cacheName 缓存名
-     * @param begin 起始索引（包含），负数从末尾计数
-     * @param end 结束索引（包含），负数从末尾计数
+     * @param offset 跳过的键条数，从 0 开始
+     * @param limit 返回的键条数上限
+     * @param pattern 匹配串；{@code null} 或空串时不筛选
+     * @param matchType 匹配类型；{@code pattern} 为 {@code null} 或空串时不参与判定
      * @return 键列表，按字典序升序；不为 {@code null}
      * @throws IllegalArgumentException 参数校验失败
      */
-    List<String> keys(String cacheName, int begin, int end);
+    List<String> keys(String cacheName, int offset, int limit, String pattern, CacheKeyMatchType matchType);
 
     /**
      * 返回历史上被写入过的缓存名集合，用于排查问题；增减规则与可见范围见「接口通用规则」。
@@ -296,6 +299,19 @@ public interface Cache {
      */
     default boolean expire(String cacheName, String key, int ttlSeconds) {
         return expire(cacheName, key, Duration.ofSeconds(ttlSeconds));
+    }
+
+    /**
+     * 返回该缓存名下的键分页，不做筛选；规则同
+     * {@link #keys(String, int, int, String, CacheKeyMatchType)}。
+     *
+     * @param cacheName 缓存名
+     * @param offset 跳过的键条数，从 0 开始
+     * @param limit 返回的键条数上限
+     * @return 键列表，按字典序升序；不为 {@code null}
+     */
+    default List<String> keys(String cacheName, int offset, int limit) {
+        return keys(cacheName, offset, limit, null, CacheKeyMatchType.CONTAINS);
     }
 
 }

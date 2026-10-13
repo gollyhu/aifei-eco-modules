@@ -7,6 +7,7 @@
 package cn.hg.aifei.cache.internal;
 
 import cn.hg.aifei.cache.Cache;
+import cn.hg.aifei.cache.CacheKeyMatchType;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -327,7 +328,8 @@ public class SingleFlightTest {
         }
 
         @Override
-        public List<String> keys(String cacheName, int begin, int end) {
+        public List<String> keys(String cacheName, int offset, int limit, String pattern,
+                                 CacheKeyMatchType matchType) {
             return Collections.emptyList();
         }
 

@@ -15,11 +15,11 @@
 
 - 代码、依赖与 API 必须兼容 Java 8；主 JAR 内全部 class 的 major version 必须为 52。
 - 不得升级 Caffeine 2.9.3（最后一个支持 JDK 8 的版本）；Caffeine / Jedis / Fury 必须保持 `<optional>true</optional>`。
-- 不依赖 `cn.aifei:aifei-cache` 构件。`internal.CacheValidator` 的 9 个校验方法（2 个布尔判定 `isValid*` / `isInvalid*` + 7 个 `require*` 校验并抛异常）已内联为本项目源码，其判定规则与异常消息属**冻结契约**，改动时须先在测试中更新消息断言。
+- 不依赖 `cn.aifei:aifei-cache` 构件。`internal.CacheValidator` 的 12 个校验方法（2 个布尔判定 `isValid*` / `isInvalid*` + 10 个 `require*` 校验并抛异常）已内联为本项目源码，其判定规则与异常消息属**冻结契约**，改动时须先在测试中更新消息断言。
 
 ### 结构
 
-- 公共 API 面固定为 5 个类型：`Cache` / `Counter` / `CacheUtil` / `CounterUtil` / `CachePlugin`；新增公共类型必须先过设计决策。
+- 公共 API 面固定为 6 个类型：`Cache` / `Counter` / `CacheUtil` / `CounterUtil` / `CachePlugin` / `CacheKeyMatchType`；新增公共类型必须先过设计决策。
 - 其余代码落在 `internal`（非承诺 API）、`caffeine`、`redis` 三个子包。
 - `Cache` 实现类共用无行为元数据基类 `internal.AbstractCache`，`Counter` 实现类共用 `internal.AbstractCounter`。两类实现类都不得再引入其它跨实现基类或抽象父类，不得暴露 Caffeine、Jedis、Fury 等实现类型。
 - 装配侧允许有一个抽象父类 `internal.AbstractCacheProvider`：它只承载通用配置装配，必须无状态，且不得被 `Cache` / `Counter` 的实现类继承。
@@ -46,7 +46,7 @@
 - **Fury 反序列化白名单**：唯一定义点在 `redis.FuryRedisValueCodec`，拒绝项先于放行项判定，框架自身类型（哨兵 `NullValue`）与**数组维度**在类内登记，业务类型由根级 `cache.jedis.allowedPackages` 声明。数组只放行**维度**、不放开**元素** —— 数组的元素类仍逐个走白名单，不得为「修数组」而放宽拒绝项，也不得让数组形态绕过元素判定。
 - **后端扩展点**：`internal.CacheProvider` + `internal.CacheProviderRegistry` + `internal.AbstractCacheProvider`。新增后端 = 新增 provider 实现 + 在注册表静态初始化里注册一行，不得回头改 `CachePlugin` 的装配逻辑；类型白名单由 `CacheProviderRegistry#types()` 派生。
 - **回源单飞的登记与「回源 + 回写」**：`internal.SingleFlight`，登记键取自 `AbstractCache.physicalKey`；实现类不得自行维护在途状态或复制该流程。
-- **`keys` 区间换算与切片**：`internal.KeyRanges`（语义对齐 Redis `LRANGE`），两后端实现共用，不得各自复制。
+- **`keys` 的筛选、排序与分页**：`internal.KeyRanges`（按业务 key 匹配、字典序排序、offset/limit 分页），两后端实现共用，不得各自复制。
 - **`CacheProvider` 实现必须无状态**：不得声明实例字段保存解析结果，配置在 `buildCache(instanceName, prefix, prop)` 内经 `buildConfig(cfg, prefix, prop)` 现读现用；配置对象是本实例的瞬时对象，不得存进 provider 字段、不得跨阶段传递。装配共用逻辑走 `AbstractCacheProvider#initConfig`（装配通用项后委托子类 `buildConfig`）；**缓存实例由各子类在自己的 `buildCache` 内创建**，基类不提供实例创建钩子。
 
 ## 注释规范
