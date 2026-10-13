@@ -6,12 +6,14 @@
 
 ## 文档
 
+各文档的定位与分工见 `AGENTS.md` 的「文档分工」表：
+
 | 文档 | 内容 |
 | --- | --- |
-| `docs/开发规范/微信接入规范.md` | **接入前必读**：接入步骤、后台配置、行为契约、常见问题、上线检查清单、官方文档索引 |
-| `docs/design.md` | 分层设计、关键决策与数据格式 |
+| `docs/开发规范/微信接入规范.md` | **接入前必读**：接入步骤、后台配置、上线检查清单 |
+| `docs/design.md` | 分层设计、关键决策与数据格式契约 |
 | `docs/testing.md` | 测试策略与用例清单 |
-| `AGENTS.md` | 开发约束（贡献者） |
+| `AGENTS.md` | 开发约束、文档分工与提交前检查清单 |
 
 ## 能力
 
@@ -35,35 +37,35 @@
 </dependency>
 ```
 
-`aifei-all` 为 **`provided`**，不传递：消费方必须自带（`Handler` / `Input` / `Output` / `Log` 与 fastjson2 由它提供）。本模块不依赖 `aifei-vip-arch`、`undertow`、`jedis`、`okhttp`、`jackson`、`fastjson1`、`mysql`、`druid`。
+`aifei-all` 为 **`provided`**、不传递，应用须自行声明；编译依赖与禁用依赖清单见 `docs/design.md` 3.2 与 `AGENTS.md` 硬性约束。
 
 ```java
-// 1. 注册在 FrontHandler 之前（否则微信首验 GET 会被渲染首页）
+// 必须注册在 FrontHandler 之前，否则微信首验 GET 会被渲染成首页（详见 design.md 5.3）
 settings.addHandler(new WeixinHandler<>(
-        new MyWeixinIo(),                                              // 传输适配（4 个方法）
+        new MyWeixinIo(),
         WeixinAccountProvider.of(WeixinAccount.of(appId, secret, token, aesKey)),
-        new MsgHandler() {                                             // 业务扩展点
+        new MsgHandler() {
             protected OutMsg processInTextMsg(InTextMsg msg) { return new OutTextMsg("ok"); }
         }));
 
-// 2. 使用 Api 时装配一次，并复用同一 cache 实例
+// 使用 Api 前装配一次，tokenCache 须复用同一实例
 WxApiConfig.set(new JdkHttpKit(), new MemoryAccessTokenCache());
 ```
 
-回调地址：`https://域名/weixin/{appId}/msg`。构建：`cd aifei-weixin && mvn clean install`（需先于依赖它的应用模块）。
+回调地址：`https://域名/weixin/{appId}/msg`。完整接入步骤（含后台配置与上线检查清单）见 `docs/开发规范/微信接入规范.md`；构建：`cd aifei-weixin && mvn clean install`（需先于依赖它的应用模块）。
 
 ## 关键契约
 
-- 无被动回复必须回 `success`（空串会被微信判定超时并重试 3 次）；验签失败回 `fail`；HTTP 恒 200。
+- 无被动回复必须回 `success`；验签 / 解密失败回 `fail`；回调链路 HTTP 恒 200。
 - 微信要求 5 秒内响应：**回调链路禁止同步调用 Api**。
 - **SDK 不做幂等去重**：消息按 `MsgId`、支付回调按 `out_trade_no` 由业务自行幂等；多实例部署须把 `AccessTokenCache` 换为共享实现。
 
-其余契约与接入细节见 `docs/开发规范/微信接入规范.md`。
+契约的完整依据见 `docs/design.md` 4.5 与 `docs/开发规范/微信接入规范.md` 第 6 节；`WeixinHandler` 的注册顺序约束见 `docs/design.md` 5.3。
 
 ## 测试
 
 ```bash
-cd aifei-weixin && mvn clean test      # 109 个用例，不联网、不连数据库
+cd aifei-weixin && mvn clean test      # 不联网、不连数据库
 ```
 
-架构门禁：`KernelBindingTest` 断言无 `cn.aifei.vip.*` / `io.undertow.*` / `java.sql.*` 引用，且 `cn.aifei.core.*` 只出现在 `cn.aifei.weixin.aifei` 包；应用侧 `WeixinHandlerOrderTest` 守护注册顺序。
+用例数量与分层见 `docs/testing.md`；架构门禁 `KernelBindingTest` 的断言见 `docs/testing.md` 4.1，应用侧注册顺序由 `WeixinHandlerOrderTest` 守护。

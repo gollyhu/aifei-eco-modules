@@ -72,7 +72,7 @@
 | `cn.aifei:aifei-all` | `provided` | 提供 `Handler` / `Input` / `Output` / `Log` 与 fastjson2；不传递，消费方自带 |
 | `junit:junit` | `test` | 单元测试 |
 
-明确不依赖：`aifei-vip-arch`、`undertow`、`jedis`、`okhttp`、`jackson`、`fastjson1`、`mysql`、`druid`。项目、依赖与 API 兼容 Java 8。
+明确不依赖的组件清单与 Java 8 兼容要求见 `AGENTS.md` 的「硬性约束 → 技术栈」（唯一定义点）。
 
 ## 4. 协议内核
 

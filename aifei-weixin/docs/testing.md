@@ -137,7 +137,7 @@
 - `MemoryAccessTokenCache` 过期与 `remove`、URL 拼接与参数编码、`JsTicketApi` 复用同一缓存实例。
 - `appId` / `secret` 重载与账号重载共用同一缓存键。
 
-`JdkHttpKitTest`：网络失败（`127.0.0.1:1`）包装为 `WxApiException`；`download` 读超时生效；multipart body 的边界 / 字段名 / 文件名 / 收尾边界正确，空 fields 与 files 时 body 为 `--boundary--`。该测试是唯一发起真实连接的用例，只访问本机回环与临时 `ServerSocket`。
+`JdkHttpKitTest`：网络失败（`127.0.0.1:1`）包装为 `WxApiException`；`download` 读超时生效；multipart body 的边界 / 字段名 / 文件名 / 收尾边界正确，空 fields 与 files 时 body 为 `--boundary--`。
 
 ### 4.5 小程序 `MiniAppApiTest`
 
