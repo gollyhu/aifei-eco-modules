@@ -11,6 +11,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-sentinel](aifei-sentinel/README.md) | `io.github.gollyhu:aifei-sentinel:1.0.0` | Sentinel 流量治理接入 SDK：流控、熔断、系统保护 |
 | [aifei-sentinel-demo](aifei-sentinel-demo) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
 | [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
+| [aifei-sa-token](aifei-sa-token/README.md) | `io.github.gollyhu:aifei-sa-token:1.0.0` | Sa-Token 认证鉴权接入 SDK：登录态、角色权限、注解鉴权 |
 
 ### aifei-cache
 
@@ -42,6 +43,17 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 微信支付 V3：`PayApi` 下单查单退款 + `PayNotifyKit` 回调验签解密，RSA / GCM / mTLS 纯 JDK 实现
 - 接入前必读 [docs/design.md](aifei-weixin/docs/design.md)
 
+### aifei-sa-token
+
+把 Sa-Token 的认证鉴权能力接入 aifei + Undertow，消费方无需改造自有 HIO。
+
+- 上下文接线在 `Dispatcher` 层完成：请求头、Cookie、请求方法、请求路径与响应写回一次到位
+- 装配只改一行（包装 `Dispatcher`）+ 注册插件 + 挂鉴权拦截器
+- 两种鉴权方式：路径规则（`SaTokenInterceptor`）或方法注解（`SaAnnotationInterceptor`）
+- 鉴权失败默认置 401 / 403，也可换成「HTTP 恒 200 + 业务码」语义
+- 多实例会话：换用基于 `aifei-cache` 的持久层实现，登录态跨实例共享
+- 详细用法见 [aifei-sa-token/README.md](aifei-sa-token/README.md)，设计文档见 [docs/design.md](aifei-sa-token/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -50,6 +62,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 cd aifei-cache     && mvn clean install
 cd aifei-sentinel  && mvn clean install
 cd aifei-weixin    && mvn clean install
+cd aifei-sa-token  && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -59,6 +72,7 @@ cd aifei-weixin    && mvn clean install
 - `aifei-cache`：强依赖 `cn.aifei:aifei`；Caffeine、Jedis、Fury 为可选依赖，用哪个后端加哪个
 - `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带
 - `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
+- `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
 
 ## 许可证
 

@@ -1,6 +1,6 @@
 # aifei-eco-modules 开发约束（全体模块共同遵守）
 
-本文件适用于仓库内全部模块（包括但不限于 `aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sentinel-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
+本文件适用于仓库内全部模块（包括但不限于 `aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-sentinel-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
 
 各模块的专属约束与验证命令见其自身 `AGENTS.md`。模块文件可**补充、收紧**本文件，但不得**放宽**；两者不一致时以更严格者为执行标准，并应及时消除不一致。
 
@@ -92,4 +92,40 @@
 
 ## 本文件的另一重身份
 
-项目根存在 `AGENTS.md` 时，它同时是**项目规则入口**：主会话读取后按 `.codebuddy/agents/aifei-team-lead.md` 担任调度人并按其 SOP 编排（见 `.codebuddy/README.md` 第十一章）。本文件只定义**约束**，不定义编排流程。
+项目根存在 `AGENTS.md` 时，它同时是**项目规则入口**：主会话读取后，**必须**按 `.codebuddy/agents/aifei-team-lead.md` 担任调度人角色并按其 SOP 编排本项目的一切开发任务（新增模块 / 新功能 / 重构 / BugFix），不得跳过编排直接写代码。
+
+**编排只能发生在主会话。** 具体口径：
+
+1. **先探测，再建队**（顺序不可颠倒，也不可跳过探测直接判定「不可用」）：
+
+   ```
+   ToolSearch(['team_create'])                            # 编排工具是 deferred tool，直呼会报「工具不存在」
+   DeferExecuteTool(toolName='team_create', …)            # 命中后建队 aifei-<项目简称>
+   ```
+
+   > `tool_search` 类工具在会话最初若未出现在工具表中，**通常需要先经一次 `send_message` 之类的普通调用、或用户再发一条消息，才会被动态挂载**。
+
+2. **探测为空才算不可用**。此时**立即**声明并转入单人兜底，**不得**反复重试建队：
+
+   > `【执行方式】当前宿主未暴露 team_create/task/send_message，本次以单人兜底模式串行完成所有角色产出，未伪装为团队交付。`
+
+   单人兜底**标准不降、顺序不省**：含页面/交互的任务仍须走「低保真原型 → 自评审 `BASELINE: PASS/NO` → 落盘 `docs/baseline/`」。
+
+3. **派发成员**用宿主实测调用形（`description` 与 `mode` **都必填**）：
+
+   ```
+   task(subagent_name='aifei-<角色>', description='<该角色本轮产出目标>', mode='bypassPermissions')
+   ```
+
+   | 缺失项 | 实际后果 |
+   |------|------|
+   | `description` | 报 `Less description parameter!`，派发直接失败 |
+   | `mode='bypassPermissions'` | 成员写文件被审批拦截 → 表现为「执行若干 tool 后无最终返回就中断、且文件根本没落盘」 |
+
+4. **成员 Agent ID 白名单**（**禁止**传中文名或自创名称）：`aifei-team-lead` / `aifei-product-manager` / `aifei-architect` / `aifei-core-engineer` / `aifei-data-engineer` / `aifei-service-engineer` / `aifei-frontend-engineer` / `aifei-qa-engineer`。
+
+5. **中转**：成员产出回传主会话，由主会话按依赖顺序转交下一角色；**成员之间禁止直连**；未经对应角色输出的专业结论不得采信。
+
+6. **不得代写**：主会话绝不代写成员的专业产出（PRD / 设计 / 表结构与 SQL / Service / 页面 / 测试），只做编排、中转与汇总。
+
+> ⚠️ 本节的工具词汇是**宿主实测**结果：存在 `task` / `send_message` / `ToolSearch` / `DeferExecuteTool` / `use_skill` / `ask_followup_question` / `read_file` / `write_to_file` / `replace_in_file` / `list_dir` / `search_file` / `search_content` / `execute_command` / `todo_write` / `update_memory`；**不存在** `TeamCreate` / `Agent` / `Glob` / `Grep` / `LS` / `Bash` / `Read` / `Write` / `Edit` / `WebFetch` / `WebSearch` / `TodoWrite` / `SendMessage`。

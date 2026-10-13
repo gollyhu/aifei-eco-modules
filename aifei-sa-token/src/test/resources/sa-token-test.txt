@@ -1,0 +1,19 @@
+# 配置装载测试用样本：覆盖取值类型与键名到 setter 的映射
+sa-token.token-name = demo-token
+sa-token.timeout = 86400
+sa-token.active-timeout = 1800
+sa-token.is-concurrent = false
+sa-token.is-share = true
+sa-token.max-login-count = 3
+sa-token.is-read-body = false
+sa-token.is-read-header = true
+sa-token.is-read-cookie = false
+sa-token.is-write-header = true
+sa-token.token-style = uuid
+sa-token.token-prefix = Bearer
+sa-token.auto-renew = false
+sa-token.data-refresh-period = 60
+sa-token.is-print = false
+sa-token.is-log = true
+sa-token.log-level = info
+sa-token.curr-domain = http://localhost:18080

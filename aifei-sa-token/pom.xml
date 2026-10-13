@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.gollyhu</groupId>
+    <artifactId>aifei-sa-token</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>aifei-sa-token</name>
+    <description>Sa-Token 认证鉴权的 aifei 接入 SDK：provided 依赖 aifei-all 与 undertow-core</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <aifei.version>1.1.1</aifei.version>
+        <undertow.version>2.2.40.Final</undertow.version>
+        <sa-token.version>1.46.0</sa-token.version>
+        <aifei-cache.version>1.0.0</aifei-cache.version>
+        <junit.version>4.13.2</junit.version>
+    </properties>
+
+    <dependencies>
+        <!-- 内核：provided，消费方自带（含 aifei-undertow，但已排除 undertow-core） -->
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-all</artifactId>
+            <version>${aifei.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+            aifei-all 排除了 undertow-core 的传递依赖，而本 SDK 的 undertow 桥接层需要其类型，
+            故显式声明。provided 对齐 aifei 惯例：消费方必然自带（否则无法启动 UndertowServer）。
+        -->
+        <dependency>
+            <groupId>io.undertow</groupId>
+            <artifactId>undertow-core</artifactId>
+            <version>${undertow.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Sa-Token 核心：compile，SDK 封装其装配与上下文桥接 -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-core</artifactId>
+            <version>${sa-token.version}</version>
+        </dependency>
+
+        <!--
+            可选：多实例会话所需的分布式持久层（dao 包使用）。
+            optional 阻断传递，仅在消费方需要「登录态跨实例共享」时才自带 aifei-cache；
+            不使用 dao 包时，本依赖不会进入消费方运行时。
+        -->
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-cache</artifactId>
+            <version>${aifei-cache.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
