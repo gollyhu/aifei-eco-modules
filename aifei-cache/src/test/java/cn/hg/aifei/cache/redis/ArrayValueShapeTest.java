@@ -40,8 +40,7 @@ import static org.junit.Assert.assertTrue;
  * <b>判别性样本</b> —— 它们正是「按元素类归一化」那条路线修不好、只有放行数组维度才能一次覆盖的
  * 形态，故必须钉住。</p>
  *
- * <p>本类补上默认构建的告警：Redis 集成用例在默认构建下整类跳过，而数组值的缺陷正是被这道
- * 门控放过的。</p>
+ * <p>本类补上默认构建的告警：Redis 集成用例在默认构建下整类跳过，而数组值的缺陷正是被这道门控放过的。</p>
  */
 public class ArrayValueShapeTest {
 
@@ -86,7 +85,7 @@ public class ArrayValueShapeTest {
     }
 
     /**
-     * 多维数组：与元素类型无关，基本类型、JDK 标量、装箱类型、业务类型都要往返。
+     * 多维数组的维度与元素形状经序列化往返保持不变。
      */
     @Test
     public void shouldRoundTripMultiDimensionalArrays() {
@@ -122,9 +121,9 @@ public class ArrayValueShapeTest {
     /**
      * 判别性样本：{@code java.time} 数组与 {@code BigDecimal[]}。
      *
-     * <p>这三项是判别性样本。元素类是 JDK 类型而非业务类型，且 Fury 对它们有内置注册序列化器、
-     * 根本不咨询白名单（这就是「标量 {@code LocalDate} 正常、{@code LocalDate[]} 失败」的原因），
-     * 因此「把数组类名归一化到元素类再判定」的修法对它们无效 —— 只有放行数组维度才能覆盖。</p>
+     * <p>元素类是 JDK 类型而非业务类型，且 Fury 对它们有内置注册序列化器、根本不咨询白名单
+     * （这就是「标量 {@code LocalDate} 正常、{@code LocalDate[]} 失败」的原因），因此「把数组类名
+     * 归一化到元素类再判定」的修法对它们无效。</p>
      */
     @Test
     public void shouldRoundTripJavaTypedArrays() {
@@ -167,8 +166,7 @@ public class ArrayValueShapeTest {
     /**
      * 标量与集合：修复前就正常，数组维度放行后不得回退。
      *
-     * <p>放行是并集累加（{@code allowClass} 只增不减），故这一侧在机制上不可能回退；本用例把它
-     * 钉成可执行断言。</p>
+     * <p>放行是并集累加（{@code allowClass} 只增不减），这一侧在机制上不可能回退；本用例把它钉成可执行断言。</p>
      */
     @Test
     public void shouldKeepRoundTrippingScalarsAndCollections() {

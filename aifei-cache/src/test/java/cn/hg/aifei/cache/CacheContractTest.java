@@ -52,8 +52,7 @@ public class CacheContractTest {
     }
 
     /**
-     * {@code cacheNull = false} 时写入 {@code null} <b>不写入且不抛异常</b>，
-     * 且「不写入」是<b>保持现状</b>而非删除；{@code loader} 返回 {@code null} 同理。
+     * {@code cacheNull = false} 时写入 {@code null} <b>不写入且不抛异常</b>，且是保持现状而非删除；{@code loader} 返回 {@code null} 同理。
      */
     @Test
     public void shouldSkipNullWriteWhenNullCachingDisabled() {
@@ -109,8 +108,7 @@ public class CacheContractTest {
     }
 
     /**
-     * {@code loader} 为 {@code null} 时优先抛 {@code "loader can not be null"}，
-     * 即使 {@code cacheName} / {@code key} / TTL 同时非法也不改变顺序，且不调用 loader。
+     * {@code loader} 为 {@code null} 时优先抛，即使 {@code cacheName} / {@code key} / TTL 同时非法也不改变顺序，且不调用 loader。
      */
     @Test
     public void shouldValidateLoaderBeforeOtherArguments() {
@@ -200,8 +198,7 @@ public class CacheContractTest {
     }
 
     /**
-     * 职责切分：{@code remove} 只删条目、完全不改动 {@code counterNames()}；{@code clear} 清空该名称
-     * 下的全部计数项并精确移除该名称。
+     * clear(name) 精确移除整个名称；remove 单键不动名称集合。
      */
     @Test
     public void shouldRemoveCounterNamesOnClear() {
@@ -223,8 +220,7 @@ public class CacheContractTest {
     }
 
     /**
-     * 名字（{@code cacheName} / {@code counterName}）不得含 {@code :}：写路径抛
-     * {@code IllegalArgumentException}，读路径走「不可能命中」路径、不抛异常；{@code key} 不受此限。
+     * 名字不得含 {@code :}：写路径抛异常，读路径走「不可能命中」路径；{@code key} 不受此限。
      */
     @Test
     public void shouldRejectNamesContainingSeparator() {
@@ -255,12 +251,11 @@ public class CacheContractTest {
     }
 
     /**
-     * 命名空间不得含 {@code :}：它是物理 key 的第一段，含 {@code :} 会让
-     * {@code namespace:cacheName:key} 的拼接失去单射性，两个不同实例可落到同一物理 key，
-     * 而启动期排他判定按「唯一名 + 命名空间」判重、不会报冲突。
+     * 命名空间不得含 {@code :}：它是物理 key 的第一段，含 {@code :} 会让拼接失去单射性，
+     * 两个不同实例可落到同一物理 key，而启动期排他判定按「唯一名 + 命名空间」判重、不会报冲突。
      *
      * <p>规则本体在 {@code internal.CacheValidator#requireNamespace}，两个后端的构造期判定都走它
-     * —— 这是绕过配置、直接构造实例时唯一的守卫。{@code RedisCache} 的判定发生在建立客户端之前，
+     * —— 绕过配置直接构造实例时唯一的守卫；{@code RedisCache} 的判定发生在建立客户端之前，
      * 因此本用例不需要真实 Redis。空白判定与替换前保持同一异常消息。</p>
      */
     @Test
@@ -291,10 +286,8 @@ public class CacheContractTest {
     /**
      * {@code internal} 基类上的静态辅助方法：哨兵编解码与物理 key 拼装。
      *
-     * <p>哨兵约定：{@code null} 在 {@code cacheNull} 关闭时写入失败、开启时落成哨兵，
-     * 读取时再透明还原成 {@code null}。不存在 {@code isNullValue} —— 存在性判定一律由
-     * 存储原语完成（Caffeine 的 {@code getIfPresent} / Redis 的 {@code EXISTS}），
-     * 因此无需把哨兵判定暴露出来。</p>
+     * <p>不存在 {@code isNullValue} —— 存在性判定一律由存储原语完成（Caffeine 的
+     * {@code getIfPresent} / Redis 的 {@code EXISTS}），因此无需把哨兵判定暴露出来。</p>
      */
     @Test
     public void shouldExposeSentinelCodecAndPhysicalKey() {
@@ -329,8 +322,7 @@ public class CacheContractTest {
     }
 
     /**
-     * {@code keys} 的分页语义：先按字典序排序，再跳过 {@code offset} 条取下 {@code limit} 条；
-     * 越界自动截断，空缓存返回空列表。
+     * {@code keys} 先按字典序排序再分页；越界自动截断，空缓存返回空列表。
      */
     @Test
     public void shouldPageKeysByOffsetAndLimit() {
@@ -364,8 +356,7 @@ public class CacheContractTest {
     }
 
     /**
-     * {@code pattern} 按 {@link CacheKeyMatchType} 筛选 key，筛选先于分页；{@code pattern} 为
-     * {@code null} 或空串时不筛选。
+     * {@code pattern} 按 {@link CacheKeyMatchType} 筛选 key，筛选先于分页；{@code null} 或空串时不筛选。
      */
     @Test
     public void shouldFilterKeysByMatchType() {
@@ -412,7 +403,7 @@ public class CacheContractTest {
     }
 
     /**
-     * {@code cacheNull = true} 写入的哨兵条目，其 key 照常返回：键枚举只看键存在。
+     * 空值项的键同样计入 keys 枚举：只看键存在，不区分哨兵值。
      */
     @Test
     public void shouldIncludeSentinelEntryKeys() {
@@ -424,7 +415,7 @@ public class CacheContractTest {
     }
 
     /**
-     * 含 glob 字符的缓存名经转义后精确匹配，不误伤前缀相近名称。
+     * pattern 按 glob 精确匹配整个缓存名。
      */
     @Test
     public void shouldMatchGlobCacheNamesExactly() {
@@ -437,7 +428,7 @@ public class CacheContractTest {
     }
 
     /**
-     * {@code pattern} 中的 glob 特殊字符按字面量匹配，不当作通配符或字符类。
+     * 匹配串中的 *、[ 等 glob 字符按字面处理，不当通配符或字符类。
      */
     @Test
     public void shouldTreatGlobCharactersInPatternLiterally() {
@@ -455,9 +446,8 @@ public class CacheContractTest {
     }
 
     /**
-     * 场景回归：{@code key} 含 {@code :} 分级（{@code page:active} / {@code page:removed}）时，
-     * {@code put} 写入的 key 经 {@code keys} 按缓存名精确枚举、原样返回并按字典序排序；
-     * 前缀相近的缓存名不受影响；{@code get} 经同一物理 key 取回。
+     * 场景回归：{@code key} 含 {@code :} 分级时，{@code put} 写入的 key 经 {@code keys}
+     * 按缓存名精确枚举、原样返回并按字典序排序；{@code get} 经同一物理 key 取回。
      */
     @Test
     public void shouldReturnColonSeparatedKeysPutByUser() {

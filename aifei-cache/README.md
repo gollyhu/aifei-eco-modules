@@ -122,7 +122,7 @@ if (!allowed) {
 }
 ```
 
-带 `loader` 的 `get` 同样落在固定 TTL 上：命中时直接返回缓存值，不调用 Loader、也不续期，并自动具备**回源单飞（抗缓存击穿）**能力（规则见「接口通用规则」）。
+带 `loader` 的 `get` 同样落在固定 TTL 上：命中时直接返回、不调用 `loader`，并自动具备**回源单飞（抗缓存击穿）**能力（规则见「接口通用规则」）。
 
 ```java
 UserProfile profile = cache.get("user-profile", userId, 1800, () -> userService.loadProfile(userId));
@@ -232,7 +232,7 @@ if (failures >= 5) {
 
 ### 计数名称与清理
 
-`counterNames()` 返回**当前实例曾被创建过的计数名称集合**；`clear(counterName)` 清空该名称下的全部计数项，并把 `counterName` 本身从名称集合中移除：
+`clear(counterName)` 清空该名称下的全部计数项，并把 `counterName` 本身从名称集合中移除：
 
 ```java
 Set<String> names = CounterUtil.use("mem").counterNames();
@@ -240,7 +240,7 @@ Set<String> names = CounterUtil.use("mem").counterNames();
 CounterUtil.clear("api-request");        // 清掉 api-request 下的全部计数项，并把它移出名称集合
 ```
 
-`remove` 只删单个计数项，**不改变** `counterNames()`；名称集合的可见范围随后端而变，规则见「接口通用规则」。
+`remove` 只删单个计数项，**不改变** `counterNames()`；可见范围规则见「接口通用规则」。
 
 ## 配置参考
 

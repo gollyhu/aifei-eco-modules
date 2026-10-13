@@ -47,8 +47,7 @@ public class CaffeineConcurrencyRegressionTest {
     }
 
     /**
-     * 并发「删除 + 递增」的合法结果只有两种：删除发生在最后一次递增之后（0），
-     * 或删除之后又有递增（正整数），不得出现「旧值 + step」这类陈旧值。
+     * 并发「删除 + 递增」的合法结果只有两种：删除发生在最后一次递增之后（0），或删除之后又有递增（正整数）。
      */
     @Test
     public void shouldKeepRemoveAndIncreaseOrdering() throws Exception {
@@ -70,8 +69,7 @@ public class CaffeineConcurrencyRegressionTest {
     /**
      * 并发续期不得让已被读取观察为过期的条目复活。
      *
-     * <p>时钟在启动线程之前就越过 TTL，因此所有工作线程观察到的都必然是「已过期」，
-     * 不存在「还没过期就先读到值」的合法窗口，断言是确定性的。</p>
+     * <p>时钟在启动线程之前就越过 TTL，所有工作线程观察到的都必然是「已过期」，断言是确定性的。</p>
      */
     @Test
     public void shouldNotResurrectExpiredEntryUnderConcurrency() throws Exception {

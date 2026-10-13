@@ -27,10 +27,7 @@ public class ClassFileVersionTest {
     private static final int JAVA_8_MAJOR_VERSION = 52;
 
     /**
-     * 遍历 {@code target/classes} 下全部 .class，逐一校验 major version。
-     *
-     * <p>用 {@code mvn clean verify} 运行时 {@code target/classes} 一定存在；
-     * 在纯 IDE 环境下若不存在则跳过该断言。</p>
+     * 纯 IDE 环境下 {@code target/classes} 可能不存在，此时跳过断言。
      */
     @Test
     public void shouldCompileToJava8Bytecode() throws IOException {

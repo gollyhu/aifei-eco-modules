@@ -4,7 +4,7 @@
 
 ## 定位与设计原则
 
-应用代码只依赖缓存抽象接口，不依赖任何具体缓存实现；单实例与多实例、本地与分布式之间的差别，全部通过配置表达。
+应用代码只依赖缓存抽象接口，不依赖任何具体缓存实现；单实例与多实例、本地与分布式的差别全部通过配置表达。
 
 - 公共 API 面固定 6 个类型：`Cache`、`Counter`、`CacheUtil`、`CounterUtil`、`CachePlugin`、`CacheKeyMatchType`。
 - 实例划分：`internal`（非承诺 API）、`caffeine`（本地实现）、`redis`（分布式实现）。
@@ -41,7 +41,7 @@
 
 **逐键的类型、必填性与默认值见 `README.md` 的「配置参考」**；本节只记录设计级规则：
 
-- **jedis 键的 `jedis` 分段**：jedis 专有键统一为 `cache.jedis.*`（扩展实例 `cache.{name}.jedis.*`），与 caffeine 的 `cache.caffeine.maxSize` 对称。分段名的唯一定义点是 `RedisConfig.JEDIS_KEY_SEGMENT`，读取侧（`RedisCacheProvider`）与报错侧（`RedisConfig` 的 setter，经重写的 `configKey`）都走 `RedisConfig.jedisKey`，故键名不会两侧漂移。**不带 `jedis` 分段的平铺键不再被读取**。
+- **jedis 键的 `jedis` 分段**：jedis 专有键统一为 `cache.jedis.*`（扩展实例 `cache.{name}.jedis.*`），与 caffeine 的 `cache.caffeine.maxSize` 对称。分段名的唯一定义点是 `RedisConfig.JEDIS_KEY_SEGMENT`，读取侧（`RedisCacheProvider`）与报错侧（`RedisConfig` 的 setter，经重写的 `configKey`）都走 `RedisConfig.jedisKey`，键名不会两侧漂移。**不带 `jedis` 分段的平铺键不再被读取**。
 - **URI 与显式项的优先级**：`cache.jedis.uri` 提供连接信息；配置后 `host` / `port` 一律取自 URI，而显式配置的 `database` / `user` / `password` 仍优先于 URI 中的对应项。唯一名的计算沿用同一套语义，不另立规则。
 - **读取与范围校验的分工**：配置项**读取**（`internal.Config` 的 `optionalText` / `optionalBoolean` / `optionalInt` / `optionalLong`）只做语法解析与「空值视为未配置」归一，不判范围；数值型选项的**范围校验**由 `RedisConfig` 的 setter 承担 —— 可选项遇 `null` 不校验、不赋值（保持字段默认），非 `null` 先校验后赋值；跨字段的**连接池上下限关系**由 `RedisConfig.requirePoolBounds()` 在链式调用末尾校验。两类规则各自只有一处定义。
 - **`cache.jedis.allowedPackages`**：声明可被反序列化的业务值类型所在包，逗号分隔（`com.foo` 与 `com.foo.*` 等价）。未声明的业务类型在**写入**序列化时抛异常；JDK 内置类型与框架自身类型无需声明。该键**只认根级**，同一进程内所有实例共用一份策略。`redis.FuryRedisValueCodec` 另内置一份**硬编码的拒绝清单**（`javax.naming.*`、`javax.script.*`、`java.lang.Runtime`、`java.lang.ProcessBuilder` 等），先于放行判定生效，即使被 `allowedPackages` 粗粒度覆盖也不放行。
@@ -51,7 +51,7 @@
 
 ### 扩展实例（`cache.names` 中每个 `name`）
 
-- **声明方式**：主缓存由根级 `cache.*` 配置且恒存在；只有主缓存时无需配置 `cache.names`。扩展实例由 `cache.names` 声明，**未声明的 `cache.{name}.*` 配置无效**。
+- **声明方式**：主缓存由根级 `cache.*` 配置且恒存在，只有主缓存时无需配置 `cache.names`；扩展实例由 `cache.names` 声明，**未声明的 `cache.{name}.*` 配置无效**。
 - **`cache.names` 解析**：逗号分隔，每项 `trim()`，出现空项即抛异常（`mem,,other`、结尾逗号都算空项）；未配置视为无扩展实例；区分大小写。
 - **实例名合法性**：不得包含 `.`、`=`、`:` 或空白；`type`、`ttlMillis`、`cacheNull`、`namespace`、`names`、`main`、`allowedPackages` 不可作为实例名；也不得使用 `__MAIN__`；`cache.names` 内重名同样在启动期抛异常。该表与 `Config.RESERVED_INSTANCE_NAMES` 同源，**根级配置键改名时必须同步改这张表**，否则会漏掉同名前缀造成的标量 / 前缀歧义。
 - **`type` 取值**：`jedis` / `caffeine`，严格小写，不提供 `redis` 别名。
@@ -301,7 +301,7 @@ public interface Counter {
 - 计数溢出抛 `ArithmeticException`；Redis 端类型不符按 `IllegalStateException` 或原样传播。
 - 底层缓存、连接、序列化或标准库运行时异常按原始类型传播。
 - 参数校验顺序：带 `loader` 的 `get` 为 `loader` → `cacheName` → `key` → TTL，不得改变。
-- `internal.CacheValidator` 的 9 个校验方法（2 个布尔判定 `isValid*` / `isInvalid*` + 7 个 `require*` 校验并抛异常）是参数合法性的唯一定义点，其**判定规则与异常消息文本属冻结契约**，不得变更：命名空间与名字非空白**且不含 `:`**，key 非空白；9 个方法中 `requireValue` 当前无调用方，仅为保留的冻结入口 —— 写入 `null` 由 `cacheNull` 规则处理，不经它拒绝；确有变更需求时，必须先更新测试中的消息断言。其余异常消息由本项目自定义。
+- `internal.CacheValidator` 的 12 个校验方法（2 个布尔判定 `isValid*` / `isInvalid*` + 10 个 `require*` 校验并抛异常）是参数合法性的唯一定义点，其**判定规则与异常消息文本属冻结契约**，不得变更：命名空间与名字非空白**且不含 `:`**，key 非空白；其中 `requireValue` 当前无调用方，仅为保留的冻结入口 —— 写入 `null` 由 `cacheNull` 规则处理，不经它拒绝；确有变更需求时，必须先更新测试中的消息断言。其余异常消息由本项目自定义。
 
 ## 演进约束
 
@@ -351,7 +351,7 @@ public interface Counter {
 
 | 类别 | 项 | 说明 |
 | --- | --- | --- |
-| 公共 API 面 | 公共面收窄为 5 类型 + 行为契约 | 实现专用能力（唯一名、哨兵编解码、物理 key 拼装）与数据格式常量一律落在 `internal`；`Cache` / `Counter` 因此不声明任何 `static` 方法与常量（发布前变更，不触及 5 类型约束） |
+| 公共 API 面 | 公共面收窄为 6 类型 + 行为契约 | 实现专用能力（唯一名、哨兵编解码、物理 key 拼装）与数据格式常量一律落在 `internal`；`Cache` / `Counter` 因此不声明任何 `static` 方法与常量（发布前变更，不触及 6 类型约束） |
 | 公共 API 面 | `cacheNames()` / `counterNames()` / `Counter.clear()` 在公共接口上 | 只读诊断与清理能力，属实现相关，两后端结果可能不同 |
 | 行为契约 | 名字不得含 `:` | 与实例名的既有合法性规则对齐（实例名早已禁 `:`，因为它要拼进配置键）。名字与命名空间都不含 `:` 后，物理 key 拼接是单射的，`clear(name)` 的清理范围恰好等于该名字下的条目集合 —— 原先「数据清理覆盖下级名称、名称集合只精确移除」这条双粒度差异，以及 jedis 侧「拼接重名」与「清理前缀重叠」两条调用方约束一并消失。`key` 的 `:` 保持允许（不参与分级、不产生歧义），校验在 `internal.CacheValidator` 单点实施 |
 | 行为契约 | 命名空间也不得含 `:` | `namespace` 是物理 key 的第一段，与名字同源。它含 `:` 时「名字不含 `:` 即单射」的推论失效 —— 实例甲 `("a","b","c:k")` 与实例乙 `("a:b","c","k")` 落到同一物理 key，而启动期排他判定按「唯一名 + 命名空间」判重、不会报冲突。违者抛 `namespace must not contain ':'`；空白判定沿用原消息 `namespace can not be blank` |

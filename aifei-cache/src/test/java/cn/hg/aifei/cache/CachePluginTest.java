@@ -32,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * {@link CachePlugin} 的配置解析、生命周期与注册表回滚用例。
  *
- * <p>校验时机：构造函数只保留配置引用，不解析也不校验，配置错误一律在 {@code start()} 阶段抛出；
+ * <p>构造函数只保留配置引用、不解析不校验，配置错误一律在 {@code start()} 阶段抛出；
  * 因此配置校验类断言统一用 {@link #rejectOnStart}。</p>
  */
 public class CachePluginTest {
@@ -103,8 +103,8 @@ public class CachePluginTest {
     /**
      * 配置校验在 {@code start()} 阶段完成；构造函数<b>不</b>解析配置。
      *
-     * <p>前两条是构造期唯一的守卫（{@code prop} 不能为 {@code null}），其余配置错误都要等到
-     * {@code start()} 才暴露 —— 这是本项目「配置解析全部在 {@code start()}」决策的直接体现。</p>
+     * <p>构造期唯一的守卫是 {@code prop} 不能为 {@code null}，其余配置错误都要等到 {@code start()}
+     * 才暴露 —— 这是「配置解析全部在 {@code start()}」决策的直接体现。</p>
      */
     @Test
     public void shouldValidateConfigOnStart() {
@@ -225,9 +225,9 @@ public class CachePluginTest {
     /**
      * 命名空间含分段符 {@code :} 必须被启动期拒绝，主缓存与扩展实例同规则。
      *
-     * <p>命名空间是物理 key 的第一段：含 {@code :} 时 {@code namespace + ":" + cacheName} 的拼接不再
-     * 单射，两个不同实例可落到同一物理 key，而启动期排他判定按「唯一名 + 命名空间」判重、不会报冲突。
-     * 校验在配置解析期完成，因此错误消息走配置错误的统一格式；只禁 {@code :}，其余字符不受影响。</p>
+     * <p>命名空间是物理 key 的第一段，含 {@code :} 时拼接不再单射，两个不同实例可落到同一物理 key，
+     * 而启动期排他判定按「唯一名 + 命名空间」判重、不会报冲突。校验在配置解析期完成，因此错误消息走
+     * 配置错误的统一格式；只禁 {@code :}，其余字符不受影响。</p>
      */
     @Test
     public void shouldRejectNamespaceContainingSeparator() {
@@ -259,9 +259,8 @@ public class CachePluginTest {
     /**
      * 默认 TTL 的键名是 {@code cache.ttlMillis}：旧的 {@code cache.ttl} 不再被读取。
      *
-     * <p>反证用毒值：旧键取「非字面整数」{@code 60_000}。它若被读取（无论是直接生效，还是被当成
-     * 兼容回落），{@code parseConfigLong} 都会立刻抛配置错误；因此「启动成功且取到默认值」本身
-     * 就等价于「旧键没被读」。</p>
+     * <p>反证用毒值：旧键取「非字面整数」{@code 60_000}。它若被读取，{@code parseConfigLong}
+     * 会立刻抛配置错误；因此「启动成功且取到默认值」等价于「旧键没被读」。</p>
      */
     @Test
     public void shouldIgnoreLegacyTtlKey() {
@@ -271,8 +270,7 @@ public class CachePluginTest {
     }
 
     /**
-     * 扩展实例的 TTL 键名同样带 {@code Millis}：旧的 {@code cache.{name}.ttl} 被忽略后，缺省继承
-     * 根级 {@code cache.ttlMillis}。
+     * 扩展实例的 TTL 键名同样带 {@code Millis}：旧的 {@code cache.{name}.ttl} 被忽略后缺省继承根级 {@code cache.ttlMillis}。
      */
     @Test
     public void shouldIgnoreLegacyExtensionTtlKey() {
@@ -288,9 +286,6 @@ public class CachePluginTest {
         assertEquals(Duration.ofMillis(5_000L), CacheUtil.use("mem").ttl());
     }
 
-    /**
-     * {@code CounterUtil} 的静态镜像覆盖新增的计数器能力，一律作用于主计数器。
-     */
     @Test
     public void shouldMirrorCounterMembersInCounterUtil() {
         plugin = new CachePlugin(prop("cache.type", "caffeine", "cache.ttlMillis", "1500"));
@@ -374,8 +369,7 @@ public class CachePluginTest {
     }
 
     /**
-     * 只含空白的取值经 {@code Prop.get} 归一为空串，同样视为未配置，
-     * 可选键回落到缺省值而不是报错。
+     * 只含空白的取值经 {@code Prop.get} 归一为空串，可选键回落到缺省值而不是报错。
      */
     @Test
     public void shouldTreatWhitespaceOnlyValuesAsUnconfigured() {
@@ -397,8 +391,7 @@ public class CachePluginTest {
     }
 
     /**
-     * {@code cache.jedis.uri} 与 {@code cache.jedis.host} / {@code cache.jedis.port}
-     * 同时配置不报错；URI 优先由 Redis 集成用例验证。
+     * {@code cache.jedis.uri} 与 host / port 同时配置不报错；URI 优先由 Redis 集成用例验证。
      */
     @Test
     public void shouldAcceptBothUriAndHostPort() {
@@ -443,8 +436,7 @@ public class CachePluginTest {
     }
 
     /**
-     * jedis 键只从 {@code jedis} 分段读取：旧的平铺写法（{@code cache.host} / {@code cache.port} /
-     * {@code cache.ssl} / {@code cache.maxTotal} …）一律不再生效。
+     * jedis 键只从 {@code jedis} 分段读取，旧的平铺写法一律不再生效。
      *
      * <p>三段反证，每段都埋一个「若被读取就会留下痕迹」的旧键：① 破坏排他判定；② 触发配置错误；
      * ③ 非法取值使启动失败。三者都不发生，才说明旧键确实被忽略。</p>
@@ -586,8 +578,8 @@ public class CachePluginTest {
      * 端到端：两个 jedis 实例指向<b>同一</b> Redis 逻辑库、且都未显式配 {@code namespace}
      * （缺省都是 {@code aifei}）→ 启动期拒绝，不再静默互相覆盖。
      *
-     * <p>这是「唯一名 + {@code namespace} 排他取代静默覆盖」的验收用例。
-     * 构造期不失败（那时只做"空值即未配置"的取值校验），失败点在 {@code start()} 的注册阶段。</p>
+     * <p>这是「唯一名 + {@code namespace} 排他取代静默覆盖」的验收用例：构造期不失败
+     * （那时只做「空值即未配置」的取值校验），失败点在 {@code start()} 的注册阶段。</p>
      */
     @Test
     public void shouldRejectDuplicateKeySpaceAcrossInstances() {
@@ -634,8 +626,7 @@ public class CachePluginTest {
     }
 
     /**
-     * 端到端：<b>不同</b> Redis 服务器、都未配 {@code namespace} → 放行
-     * （不能因为"都叫 aifei"就误判冲突）。
+     * 端到端：<b>不同</b> Redis 服务器、都未配 {@code namespace} → 放行（不能因为「都叫 aifei」就误判冲突）。
      */
     @Test
     public void shouldAllowSameNamespaceOnDistinctRedisHosts() {
@@ -657,8 +648,7 @@ public class CachePluginTest {
     /**
      * 未注册的类型必须被拒，且消息里列出<b>已注册类型</b>。
      *
-     * <p>这条同时钉住一个易错点：本后端的 {@code cache.type} 取值是 {@code jedis}（不是 {@code redis}），
-     * 沿用既有配置文件语义。</p>
+     * <p>同时钉住一个易错点：本后端的 {@code cache.type} 取值是 {@code jedis}（不是 {@code redis}）。</p>
      */
     @Test
     public void shouldRejectUnregisteredCacheType() {
@@ -674,8 +664,7 @@ public class CachePluginTest {
      *
      * <p>失败点选在框架桥：{@code AopFactory.addSingletonObject} 对已注册类型抛
      * {@code "Singleton object already exists"}，这条路在项目里确定可达。用例先注册一个
-     * {@code Cache} 单例把桥堵住，再启动插件，此时实例已注册成功而桥失败，注册表必须被清空、
-     * 取用入口回到未初始化状态。</p>
+     * {@code Cache} 单例把桥堵住，再启动插件，此时实例已注册成功而桥失败，注册表必须被清空。</p>
      */
     @Test
     public void shouldClearRegistryWhenFrameworkBridgeFails() {

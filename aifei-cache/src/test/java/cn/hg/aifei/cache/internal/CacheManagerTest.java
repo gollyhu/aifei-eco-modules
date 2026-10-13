@@ -170,7 +170,7 @@ public class CacheManagerTest {
     }
 
     /**
-     * <b>不同存储</b>但 namespace 相同 → 放行（"两个 jedis 指向不同 Redis、都未配 namespace"的常见合法配置）。
+     * <b>不同存储</b>但 namespace 相同 → 放行（两个 jedis 指向不同 Redis、都未配 namespace 的常见合法配置）。
      */
     @Test
     public void shouldAllowDistinctStorageWithSameNamespace() {
@@ -208,6 +208,10 @@ public class CacheManagerTest {
         assertSame(CacheManager.getCache("remote"), CacheManager.getCache("remote"));
     }
 
+    /**
+     * 实现了 {@code UniqueNameAware} 但唯一名为 {@code null} 时<b>不参与</b>排他判定 —— 两个这样的
+     * 实例同 namespace 也放行。
+     */
     @Test
     public void shouldTreatNullUniqueNameAsNotParticipating() {
         CacheManager.register("first", new IdentityCache(null, "aifei"));
@@ -217,7 +221,7 @@ public class CacheManagerTest {
     }
 
     /**
-     * 排他判定失败时不得留下部分注册结果（注册表保持原状）。
+     * 键空间冲突时抛异常，且不留半装配状态：second 未注册、first 不受影响。
      */
     @Test
     public void shouldNotPartiallyRegisterOnDuplicateKeySpace() {

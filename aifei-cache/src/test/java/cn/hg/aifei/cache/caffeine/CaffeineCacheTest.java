@@ -76,7 +76,7 @@ public class CaffeineCacheTest {
     }
 
     /**
-     * 条目过期后不再被 {@code keys} 枚举：键枚举只看当前存储中存在且未过期的条目。
+     * 键枚举只看当前存储中存在且未过期的条目。
      */
     @Test
     public void shouldExcludeExpiredKeysFromKeys() {
@@ -205,7 +205,7 @@ public class CaffeineCacheTest {
     }
 
     /**
-     * 业务键里的冒号不参与分级；缓存名本身不得含冒号 —— 写路径抛异常，读路径按未命中处理。
+     * 业务键里的冒号不参与分级；缓存名不得含冒号 —— 写路径抛异常，读路径按未命中处理。
      */
     @Test
     public void shouldRejectCacheNameContainingSeparator() {
@@ -301,8 +301,8 @@ public class CaffeineCacheTest {
     }
 
     /**
-     * 保留名 {@code Config.CACHE_NAMES_NAME} 作为业务缓存名与普通名称同等对待：可写入、可读、
-     * 登记进名称集合，且 {@code clear} 真正生效（名称集合已不在缓存内，无需跳过清理）。
+     * 保留名作为业务缓存名与普通名称同等对待：可写入、可读、登记进名称集合，且 {@code clear}
+     * 真正生效（名称集合已不在缓存内，无需跳过清理）。
      */
     @Test
     public void shouldTreatReservedNameLikeAnyBusinessCacheName() {
@@ -334,8 +334,7 @@ public class CaffeineCacheTest {
     }
 
     /**
-     * 参数非法时不写存储：{@code get} / {@code exists} / {@code getTtl} 返回 null/false，
-     * {@code remove} 静默，写路径抛异常。
+     * 参数非法时不写存储：读路径返回 null / false，{@code remove} 静默，写路径抛异常。
      */
     @Test
     public void shouldTreatInvalidArgumentsAsMiss() {
@@ -370,8 +369,8 @@ public class CaffeineCacheTest {
     /**
      * 容量与命名空间非法时构造失败。
      *
-     * <p>本类<b>不实现</b> {@code AutoCloseable}，因此没有 close 相关用例；
-     * 条目清理能力由 {@code clear(cacheName)} 承担。</p>
+     * <p>本类<b>不实现</b> {@code AutoCloseable}，因此没有 close 相关用例；条目清理由
+     * {@code clear(cacheName)} 承担。</p>
      */
     @Test
     public void shouldValidateConstructorArguments() {
@@ -381,7 +380,7 @@ public class CaffeineCacheTest {
     }
 
     /**
-     * 组合键包含 namespace 三个维度，且 {@code belongsTo} 按「namespace + 缓存名」精确判定。
+     * 组合键包含 namespace 三个维度，{@code belongsTo} 按「namespace + 缓存名」精确判定。
      */
     @Test
     public void shouldCompareNamespaceInCompositeKey() {

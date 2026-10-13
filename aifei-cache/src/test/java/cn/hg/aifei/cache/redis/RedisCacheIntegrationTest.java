@@ -213,8 +213,7 @@ public class RedisCacheIntegrationTest {
     /**
      * 两个实例 namespace 相同 → 显式断言互相覆盖行为（已接受，不作为通过项）。
      *
-     * <p>本用例只负责把「同一 Redis 上 namespace 相同会互相覆盖」这一事实固定下来，
-     * 避免后续误以为库会替调用方隔离。</p>
+     * <p>本用例只负责把「同一 Redis 上 namespace 相同会互相覆盖」这一事实固定下来，避免后续误以为库会替调用方隔离。</p>
      */
     @Test
     public void shouldOverlapWhenNamespaceIdentical() {
@@ -256,8 +255,7 @@ public class RedisCacheIntegrationTest {
     }
 
     /**
-     * {@code keys} 的分页语义在 Redis 侧生效：SCAN 收集、字典序排序、分页；glob 字符缓存名经
-     * 转义后不误伤前缀相近名称。
+     * {@code keys} 的分页语义在 Redis 侧生效：SCAN 收集、字典序排序、分页；glob 字符缓存名转义后不误伤前缀相近名称。
      */
     @Test
     public void shouldPageKeysOnRedis() {
@@ -278,8 +276,7 @@ public class RedisCacheIntegrationTest {
     }
 
     /**
-     * Redis 侧按匹配类型下推 glob 后仍以业务 key 精确筛选：{@code pattern} 只命中物理 key 的
-     * 前缀（命名空间 / 缓存名）时不误报。
+     * Redis 侧按匹配类型下推 glob 后仍以业务 key 精确筛选：{@code pattern} 只命中物理 key 前缀时不误报。
      */
     @Test
     public void shouldFilterKeysByMatchTypeOnRedis() {
@@ -311,8 +308,7 @@ public class RedisCacheIntegrationTest {
     }
 
     /**
-     * {@code key} 含 {@code :} 分级的场景在 Redis 侧同样成立：{@code put} 写入的 key 经
-     * {@code keys} 按缓存名精确枚举、原样返回，且 {@code get} 经同一物理 key 取回。
+     * {@code key} 含 {@code :} 分级的场景在 Redis 侧同样成立：{@code put} 写入的 key 经 {@code keys} 精确枚举、原样返回，{@code get} 经同一物理 key 取回。
      */
     @Test
     public void shouldReturnColonSeparatedKeysPutByUserOnRedis() {
@@ -386,8 +382,7 @@ public class RedisCacheIntegrationTest {
     }
 
     /**
-     * （Redis 侧）{@code counterNames()} 跨实例共享；{@code remove} 完全不改动名称集合，
-     * {@code clear} 清空该名称下的全部计数项并精确移除该名称。
+     * （Redis 侧）{@code counterNames()} 跨实例共享；{@code remove} 不改动名称集合，{@code clear} 清空该名称下的全部计数项并精确移除该名称。
      */
     @Test
     public void shouldShareCounterNamesAcrossInstances() {
@@ -522,10 +517,9 @@ public class RedisCacheIntegrationTest {
     /**
      * RESP3 协议下的基本读写与计数。
      *
-     * <p>RESP3 需要服务端支持 {@code HELLO}（Redis 6+）。服务端过旧时本用例跳过，
-     * 并在跳过理由中说明服务端能力缺失 —— 属于环境限制，不是被测缺陷。
-     * 新版 Jedis 在握手阶段会把该错误包装成 {@code JedisProtocolNotSupportedException}，
-     * 因此须沿异常链判定。</p>
+     * <p>RESP3 需要服务端支持 {@code HELLO}（Redis 6+）。服务端过旧时本用例跳过，并在跳过理由中
+     * 说明服务器能力缺失 —— 属环境限制，不是被测缺陷。新版 Jedis 在握手阶段会把该错误包装成
+     * {@code JedisProtocolNotSupportedException}，因此须沿异常链判定。</p>
      */
     @Test
     public void shouldWorkWithResp3() {

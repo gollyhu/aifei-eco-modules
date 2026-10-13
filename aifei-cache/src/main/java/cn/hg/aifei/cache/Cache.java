@@ -105,8 +105,7 @@ public interface Cache {
      *
      * @param cacheName 缓存名
      * @param key 缓存键
-     * @return 剩余有效期；不存在、已过期或参数非法时 {@code null}；没有过期时间的缓存项
-     *         （仅 jedis 后端，例如由其它程序直接写入 Redis 的键）返回 {@link Integer#MAX_VALUE} 秒
+     * @return 剩余有效期；不存在、已过期或参数非法时 {@code null}
      */
     Duration getTtl(String cacheName, String key);
 

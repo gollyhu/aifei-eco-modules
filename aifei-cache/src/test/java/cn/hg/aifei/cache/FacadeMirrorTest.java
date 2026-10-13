@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
  *
  * <p>用反射比对签名，避免后续给接口加方法时漏掉门面。</p>
  *
- * <p>同时钉死根包的公共类型集合，防止公共面在无意间扩张。</p>
+ * <p>同时钉死根包的公共类型集合，防止公共面无意间扩张。</p>
  */
 public class FacadeMirrorTest {
 
@@ -189,12 +189,10 @@ public class FacadeMirrorTest {
      * 根包对外只暴露 6 个公共类型：{@link Cache} / {@link Counter} / {@link CacheUtil} /
      * {@link CounterUtil} / {@link CachePlugin} / {@link CacheKeyMatchType}。
      *
-     * <p>包内还有一个包私有的哨兵类型，它不构成公共面。公共类型集合是对外承诺的一部分，
-     * 因此在此钉死，防止无意间扩张。</p>
+     * <p>包内还有一个包私有的哨兵类型，不构成公共面；公共类型集合是对外承诺的一部分，在此钉死。</p>
      *
      * <p>必须经 {@code getProtectionDomain()} 定位主类目录：测试类与主类同包，而 surefire 的
-     * classpath 中 {@code target/test-classes} 排在 {@code target/classes} 之前，用
-     * {@code getResource("")} 会枚举到测试类所在的目录。</p>
+     * classpath 中 {@code target/test-classes} 排在 {@code target/classes} 之前。</p>
      */
     @Test
     public void shouldExposeExactlySixPublicTypes() throws Exception {

@@ -29,9 +29,9 @@ import static org.junit.Assert.assertTrue;
 /**
  * 同 JVM 回源单飞：并发未命中同一缓存项时，{@code loader} 至多被调用一次。
  *
- * <p>用例的内部约定：所有并发任务在同一个栅栏上起跑，随后各自对 {@code allArrived} 计数，
- * 装载器等待该计数归零后再留一小段余量再返回。于是「全部线程都已抵达装载入口」成为可判定事实，
- * 余量只用来吸收调度抖动，不承担正确性论证。</p>
+ * <p>用例的内部约定：所有并发任务在同一个栅栏上起跑，随后各自对 {@code allArrived} 计数，装载器
+ * 等待该计数归零后再留一小段余量再返回。于是「全部线程都已抵达装载入口」成为可判定事实，余量只
+ * 用来吸收调度抖动，不承担正确性论证。</p>
  *
  * <p>本组用例与「登记表」是承重关系：摘掉在途登记，{@link #shouldCallLoaderOnceUnderConcurrentMiss}
  * 与 {@link #shouldReuseResultWhenNotWritable} 必须恰好转红，其余用例仍绿。</p>
@@ -67,8 +67,8 @@ public class SingleFlightTest {
     }
 
     /**
-     * {@code cacheNull = false} 且装载器返回 {@code null} 时结果不可写入 —— 跟随者仍必须复用胜者的
-     * 结果，否则每个线程都会各自回源一次（这正是以「结果可写入」为前提的实现覆盖不到的空洞）。
+     * {@code cacheNull = false} 且装载器返回 {@code null} 时结果不可写入，跟随者仍必须复用胜者的结果，
+     * 否则每个线程都会各自回源一次（以「结果可写入」为前提的实现覆盖不到的空洞）。
      */
     @Test
     public void shouldReuseResultWhenNotWritable() throws Exception {
@@ -95,7 +95,7 @@ public class SingleFlightTest {
     }
 
     /**
-     * {@code cacheNull = true} 时否定结果落成哨兵：跟随者复用胜者发布的 {@code null}，同样只回源一次。
+     * {@code cacheNull = true} 时否定结果落成哨兵，跟随者复用胜者发布的 {@code null}，同样只回源一次。
      */
     @Test
     public void shouldReuseNegativeResult() throws Exception {
@@ -121,8 +121,7 @@ public class SingleFlightTest {
     }
 
     /**
-     * 预检与登记之间的窗口：预检仍报未命中，但进入单飞时先到者已把值写入存储 —— 双检必须命中该值，
-     * 不得回源。
+     * 预检与登记之间的窗口：预检仍报未命中，但进入单飞时先到者已把值写入存储，双检必须命中该值。
      */
     @Test
     public void shouldReuseValueWrittenByWinnerOnLateMiss() throws Exception {

@@ -255,8 +255,7 @@ public class CaffeineCounterTest {
     }
 
     /**
-     * {@code remove} 只删单个计数项、不缩减名称集合；{@code clear} 清空该名称下的全部计数项并精确移除
-     * 该名称，前缀相近的其它名称不受影响。
+     * {@code remove} 不缩减名称集合；{@code clear} 清空该名称下的全部计数项并精确移除该名称，前缀相近的其它名称不受影响。
      */
     @Test
     public void shouldRemoveCounterNamesOnClearOnly() {

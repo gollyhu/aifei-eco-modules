@@ -20,15 +20,15 @@ import static org.junit.Assert.assertTrue;
 /**
  * {@link CacheProviderRegistry} 的内置后端、注册通道、按类型复用与异常用例。
  *
- * <p>注册表是进程级静态的，{@link CacheProviderRegistry#register} 写入全局状态；因此本类中需要注册
- * 的用例都使用各自唯一的 {@code type} 名，避免用例之间相互污染。</p>
+ * <p>注册表是进程级静态的，{@link CacheProviderRegistry#register} 写入全局状态；因此需要注册的用例
+ * 都使用各自唯一的 {@code type} 名，避免相互污染。</p>
  */
 public class CacheProviderRegistryTest {
 
     /**
      * 注册表<b>内置</b> {@code jedis} 与 {@code caffeine} 两个后端，无需外部注册。
      *
-     * <p>只断言「包含」而不断言「恰好等于」：注册表是进程级静态的，同 JVM 内其它用例注册的类型会永久留在表中，断言相等会让本用例的通过与否取决于方法执行顺序。</p>
+     * <p>只断言「包含」而不断言「恰好等于」：注册表是进程级静态的，同 JVM 内其它用例注册的类型会永久留在表中。</p>
      */
     @Test
     public void shouldHaveBuiltInBackends() {
@@ -40,8 +40,7 @@ public class CacheProviderRegistryTest {
     }
 
     /**
-     * {@code getProvider} 返回按类型复用的同一个 provider：多次取用得到同一对象。provider 无状态，
-     * 配置在 {@link CacheProvider#buildCache} 内现读现用，因此复用是安全的。
+     * {@code getProvider} 按类型复用同一个 provider；provider 无状态，配置在 {@link CacheProvider#buildCache} 内现读现用，因此复用安全。
      */
     @Test
     public void shouldReturnReusableProvider() {
@@ -55,9 +54,8 @@ public class CacheProviderRegistryTest {
      * 无状态（防回归）：同一个被复用的 provider 连续两次 {@code buildCache(...)}，各自按传入的
      * {@code prefix} 解析，产出互不影响的实例。
      *
-     * <p>反例：provider 把解析结果存进自身字段、装配层分两步「先全部 configure 再逐个 build」，
-     * 第二个实例的配置会覆盖第一个，同一后端的多实例互相串配置。本用例用「两个实例的 namespace
-     * 必须各自正确」钉死该不变量。</p>
+     * <p>反例：provider 把解析结果存进自身字段，同一后端的多实例会互相串配置。本用例用「两个实例的
+     * namespace 必须各自正确」钉死该不变量。</p>
      */
     @Test
     public void shouldBuildIndependentCachesFromReusedProvider() {
@@ -87,7 +85,7 @@ public class CacheProviderRegistryTest {
     }
 
     /**
-     * 同类型重复注册必须失败 —— 包括与<b>内置类型</b>冲突。
+     * 同类型重复注册必须失败，包括与<b>内置类型</b>冲突。
      */
     @Test
     public void shouldRejectDuplicateType() {
