@@ -11,8 +11,6 @@ package cn.aifei.satoken.spi;
  *
  * <p>典型实现为调用 Sa-Token 的静态门面，如
  * {@code () -> StpUtil.checkLogin()} 或 {@code () -> StpUtil.checkRole("admin")}。</p>
- *
- * <p>不直接复用 Sa-Token 的函数类型，避免把其函数接口暴露进消费方装配代码。</p>
  */
 @FunctionalInterface
 public interface SaAuthStrategy {

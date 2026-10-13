@@ -30,8 +30,6 @@ public class SaTokenDaoForCacheDelegateTest {
     private final SaTokenDao delegate = new SaTokenDaoDefaultImpl();
     private final SaTokenDao dao = new SaTokenDaoForCache(cache, delegate);
 
-    // ─────────── 读：回源并回填 ───────────
-
     @Test
     public void readsThroughToDelegateAndBackfillsCache() {
         delegate.set("k1", "from-delegate", 200);
@@ -62,8 +60,6 @@ public class SaTokenDaoForCacheDelegateTest {
         Assert.assertNull(dao.get("absent"));
     }
 
-    // ─────────── 写：先落委托层再刷新缓存 ───────────
-
     @Test
     public void writesThroughToBothLayers() {
         dao.set("k1", "v1", 100);
@@ -90,8 +86,6 @@ public class SaTokenDaoForCacheDelegateTest {
         Assert.assertFalse(cache.exists("satoken", "k1"));
     }
 
-    // ─────────── 超时：以委托层为准 ───────────
-
     @Test
     public void timeoutComesFromDelegate() {
         dao.set("k1", "v", 300);
@@ -108,8 +102,6 @@ public class SaTokenDaoForCacheDelegateTest {
         Assert.assertEquals(400, cache.getTtl("satoken", "k1").getSeconds());
     }
 
-    // ─────────── 搜索：以委托层为准 ───────────
-
     @Test
     public void searchDataComesFromDelegate() {
         delegate.set("satoken:login:token:b", "1", 100);
@@ -119,8 +111,6 @@ public class SaTokenDaoForCacheDelegateTest {
 
         Assert.assertEquals("搜索结果应完整来自委托层，不受缓存覆盖范围影响", 2, result.size());
     }
-
-    // ─────────── 对象与会话 ───────────
 
     @Test
     public void objectReadsThroughAndBackfills() {

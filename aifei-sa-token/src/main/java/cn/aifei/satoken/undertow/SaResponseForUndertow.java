@@ -16,9 +16,6 @@ import io.undertow.util.StatusCodes;
 
 /**
  * {@link SaResponse} 的 Undertow 桥接实现。
- *
- * <p>把 Sa-Token 的响应写操作映射到当前请求的 {@link HttpServerExchange}：
- * 状态码、响应头、Cookie 与重定向。</p>
  */
 final class SaResponseForUndertow implements SaResponse {
 
@@ -79,12 +76,7 @@ final class SaResponseForUndertow implements SaResponse {
         return this;
     }
 
-    /**
-     * 发送重定向。
-     *
-     * <p>只写入状态码与 {@code Location} 头，<b>不结束 exchange</b>：响应体仍由消费方 IoHandler 统一输出，
-     * 提前 {@code endExchange} 会导致其后的写流失败。</p>
-     */
+    /** 发送重定向 */
     @Override
     public Object redirect(String url) {
         HttpServerExchange exchange = SaTokenUndertowContext.getExchange();

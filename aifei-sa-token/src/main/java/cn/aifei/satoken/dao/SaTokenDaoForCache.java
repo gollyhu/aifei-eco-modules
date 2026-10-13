@@ -18,33 +18,6 @@ import java.util.List;
 
 /**
  * 基于 aifei-cache 的 Sa-Token 持久层。
- *
- * <p>支持两种装配形态：</p>
- * <ol>
- *   <li><b>纯缓存</b>：{@code new SaTokenDaoForCache(CacheUtil.use())}。登录态只存在于缓存，
- *       适配「登录态无需落库」的部署；多实例需缓存后端为 Redis。</li>
- *   <li><b>缓存加速 + 权威持久层</b>：{@code new SaTokenDaoForCache(CacheUtil.use(), delegate)}。
- *       委托层（例如消费方基于自有表实现的关系库持久层）为<b>权威</b>，缓存只做加速：
- *       读未命中回源并回填、写先落委托层再刷新缓存、超时以委托层为准。</li>
- * </ol>
- *
- * <p>委托层只以 {@link SaTokenDao} 接口的形态出现，本类不对其存储形态做任何假设，
- * 因此不会引入 JDBC 或消费方类型依赖（{@code dao} 包的分层边界与架构门禁保持成立）。
- * 委托层为 {@code null} 时，行为与纯缓存形态完全一致。</p>
- *
- * <p>装配方式（须在 {@code SaTokenAifeiPlugin} 启动之后）：</p>
- * <pre>
- * public void onStart() {
- *     SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheUtil.use(), new MySaTokenDao()));
- * }
- * </pre>
- *
- * <p><b>生命周期</b>：本类不覆盖 {@code init()} 与 {@code destroy()}，因此<b>不会转发</b>给委托层。
- * Sa-Token 在没有官方 starter 的场景下不会自动调用 {@code SaTokenDao.init()}，
- * 委托层的初始化与释放须由消费方在装配处（或其自身插件中）自行处理。</p>
- *
- * <p>本类所在的 {@code dao} 包是本模块唯一引用 aifei-cache 类型的地方；aifei-cache 为
- * {@code optional} 依赖，不使用本类时不会进入消费方运行时。</p>
  */
 public class SaTokenDaoForCache implements SaTokenDao {
 
@@ -59,11 +32,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
 
     private final Cache cache;
 
-    /**
-     * 权威持久层；为 {@code null} 表示纯缓存形态。
-     *
-     * <p>非空时：读未命中回源并回填缓存、写先落本层再刷新缓存、超时以本层为准。</p>
-     */
+    /** 权威持久层；为 {@code null} 表示纯缓存形态 */
     private final SaTokenDao delegate;
 
     /**
@@ -90,8 +59,6 @@ public class SaTokenDaoForCache implements SaTokenDao {
         this.cache = cache;
         this.delegate = delegate;
     }
-
-    // ─────────── 字符串读写 ───────────
 
     @Override
     public String get(String key) {
@@ -144,8 +111,6 @@ public class SaTokenDaoForCache implements SaTokenDao {
         }
         resetTtl(key, timeout);
     }
-
-    // ─────────── 对象读写 ───────────
 
     @Override
     public Object getObject(String key) {
@@ -206,8 +171,6 @@ public class SaTokenDaoForCache implements SaTokenDao {
         resetTtl(key, timeout);
     }
 
-    // ─────────── SaSession 读写 ───────────
-
     @Override
     public SaSession getSession(String sessionId) {
         SaSession hit = cache.get(CACHE_NAME, sessionId);
@@ -262,16 +225,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         resetTtl(sessionId, timeout);
     }
 
-    // ─────────── 会话管理 ───────────
-
-    /**
-     * 按前缀与关键字搜索数据。
-     *
-     * <p>存在权威持久层时以委托层为准（其结果完整且权威，缓存可能已过期或只覆盖部分键）；
-     * 纯缓存形态下的筛选与分页语义对齐 Sa-Token 官方实现：先按 {@code prefix} 与
-     * {@code keyword} 过滤，{@code sortType} 为 {@code false} 时反转结果，最后按
-     * {@code start} / {@code size} 截取（{@code size} 为 -1 表示取到末尾）。</p>
-     */
+    /** 按前缀与关键字搜索数据 */
     @Override
     public List<String> searchData(String prefix, String keyword, int start, int size, boolean sortType) {
         if (delegate != null) {
@@ -294,12 +248,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         return page(matched, start, size);
     }
 
-    /**
-     * 截取指定区段。
-     *
-     * <p>{@code start} 小于 0 时按 0 处理；{@code size} 为 -1 时取到末尾，其余情况取
-     * {@code start + size} 条；越界自动截断。</p>
-     */
+    /** 截取指定区段；{@code size} 为 -1 时取到末尾，越界自动截断 */
     private static List<String> page(List<String> list, int start, int size) {
         int from = Math.max(start, 0);
         int end = size == -1 ? list.size() : from + size;
@@ -310,8 +259,6 @@ public class SaTokenDaoForCache implements SaTokenDao {
         }
         return result;
     }
-
-    // ─────────── 写入与有效期换算 ───────────
 
     /**
      * 写入值并按 Sa-Token 的秒级超时约定换算有效期。字符串与对象写入共用此处。
@@ -328,12 +275,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         }
     }
 
-    /**
-     * 更新已存在项的值并保持其剩余有效期。字符串与对象更新共用此处（纯缓存形态）。
-     *
-     * <p>aifei-cache 未提供「只改值、保留 TTL」的原子操作，故先读剩余有效期再写回；
-     * 该项不存在或已过期时跳过写入。</p>
-     */
+    /** 更新已存在项的值并保持其剩余有效期（纯缓存形态） */
     private void rewrite(String key, Object value) {
         Duration ttl = cache.getTtl(CACHE_NAME, key);
         if (ttl != null) {
@@ -341,12 +283,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         }
     }
 
-    /**
-     * 重设已存在项的剩余有效期。
-     *
-     * <p>0 或小于等于 {@link #NOT_VALUE_EXPIRE} 时不调整：该项按约定本就不该存在，
-     * 此处不引入删除动作，以免与其他实例的并发写入互相干扰。</p>
-     */
+    /** 重设已存在项的剩余有效期 */
     private void resetTtl(String key, long timeout) {
         Duration ttl = ttlOf(timeout);
         if (ttl != null) {

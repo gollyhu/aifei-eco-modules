@@ -12,20 +12,6 @@ import java.util.regex.Pattern;
 
 /**
  * Ant 风格路径匹配器，用于替换 Sa-Token 默认的路由匹配策略。
- *
- * <p>aifei 内核的 {@code cn.aifei.router.Router} 只做精确路径匹配（不含通配语义），
- * 而 Sa-Token 的路径鉴权规则习惯写成 {@code /admin/**} 这类通配表达式，故此处自行编译。</p>
- *
- * <p>支持的语法：</p>
- * <ul>
- *   <li>{@code *} 匹配单层路径片段，不跨越 {@code /}</li>
- *   <li>{@code **} 匹配任意深度路径，且允许该段整体缺省（{@code /a/**} 同时匹配 {@code /a} 与 {@code /a/b/c}）</li>
- *   <li>{@code ?} 匹配单个字符，不跨越 {@code /}</li>
- *   <li>{@code {name}} 匹配单层路径变量</li>
- *   <li>{@code {name_}} 匹配跨层路径变量</li>
- * </ul>
- *
- * <p>表达式一经编译即缓存，匹配阶段无重复编译开销。</p>
  */
 public final class PathPatternMatcher {
 
@@ -121,11 +107,7 @@ public final class PathPatternMatcher {
         return sb.append('$').toString();
     }
 
-    /**
-     * 追加 {@code **} 对应的正则。
-     *
-     * <p>紧邻的前导 {@code /} 会被并入可选组，使 {@code /a/**} 也能匹配 {@code /a} 本身。</p>
-     */
+    /** 追加 {@code **} 对应的正则，使 {@code /a/**} 也能匹配 {@code /a} 本身 */
     private static void appendDoubleStar(StringBuilder sb) {
         if (sb.length() > 1 && sb.charAt(sb.length() - 1) == '/') {
             sb.setLength(sb.length() - 1);

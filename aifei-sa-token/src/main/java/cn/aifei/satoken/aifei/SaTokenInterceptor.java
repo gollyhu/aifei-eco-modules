@@ -23,11 +23,6 @@ import java.util.List;
 /**
  * 按路径规则执行 Sa-Token 鉴权的 aifei 拦截器。
  *
- * <p>判断顺序为：路径命中 → 注解校验 → 自定义 {@link SaAuthStrategy} → 进入 action。</p>
- *
- * <p>规则语义：{@code includeList} 为空表示所有路径都纳入鉴权；命中 {@code excludeList} 则不鉴权。
- * 表达式为 Ant 风格（{@code /admin/**}），由 {@link PathPatternMatcher} 解释。</p>
- *
  * <p>典型装配：</p>
  * <pre>
  * routes.scan("cn.demo.service", new SaTokenInterceptor(SaTokenUndertowError.defaultHandler())

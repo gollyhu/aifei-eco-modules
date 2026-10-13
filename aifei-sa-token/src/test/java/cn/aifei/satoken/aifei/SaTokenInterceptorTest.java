@@ -173,7 +173,6 @@ public class SaTokenInterceptorTest {
             interceptor.getIncludeList().add("/b/**");
             Assert.fail("规则列表应为只读视图");
         } catch (UnsupportedOperationException expected) {
-            // 预期
         }
         Assert.assertTrue(interceptor.getExcludeList().isEmpty());
     }

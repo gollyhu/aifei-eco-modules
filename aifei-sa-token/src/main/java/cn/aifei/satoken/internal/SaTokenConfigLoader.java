@@ -13,12 +13,6 @@ import java.util.function.Consumer;
 
 /**
  * Prop 到 {@link SaTokenConfig} 映射的唯一定义点。
- *
- * <p>只读取 {@code sa-token.} 前缀的键，未出现的键保持 Sa-Token 默认值，
- * 因此消费方只需配置与默认值不同的项。键名沿用 Sa-Token 官方的 kebab-case，
- * 便于把既有配置直接搬入 {@code app-config.txt}。</p>
- *
- * <p>值格式非法时 fail-fast：配置错误表现为应用启动失败，不留半装配状态。</p>
  */
 public final class SaTokenConfigLoader {
 

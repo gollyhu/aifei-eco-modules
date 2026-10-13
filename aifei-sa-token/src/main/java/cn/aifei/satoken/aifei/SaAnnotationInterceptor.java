@@ -17,9 +17,6 @@ import cn.dev33.satoken.strategy.SaAnnotationStrategy;
  *
  * <p>只处理 {@code @SaCheckLogin}、{@code @SaCheckRole}、{@code @SaCheckPermission}
  * 等注解带来的鉴权，不做路径匹配。</p>
- *
- * <p>与 {@link SaTokenInterceptor} 二选一：后者默认也会执行注解校验，
- * 两者同时注册会让同一方法的注解鉴权执行两次。</p>
  */
 public class SaAnnotationInterceptor implements Interceptor {
 

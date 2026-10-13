@@ -14,8 +14,6 @@ import cn.dev33.satoken.exception.StopMatchException;
 
 /**
  * Sa-Token 异常到 aifei 返回值的转换，唯一定义点。
- *
- * <p>供路径鉴权与注解鉴权两个拦截器共用，避免各自维护一套近似分支。</p>
  */
 final class SaTokenErrorSupport {
 

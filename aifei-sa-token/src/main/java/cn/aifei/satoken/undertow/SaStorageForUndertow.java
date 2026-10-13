@@ -15,9 +15,6 @@ import java.util.Map;
 
 /**
  * {@link SaStorage} 的 Undertow 桥接实现。
- *
- * <p>复用 Undertow 的 Attachment 机制承载请求级键值存储，
- * 使数据生命周期与 {@link HttpServerExchange} 完全一致，无需额外清理。</p>
  */
 final class SaStorageForUndertow implements SaStorage {
 

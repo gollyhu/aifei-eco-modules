@@ -21,8 +21,6 @@ public class SaTokenDaoForCacheTest {
     private final InMemoryCacheStub cache = new InMemoryCacheStub();
     private final SaTokenDao dao = new SaTokenDaoForCache(cache);
 
-    // ─────────── 字符串读写与超时约定 ───────────
-
     @Test
     public void storesAndReadsStringWithTimeout() {
         dao.set("k1", "v1", 100);
@@ -78,8 +76,6 @@ public class SaTokenDaoForCacheTest {
         Assert.assertEquals(SaTokenDao.NEVER_EXPIRE, dao.getTimeout("k1"));
     }
 
-    // ─────────── 对象读写与会话 ───────────
-
     @Test
     public void storesAndReadsObject() {
         dao.setObject("o1", "payload", 100);
@@ -120,8 +116,6 @@ public class SaTokenDaoForCacheTest {
         Assert.assertEquals(300, dao.getSessionTimeout("session-1"));
     }
 
-    // ─────────── 更新语义 ───────────
-
     @Test
     public void updateKeepsRemainingTtl() {
         dao.set("k1", "before", 200);
@@ -137,8 +131,6 @@ public class SaTokenDaoForCacheTest {
 
         Assert.assertFalse("不存在时不应重建", cache.exists("satoken", "missing"));
     }
-
-    // ─────────── 搜索 ───────────
 
     @Test
     public void searchDataFiltersByPrefixAndKeyword() {

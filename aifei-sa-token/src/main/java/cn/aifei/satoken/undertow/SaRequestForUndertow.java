@@ -19,15 +19,6 @@ import java.util.Map;
 
 /**
  * {@link SaRequest} 的 Undertow 桥接实现。
- *
- * <p>参数读取有两条来源，按优先级依次尝试：</p>
- * <ol>
- *   <li>aifei 已解析的 {@link Input}：可覆盖 JSON body 等场景，是读取「请求体参数」的唯一途径；</li>
- *   <li>Undertow 原生查询参数：仅在 Input 尚未绑定（如静态资源等非 action 请求）时兜底。</li>
- * </ol>
- *
- * <p><b>已知限制</b>：{@code Input} 接口不支持枚举参数名，故 {@link #getParamNames()} 与
- * {@link #getParamMap()} 只能读取查询串，不含请求体参数，与 {@link #getParam(String)} 的数据源不完全一致。</p>
  */
 final class SaRequestForUndertow implements SaRequest {
 

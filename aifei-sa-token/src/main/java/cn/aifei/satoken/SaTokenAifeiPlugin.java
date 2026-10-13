@@ -18,12 +18,6 @@ import cn.dev33.satoken.plugin.SaTokenPluginHolder;
 /**
  * Sa-Token 在 aifei 下的装配入口。
  *
- * <p>构造期只持有配置源，解析与全局状态替换都发生在 {@link #start()}：
- * 配置错误表现为应用启动失败，不会留下半装配状态。</p>
- *
- * <p>Sa-Token 的 {@code SaManager} 是全局单例，本插件在启动前先保存原有配置与上下文，
- * 在 {@link #stop()} 时还原，避免污染同一进程中的其他运行环境。</p>
- *
  * <p>装配示例：</p>
  * <pre>
  * public void config(Plugins plugins) {

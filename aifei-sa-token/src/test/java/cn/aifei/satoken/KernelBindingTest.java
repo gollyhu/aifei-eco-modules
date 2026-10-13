@@ -20,10 +20,6 @@ import java.util.stream.Stream;
 
 /**
  * 架构门禁：分层边界收敛。
- * ① {@code cn.aifei.aop.*} 的 import 只允许出现在接入层包 {@code cn.aifei.satoken.aifei}。
- * ② {@code io.undertow.*} 的 import 只允许出现在桥接层包 {@code cn.aifei.satoken.undertow}。
- * ③ {@code cn.hg.aifei.cache.*} 的 import 只允许出现在持久层包 {@code cn.aifei.satoken.dao}。
- * ④ 不存在 {@code cn.aifei.vip.*} 与 {@code java.sql.*} 引用。
  */
 public class KernelBindingTest {
 

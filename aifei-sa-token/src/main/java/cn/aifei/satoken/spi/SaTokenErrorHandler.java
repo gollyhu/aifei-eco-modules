@@ -10,11 +10,6 @@ import cn.dev33.satoken.exception.SaTokenException;
 
 /**
  * 鉴权失败时的响应策略。
- *
- * <p>解耦「SDK 不知道消费方 Output 类型」这一矛盾：返回值经
- * {@code Invocation.setReturnValue(...)} 交由消费方 IoHandler 正常渲染。</p>
- *
- * <p>位于 spi 层，不依赖 aifei 内核任何类型。</p>
  */
 @FunctionalInterface
 public interface SaTokenErrorHandler {

@@ -14,17 +14,11 @@ import io.undertow.util.StatusCodes;
 
 /**
  * Undertow 场景下的鉴权失败策略。
- *
- * <p>借用桥接层持有的 {@link HttpServerExchange} 直接调整 HTTP 状态码，
- * 响应体仍交由消费方 IoHandler 统一输出，因此不需要结束 exchange。</p>
  */
 public final class SaTokenUndertowError {
 
     /**
      * 默认策略：未登录置 401，其余鉴权失败置 403。
-     *
-     * <p>两个拦截器的无参构造均采用本策略。需要业务码语义（HTTP 恒 200）时，
-     * 传入自定义 {@link SaTokenErrorHandler} 返回消费方自己的 Output 即可。</p>
      *
      * @return 鉴权失败策略
      */
