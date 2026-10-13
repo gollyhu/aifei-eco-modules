@@ -40,8 +40,10 @@ hs_err_pid*
 replay_pid*
 
 # AI
-./codebuddy
-./workbuddy
+.codebuddy/
+.workbuddy/
+CODEBUDDY.md
+WORDBUDDY.md
 
 # IDE
 /.idea/.gitignore
