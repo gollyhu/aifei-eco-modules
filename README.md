@@ -1,2 +1,65 @@
 # aifei-eco-modules
 Aifei 项目的生态补充，提供多种生态能力模块。
+
+本仓库是多个独立发布的 aifei 生态组件集合，各模块单独构建、单独发版，无父级聚合 pom，按需引入。
+
+## 模块总览
+
+| 模块 | 坐标 | 定位 |
+| --- | --- | --- |
+| [aifei-cache](aifei-cache/README.md) | `io.github.gollyhu:aifei-cache:1.0.0` | 缓存与计数组件：Caffeine / Redis 双后端，支持多实例 |
+| [aifei-sentinel](aifei-sentinel/README.md) | `io.github.gollyhu:aifei-sentinel:1.0.0` | Sentinel 流量治理接入 SDK：流控、熔断、系统保护 |
+| [aifei-sentinel-demo](aifei-sentinel-demo) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
+| [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
+
+### aifei-cache
+
+面向 aifei 应用的缓存与计数组件。业务代码只依赖 `Cache` / `Counter` 两个接口，换后端只改配置、不改代码。
+
+- 后端二选一或并用：`caffeine`（进程内）/ `jedis`（Redis，值默认 Fury 编解码）
+- 多实例：主缓存 `__MAIN__` 恒存在，扩展实例由 `cache.names` 声明
+- 名字分三层：实例名（连哪个存储）/ 缓存名（业务分区）/ 命名空间（区分应用）
+- TTL 毫秒精度，支持 `putIfAbsent`、Loader 委托等常用模式
+- 详细用法见 [aifei-cache/README.md](aifei-cache/README.md)，设计文档见 [docs/design.md](aifei-cache/docs/design.md)
+
+### aifei-sentinel
+
+把 Sentinel 的流控、熔断与系统保护能力接入 aifei，业务代码不出现任何 Sentinel 类型。
+
+- 通过 `routes.scan(...)` 注册拦截器，五种治理能力共用同一处埋点
+- 本地模式（规则文件热生效）与 Dashboard 模式（控制台推送）互斥切换，不改业务代码
+- 降级接线由消费方实现，限流语义由业务码承载，HTTP 状态码恒 200
+- 详细用法见 [aifei-sentinel/README.md](aifei-sentinel/README.md)，设计文档见 [docs/design.md](aifei-sentinel/docs/design.md)
+
+### aifei-weixin
+
+微信开发包：公众号协议内核 + 开放接口客户端 + 小程序 + 微信支付 V3 + aifei 接入层。
+
+- 协议内核：AES-256-CBC 加解密、SHA-1 签名、安全 XML 解析
+- 消息模型：接收消息 8 类、事件 10 类、被动回复 6 类，`MsgKit` 双入口分发
+- Api 客户端：`ApiCaller` 及菜单 / 用户 / 素材 / 模板消息 / OAuth2 / 二维码 / JsTicket
+- 小程序：`MiniAppApi`（code2Session / 订阅消息 / 手机号 / 小程序码）
+- 微信支付 V3：`PayApi` 下单查单退款 + `PayNotifyKit` 回调验签解密，RSA / GCM / mTLS 纯 JDK 实现
+- 接入前必读 [docs/开发规范/微信接入规范.md](aifei-weixin/docs/开发规范/微信接入规范.md)
+
+## 构建
+
+所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
+
+```bash
+cd aifei-cache     && mvn clean install
+cd aifei-sentinel  && mvn clean install
+cd aifei-weixin    && mvn clean install
+```
+
+发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
+
+## 依赖说明
+
+- `aifei-cache`：强依赖 `cn.aifei:aifei`；Caffeine、Jedis、Fury 为可选依赖，用哪个后端加哪个
+- `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带
+- `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
+
+## 许可证
+
+[Apache License 2.0](LICENSE)
