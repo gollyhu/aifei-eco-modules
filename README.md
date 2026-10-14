@@ -12,6 +12,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-sentinel-demo](aifei-sentinel-demo) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
 | [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
 | [aifei-sa-token](aifei-sa-token/README.md) | `io.github.gollyhu:aifei-sa-token:1.0.0` | Sa-Token 认证鉴权接入 SDK：登录态、角色权限、注解鉴权 |
+| [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，Java-WebSocket 后端可替换 |
+| [aifei-websocket-demo](aifei-websocket-demo) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
 
 ### aifei-cache
 
@@ -54,6 +56,17 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 多实例会话：换用基于 `aifei-cache` 的持久层实现，登录态跨实例共享
 - 详细用法见 [aifei-sa-token/README.md](aifei-sa-token/README.md)，设计文档见 [docs/design.md](aifei-sa-token/docs/design.md)
 
+### aifei-websocket
+
+为 aifei 应用补齐框架未覆盖的 WebSocket 双向基础能力，含客户端与服务端两个独立子能力。
+
+- 客户端出站连接第三方 WS 服务（心跳保活 / 自动重连），服务端接收 WS 连接（会话管理 / 广播），两者分别装配、各自独立
+- 公共 API 零第三方类型、零框架类型；换后端只改配置 `websocket.{client|server}.type`，默认 `javawebsocket`
+- 心跳与自动重连**默认关闭**（`heartbeat-seconds = 0` / `auto-reconnect = false`），需显式开启
+- 不提供发送队列 / 背压：非 `OPEN` 时 `send*` 抛 `IllegalStateException` 且消息被丢弃，缓冲与重放由调用方处理
+- 消费方需自带 `Java-WebSocket`（模块内 `optional` 不传递）与 `slf4j-api` + 一个日志绑定
+- 详细用法见 [aifei-websocket/README.md](aifei-websocket/README.md)，设计文档见 [docs/design.md](aifei-websocket/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -63,6 +76,7 @@ cd aifei-cache     && mvn clean install
 cd aifei-sentinel  && mvn clean install
 cd aifei-weixin    && mvn clean install
 cd aifei-sa-token  && mvn clean install
+cd aifei-websocket && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -73,6 +87,7 @@ cd aifei-sa-token  && mvn clean install
 - `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带
 - `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
 - `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
+- `aifei-websocket`：`aifei-all` 为 `provided`，`Java-WebSocket` 为 `optional`（消费方自带，另需自带 `slf4j-api` 与日志绑定）
 
 ## 许可证
 

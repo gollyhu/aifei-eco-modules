@@ -1,0 +1,30 @@
+# ===== aifei-websocket-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18090 传入，本文件只放 websocket.* 配置。
+
+# ----- 服务端：进程内本地回环服务端 -----
+websocket.server.type = javawebsocket
+websocket.server.host = 0.0.0.0
+# 必填键：缺失即应用启动失败；0 表示随机端口，也须显式写出
+websocket.server.port = 18091
+# 心跳保活：RFC6455 ping/pong 控制帧，0 = 禁用（本 demo 开启 10 秒）
+websocket.server.heartbeat-seconds = 10
+# 空闲会话回收：0 = 禁用（演示期间保持会话，便于反复观察状态）
+websocket.server.session-idle-timeout-seconds = 0
+
+# ----- 客户端：出站连接上面的本地回环服务端 -----
+websocket.client.type = javawebsocket
+# 必填键：缺失即应用启动失败，须以 ws:// 或 wss:// 开头
+websocket.client.uri = ws://127.0.0.1:18091/ws
+websocket.client.heartbeat-seconds = 10
+websocket.client.connect-timeout-millis = 5000
+# 自动重连：默认 false，演示断线重连必须显式开启
+websocket.client.auto-reconnect = true
+# 连续失败重试上限；配合下面的短退避，停掉服务端后仍留有约 30 秒的重连窗口
+websocket.client.max-retries = 30
+# 缩短退避参数，便于现场 3 秒内看到重连（退避序列约 300/600/1000/1000... 毫秒）
+websocket.client.initial-retry-delay-millis = 300
+websocket.client.max-retry-delay-millis = 1000
+# 抖动比例沿用默认 0.2（未配置即使用配置对象默认值）
+
+# 握手附加请求头（前缀键写法：websocket.client.header.<name>）
+websocket.client.header.X-Demo-Client = aifei-websocket-demo
