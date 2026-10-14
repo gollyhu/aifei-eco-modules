@@ -34,9 +34,9 @@ mvn clean test
 
 | 用例 | 断言 |
 |---|---|
-| `aopImportOnlyInAifeiPackage` | `import cn.aifei.aop.` 仅出现在 `cn/aifei/satoken/aifei/` |
-| `undertowImportOnlyInUndertowPackage` | `import io.undertow.` 仅出现在 `cn/aifei/satoken/undertow/` |
-| `cacheImportOnlyInDaoPackage` | `import cn.hg.aifei.cache.` 仅出现在 `cn/aifei/satoken/dao/` |
+| `aopImportOnlyInAifeiPackage` | `import cn.aifei.aop.` 仅出现在 `cn/hg/aifei/satoken/aifei/` |
+| `undertowImportOnlyInUndertowPackage` | `import io.undertow.` 仅出现在 `cn/hg/aifei/satoken/undertow/` |
+| `cacheImportOnlyInDaoPackage` | `import cn.hg.aifei.cache.` 仅出现在 `cn/hg/aifei/satoken/dao/` |
 | `noArchOrSqlReference` | 全源码无 `cn.aifei.vip.`、`java.sql.` |
 
 扫描根为 `src/main/java`（相对路径），故**须在模块目录内执行**，否则用例直接失败并提示。

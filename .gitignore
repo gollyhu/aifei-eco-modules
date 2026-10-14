@@ -48,3 +48,4 @@ WORDBUDDY.md
 # IDE
 /.idea/.gitignore
 /.idea/
+*.iml

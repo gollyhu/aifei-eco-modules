@@ -10,9 +10,9 @@
 
 ## 硬性约束
 
-- 保持分层边界：`cn.aifei.aop.*` 的 import 只允许出现在 `cn.aifei.satoken.aifei` 包。
-- `io.undertow.*` 的 import 只允许出现在 `cn.aifei.satoken.undertow` 包；不得放宽该门禁来「兼容」错误用法。
-- `cn.hg.aifei.cache.*` 的 import 只允许出现在 `cn.aifei.satoken.dao` 包；持久层不得反向引用 Web Server 与拦截器。
+- 保持分层边界：`cn.aifei.aop.*` 的 import 只允许出现在 `cn.hg.aifei.satoken.aifei` 包。
+- `io.undertow.*` 的 import 只允许出现在 `cn.hg.aifei.satoken.undertow` 包；不得放宽该门禁来「兼容」错误用法。
+- `cn.hg.aifei.cache.*` 的 import 只允许出现在 `cn.hg.aifei.satoken.dao` 包；持久层不得反向引用 Web Server 与拦截器。
 - 持久层的委托层（`SaTokenDaoForCache` 的 `delegate`）只允许以 `SaTokenDao` 接口形态出现：不得引入 JDBC、消费方表结构或任何具体持久化实现类型。
 - `SaTokenDaoForCache` **不转发** `init()` / `destroy()` 属既定决策；如需改为转发，先更新 `docs/design.md` 再改代码。
 - `cn.aifei.vip.*`、`java.sql.*` 零引用。

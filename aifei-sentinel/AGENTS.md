@@ -12,7 +12,7 @@
 
 - 保持 `SentinelKit` 门面极简，业务代码零 Sentinel 类型。
 - 业务代码只注册 `SentinelInterceptor`、实现 `SentinelBlockHandler`，不引用 `Entry`、`FlowRule`、`BlockException` 等 Sentinel 类型。
-- `cn.aifei.aop.*` 与 `cn.aifei.core.*` 只允许出现在 `cn.aifei.sentinel.aifei` 包。
+- `cn.aifei.aop.*` 与 `cn.aifei.core.*` 只允许出现在 `cn.hg.aifei.sentinel.aifei` 包。
 - `cn.aifei.vip.*`、`io.undertow.*`、`java.sql.*` 零引用。
 - `sentinel-transport-*` 不得硬引用，只能在运行时反射探测。
 - 两种运行模式互斥，不得同时启用规则文件热读与回写。

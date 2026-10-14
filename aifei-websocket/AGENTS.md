@@ -39,8 +39,8 @@
 
 | 类型族 | 允许出现的包 | 门禁断言 |
 | --- | --- | --- |
-| `org.java_websocket.*` | 仅 `cn.aifei.websocket.javawebsocket` | `ArchitectureBoundaryTest#thirdPartyOnlyInImplPackage` |
-| `cn.aifei.*`（除 `cn.aifei.websocket.*`，框架类型） | 仅 `cn.aifei.websocket.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
+| `org.java_websocket.*` | 仅 `cn.hg.aifei.websocket.javawebsocket` | `ArchitectureBoundaryTest#thirdPartyOnlyInImplPackage` |
+| `cn.aifei.*`（除 `cn.hg.aifei.websocket.*`，框架类型） | 仅 `cn.hg.aifei.websocket.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
 | `io.undertow.*` / `java.sql.*` | **全模块禁止** | `ArchitectureBoundaryTest#noUndertowOrSqlReference` |
 
 另有门禁 `ArchitectureBoundaryTest#aifeiBridgePackageExists`：断言接入包非空，且 `WebSocketClientPlugin.java` / `WebSocketServerPlugin.java` 存在。
@@ -63,7 +63,7 @@
 
 ## 新增传输后端的步骤
 
-1. 在 `cn.aifei.websocket.<newbackend>` 包内新增 `XxxProvider extends AbstractWebSocketProvider`，实现 `type()` / `buildClient` / `buildServer`，并在此包内实现客户端 / 服务端 / 会话（第三方类型**只允许**出现在本实现包）。
+1. 在 `cn.hg.aifei.websocket.<newbackend>` 包内新增 `XxxProvider extends AbstractWebSocketProvider`，实现 `type()` / `buildClient` / `buildServer`，并在此包内实现客户端 / 服务端 / 会话（第三方类型**只允许**出现在本实现包）。
 2. 在 `WebSocketProviderRegistry` 的 `static` 初始化块里**增加一行** `PROVIDERS.put("<newbackend>", new XxxProvider());`。
 3. 消费方把配置 `websocket.{client|server}.type` 改为 `<newbackend>`，并自带该后端所需的第三方依赖。
 

@@ -42,7 +42,7 @@ aifei 生态已有缓存（`aifei-cache`）、鉴权（`aifei-sa-token`）等社
 ### 3.1 SDK 内部分层
 
 ```
-aifei-sentinel/src/main/java/cn/aifei/sentinel/
+aifei-sentinel/src/main/java/cn/hg/aifei/sentinel/
 ├── core/    SentinelKit、SentinelRuleLoader、SentinelRuleWriter  ← 零内核依赖
 ├── spi/     SentinelBlockHandler                                 ← 零内核依赖
 └── aifei/   SentinelInterceptor                                  ← 唯一 import cn.aifei.aop.* 的接入层
@@ -54,7 +54,7 @@ aifei-sentinel/src/main/java/cn/aifei/sentinel/
 
 由 `KernelBindingTest` 门禁强制（见 `docs/testing.md`）：
 
-- `cn.aifei.aop.*` / `cn.aifei.core.*` 只允许出现在 `cn.aifei.sentinel.aifei` 包。
+- `cn.aifei.aop.*` / `cn.aifei.core.*` 只允许出现在 `cn.hg.aifei.sentinel.aifei` 包。
 - `cn.aifei.vip.*`、`io.undertow.*`、`java.sql.*` 零引用。
 - `sentinel-transport-*` 零硬引用，只在运行时反射探测。
 - 业务代码零 Sentinel 类型（`Entry` / `FlowRule` / `BlockException` 不出 SDK 门面）。
@@ -84,7 +84,7 @@ aifei-sentinel/src/main/java/cn/aifei/sentinel/
 解耦「SDK 不知道消费方 `Out` 类型」这一矛盾：
 
 ```java
-package cn.aifei.sentinel.spi;
+package cn.hg.aifei.sentinel.spi;
 
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 

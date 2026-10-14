@@ -75,8 +75,8 @@ websocket.server.session-idle-timeout-seconds = 300
 ### 第 2 步：实现两个监听器
 
 ```java
-import cn.aifei.websocket.ClientListener;
-import cn.aifei.websocket.Message;
+import cn.hg.aifei.websocket.ClientListener;
+import cn.hg.aifei.websocket.Message;
 
 public class MyClientListener implements ClientListener {
 
@@ -110,9 +110,9 @@ public class MyClientListener implements ClientListener {
 ```
 
 ```java
-import cn.aifei.websocket.Message;
-import cn.aifei.websocket.ServerListener;
-import cn.aifei.websocket.WebSocketSession;
+import cn.hg.aifei.websocket.Message;
+import cn.hg.aifei.websocket.ServerListener;
+import cn.hg.aifei.websocket.WebSocketSession;
 
 public class MyServerListener implements ServerListener {
 
@@ -138,8 +138,8 @@ public class MyServerListener implements ServerListener {
 ### 第 3 步：注册两个 Plugin
 
 ```java
-import cn.aifei.websocket.aifei.WebSocketClientPlugin;
-import cn.aifei.websocket.aifei.WebSocketServerPlugin;
+import cn.hg.aifei.websocket.aifei.WebSocketClientPlugin;
+import cn.hg.aifei.websocket.aifei.WebSocketServerPlugin;
 
 @Override
 public void config(Plugins plugins) {
@@ -155,9 +155,9 @@ public void config(Plugins plugins) {
 ### 第 4 步：业务侧注入使用
 
 ```java
-import cn.aifei.websocket.WebSocketClient;
-import cn.aifei.websocket.WebSocketServer;
-import cn.aifei.websocket.WebSocketSession;
+import cn.hg.aifei.websocket.WebSocketClient;
+import cn.hg.aifei.websocket.WebSocketServer;
+import cn.hg.aifei.websocket.WebSocketSession;
 
 @Inject
 WebSocketClient client;
@@ -184,11 +184,11 @@ for (WebSocketSession session : server.sessions()) {  // 快照，可能含正�
 ```java
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import cn.aifei.websocket.ClientConfig;
-import cn.aifei.websocket.ClientListener;
-import cn.aifei.websocket.Message;
-import cn.aifei.websocket.WebSocketClient;
-import cn.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.ClientConfig;
+import cn.hg.aifei.websocket.ClientListener;
+import cn.hg.aifei.websocket.Message;
+import cn.hg.aifei.websocket.WebSocketClient;
+import cn.hg.aifei.websocket.WebSocketKit;
 
 ClientConfig config = new ClientConfig();
 config.setUri("ws://127.0.0.1:9000/ws");
@@ -227,9 +227,9 @@ client.send("hello");                               // 仅 OPEN 时成功
 ### 服务端
 
 ```java
-import cn.aifei.websocket.ServerConfig;
-import cn.aifei.websocket.WebSocketKit;
-import cn.aifei.websocket.WebSocketServer;
+import cn.hg.aifei.websocket.ServerConfig;
+import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketServer;
 
 ServerConfig config = new ServerConfig();
 config.setHost("0.0.0.0");
@@ -309,9 +309,9 @@ websocket.client.header.X-Tenant = acme
 ```java
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import cn.aifei.websocket.ClientListener;
-import cn.aifei.websocket.Message;
-import cn.aifei.websocket.WebSocketClient;
+import cn.hg.aifei.websocket.ClientListener;
+import cn.hg.aifei.websocket.Message;
+import cn.hg.aifei.websocket.WebSocketClient;
 
 public class BufferingClientListener implements ClientListener {
 
@@ -365,9 +365,9 @@ public class BufferingClientListener implements ClientListener {
 本模块**不内置任何 JSON 实现**，也不暴露任何 JSON 库类型。需要 `send(Object)` / `broadcast(Object)` 时，消费方自行实现 `spi.MessageCodec` 并注入。实现**必须线程安全**（同一编解码器会被多个连接与多个线程并发调用）：
 
 ```java
-import cn.aifei.websocket.Message;
-import cn.aifei.websocket.WebSocketCodecException;
-import cn.aifei.websocket.spi.MessageCodec;
+import cn.hg.aifei.websocket.Message;
+import cn.hg.aifei.websocket.WebSocketCodecException;
+import cn.hg.aifei.websocket.spi.MessageCodec;
 
 public class JsonCodec implements MessageCodec {
 
@@ -406,8 +406,8 @@ public class JsonCodec implements MessageCodec {
 **aifei 装配路径**：用 3 参构造器把 `MessageCodec` 与监听器一并传给 `Plugin`；`Plugin.start()` 会把它设入配置对象，`@Inject` 到的实例即可直接 `send(Object)` / `broadcast(Object)`：
 
 ```java
-import cn.aifei.websocket.aifei.WebSocketClientPlugin;
-import cn.aifei.websocket.aifei.WebSocketServerPlugin;
+import cn.hg.aifei.websocket.aifei.WebSocketClientPlugin;
+import cn.hg.aifei.websocket.aifei.WebSocketServerPlugin;
 
 @Override
 public void config(Plugins plugins) {
@@ -420,8 +420,8 @@ public void config(Plugins plugins) {
 ```
 
 ```java
-import cn.aifei.websocket.WebSocketClient;
-import cn.aifei.websocket.WebSocketServer;
+import cn.hg.aifei.websocket.WebSocketClient;
+import cn.hg.aifei.websocket.WebSocketServer;
 
 @Inject
 WebSocketClient client;

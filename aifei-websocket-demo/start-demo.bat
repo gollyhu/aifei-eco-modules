@@ -17,4 +17,4 @@ for /f "usebackq delims=" %%i in ("target\cp.txt") do set "CP=%%i"
 echo [2/3] Starting demo, HTTP 18090, WebSocket server 18091, press Ctrl+C to stop...
 echo [3/3] Verify: http://localhost:18090/ws/demo/state
 echo.
-java -Ddemo.config=app-config.txt -Dundertow.port=18090 -Dundertow.host=0.0.0.0 -cp ".\target\classes;%CP%" cn.aifei.websocket.demo.DemoApp
+java -Ddemo.config=app-config.txt -Dundertow.port=18090 -Dundertow.host=0.0.0.0 -cp ".\target\classes;%CP%" cn.hg.aifei.websocket.demo.DemoApp

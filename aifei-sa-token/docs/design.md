@@ -60,7 +60,7 @@ public interface Dispatcher<P1, P2, I extends Input, O extends Output> {
 ### 3.1 内部分层
 
 ```
-aifei-sa-token/src/main/java/cn/aifei/satoken/
+aifei-sa-token/src/main/java/cn/hg/aifei/satoken/
 ├── SaTokenAifeiPlugin.java          装配入口
 ├── spi/    SaTokenErrorHandler      鉴权失败策略（零 aifei 依赖）
 │           SaAuthStrategy           鉴权动作（零 aifei 依赖）
@@ -87,9 +87,9 @@ aifei-sa-token/src/main/java/cn/aifei/satoken/
 
 由 `KernelBindingTest` 门禁强制（见 `docs/testing.md`）：
 
-- `cn.aifei.aop.*` 的 import 只允许出现在 `cn.aifei.satoken.aifei` 包；
-- `io.undertow.*` 的 import 只允许出现在 `cn.aifei.satoken.undertow` 包；
-- `cn.hg.aifei.cache.*` 的 import 只允许出现在 `cn.aifei.satoken.dao` 包；
+- `cn.aifei.aop.*` 的 import 只允许出现在 `cn.hg.aifei.satoken.aifei` 包；
+- `io.undertow.*` 的 import 只允许出现在 `cn.hg.aifei.satoken.undertow` 包；
+- `cn.hg.aifei.cache.*` 的 import 只允许出现在 `cn.hg.aifei.satoken.dao` 包；
 - `cn.aifei.vip.*`、`java.sql.*` 零引用。
 
 第 2、3 条遵循同一思路：把对具体实现的依赖**收拢到单一包**，使边界可见、可测、可演进。

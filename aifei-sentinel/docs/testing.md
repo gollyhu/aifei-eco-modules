@@ -26,7 +26,7 @@
 | 用例 | 断言 |
 |---|---|
 | `noArchOrUndertowOrSqlReference` | 不存在 `cn.aifei.vip.` / `io.undertow.` / `java.sql.` 引用 |
-| `aopImportOnlyInAifeiPackage` | `import cn.aifei.aop.` 只出现在 `cn/aifei/sentinel/aifei/` 包 |
+| `aopImportOnlyInAifeiPackage` | `import cn.aifei.aop.` 只出现在 `cn/hg/aifei/sentinel/aifei/` 包 |
 | `coreImportOnlyInAifeiPackage` | `import cn.aifei.core.` 只出现在接入层包 |
 | `noHardReferenceToTransportClasses` | 不存在 `import com.alibaba.csp.sentinel.transport.`（消费方未引 transport 时不得 `NoClassDefFoundError`） |
 

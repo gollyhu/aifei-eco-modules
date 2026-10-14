@@ -43,8 +43,8 @@
 
 | # | 纪律 |
 | --- | --- |
-| 1 | **公共 API 零第三方类型**：`org.java_websocket.*` 只允许出现在 `cn.aifei.websocket.javawebsocket` 包 |
-| 2 | **公共 API 零框架类型**：`cn.aifei.*`（除本模块 `cn.aifei.websocket.*`）只允许出现在 `cn.aifei.websocket.aifei` 接入包 |
+| 1 | **公共 API 零第三方类型**：`org.java_websocket.*` 只允许出现在 `cn.hg.aifei.websocket.javawebsocket` 包 |
+| 2 | **公共 API 零框架类型**：`cn.aifei.*`（除本模块 `cn.hg.aifei.websocket.*`）只允许出现在 `cn.hg.aifei.websocket.aifei` 接入包 |
 | 3 | 根包公共类型**逐个列出并说明职责**；新增公共类型必须先过设计决策 |
 | 4 | 第三方依赖一律 `<optional>true</optional>`，由消费方按需自带 |
 | 5 | Java 8 语法与 API；主 JAR class major version = 52 |
@@ -88,11 +88,11 @@
 ## 3. 包结构设计
 
 ```
-cn.aifei.websocket                    根包：公共 API（零第三方类型 / 零框架类型）
-cn.aifei.websocket.spi                扩展点：编解码 SPI + 传输后端 SPI（零第三方类型 / 零框架类型）
-cn.aifei.websocket.internal           非承诺 API：跨后端共享逻辑与工具
-cn.aifei.websocket.javawebsocket      实现包：Java-WebSocket 后端（★ 唯一允许出现 org.java_websocket.* 的包）
-cn.aifei.websocket.aifei              接入包：aifei 装配入口（★ 唯一允许出现 cn.aifei.* 框架类型的包）
+cn.hg.aifei.websocket                    根包：公共 API（零第三方类型 / 零框架类型）
+cn.hg.aifei.websocket.spi                扩展点：编解码 SPI + 传输后端 SPI（零第三方类型 / 零框架类型）
+cn.hg.aifei.websocket.internal           非承诺 API：跨后端共享逻辑与工具
+cn.hg.aifei.websocket.javawebsocket      实现包：Java-WebSocket 后端（★ 唯一允许出现 org.java_websocket.* 的包）
+cn.hg.aifei.websocket.aifei              接入包：aifei 装配入口（★ 唯一允许出现 cn.aifei.* 框架类型的包）
 ```
 
 ### 3.1 根包公共类型（14 个，逐个说明职责）
@@ -157,10 +157,10 @@ cn.aifei.websocket.aifei              接入包：aifei 装配入口（★ 唯�
 
 | 类型族 | 允许出现的包 | 断言 |
 | --- | --- | --- |
-| `org.java_websocket.*` | 仅 `cn.aifei.websocket.javawebsocket` | `ArchitectureBoundaryTest#thirdPartyOnlyInImplPackage` |
-| `cn.aifei.*`（除 `cn.aifei.websocket.*`） | 仅 `cn.aifei.websocket.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
+| `org.java_websocket.*` | 仅 `cn.hg.aifei.websocket.javawebsocket` | `ArchitectureBoundaryTest#thirdPartyOnlyInImplPackage` |
+| `cn.aifei.*`（除 `cn.hg.aifei.websocket.*`） | 仅 `cn.hg.aifei.websocket.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
 | `io.undertow.*` / `java.sql.*` | **全模块禁止** | `ArchitectureBoundaryTest#noUndertowOrSqlReference` |
-| 接入包 `cn.aifei.websocket.aifei`（存在性） | 必须存在且非空（`WebSocketClientPlugin.java` / `WebSocketServerPlugin.java` 齐备） | `ArchitectureBoundaryTest#aifeiBridgePackageExists` |
+| 接入包 `cn.hg.aifei.websocket.aifei`（存在性） | 必须存在且非空（`WebSocketClientPlugin.java` / `WebSocketServerPlugin.java` 齐备） | `ArchitectureBoundaryTest#aifeiBridgePackageExists` |
 
 ---
 
@@ -650,7 +650,7 @@ public final class WebSocketProviderRegistry {
 
 ### 5.4 新增一个后端的完整步骤
 
-1. 在 `cn.aifei.websocket.<newbackend>` 包内新增 `XxxProvider extends AbstractWebSocketProvider`，实现 `type()` / `buildClient` / `buildServer`，并在此包内实现客户端 / 服务端 / 会话（第三方类型只允许出现在本实现包）。
+1. 在 `cn.hg.aifei.websocket.<newbackend>` 包内新增 `XxxProvider extends AbstractWebSocketProvider`，实现 `type()` / `buildClient` / `buildServer`，并在此包内实现客户端 / 服务端 / 会话（第三方类型只允许出现在本实现包）。
 2. 在 `WebSocketProviderRegistry` 的 `static` 初始化块里**增加一行** `PROVIDERS.put("<newbackend>", new XxxProvider());`。
 3. 消费方把配置 `websocket.{client|server}.type` 改为 `<newbackend>`，并自带该后端所需的第三方依赖。
 
@@ -803,8 +803,8 @@ stateDiagram-v2
 
 `ArchitectureBoundaryTest` 断言（扫描 `src/main/java` 下全部 `.java`）：
 
-1. `org.java_websocket` 字符串**只**出现在 `cn/aifei/websocket/javawebsocket/` 下（第三方类型只允许出现在实现包）。
-2. `import cn.aifei.` 且**不是** `import cn.aifei.websocket.` 的语句**只**出现在 `cn/aifei/websocket/aifei/` 下（框架类型只允许出现在接入包）。
+1. `org.java_websocket` 字符串**只**出现在 `cn/hg/aifei/websocket/javawebsocket/` 下（第三方类型只允许出现在实现包）。
+2. `import cn.aifei.` 且**不是** `import cn.hg.aifei.websocket.` 的语句**只**出现在 `cn/hg/aifei/websocket/aifei/` 下（框架类型只允许出现在接入包）。
 3. 全模块不出现 `io.undertow.` 与 `import java.sql.`。
 4. 接入包非空，且 `WebSocketClientPlugin.java` / `WebSocketServerPlugin.java` 存在。
 
@@ -1009,7 +1009,7 @@ aifei-websocket/
 ├── docs/
 │   └── design.md                                                              # 本文（已存在）
 └── src/
-    ├── main/java/cn/aifei/websocket/
+    ├── main/java/cn/hg/aifei/websocket/
     │   ├── WebSocketClient.java                 # 客户端能力接口
     │   ├── ClientListener.java                  # 客户端回调（含重连事件）
     │   ├── WebSocketServer.java                 # 服务端能力接口
@@ -1047,7 +1047,7 @@ aifei-websocket/
     │       ├── WebSocketClientPlugin.java       # 客户端装配入口（implements Plugin）
     │       ├── WebSocketServerPlugin.java       # 服务端装配入口（implements Plugin）
     │       └── WebSocketConfigLoader.java       # Prop → 配置（包级私有，键名唯一定义点）
-    └── test/java/cn/aifei/websocket/
+    └── test/java/cn/hg/aifei/websocket/
         ├── ArchitectureBoundaryTest.java        # 架构门禁（§6.8）
         ├── MessageTest.java                     # Message 不可变 / 类型判定 / 拷贝
         ├── BackoffTest.java                     # 退避上下界 / 溢出保护
