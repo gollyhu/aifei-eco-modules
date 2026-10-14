@@ -175,7 +175,7 @@
 
 回调地址：`https://域名/weixin/{appId}/msg`。
 
-**注册顺序为冻结契约**：必须注册在 `FrontHandler` 之前，否则首验 GET 会被渲染成首页 HTML 而导致对接失败；由消费方的 `WeixinHandlerOrderTest` 守护。
+**注册顺序为冻结契约**：必须注册在 `FrontHandler` 之前，否则首验 GET 会被渲染成首页 HTML 而导致对接失败；当前由文档约定 + 消费方自行保障。
 
 ## 6. 公众号 Api 客户端
 
@@ -325,4 +325,4 @@ SDK **不做幂等去重、不感知租户**：微信会重复投递，业务须
 | 手工处理 PKCS5 填充导致中文消息尾部损坏 | 填充完全交给 JDK，禁止手工补位 / 去填充 |
 | 平台证书轮换期间验签失败 | 未知序列号触发惰性刷新 + 60 秒节流；过期时间提前 5 分钟 |
 | 敏感信息泄漏到日志 | `MiniAppAccount` / `Code2Session` / `PayMerchant` / `WeixinAccount` 的 `toString` 均不含密钥类字段 |
-| 注册顺序错误导致首验被渲染成首页 | 契约 + `WeixinHandlerOrderTest` 双保险 |
+| 注册顺序错误导致首验被渲染成首页 | 冻结契约：文档约定 `WeixinHandler` 须注册在 `FrontHandler` 之前，由消费方自行保障 |

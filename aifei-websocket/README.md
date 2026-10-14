@@ -40,16 +40,16 @@
 <dependency>
     <groupId>org.slf4j</groupId>
     <artifactId>slf4j-api</artifactId>
-    <version>1.7.36</version>
+    <version>2.0.13</version>
 </dependency>
 <dependency>
     <groupId>org.slf4j</groupId>
     <artifactId>slf4j-simple</artifactId>
-    <version>1.7.36</version>
+    <version>2.0.13</version>
 </dependency>
 ```
 
-绑定版本需与 Java-WebSocket 传递的 `slf4j-api` 对齐（示例用 `1.7.36`）；也可换成 `log4j-slf4j2-impl` 等你项目已在用的绑定。
+绑定版本需与 Java-WebSocket 传递的 `slf4j-api` 对齐（示例用 `2.0.13`）；也可换成 `log4j-slf4j2-impl` 等你项目已在用的绑定。
 
 ## 接入方式一：aifei 装配（推荐）
 

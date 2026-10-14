@@ -9,11 +9,11 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | --- | --- | --- |
 | [aifei-cache](aifei-cache/README.md) | `io.github.gollyhu:aifei-cache:1.0.0` | 缓存与计数组件：Caffeine / Redis 双后端，支持多实例 |
 | [aifei-sentinel](aifei-sentinel/README.md) | `io.github.gollyhu:aifei-sentinel:1.0.0` | Sentinel 流量治理接入 SDK：流控、熔断、系统保护 |
-| [aifei-sentinel-demo](aifei-sentinel-demo) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
+| [aifei-sentinel-demo](aifei-sentinel-demo/README.md) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
 | [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
 | [aifei-sa-token](aifei-sa-token/README.md) | `io.github.gollyhu:aifei-sa-token:1.0.0` | Sa-Token 认证鉴权接入 SDK：登录态、角色权限、注解鉴权 |
 | [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，Java-WebSocket 后端可替换 |
-| [aifei-websocket-demo](aifei-websocket-demo) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
+| [aifei-websocket-demo](aifei-websocket-demo/README.md) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
 
 ### aifei-cache
 

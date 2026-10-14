@@ -68,4 +68,4 @@ WxApiConfig.set(new JdkHttpKit(), new MemoryAccessTokenCache());
 cd aifei-weixin && mvn clean test      # 不联网、不连数据库
 ```
 
-用例数量与分层见 `docs/testing.md`；架构门禁 `KernelBindingTest` 的断言见 `docs/testing.md` 4.1，应用侧注册顺序由 `WeixinHandlerOrderTest` 守护。
+用例数量与分层见 `docs/testing.md`；架构门禁 `KernelBindingTest` 的断言见 `docs/testing.md` 4.1；应用侧注册顺序由文档约定 + 消费方自行保障（`WeixinHandler` 须注册在 `FrontHandler` 之前）。
