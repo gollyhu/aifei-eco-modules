@@ -9,11 +9,11 @@ package cn.hg.aifei.websocket.aifei;
 import cn.aifei.aop.AopKit;
 import cn.aifei.plugin.Plugin;
 import cn.aifei.util.Prop;
+import cn.hg.aifei.websocket.MessageCodec;
 import cn.hg.aifei.websocket.ServerConfig;
 import cn.hg.aifei.websocket.ServerListener;
 import cn.hg.aifei.websocket.WebSocketKit;
 import cn.hg.aifei.websocket.WebSocketServer;
-import cn.hg.aifei.websocket.spi.MessageCodec;
 
 /**
  * 服务端装配入口：应用启动时按 {@code websocket.server.*} 配置构建服务端、绑定监听端口，并把它注册为
@@ -91,7 +91,8 @@ public class WebSocketServerPlugin implements Plugin {
      *
      * <p>构造函数注入了编解码器时设入配置对象，之后才创建实例，确保对象编解码在主路径可用。</p>
      *
-     * @throws IllegalArgumentException 配置缺失、非法或后端类型未注册
+     * @throws IllegalArgumentException 配置缺失或非法
+     * @throws cn.hg.aifei.websocket.WebSocketException 端口绑定失败
      */
     @Override
     public synchronized void start() {

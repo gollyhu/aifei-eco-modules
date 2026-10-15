@@ -75,10 +75,6 @@ final class WebSocketConfigLoader {
         }
         ClientConfig config = new ClientConfig();
 
-        String type = prop.get(CLIENT_PREFIX + ".type");
-        if (type != null) {
-            config.setType(type);
-        }
         Integer heartbeatSeconds = intValue(prop, CLIENT_PREFIX + ".heartbeat-seconds");
         if (heartbeatSeconds != null) {
             config.setHeartbeatSeconds(heartbeatSeconds);
@@ -134,10 +130,6 @@ final class WebSocketConfigLoader {
         }
         ServerConfig config = new ServerConfig();
 
-        String type = prop.get(SERVER_PREFIX + ".type");
-        if (type != null) {
-            config.setType(type);
-        }
         Integer heartbeatSeconds = intValue(prop, SERVER_PREFIX + ".heartbeat-seconds");
         if (heartbeatSeconds != null) {
             config.setHeartbeatSeconds(heartbeatSeconds);

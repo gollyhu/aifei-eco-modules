@@ -4,30 +4,30 @@
  * https://gitee.com/gollyhu
  */
 
-package cn.hg.aifei.websocket.javawebsocket;
+package cn.hg.aifei.websocket.internal.jdk;
 
 import cn.hg.aifei.websocket.ConnectionState;
 import cn.hg.aifei.websocket.Message;
+import cn.hg.aifei.websocket.MessageCodec;
 import cn.hg.aifei.websocket.WebSocketConnectionException;
 import cn.hg.aifei.websocket.WebSocketSession;
 import cn.hg.aifei.websocket.internal.MessageCodecs;
 import cn.hg.aifei.websocket.internal.SessionIds;
 import cn.hg.aifei.websocket.internal.WebSocketValidator;
-import cn.hg.aifei.websocket.spi.MessageCodec;
-import org.java_websocket.WebSocket;
 
 /**
- * 服务端侧会话的 Java-WebSocket 实现：包装底层 {@link WebSocket} 连接，把收发与关闭翻译为本模块契约。
+ * 服务端侧会话的内建 JDK 实现：包装一条 {@link JdkWebSocketConnection}，把收发与关闭翻译为本模块契约。
  *
- * <p>会话标识在构造时由 {@link SessionIds} 生成，连接存续期间稳定；状态经
- * {@link JavaWebSocketSupport#toConnectionState(org.java_websocket.enums.ReadyState)} 映射，保证与客户端
- * 同源。{@code send*} 仅在 {@code OPEN} 时成功，否则抛 {@link IllegalStateException}；关闭码经
- * {@link WebSocketValidator#requireCloseCode(int)} 校验。本类方法可从任意线程调用，也允许在服务端回调内
- * 调用（回声写法安全）。</p>
+ * <p>会话标识在构造时由 {@code internal.SessionIds} 生成，连接存续期间稳定；状态取自连接对象，与客户端同源。
+ * {@code send*} 仅在 {@code OPEN} 时成功，否则抛 {@link IllegalStateException}；关闭码经
+ * {@code internal.WebSocketValidator#requireCloseCode(int)} 校验；业务对象的编码统一经
+ * {@code internal.MessageCodecs}。本类方法可从任意线程调用，也允许在服务端回调内调用（回声写法安全）。
+ *
+ * <p>本类属内部实现，不是公共 API。</p>
  */
-public final class JavaWebSocketSession implements WebSocketSession {
+public final class JdkWebSocketSession implements WebSocketSession {
 
-    private final WebSocket connection;
+    private final JdkWebSocketConnection connection;
 
     /**
      * 服务端配置的编解码器；{@code null} 表示未配置对象编解码。
@@ -37,12 +37,16 @@ public final class JavaWebSocketSession implements WebSocketSession {
     private final String id = SessionIds.next();
 
     /**
-     * 包装一条底层连接为本模块会话。
+     * 包装一条连接为本模块会话。
      *
-     * @param connection 底层连接；须为非 {@code null}
+     * @param connection 连接对象；须为非 {@code null}
      * @param codec 服务端配置的编解码器；可为 {@code null}
+     * @throws IllegalArgumentException {@code connection} 为 {@code null}
      */
-    JavaWebSocketSession(WebSocket connection, MessageCodec codec) {
+    public JdkWebSocketSession(JdkWebSocketConnection connection, MessageCodec codec) {
+        if (connection == null) {
+            throw new IllegalArgumentException("connection can not be null");
+        }
         this.connection = connection;
         this.codec = codec;
     }
@@ -54,7 +58,7 @@ public final class JavaWebSocketSession implements WebSocketSession {
 
     @Override
     public ConnectionState state() {
-        return JavaWebSocketSupport.toConnectionState(connection.getReadyState());
+        return connection.state();
     }
 
     @Override
@@ -64,7 +68,7 @@ public final class JavaWebSocketSession implements WebSocketSession {
 
     @Override
     public String remoteAddress() {
-        return JavaWebSocketSupport.formatAddress(connection.getRemoteSocketAddress());
+        return connection.remoteAddress();
     }
 
     @Override
@@ -74,7 +78,7 @@ public final class JavaWebSocketSession implements WebSocketSession {
         }
         requireOpen("send(String)");
         try {
-            connection.send(text);
+            connection.sendText(text);
         } catch (RuntimeException e) {
             throw connectionFailure(e);
         }
@@ -87,7 +91,7 @@ public final class JavaWebSocketSession implements WebSocketSession {
         }
         requireOpen("send(byte[])");
         try {
-            connection.send(bytes);
+            connection.sendBinary(bytes);
         } catch (RuntimeException e) {
             throw connectionFailure(e);
         }
@@ -109,25 +113,12 @@ public final class JavaWebSocketSession implements WebSocketSession {
 
     @Override
     public void close() {
-        closeWith(JavaWebSocketSupport.NORMAL_CLOSURE, null);
+        close(JdkWebSocketConnection.NORMAL_CLOSURE, null);
     }
 
     @Override
     public void close(int code, String reason) {
-        closeWith(WebSocketValidator.requireCloseCode(code), reason);
-    }
-
-    /**
-     * 关闭主流程：已关闭时为无操作（幂等），否则发关闭帧。
-     *
-     * @param code 关闭码
-     * @param reason 关闭原因；可为 {@code null}
-     */
-    private void closeWith(int code, String reason) {
-        if (state() == ConnectionState.CLOSED) {
-            return;
-        }
-        connection.close(code, reason == null ? "" : reason);
+        connection.close(WebSocketValidator.requireCloseCode(code), reason);
     }
 
     /**

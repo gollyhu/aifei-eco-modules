@@ -62,7 +62,7 @@ public class ConnectionStateTest {
             assertSame(ConnectionState.CLOSED, client.state());
             assertFalse(client.isOpen());
             assertNull(client.remoteAddress());
-            assertEquals("javawebsocket", client.backendType());
+            assertEquals("jdk", client.backendType());
         } finally {
             client.close();
         }

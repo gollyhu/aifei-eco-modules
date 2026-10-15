@@ -4,10 +4,7 @@
  * https://gitee.com/gollyhu
  */
 
-package cn.hg.aifei.websocket.spi;
-
-import cn.hg.aifei.websocket.Message;
-import cn.hg.aifei.websocket.WebSocketCodecException;
+package cn.hg.aifei.websocket;
 
 /**
  * 编解码扩展点：业务对象与 {@link Message} 之间的相互转换，由消费方实现并通过

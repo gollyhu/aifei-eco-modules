@@ -9,7 +9,7 @@ package cn.hg.aifei.websocket;
 /**
  * 服务端回调：服务器级事件与随会话传入的会话级事件。
  *
- * <p>会话级回调一律随 {@link WebSocketSession} 参数传入，不另立会话监听接口。回调在底层库的工作线程
+ * <p>会话级回调一律随 {@link WebSocketSession} 参数传入，不另立会话监听接口。回调在传输层的工作线程
  * 上执行：回调内可以安全地执行 {@code session.send(...)}（回声是推荐写法），但不得做耗时阻塞操作，
  * 也不得在回调内调用 {@link WebSocketServer#stop()}。回调抛出的异常会被回调保护捕获并转投
  * {@link #onError(WebSocketSession, Throwable)}，不会中断传输线程。</p>

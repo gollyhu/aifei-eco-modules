@@ -9,10 +9,10 @@
 应用 ──┬─ WebSocketClient  → 出站连接第三方 WS 服务（心跳保活 / 自动重连）
        └─ WebSocketServer  → 接收 WS 连接（会话管理 / 广播）
                 │
-                └─ 传输后端 javawebsocket（可替换，改 websocket.{client|server}.type）
+                └─ 传输层 internal.jdk（内建唯一实现，自实现 RFC6455）
 ```
 
-**WebSocket 不在 Aifei 框架白名单内**（框架自身零第三方依赖、服务端为 Undertow）。因此本模块是**自研能力模块**：基于 **Java-WebSocket** 后端实现，第三方类型一律 `optional` 且**不暴露在公共 API**上——公共面**零第三方类型、零框架类型**。换后端（未来的 Netty / Undertow / 自研）只需改配置 `websocket.{client|server}.type`，不改业务代码。
+**WebSocket 不在 Aifei 框架白名单内**（框架自身零第三方依赖、服务端为 Undertow）。因此本模块是**自研能力模块**：基于 `java.net.Socket` / `javax.net.ssl.SSLSocket` **自实现 RFC6455**，**运行时零第三方依赖**——公共面**零第三方类型、零框架类型**。传输层为**内建唯一实现**，没有可替换后端扩展点（`type` 配置与 SPI 已移除）。
 
 ## 坐标与安装
 
@@ -24,32 +24,11 @@
 </dependency>
 ```
 
-## 消费方必须自带的依赖
+## 依赖说明
 
-模块内 `aifei-all` 为 `provided`、`Java-WebSocket` 为 `optional`，**都不向下游传递**；又因 Java-WebSocket 经 **SLF4J 门面**记日志、不自带绑定，消费方还需自带 `slf4j-api` 与一个日志绑定。缺一套就是两种典型故障：缺传输后端 → 类加载失败，缺日志绑定 → SLF4J 打印一次警告后静默。
+模块**运行时零第三方依赖**：传输层为内建实现，不依赖任何第三方 WebSocket 库，也不使用任何日志门面。模块内 `aifei-all` 为 `provided`，**不向下游传递**，消费方自带 aifei 框架即可，**无需**再补任何传输依赖或日志绑定。
 
-```xml
-<!-- 传输后端本体：模块内 optional，不传递，消费方必须自带 -->
-<dependency>
-    <groupId>org.java-websocket</groupId>
-    <artifactId>Java-WebSocket</artifactId>
-    <version>1.6.0</version>
-</dependency>
-
-<!-- Java-WebSocket 经 SLF4J 门面记日志，需自带 api + 一个绑定 -->
-<dependency>
-    <groupId>org.slf4j</groupId>
-    <artifactId>slf4j-api</artifactId>
-    <version>2.0.13</version>
-</dependency>
-<dependency>
-    <groupId>org.slf4j</groupId>
-    <artifactId>slf4j-simple</artifactId>
-    <version>2.0.13</version>
-</dependency>
-```
-
-绑定版本需与 Java-WebSocket 传递的 `slf4j-api` 对齐（示例用 `2.0.13`）；也可换成 `log4j-slf4j2-impl` 等你项目已在用的绑定。
+> 旧版本依赖 `org.java-websocket:Java-WebSocket`（`optional`），并要求消费方自带 `slf4j-api` + 一个日志绑定；该实现与 `websocket.{client|server}.type` 配置均已移除。
 
 ## 接入方式一：aifei 装配（推荐）
 
@@ -251,7 +230,6 @@ server.stop();
 
 | 键 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `websocket.client.type` | String | 否 | `javawebsocket` | 传输后端名；未注册即启动失败 |
 | `websocket.client.uri` | String | **必填** | — | 目标地址，须以 `ws://` 或 `wss://` 开头；**缺失即应用启动失败** |
 | `websocket.client.heartbeat-seconds` | int | 否 | `0`（禁用） | 心跳间隔（秒），范围 `[0, 2147483]` |
 | `websocket.client.connect-timeout-millis` | int | 否 | `5000` | 连接超时（毫秒），≥ `1` |
@@ -266,7 +244,6 @@ server.stop();
 
 | 键 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `websocket.server.type` | String | 否 | `javawebsocket` | 传输后端名；未注册即启动失败 |
 | `websocket.server.host` | String | 否 | `0.0.0.0` | 监听地址；不得为空白 |
 | `websocket.server.port` | int | **必填** | — | 监听端口，范围 `[0, 65535]`，`0` = 随机端口；**缺失即应用启动失败**（`0` 也必须显式写出） |
 | `websocket.server.heartbeat-seconds` | int | 否 | `0`（禁用） | 心跳间隔（秒），范围 `[0, 2147483]` |
@@ -362,12 +339,12 @@ public class BufferingClientListener implements ClientListener {
 
 ## 编解码（JSON）
 
-本模块**不内置任何 JSON 实现**，也不暴露任何 JSON 库类型。需要 `send(Object)` / `broadcast(Object)` 时，消费方自行实现 `spi.MessageCodec` 并注入。实现**必须线程安全**（同一编解码器会被多个连接与多个线程并发调用）：
+本模块**不内置任何 JSON 实现**，也不暴露任何 JSON 库类型。需要 `send(Object)` / `broadcast(Object)` 时，消费方自行实现根包 `MessageCodec`（`cn.hg.aifei.websocket.MessageCodec`）并注入。实现**必须线程安全**（同一编解码器会被多个连接与多个线程并发调用）：
 
 ```java
 import cn.hg.aifei.websocket.Message;
 import cn.hg.aifei.websocket.WebSocketCodecException;
-import cn.hg.aifei.websocket.spi.MessageCodec;
+import cn.hg.aifei.websocket.MessageCodec;
 
 public class JsonCodec implements MessageCodec {
 
@@ -451,14 +428,14 @@ client.send(order);                             // 经 JsonCodec 编码后发送
 
 | 问题 | 解答 |
 | --- | --- |
-| 启动报类加载失败 / 连不上第三方服务？ | 消费方必须**自带** `org.java-websocket:Java-WebSocket`（模块内 `optional` 不传递） |
-| 日志没有任何输出？ | Java-WebSocket 经 SLF4J 门面记日志，需自带 `slf4j-api` + 一个绑定 |
 | 想用随机端口？ | `websocket.server.port = 0`，实际端口用 `server.port()` 读取；但 `port` 键**必填**，`0` 也得显式写出 |
 | `close()` 之后还能再连吗？ | 能。显式 `connect()` 允许，重试计数复位；「用户主动关闭不重连」只对**自动**重连生效 |
 | `send` 传 `null` 会怎样？ | 抛 `IllegalArgumentException`；`send` 时连接非 `OPEN` 抛 `IllegalStateException` 且消息被丢弃 |
 | 为什么在 `onMessage` 里收不到 ping / pong？ | 它们是 RFC6455 控制帧，由传输层内部处理，**不上浮**为 `Message` |
 | 服务端为什么要回收空闲会话？ | 客户端可能异常掉线留下死连接；按 `session-idle-timeout-seconds` 回收（`pong` 计入活跃，不会误杀存活会话） |
-| 换传输后端要改代码吗？ | 不用。改 `websocket.{client|server}.type` 并自带该后端的依赖即可 |
+| 可以换传输后端吗？ | 不可以。传输层为内建唯一实现（`internal.jdk`），SPI 扩展点与 `websocket.{client\|server}.type` 配置均已移除 |
+| 服务端支持 `wss` 吗？ | 不支持。服务端仅支持 `ws`；客户端 `ws` / `wss` 均支持，`wss` 会校验主机名 |
+| 单条消息有大小上限吗？ | 有。分片聚合上限 16 MiB，超限以关闭码 `1009` 关闭；不实现 `permessage-deflate`，也不协商子协议 |
 | 对象编解码在 aifei 装配下能用吗？ | 能。用 3 参构造器把 `MessageCodec` 与监听器一并传入 `Plugin`（如 `new WebSocketClientPlugin(prop, listener, codec)`）；不需要对象编解码时用 2 参构造器（等价 `codec = null`） |
 
 ## 构建与验证

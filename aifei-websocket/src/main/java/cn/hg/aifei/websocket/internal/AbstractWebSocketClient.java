@@ -40,7 +40,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
     private static final int NORMAL_CLOSURE = 1000;
 
     /**
-     * 无关闭帧（连接未建立或异常中断）时使用的状态码，与底层库一致。
+     * 无关闭帧（连接未建立或异常中断）时使用的状态码，与传输层约定一致。
      */
     private static final int NO_STATUS_CODE = -1;
 
@@ -199,7 +199,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
 
     @Override
     public final String backendType() {
-        return config.type();
+        return WebSocketBackend.TYPE;
     }
 
     // ─────────── 传输回调回灌点：由实现层在底层回调内调用 ───────────

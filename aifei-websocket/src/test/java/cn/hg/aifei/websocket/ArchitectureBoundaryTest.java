@@ -6,7 +6,9 @@
 
 package cn.hg.aifei.websocket;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -20,13 +22,14 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * 架构门禁（设计 §6.8）：以源码文本扫描断言包边界，不得为兼容错误用法而放宽。
+ * 架构门禁（设计 §6.8）：以源码文本扫描断言包边界与公共面大小，不得为兼容错误用法而放宽。
  *
  * <pre>
- * ① {@code org.java_websocket} 只允许出现在 cn.hg.aifei.websocket.javawebsocket 包
+ * ① 全模块禁止 org.java_websocket（旧版 Java-WebSocket 后端已删除，无任何包可豁免）
  * ② import cn.aifei.*（除 cn.hg.aifei.websocket.*）只允许出现在 cn.hg.aifei.websocket.aifei 包
- * ③ 全模块禁止 io.undertow. 与 import java.sql.
- * ④ 接入包非空且两个 Plugin 文件存在
+ * ③ 全模块禁止 import java.sql.（不再检查 io.undertow.）
+ * ④ 接入包非空且两个 Plugin 文件（WebSocketClientPlugin.java / WebSocketServerPlugin.java）存在
+ * ⑤ 根包公共类型精确 15 个，且不存在 spi 包
  * </pre>
  *
  * <p>扫描对象为 {@code src/main/java} 下全部 {@code .java}，因此本测试必须在模块根目录（{@code aifei-websocket}）内执行。</p>
@@ -39,29 +42,34 @@ public class ArchitectureBoundaryTest {
     private static final Path SOURCE_ROOT = Paths.get("src/main/java");
 
     /**
-     * 第三方类型唯一允许出现的实现包（以 {@code /} 结尾，避免误命中同前缀包）。
-     */
-    private static final String IMPL_PACKAGE = "cn/hg/aifei/websocket/javawebsocket/";
-
-    /**
      * 框架类型唯一允许出现的接入包。
      */
     private static final String BRIDGE_PACKAGE = "cn/hg/aifei/websocket/aifei/";
 
     /**
-     * 门禁①：第三方传输库类型只允许出现在实现包，公共面与内部共享层不得引用。
+     * 根包目录（相对 {@code src/main/java}）。
+     */
+    private static final String ROOT_PACKAGE = "cn/hg/aifei/websocket/";
+
+    /**
+     * 根包公共类型的期望个数（设计 §3.1）。
+     */
+    private static final int EXPECTED_PUBLIC_TYPES = 15;
+
+    /**
+     * 门禁①：全模块不得出现旧版第三方传输库类型。
      *
      * @throws IOException 读取源码失败
      */
     @Test
-    public void thirdPartyOnlyInImplPackage() throws IOException {
+    public void noJavaWebsocketReference() throws IOException {
         List<String> offenders = new ArrayList<>();
         for (Path file : javaFiles()) {
-            if (read(file).contains("org.java_websocket") && !normalize(file).contains(IMPL_PACKAGE)) {
+            if (read(file).contains("org.java_websocket")) {
                 offenders.add(normalize(file));
             }
         }
-        assertTrue("org.java_websocket.* 只允许出现在 " + IMPL_PACKAGE + "，违规文件：" + offenders, offenders.isEmpty());
+        assertTrue("全模块不得出现 org.java_websocket，违规文件：" + offenders, offenders.isEmpty());
     }
 
     /**
@@ -82,20 +90,19 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
-     * 门禁③：全模块不得引用 Undertow 与 JDBC（本模块不承担 Web 容器与数据库职责）。
+     * 门禁③：全模块不得引用 JDBC（本模块不承担数据库职责）。
      *
      * @throws IOException 读取源码失败
      */
     @Test
-    public void noUndertowOrSqlReference() throws IOException {
+    public void noSqlReference() throws IOException {
         List<String> offenders = new ArrayList<>();
         for (Path file : javaFiles()) {
-            String content = read(file);
-            if (content.contains("io.undertow.") || content.contains("import java.sql.")) {
+            if (read(file).contains("import java.sql.")) {
                 offenders.add(normalize(file));
             }
         }
-        assertTrue("不得出现 io.undertow. 或 import java.sql.，违规文件：" + offenders, offenders.isEmpty());
+        assertTrue("不得出现 import java.sql.，违规文件：" + offenders, offenders.isEmpty());
     }
 
     /**
@@ -118,6 +125,30 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
+     * 门禁⑤：根包公共类型精确 15 个，且不存在 {@code spi} 包（设计 §3.1 / §3.5）。
+     *
+     * @throws IOException 遍历目录失败
+     */
+    @Test
+    public void publicSurfaceExact() throws IOException {
+        List<String> rootTypes = new ArrayList<>();
+        List<String> spiFiles = new ArrayList<>();
+        for (Path file : javaFiles()) {
+            String path = normalize(file);
+            if (path.contains("/spi/")) {
+                spiFiles.add(path);
+            }
+            if (isDirectRootFile(path)) {
+                rootTypes.add(path.substring(path.lastIndexOf('/') + 1));
+            }
+        }
+        assertTrue("不再有 spi 包，违规文件：" + spiFiles, spiFiles.isEmpty());
+        assertEquals("根包公共类型应精确为 " + EXPECTED_PUBLIC_TYPES + " 个，实际为 " + rootTypes,
+                EXPECTED_PUBLIC_TYPES, rootTypes.size());
+        assertTrue("根包应含 MessageCodec.java", rootTypes.contains("MessageCodec.java"));
+    }
+
+    /**
      * 收集主源码下全部 Java 文件，作为门禁扫描对象。
      *
      * @return Java 源码文件列表
@@ -133,6 +164,21 @@ public class ArchitectureBoundaryTest {
         }
         assertFalse("未扫描到任何 Java 源码", files.isEmpty());
         return files;
+    }
+
+    /**
+     * 判断是否为根包的直接子文件：位于根包目录下，且不属于 {@code internal} / {@code jdk} / {@code aifei} 子包。
+     *
+     * @param path 归一化后的源码路径
+     * @return 为根包直接子文件时 {@code true}
+     */
+    private static boolean isDirectRootFile(String path) {
+        int rootIndex = path.lastIndexOf(ROOT_PACKAGE);
+        if (rootIndex < 0) {
+            return false;
+        }
+        String relative = path.substring(rootIndex + ROOT_PACKAGE.length());
+        return !relative.contains("/");
     }
 
     /**
@@ -185,6 +231,8 @@ public class ArchitectureBoundaryTest {
      * @throws IOException 读取失败
      */
     private static String read(Path path) throws IOException {
-        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+        String content = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+        assertNotNull(content);
+        return content;
     }
 }

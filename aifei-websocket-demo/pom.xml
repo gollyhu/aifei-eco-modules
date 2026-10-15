@@ -17,7 +17,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aifei.version>1.1.1</aifei.version>
-        <javawebsocket.version>1.6.0</javawebsocket.version>
         <undertow.version>2.2.39.Final</undertow.version>
         <log4j.version>2.26.0</log4j.version>
     </properties>
@@ -33,13 +32,6 @@
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-websocket</artifactId>
             <version>1.0.0</version>
-        </dependency>
-
-        <!-- 模块内为 optional、不传递，消费方必须自带传输后端 -->
-        <dependency>
-            <groupId>org.java-websocket</groupId>
-            <artifactId>Java-WebSocket</artifactId>
-            <version>${javawebsocket.version}</version>
         </dependency>
 
         <dependency>

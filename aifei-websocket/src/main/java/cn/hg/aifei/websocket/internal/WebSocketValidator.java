@@ -6,6 +6,9 @@
 
 package cn.hg.aifei.websocket.internal;
 
+import java.util.Collections;
+
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -35,20 +38,6 @@ public final class WebSocketValidator {
      * 禁止创建工具类实例。
      */
     private WebSocketValidator() {
-    }
-
-    /**
-     * 校验传输后端名非空白。
-     *
-     * @param type 传输后端名
-     * @return 校验后的传输后端名
-     * @throws IllegalArgumentException {@code type} 为 {@code null} 或空白
-     */
-    public static String requireType(String type) {
-        if (isBlank(type)) {
-            throw new IllegalArgumentException("type can not be blank");
-        }
-        return type;
     }
 
     /**
@@ -177,7 +166,23 @@ public final class WebSocketValidator {
         if (headers == null) {
             throw new IllegalArgumentException("headers can not be null");
         }
-        return headers;
+        Map<String, String> copy = new LinkedHashMap<String, String>(headers.size());
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            String name = entry.getKey();
+            String value = entry.getValue();
+            if (name == null || value == null) {
+                throw new IllegalArgumentException("header name and value can not be null");
+            }
+            if (name.indexOf(':') >= 0) {
+                throw new IllegalArgumentException("header name must not contain ':' but was " + name);
+            }
+            if (name.indexOf('\r') >= 0 || name.indexOf('\n') >= 0
+                    || value.indexOf('\r') >= 0 || value.indexOf('\n') >= 0) {
+                throw new IllegalArgumentException("header name and value must not contain CR or LF");
+            }
+            copy.put(name, value);
+        }
+        return copy;
     }
 
     /**

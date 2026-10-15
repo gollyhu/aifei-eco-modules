@@ -2,7 +2,6 @@
 # HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18090 传入，本文件只放 websocket.* 配置。
 
 # ----- 服务端：进程内本地回环服务端 -----
-websocket.server.type = javawebsocket
 websocket.server.host = 0.0.0.0
 # 必填键：缺失即应用启动失败；0 表示随机端口，也须显式写出
 websocket.server.port = 18091
@@ -12,7 +11,6 @@ websocket.server.heartbeat-seconds = 10
 websocket.server.session-idle-timeout-seconds = 0
 
 # ----- 客户端：出站连接上面的本地回环服务端 -----
-websocket.client.type = javawebsocket
 # 必填键：缺失即应用启动失败，须以 ws:// 或 wss:// 开头
 websocket.client.uri = ws://127.0.0.1:18091/ws
 websocket.client.heartbeat-seconds = 10

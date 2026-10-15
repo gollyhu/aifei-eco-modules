@@ -4,7 +4,7 @@
  * https://gitee.com/gollyhu
  */
 
-package cn.hg.aifei.websocket.javawebsocket;
+package cn.hg.aifei.websocket.internal.jdk;
 
 import cn.hg.aifei.websocket.ClientConfig;
 import cn.hg.aifei.websocket.ClientContractTest;
@@ -16,12 +16,12 @@ import cn.hg.aifei.websocket.WebSocketKit;
 import cn.hg.aifei.websocket.WebSocketServer;
 
 /**
- * Java-WebSocket 后端的客户端契约测试：继承 {@link ClientContractTest} 并提供本后端的实例工厂。
+ * 内建 JDK 传输的客户端契约测试：继承 {@link ClientContractTest} 并提供本实现的实例工厂。
  *
- * <p>经 {@link WebSocketKit} 构建，与生产装配走同一条 provider 路径；断言全部来自契约基类，本类只需保证
- * 实例由 javawebsocket 后端产出。</p>
+ * <p>经 {@link WebSocketKit} 构建（与生产装配走同一条路径，都是直接 {@code new} JDK 实现）；断言全部来自契约
+ * 基类，本类只需保证实例由内建实现产出。</p>
  */
-public class JavaWebSocketClientTest extends ClientContractTest {
+public class JdkWebSocketClientTest extends ClientContractTest {
 
     @Override
     protected WebSocketClient newClient(ClientConfig config, ClientListener listener) {
@@ -35,6 +35,6 @@ public class JavaWebSocketClientTest extends ClientContractTest {
 
     @Override
     protected String backendType() {
-        return "javawebsocket";
+        return "jdk";
     }
 }

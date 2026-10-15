@@ -77,7 +77,5 @@ stop-demo.bat     :: 按端口 18090 找到监听进程并结束
 
 ## 依赖说明
 
-本工程自带 `org.java-websocket:Java-WebSocket:1.6.0`（`aifei-websocket` 内该依赖为 `optional`，不向下游传递）。
-本 demo **未引入 SLF4J 绑定**，因此 Java-WebSocket 的日志走 SLF4J 的 no-op 实现并在启动时打印一次
-`SLF4J(W): No SLF4J providers were found.` 警告——这是 `docs/design.md` §7.2 规定的依赖清单所致，不影响功能；
-需要 Java-WebSocket 的日志时按 `aifei-websocket/README.md` 自带 `slf4j-api` + 一个绑定即可。
+`aifei-websocket` 传输层为纯 JDK 内建实现（`java.net.Socket` / `javax.net.ssl.SSLSocket` 自实现 RFC6455），
+**运行时零第三方依赖**。本 demo 因此**无需额外引入任何传输库或日志绑定**。

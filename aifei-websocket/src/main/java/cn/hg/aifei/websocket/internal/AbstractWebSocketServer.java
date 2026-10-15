@@ -197,7 +197,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
 
     @Override
     public final String backendType() {
-        return config.type();
+        return WebSocketBackend.TYPE;
     }
 
     // ─────────── 会话事件回灌点：由实现层在底层回调内调用 ───────────
@@ -274,7 +274,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
      * 回灌「运行态故障」事件：包装后转投 {@code onError}。
      *
      * @param session 相关会话；服务器级故障时为 {@code null}
-     * @param error 故障；已是 {@link WebSocketException} 时原样上浮，否则包装
+     * @param error 故障；已是 {@link WebSocketConnectionException} 时原样上浮，否则包装
      * @throws IllegalArgumentException {@code error} 为 {@code null}
      */
     protected final void handleError(WebSocketSession session, Throwable error) {

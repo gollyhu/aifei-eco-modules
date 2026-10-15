@@ -14,7 +14,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.websocket.spi.MessageCodec;
 import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -58,7 +57,7 @@ public abstract class ServerContractTest {
     /**
      * 返回被测后端的类型标识。
      *
-     * @return 后端类型，如 {@code "javawebsocket"}
+     * @return 后端类型，如 {@code "jdk"}
      */
     protected abstract String backendType();
 

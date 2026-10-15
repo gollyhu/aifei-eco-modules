@@ -7,8 +7,8 @@
 package cn.hg.aifei.websocket.internal;
 
 import cn.hg.aifei.websocket.Message;
+import cn.hg.aifei.websocket.MessageCodec;
 import cn.hg.aifei.websocket.WebSocketCodecException;
-import cn.hg.aifei.websocket.spi.MessageCodec;
 
 /**
  * 对象编解码的唯一定义点：客户端 {@code send(Object)} 与服务端 {@code broadcast(Object)} 都经此把业务对象

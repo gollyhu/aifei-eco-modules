@@ -7,10 +7,12 @@
 package cn.hg.aifei.websocket;
 
 import cn.hg.aifei.websocket.internal.WebSocketValidator;
-import cn.hg.aifei.websocket.spi.MessageCodec;
 
 /**
- * 客户端与服务端的公共配置：传输后端类型、消息编解码器与心跳间隔。
+ * 客户端与服务端的公共配置：消息编解码器与心跳间隔。
+ *
+ * <p>传输实现唯一且内建于 {@code internal.jdk}，因此本类<b>没有后端类型字段</b>：{@code WebSocketClient#backendType()}
+ * 与 {@code WebSocketServer#backendType()} 固定返回内建实现的自述值，不读配置。</p>
  *
  * <p>配置对象是可变 POJO，但实现只在构建实例时读取一次；构建完成后再修改配置对象不影响已构建的实例。
  * 字段级校验在 setter 内完成，规则的定义点为 {@code internal.WebSocketValidator}；跨字段校验在构建时完成。</p>
@@ -21,11 +23,6 @@ import cn.hg.aifei.websocket.spi.MessageCodec;
 public abstract class WebSocketConfig {
 
     /**
-     * 传输后端名，默认 {@code javawebsocket}。
-     */
-    private String type = "javawebsocket";
-
-    /**
      * 消息编解码器；{@code null} 表示不使用对象编解码。
      */
     private MessageCodec codec;
@@ -34,15 +31,6 @@ public abstract class WebSocketConfig {
      * 心跳间隔（秒）；{@code 0} 表示禁用。
      */
     private int heartbeatSeconds = 0;
-
-    /**
-     * 返回传输后端名。
-     *
-     * @return 传输后端名；默认 {@code "javawebsocket"}
-     */
-    public String type() {
-        return type;
-    }
 
     /**
      * 返回消息编解码器。
@@ -60,18 +48,6 @@ public abstract class WebSocketConfig {
      */
     public int heartbeatSeconds() {
         return heartbeatSeconds;
-    }
-
-    /**
-     * 设置传输后端名。
-     *
-     * @param type 传输后端名
-     * @return 本配置对象
-     * @throws IllegalArgumentException {@code type} 为空白
-     */
-    public WebSocketConfig setType(String type) {
-        this.type = WebSocketValidator.requireType(type);
-        return this;
     }
 
     /**

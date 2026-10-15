@@ -14,7 +14,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.websocket.spi.MessageCodec;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -67,7 +66,7 @@ public abstract class ClientContractTest {
     /**
      * 返回被测后端的类型标识，用于断言 {@code backendType()}。
      *
-     * @return 后端类型，如 {@code "javawebsocket"}
+     * @return 后端类型，如 {@code "jdk"}
      */
     protected abstract String backendType();
 

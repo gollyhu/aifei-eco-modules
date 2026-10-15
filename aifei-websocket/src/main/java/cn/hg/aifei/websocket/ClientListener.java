@@ -9,7 +9,7 @@ package cn.hg.aifei.websocket;
 /**
  * 客户端回调：连接结果、收到的消息、断线以及自动重连事件。
  *
- * <p>回调在底层库的读 / 连接线程上执行：回调内可以安全地再调 {@code send} / {@code close}，
+ * <p>回调在传输层的读 / 连接线程上执行：回调内可以安全地再调 {@code send} / {@code close}，
  * 但不得做耗时阻塞操作，也不得在回调内调 {@link WebSocketClient#connect()}。回调抛出的异常会被
  * 回调保护捕获并转投 {@link #onError(Throwable)}，不会中断传输线程。</p>
  */

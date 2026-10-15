@@ -11,9 +11,9 @@ import cn.aifei.plugin.Plugin;
 import cn.aifei.util.Prop;
 import cn.hg.aifei.websocket.ClientConfig;
 import cn.hg.aifei.websocket.ClientListener;
+import cn.hg.aifei.websocket.MessageCodec;
 import cn.hg.aifei.websocket.WebSocketClient;
 import cn.hg.aifei.websocket.WebSocketKit;
-import cn.hg.aifei.websocket.spi.MessageCodec;
 
 /**
  * 客户端装配入口：应用启动时按 {@code websocket.client.*} 配置构建客户端、发起建连，并把它注册为
@@ -90,7 +90,7 @@ public class WebSocketClientPlugin implements Plugin {
      *
      * <p>构造函数注入了编解码器时设入配置对象，之后才创建实例，确保对象编解码在主路径可用。</p>
      *
-     * @throws IllegalArgumentException 配置缺失、非法或后端类型未注册
+     * @throws IllegalArgumentException 配置缺失、非法或跨字段校验不通过
      */
     @Override
     public synchronized void start() {

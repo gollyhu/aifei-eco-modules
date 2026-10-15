@@ -7,6 +7,7 @@
 package cn.hg.aifei.websocket;
 
 import cn.hg.aifei.websocket.internal.WebSocketValidator;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -210,7 +211,7 @@ public final class ClientConfig extends WebSocketConfig {
      * @return 请求头；不为 {@code null}
      */
     public Map<String, String> headers() {
-        return headers;
+        return Collections.unmodifiableMap(headers);
     }
 
     /**

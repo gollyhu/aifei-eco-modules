@@ -10,7 +10,7 @@ package cn.hg.aifei.websocket;
  * 客户端能力接口：主动向第三方 WebSocket 服务发起并维持一条出站连接，可选心跳保活与自动重连。
  *
  * <p>业务代码只依赖本接口，通过 {@code @Inject} 注入装配好的实例，或用 {@link WebSocketKit} 自行创建；
- * 换传输后端只改配置 {@code websocket.client.type}，不改调用代码。</p>
+ * 传输层为内建实现，无可替换后端扩展点。</p>
  *
  * <p>本接口所有方法均可从任意线程调用。连接结果与断线、重连事件经 {@link ClientListener} 回调；
  * 本接口不提供阻塞等待方法，需要同步等待时由调用方借助 {@link ClientListener} 与同步器自行实现。</p>
@@ -96,9 +96,9 @@ public interface WebSocketClient {
     String remoteAddress();
 
     /**
-     * 返回后端类型自述（配置 {@code type}）。
+     * 返回内建传输实现的后端类型自述（固定值，不读配置）。
      *
-     * @return 后端类型，如 {@code "javawebsocket"}
+     * @return 后端类型，恒为 {@code "jdk"}
      */
     String backendType();
 }

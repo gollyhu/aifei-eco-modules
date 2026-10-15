@@ -17,7 +17,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aifei.version>1.1.1</aifei.version>
-        <javawebsocket.version>1.6.0</javawebsocket.version>
         <junit.version>4.13.2</junit.version>
     </properties>
 
@@ -30,26 +29,10 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- 默认传输后端：optional，只在本模块实现包使用；消费方按需自带 -->
-        <dependency>
-            <groupId>org.java-websocket</groupId>
-            <artifactId>Java-WebSocket</artifactId>
-            <version>${javawebsocket.version}</version>
-            <optional>true</optional>
-        </dependency>
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- 测试期日志绑定（Java-WebSocket 经 SLF4J 门面记日志，不自带实现） -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>2.0.13</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -12,10 +12,10 @@ import java.util.Collection;
  * 服务端能力接口：绑定监听端口、接收 WebSocket 连接、管理会话与广播。
  *
  * <p>业务代码只依赖本接口，通过 {@code @Inject} 注入装配好的实例，或用 {@link WebSocketKit} 自行创建；
- * 换传输后端只改配置 {@code websocket.server.type}，不改调用代码。</p>
+ * 传输层为内建实现，无可替换后端扩展点。</p>
  *
  * <p>本接口所有方法均可从任意线程调用。但<b>禁止在服务端回调内调用 {@link #stop()}</b>：底层停止会
- * 归并选择器线程，在回调线程内调用可能死锁；如需停止，请投递到外部线程执行。</p>
+ * 关闭监听与全部会话，在回调线程内调用可能死锁；如需停止，请投递到外部线程执行。</p>
  */
 public interface WebSocketServer {
 
@@ -86,9 +86,9 @@ public interface WebSocketServer {
     void broadcast(Object payload);
 
     /**
-     * 返回后端类型自述（配置 {@code type}）。
+     * 返回内建传输实现的后端类型自述（固定值，不读配置）。
      *
-     * @return 后端类型，如 {@code "javawebsocket"}
+     * @return 后端类型，恒为 {@code "jdk"}
      */
     String backendType();
 }

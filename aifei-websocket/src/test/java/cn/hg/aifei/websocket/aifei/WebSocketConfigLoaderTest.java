@@ -35,7 +35,6 @@ public class WebSocketConfigLoaderTest {
         ClientConfig config = WebSocketConfigLoader.loadClientConfig(prop("websocket.client.uri", "ws://127.0.0.1:9000/"));
 
         assertEquals("ws://127.0.0.1:9000/", config.uri());
-        assertEquals("javawebsocket", config.type());
         assertEquals(0, config.heartbeatSeconds());
         assertNull(config.codec());
         assertEquals(5000, config.connectTimeoutMillis());
@@ -54,7 +53,6 @@ public class WebSocketConfigLoaderTest {
     public void shouldOverrideClientKeys() {
         ClientConfig config = WebSocketConfigLoader.loadClientConfig(prop(
                 "websocket.client.uri", "wss://example.test:8443/ws",
-                "websocket.client.type", "javawebsocket",
                 "websocket.client.heartbeat-seconds", "30",
                 "websocket.client.connect-timeout-millis", "1500",
                 "websocket.client.auto-reconnect", "true",
@@ -107,7 +105,7 @@ public class WebSocketConfigLoaderTest {
     @Test
     public void shouldRejectMissingClientUri() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> WebSocketConfigLoader.loadClientConfig(prop("websocket.client.type", "javawebsocket")));
+                () -> WebSocketConfigLoader.loadClientConfig(prop("websocket.client.heartbeat-seconds", "30")));
         assertTrue("异常消息应含缺失的键名", exception.getMessage().contains("websocket.client.uri"));
     }
 
@@ -154,7 +152,6 @@ public class WebSocketConfigLoaderTest {
 
         assertEquals(0, config.port());
         assertEquals("0.0.0.0", config.host());
-        assertEquals("javawebsocket", config.type());
         assertEquals(0, config.heartbeatSeconds());
         assertTrue(config.reuseAddress());
         assertEquals(0, config.sessionIdleTimeoutSeconds());
@@ -168,7 +165,6 @@ public class WebSocketConfigLoaderTest {
     public void shouldOverrideServerKeys() {
         ServerConfig config = WebSocketConfigLoader.loadServerConfig(prop(
                 "websocket.server.port", "8080",
-                "websocket.server.type", "javawebsocket",
                 "websocket.server.heartbeat-seconds", "15",
                 "websocket.server.host", "127.0.0.1",
                 "websocket.server.reuse-address", "false",

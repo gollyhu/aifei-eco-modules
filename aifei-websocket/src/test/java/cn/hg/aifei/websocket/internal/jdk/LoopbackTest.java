@@ -4,7 +4,7 @@
  * https://gitee.com/gollyhu
  */
 
-package cn.hg.aifei.websocket.javawebsocket;
+package cn.hg.aifei.websocket.internal.jdk;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -34,8 +34,8 @@ import org.junit.Test;
 /**
  * 本地回环端到端：只绑定 / 连接 {@code 127.0.0.1}，不联网、不连数据库（设计 §6.1 / §6.5 / §6.3 / §6.6）。
  *
- * <p>覆盖建连、文本与二进制收发、服务端广播、断线自动重连成功、重连耗尽，以及设计 §6.2 / §6.6 要求
- * <b>实证</b>的一条：服务端开启心跳、客户端只回 pong 不发数据帧时，会话在超过空闲阈值后仍未被回收。</p>
+ * <p>覆盖建连、文本与二进制收发、服务端广播、用户主动关闭、断线自动重连成功、重连耗尽，以及设计 §6.2 / §6.6
+ * 要求<b>实证</b>的一条：服务端开启心跳、客户端只回 pong 不发数据帧时，会话在超过空闲阈值后仍未被回收。</p>
  */
 public class LoopbackTest {
 
@@ -153,6 +153,52 @@ public class LoopbackTest {
     }
 
     /**
+     * 用户主动关闭：客户端收敛到 {@code CLOSED} 且 {@code onClose} 恰好一次、{@code remote} 为 {@code false}。
+     */
+    @Test
+    public void shouldFireCloseOnceOnUserClose() throws Exception {
+        WebSocketServer server = startServer(serverConfig());
+        RecordingClient clientListener = new RecordingClient();
+        WebSocketClient client = newClient(clientConfig(uri(server.port())), clientListener);
+        try {
+            client.connect();
+            assertTrue(clientListener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+
+            client.close();
+            assertTrue(clientListener.closeLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            assertSame(ConnectionState.CLOSED, client.state());
+            assertFalse(clientListener.lastCloseRemote);
+
+            Thread.sleep(500L);
+            assertEquals("onClose 必须恰好一次", 1, clientListener.closeCount.get());
+        } finally {
+            client.close();
+            server.stop();
+        }
+    }
+
+    /**
+     * 服务端 {@code stop()} 以 {@code 1001}（GOING_AWAY）关闭在册会话，客户端 {@code onClose} 应收到该关闭码。
+     */
+    @Test
+    public void shouldReportGoingAwayWhenServerStops() throws Exception {
+        WebSocketServer server = startServer(serverConfig());
+        RecordingClient clientListener = new RecordingClient();
+        WebSocketClient client = newClient(clientConfig(uri(server.port())), clientListener);
+        try {
+            client.connect();
+            assertTrue(clientListener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+
+            server.stop();
+            assertTrue(clientListener.closeLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            assertEquals("服务端停止应下 GOING_AWAY 关闭码", 1001, clientListener.lastCloseCode);
+        } finally {
+            client.close();
+            server.stop();
+        }
+    }
+
+    /**
      * 断线后自动重连成功：对端在同端口重启后，客户端重新建连并触发 {@code onOpen}。
      */
     @Test
@@ -224,7 +270,7 @@ public class LoopbackTest {
             assertTrue(clientListener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
             awaitCondition(() -> server.sessions().size() == 1, TIMEOUT_MILLIS, "应登记一个会话");
 
-            // 客户端不发任何数据帧，仅由底层自动应答服务端 ping
+            // 客户端不发任何数据帧，仅由传输层自动应答服务端 ping
             assertStays(() -> server.sessions().size() == 1, 5000L, "只回 pong 的存活会话不应被空闲回收");
 
             assertTrue("客户端连接应保持 OPEN", client.isOpen());
@@ -384,6 +430,8 @@ public class LoopbackTest {
 
         final AtomicInteger openCount = new AtomicInteger();
 
+        final AtomicInteger closeCount = new AtomicInteger();
+
         final AtomicInteger reconnectCount = new AtomicInteger();
 
         final AtomicInteger exhaustedCount = new AtomicInteger();
@@ -391,6 +439,8 @@ public class LoopbackTest {
         volatile int lastExhaustedAttempts;
 
         volatile int lastCloseCode = Integer.MIN_VALUE;
+
+        volatile boolean lastCloseRemote;
 
         @Override
         public void onOpen() {
@@ -406,6 +456,8 @@ public class LoopbackTest {
         @Override
         public void onClose(int code, String reason, boolean remote) {
             lastCloseCode = code;
+            lastCloseRemote = remote;
+            closeCount.incrementAndGet();
             closeLatch.countDown();
         }
 
