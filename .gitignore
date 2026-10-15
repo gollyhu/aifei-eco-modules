@@ -44,6 +44,7 @@ replay_pid*
 .workbuddy/
 CODEBUDDY.md
 WORDBUDDY.md
+协作记忆/
 
 # IDE
 /.idea/.gitignore

@@ -14,6 +14,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-sa-token](aifei-sa-token/README.md) | `io.github.gollyhu:aifei-sa-token:1.0.0` | Sa-Token 认证鉴权接入 SDK：登录态、角色权限、注解鉴权 |
 | [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，Java-WebSocket 后端可替换 |
 | [aifei-websocket-demo](aifei-websocket-demo/README.md) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
+| [aifei-mq](aifei-mq/README.md) | `io.github.gollyhu:aifei-mq:1.0.0` | 异步消息能力：生产者发送 + 消费者订阅，内存后端开箱即用，真实 MQ 后端可扩展 |
 
 ### aifei-cache
 
@@ -67,6 +68,16 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 消费方需自带 `Java-WebSocket`（模块内 `optional` 不传递）与 `slf4j-api` + 一个日志绑定
 - 详细用法见 [aifei-websocket/README.md](aifei-websocket/README.md)，设计文档见 [docs/design.md](aifei-websocket/docs/design.md)
 
+### aifei-mq
+
+为 aifei 应用补齐框架未覆盖的异步消息能力（解耦、削峰）。业务代码只依赖公共接口，换 MQ 中间件只改配置、不改代码。
+
+- 公共面固定 7 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqKit` / `MqException`
+- 同步投递、单主题 FIFO、多订阅者按登记顺序回调；无订阅者视为成功，监听器运行时异常就地隔离
+- 首批后端为**内存实现**（零第三方运行依赖），真实后端（Kafka / RocketMQ 等）以 provider 扩展点追加
+- 取用二选一：`@Inject Producer` / `@Inject Consumer`，或静态门面 `MqKit`
+- 详细用法见 [aifei-mq/README.md](aifei-mq/README.md)，设计文档见 [docs/design.md](aifei-mq/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -77,6 +88,7 @@ cd aifei-sentinel  && mvn clean install
 cd aifei-weixin    && mvn clean install
 cd aifei-sa-token  && mvn clean install
 cd aifei-websocket && mvn clean install
+cd aifei-mq        && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -88,6 +100,7 @@ cd aifei-websocket && mvn clean install
 - `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
 - `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
 - `aifei-websocket`：`aifei-all` 为 `provided`，`Java-WebSocket` 为 `optional`（消费方自带，另需自带 `slf4j-api` 与日志绑定）
+- `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；无第三方运行依赖
 
 ## 许可证
 
