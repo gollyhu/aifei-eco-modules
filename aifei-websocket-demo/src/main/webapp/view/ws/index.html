@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WebSocket 测试页</title>
+    <link rel="stylesheet" href="/assets/css/ws-test.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="ws-app" v-cloak>
+    <h1 class="sr-only">WebSocket 测试页</h1>
+
+    <!-- ① 信息栏：本页侧 5 项指标 ‖ demo 侧 4 项指标 ‖ 功能说明抽屉按钮（两段并列，不合并、不联动） -->
+    <header class="topbar">
+        <section class="topbar-seg seg-page">
+            <div class="seg-title">本页连接</div>
+            <div class="metrics">
+                <span class="chip" :class="stateInfo.cls" aria-live="polite">{{ stateInfo.text }}</span>
+                <span class="metric"><span class="metric-k">发送</span><span class="metric-v">{{ sendCount }}</span></span>
+                <span class="metric"><span class="metric-k">接收</span><span class="metric-v">{{ recvCount }}</span></span>
+                <span class="metric"><span class="metric-k">重连</span><span class="metric-v">{{ reconnectCount }}</span></span>
+                <span class="metric metric-err">
+                    <span class="metric-k">最近错误</span>
+                    <span class="metric-v err-text" :title="lastError.text || '—'">{{ lastError.text || '—' }}</span>
+                    <span class="err-time">({{ lastError.time || '—' }})</span>
+                </span>
+            </div>
+        </section>
+
+        <section class="topbar-seg seg-demo"
+                 :style="{ opacity: demo.reachable ? 1 : 0.5 }"
+                 :title="demo.errorTitle">
+            <div class="seg-title">demo 状态（/ws/demo/state）</div>
+            <div class="metrics">
+                <span class="metric"><span class="metric-k">clientState</span><span class="metric-v">{{ demo.clientState }}</span></span>
+                <span class="metric"><span class="metric-k">serverStarted</span><span class="metric-v">{{ demo.serverStarted }}</span></span>
+                <span class="metric"><span class="metric-k">serverPort</span><span class="metric-v">{{ demo.serverPort }}</span></span>
+                <span class="metric"><span class="metric-k">会话数</span><span class="metric-v">{{ demo.serverSessionCount }}</span></span>
+            </div>
+        </section>
+
+        <button class="btn btn-ghost drawer-btn" type="button" ref="drawerTrigger"
+                @click="openDrawer"
+                aria-haspopup="dialog" aria-controls="ws-drawer" :aria-expanded="drawerOpen ? 'true' : 'false'">功能说明 ▸</button>
+    </header>
+
+    <div class="layout">
+        <div class="col-left">
+            <!-- ② 连接栏 -->
+            <section class="card card-conn">
+                <h2 class="card-title">连接栏</h2>
+
+                <label class="field-label" for="ws-url">WebSocket 地址</label>
+                <input id="ws-url" class="text-input" type="text" v-model="url"
+                       :disabled="urlDisabled" autocomplete="off" spellcheck="false">
+
+                <div class="conn-row">
+                    <span class="state-line" :class="stateInfo.cls" aria-live="polite">{{ stateInfo.text }}</span>
+                    <div class="btn-group">
+                        <button id="btn-connect" class="btn btn-primary" type="button"
+                                :disabled="!canConnect" @click="connect">连接</button>
+                        <button id="btn-disconnect" class="btn" type="button"
+                                :disabled="!canDisconnect" @click="disconnect">断开</button>
+                    </div>
+                </div>
+
+                <label class="checkbox-line" for="chk-auto-reconnect">
+                    <input id="chk-auto-reconnect" type="checkbox" v-model="autoReconnect">
+                    <span>异常断开后自动重连 <span class="muted">（主动断开永不重连）</span></span>
+                </label>
+
+                <p class="hint">提示：仅支持 ws://，不支持 wss://</p>
+            </section>
+
+            <!-- ③ 发送消息栏 -->
+            <section class="card card-send">
+                <div class="send-head">
+                    <h2 class="card-title">发送消息</h2>
+                    <div class="mode-group" role="group" aria-label="发送模式">
+                        <button class="mode-btn" type="button" :class="{ 'is-active': mode === 'text' }"
+                                @click="setMode('text')">文本</button>
+                        <button class="mode-btn" type="button" :class="{ 'is-active': mode === 'json' }"
+                                @click="setMode('json')">JSON</button>
+                        <button class="mode-btn" type="button" :class="{ 'is-active': mode === 'hex' }"
+                                @click="setMode('hex')">HEX</button>
+                        <button class="mode-btn" type="button" :class="{ 'is-active': mode === 'base64' }"
+                                @click="setMode('base64')">Base64</button>
+                    </div>
+                    <span class="hint send-tip">Ctrl / ⌘ + Enter 发送 · ↑↓ 调出历史</span>
+                </div>
+
+                <textarea id="msg-input" class="text-area" rows="3" v-model="draft"
+                          aria-label="消息内容"
+                          placeholder="输入要发送的内容，Ctrl / ⌘ + Enter 发送，↑↓ 调出历史"
+                          @keydown="onSendKeydown"></textarea>
+
+                <div class="send-actions">
+                    <button id="btn-send" class="btn btn-primary" type="button"
+                            :disabled="!canSend" @click="send">发送</button>
+                    <button class="btn" type="button" @click="formatJson">格式化 JSON</button>
+                    <button class="btn" type="button" @click="clearInput">清空输入</button>
+                    <div class="hb-group">
+                        <span class="send-sep" aria-hidden="true"></span>
+                        <label class="field-label inline-label" for="hb-interval">心跳间隔(秒)</label>
+                        <input id="hb-interval" class="text-input num-input" type="number" min="1"
+                               v-model.number="heartbeatSeconds" aria-label="心跳间隔秒数">
+                        <input class="text-input ping-input" type="text" v-model="heartbeatText"
+                               aria-label="心跳内容" placeholder="ping">
+                        <button class="btn" type="button" :class="{ 'btn-danger': heartbeatRunning }"
+                                @click="toggleHeartbeat">{{ heartbeatRunning ? '停止心跳' : '开始心跳' }}</button>
+                    </div>
+                </div>
+
+                <p id="send-hint" class="hint">{{ sendHint }}</p>
+                <p class="hint">HEX 模式支持空格、逗号、分号与 0x 前缀；Base64 模式会先解码为二进制帧再发送。接收到的二进制数据统一以十六进制展示。</p>
+            </section>
+        </div>
+
+        <div class="col-right">
+            <!-- ④ 消息日志栏：占右列整列 -->
+            <section class="card card-log">
+                <div class="log-head">
+                    <h2 class="card-title">消息日志</h2>
+                    <div class="log-tools">
+                        <label class="checkbox-line" for="chk-autoscroll">
+                            <input id="chk-autoscroll" type="checkbox" v-model="autoScroll">
+                            <span>自动滚动</span>
+                        </label>
+                        <label class="checkbox-line" for="chk-beautify">
+                            <input id="chk-beautify" type="checkbox" v-model="beautifyJson">
+                            <span>JSON 美化</span>
+                        </label>
+                        <button class="btn btn-small" type="button" @click="copyLogs">{{ copyLabel }}</button>
+                        <button class="btn btn-small" type="button" @click="clearLogs"
+                                title="仅清空本页日志，不影响 demo 侧日志">清空本页日志</button>
+                        <span class="log-count">共 {{ logs.length }} 条 / 上限 200</span>
+                    </div>
+                </div>
+
+                <div class="log-body" ref="logBody" aria-live="polite">
+                    <div v-if="logs.length === 0" class="log-empty">暂无消息。连接成功后发送一条文本，服务端会原样回声回来。</div>
+                    <template v-else>
+                        <div class="log-line" v-for="(l, i) in logs" :key="i">
+                            <span class="log-time">[{{ l.time }}]</span>
+                            <span class="log-dir" :class="'dir-' + l.kind">{{ dirLabel(l.kind) }}</span>
+                            <span class="log-text">{{ displayText(l) }}</span>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="log-foot">最新在下 · 自动滚到底 · 上限 200 条</div>
+            </section>
+        </div>
+    </div>
+
+    <!-- ⑤ 功能说明抽屉：层级 主内容 < 遮罩 < 抽屉 -->
+    <div class="mask" v-if="drawerOpen" @click="closeDrawer"></div>
+    <aside id="ws-drawer" class="drawer" v-if="drawerOpen" ref="drawerRef"
+           role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1">
+        <div class="drawer-head">
+            <h2 id="drawer-title" class="drawer-title">功能说明</h2>
+            <button class="btn btn-icon" type="button" @click="closeDrawer" aria-label="关闭功能说明">×</button>
+        </div>
+
+        <div class="drawer-body">
+            <section class="doc-sec">
+                <h3>本页连接的是哪个地址</h3>
+                <p>本页在浏览器里直连 <code>ws://127.0.0.1:18091/ws</code>（demo 的 WS 服务端，端口 18091），与页面所在的 HTTP 18090 是<strong>不同端口</strong>；WebSocket 不受同源限制。仅支持 <code>ws://</code>，<strong>不支持</strong> <code>wss://</code>。</p>
+            </section>
+
+            <section class="doc-sec">
+                <h3>echo 回声机制</h3>
+                <p>demo 的 WS 服务端对<strong>每条收到的文本帧立刻原样回声</strong>回同一会话，所以本页「发什么就能收到什么」，用于自测收发闭环；收到的内容与发出的内容一致即表示链路正常。</p>
+            </section>
+
+            <section class="doc-sec">
+                <h3>主动 close 不重连</h3>
+                <p>点「断开」= 本页主动 <code>close()</code>，<strong>永不触发自动重连</strong>（日志明确记「主动关闭 —— 不会自动重连」）；只有服务端踢掉 / 网络异常等<strong>非主动断开</strong>才会进入自动重连（勾选复选框时）。</p>
+            </section>
+
+            <section class="doc-sec">
+                <h3>发送不排队</h3>
+                <p>非 <code>OPEN</code> 状态下发送会<strong>直接失败并丢弃消息</strong>，不会缓存、不会在重连后补发；因此非 OPEN 时「发送」按钮被禁用并给出提示。</p>
+            </section>
+
+            <section class="doc-sec">
+                <h3>demo 侧与本页侧状态的区别</h3>
+                <p>信息栏左段是<strong>本页浏览器连接</strong>的状态与计数；右段是<strong>demo 进程内部</strong>那对客户端/服务端的状态（每 2s 从 <code>/ws/demo/state</code> 拉取）。两者是两条独立连接，本页的连接变化不会改变 demo 侧指标，反之亦然。</p>
+            </section>
+
+            <section class="doc-sec">
+                <h3>本页日志 vs demo 事件日志</h3>
+                <p>右下日志是<strong>本页的</strong>；demo 侧事件日志最新在前、上限 200 条，需要时用下面的端点手动查看。</p>
+            </section>
+
+            <section class="doc-sec">
+                <h3>demo 端点速查（9 个）</h3>
+                <p>以下地址均指 <strong>demo 进程内部</strong>的客户端/服务端，<strong>不是本页浏览器的连接</strong>，在浏览器地址栏手动访问即可（全部 GET，HTTP 恒 200，<code>code=0</code> 为成功）：</p>
+                <table class="doc-table">
+                    <thead>
+                    <tr><th>端点</th><th>用途</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr><td><code>/ws/demo/state</code></td><td>现场快照（本页右段指标就来自它）</td></tr>
+                    <tr><td><code>/ws/demo/log</code></td><td>只取 demo 事件日志（最新在前，上限 200）</td></tr>
+                    <tr><td><code>/ws/demo/log/clear</code></td><td>清空 demo 事件日志</td></tr>
+                    <tr><td><code>/ws/demo/echo/send?text=hello</code></td><td>经 <strong>demo 客户端</strong>发送，服务端回声</td></tr>
+                    <tr><td><code>/ws/demo/broadcast?text=notice</code></td><td>服务端向全部会话广播</td></tr>
+                    <tr><td><code>/ws/demo/server/stop</code></td><td>停掉 demo WS 服务端（demo 客户端随即断线并自动重连）</td></tr>
+                    <tr><td><code>/ws/demo/server/start</code></td><td>重启 demo WS 服务端（demo 客户端自动回到 OPEN）</td></tr>
+                    <tr><td><code>/ws/demo/client/connect</code></td><td>手动建连（仅 demo 客户端 <code>CLOSED</code> 时可用）</td></tr>
+                    <tr><td><code>/ws/demo/client/disconnect</code></td><td>手动关闭 demo 客户端（之后不再自动重连）</td></tr>
+                    </tbody>
+                </table>
+                <p class="doc-note">说明：这 9 个端点的操作入口<strong>不进入页面五区</strong>（功能范围已锁定），仅在此以文字速查形式给出。</p>
+            </section>
+        </div>
+    </aside>
+</main>
+
+<script src="/assets/js/ws-test.js"></script>
+</body>
+</html>
