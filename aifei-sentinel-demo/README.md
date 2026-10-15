@@ -1,8 +1,8 @@
 # aifei-sentinel-demo
 
-`aifei-sentinel` 的**最小接入示例**（**示例工程，不发布**）：自写 HIO（undertow）+ 一个 Just Service（`service` 包），现场演示 Sentinel 的**流控 / 熔断 / 热点参数**三种治理能力。
+`aifei-sentinel` 的**最小接入示例**（**示例工程，不发布**）：官方同步 HIO（undertow）+ 一个 Just Service（`service` 包），现场演示 Sentinel 的**流控 / 熔断 / 热点参数**三种治理能力。
 
-- 与 `aifei-websocket-demo` 结构对齐：`DemoApp` → `Aifei.start(DemoAppConfig)`，自写 HIO（`arch` 包）+ 一个 Just Service（`service` 包）。
+- 与 `aifei-websocket-demo` 结构对齐：`DemoApp` → `Aifei.start(DemoAppConfig)`，官方同步 HIO（`cn.aifei.demo.common.arch` 包）+ 一个 Just Service（`service` 包）。
 - 业务代码零 Sentinel 类型：只注册 `SentinelInterceptor`、实现降级策略 `Out.fail(OutCode.RATE_LIMIT)`，规则与接入由 `aifei-sentinel` SDK 承担。
 - 端口 18080，与 `aifei-websocket-demo` 的 18090/18091 错开。
 
@@ -74,7 +74,7 @@ stop-demo.bat               :: 按端口 18080 找到监听进程并结束
 | `cn.aifei:aifei-all` | `1.1.1` | aifei 框架（demo 自带） |
 | `io.github.gollyhu:aifei-sentinel` | `1.0.0` | 本 SDK |
 | `com.alibaba.csp:sentinel-transport-simple-http` | `1.8.8` | **仅 Dashboard 模式**需要（连接官方控制台） |
-| `io.undertow:undertow-core` | `2.2.39.Final` | 自写 HIO 的 Web 容器 |
+| `io.undertow:undertow-core` | `2.2.39.Final` | HIO 的 Web 容器 |
 | `org.apache.logging.log4j:log4j-core` | `2.26.0` | 日志实现 |
 
 注：`aifei-sentinel` 内 `sentinel-transport-simple-http` 为 `provided`（仅反射探测），Dashboard 模式由本 demo 显式引入。

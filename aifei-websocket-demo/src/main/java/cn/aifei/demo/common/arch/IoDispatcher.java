@@ -1,17 +1,19 @@
 /*
- * Copyright 2014-2026 糊搞 (3722711@qq.com)
+ * Copyright 2011-2035 詹波 (aifei.cn)
  *
- * https://gitee.com/gollyhu
+ * https://aifei.cn
  */
 
-package cn.hg.aifei.sentinel.demo.arch;
+package cn.aifei.demo.common.arch;
 
 import cn.aifei.core.Handler;
 import cn.aifei.log.Log;
 import cn.aifei.server.Dispatcher;
 import io.undertow.server.HttpServerExchange;
 
-/** 承接 Server 请求，包装为 In 派发给 Handler 链 */
+/**
+ * IoDispatcher 承接 Server 请求，并将请求参数转换为 Input、Output 派发给 Aifei Handler
+ */
 public class IoDispatcher implements Dispatcher<HttpServerExchange, Void, In, Out> {
 
     static final Log log = Log.get(IoDispatcher.class);
@@ -27,9 +29,10 @@ public class IoDispatcher implements Dispatcher<HttpServerExchange, Void, In, Ou
     public void dispatch(HttpServerExchange exchange, Void v) {
         try {
             handler.handle(exchange.getRequestPath(), new In(exchange), null);
-        } catch (Throwable e) {
+        } catch(Throwable e) {
             log.error(e.getMessage(), e);
             exchange.endExchange();
         }
     }
 }
+

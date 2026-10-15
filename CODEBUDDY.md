@@ -90,7 +90,7 @@ stop-demo.bat             # 按端口 18090 找到监听进程并结束
 
 ### aifei-sentinel-demo
 
-自写 HIO（undertow）最小示例，`DemoApp` → `Aifei.start(DemoAppConfig)`，用于验证 sentinel SDK 对接。规则文件工作副本 `sentinel-rules.json`（首次启动从 `src/main/resources` 复制，本地模式改它秒级热生效）；`app-config.txt` / `app-config-dashboard.txt` 分别对应本地与 Dashboard 两种模式。
+HIO 逐字同步自官方 `jfinal/aifei-eco`（保留官方包名 `cn.aifei.demo.common.arch`）的最小示例，`DemoApp` → `Aifei.start(DemoAppConfig)`，用于验证 sentinel SDK 对接。规则文件工作副本 `sentinel-rules.json`（首次启动从 `src/main/resources` 复制，本地模式改它秒级热生效）；`app-config.txt` / `app-config-dashboard.txt` 分别对应本地与 Dashboard 两种模式。
 
 ### aifei-websocket
 
@@ -105,7 +105,7 @@ stop-demo.bat             # 按端口 18090 找到监听进程并结束
 
 ### aifei-websocket-demo
 
-自写 HIO（`common/arch` 包，应用侧代码）的本地回环演示工程（**示例工程，不发布**）：同一进程内装配一个 WebSocket 服务端与一个客户端，客户端连服务端，演示 **建连 → 收发 → 心跳 → 断线自动重连**。结构对齐 `aifei-sentinel-demo`：`DemoApp` → `Aifei.start(DemoAppConfig)` + 一个 Just Service（`service` 包），两个 WS 实例经装配入口注册、Service 内 `@Inject WebSocketClient` / `@Inject WebSocketServer` 取用。端口：HTTP **18090**（`start-demo.bat` 的 `-Dundertow.port=18090`）/ WebSocket 服务端 **18091**（`app-config.txt` 的 `websocket.server.port`），客户端连 `ws://127.0.0.1:18091/ws`。演示端点（均为 GET，HTTP 恒 200、语义由 `code` 承载）：`/ws/demo/state`、`/ws/demo/log`、`/ws/demo/log/clear`、`/ws/demo/echo/send?text=`（客户端发、服务端回声）、`/ws/demo/broadcast?text=`（服务端广播）、`/ws/demo/server/stop`（触发客户端自动重连）、`/ws/demo/server/start`（重连回 `OPEN`）、`/ws/demo/client/connect`、`/ws/demo/client/disconnect`。运行用 `start-demo.bat` / `stop-demo.bat`。
+HIO 逐字同步自官方 `jfinal/aifei-eco`（保留官方包名 `cn.aifei.demo.common.arch`）的本地回环演示工程（**示例工程，不发布**）：同一进程内装配一个 WebSocket 服务端与一个客户端，客户端连服务端，演示 **建连 → 收发 → 心跳 → 断线自动重连**。结构对齐 `aifei-sentinel-demo`：`DemoApp` → `Aifei.start(DemoAppConfig)` + 一个 Just Service（`service` 包），两个 WS 实例经装配入口注册、Service 内 `@Inject WebSocketClient` / `@Inject WebSocketServer` 取用。端口：HTTP **18090**（`start-demo.bat` 的 `-Dundertow.port=18090`）/ WebSocket 服务端 **18091**（`app-config.txt` 的 `websocket.server.port`），客户端连 `ws://127.0.0.1:18091/ws`。演示端点（均为 GET，HTTP 恒 200、语义由 `code` 承载）：`/ws/demo/state`、`/ws/demo/log`、`/ws/demo/log/clear`、`/ws/demo/echo/send?text=`（客户端发、服务端回声）、`/ws/demo/broadcast?text=`（服务端广播）、`/ws/demo/server/stop`（触发客户端自动重连）、`/ws/demo/server/start`（重连回 `OPEN`）、`/ws/demo/client/connect`、`/ws/demo/client/disconnect`。运行用 `start-demo.bat` / `stop-demo.bat`。
 
 ### aifei-sa-token
 

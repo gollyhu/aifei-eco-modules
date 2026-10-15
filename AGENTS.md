@@ -69,6 +69,15 @@
   ```
 - 导入或复制的 Java 文件保留其原有版权块，不强行统一；本模块既有历史版权块（第三方归属）为既有事实，不在本次调整范围内回溯改写。
 
+### 官方源码同步（仅示例工程 `*-demo`）
+
+- 示例工程允许从官方仓库 `jfinal/aifei-eco` 的 `aifei-demo/src/main/java/cn/aifei/demo/common` 同步 Java 源码，这是「包名统一以 `cn.hg.aifei.<module>` 开头」的**唯一例外**；发布型模块不得据此例外引入 `cn.aifei.demo.*`。
+- 同步必须**逐字照抄**：`package` 声明（`cn.aifei.demo.common.*`）、文件头版权块（詹波 / aifei.cn）、原始缩进（官方为混合缩进，如 `ContentType.java` 用 TAB）与代码内容均不得改写、本地化或重新排版。
+- 同步文件必须落在与 `package` 声明一致的目录 `src/main/java/cn/aifei/demo/common/...`；被替换的旧本地实现包随之删除，不得两套并存。
+- 同步范围：`common/arch/**` 全部 Java 与 `common/Generator.java`；`common/db/**` 与 `common/AppConfig.java` 不入库——需要模型时用 `Generator` 生成，装配类由本地 `DemoAppConfig` 自行承担。
+- 适配只能发生在本地装配层与业务代码（改 `import`、改构造调用等）；**不得反向修改同步文件**以迁就本地。
+- 同步后必须在模块目录内实测编译通过（`mvn clean compile`），并在提交说明中标注官方来源。
+
 ## 构建与验证
 
 - 构建、测试命令一律在**模块目录**内执行。仓库根无聚合 pom，**不得在仓库根执行模块测试**（部分门禁测试依赖相对路径 `src/main/java`）。

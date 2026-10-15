@@ -73,9 +73,9 @@ aifei-sentinel/src/main/java/cn/hg/aifei/sentinel/
 
 `sentinel-transport-simple-http` 用 `provided + optional` 的双重含义：`provided` 对齐 aifei 惯例（不打包进 SDK、由消费方提供），`optional` 阻断传递，避免消费方被动引入。
 
-### 3.4 demo 自写 HIO
+### 3.4 demo HIO
 
-`aifei-sentinel-demo` 不依赖 `aifei-vip-arch`，自实现最小 HIO（`Input` / `Output` / `Dispatcher` / `Handler` / `AifeiConfig` 各一个实现类 + 一个 `@Path("/demo")` 演示 Service），用于跑通并验证拦截器与两种运行模式。依赖 `aifei-all`（内核）+ `undertow-core` + SDK 本体 + `fastjson2`（JSON 序列化）。
+`aifei-sentinel-demo` 不依赖 `aifei-vip-arch`：其 HIO 逐字同步自官方仓库 `jfinal/aifei-eco` 的 `aifei-demo/src/main/java/cn/aifei/demo/common`（保留官方包名 `cn.aifei.demo.common.arch` 与版权块），配一个 `@Path("/demo")` 演示 Service，用于跑通并验证拦截器与两种运行模式。依赖 `aifei-all`（内核）+ `undertow-core` + SDK 本体 + `fastjson2`（JSON 序列化）。
 
 ## 4. 核心组件
 

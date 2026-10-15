@@ -10,16 +10,16 @@ import cn.aifei.config.AifeiConfig;
 import cn.aifei.config.Plugins;
 import cn.aifei.config.Routes;
 import cn.aifei.config.Settings;
+import cn.aifei.demo.common.arch.In;
+import cn.aifei.demo.common.arch.IoDispatcher;
+import cn.aifei.demo.common.arch.IoHandler;
+import cn.aifei.demo.common.arch.Out;
 import cn.aifei.log.log4j.Log4jLogFactory;
 import cn.aifei.server.undertow.UndertowServer;
 import cn.aifei.util.Prop;
 import cn.aifei.util.PropKit;
 import cn.hg.aifei.websocket.aifei.WebSocketClientPlugin;
 import cn.hg.aifei.websocket.aifei.WebSocketServerPlugin;
-import cn.hg.aifei.websocket.demo.common.arch.In;
-import cn.hg.aifei.websocket.demo.common.arch.IoDispatcher;
-import cn.hg.aifei.websocket.demo.common.arch.IoHandler;
-import cn.hg.aifei.websocket.demo.common.arch.Out;
 import cn.hg.aifei.websocket.demo.ws.DemoClientListener;
 import cn.hg.aifei.websocket.demo.ws.DemoServerListener;
 
@@ -60,7 +60,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         p = PropKit.use(System.getProperty(CONFIG_KEY, DEFAULT_CONFIG));
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
-                .addHandler(new IoHandler());
+                .addHandler(new IoHandler(p.getBoolean("printAction", false), "view"));
     }
 
     /**

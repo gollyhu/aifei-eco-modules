@@ -1,18 +1,16 @@
 /*
- * Copyright 2014-2026 糊搞 (3722711@qq.com)
+ * Copyright 2011-2035 詹波 (aifei.cn)
  *
- * https://gitee.com/gollyhu
+ * https://aifei.cn
  */
 
-package cn.hg.aifei.sentinel.demo.arch;
+package cn.aifei.demo.common.arch;
 
-import cn.aifei.argument.NoMatch;
 import cn.aifei.core.Input;
 import cn.aifei.util.StrUtil;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import io.undertow.server.HttpServerExchange;
-
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,15 +20,19 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-/** 请求参数适配：懒解析 query + body，实现内核 Input 接口 */
-public class In implements Input, NoMatch {
+/**
+ * In
+ */
+public class In implements Input {
 
     static final InParser IN_PARSER = new InParser();
     static final String[] EMPTY_PATH_PARA = new String[0];
 
     final HttpServerExchange exchange;
+
     JSONObject data;
     JSONArray arrayData;
+
     String[] pathPara;
     String pathParaStr;
 
@@ -47,7 +49,7 @@ public class In implements Input, NoMatch {
     }
 
     JSONObject getData() {
-        if (data == null) {
+        if (data == null) {          // 延迟解析数据
             data = IN_PARSER.parse(exchange, this);
         }
         return data;
@@ -60,33 +62,59 @@ public class In implements Input, NoMatch {
         return arrayData;
     }
 
+    /**
+     * 判断参数是否存在。多 action 共享同一 actionPath (方法重载)时需使用该方法进一步匹配参数
+     */
     @Override
     public boolean has(String name) {
         return getData().containsKey(name);
     }
 
+    /**
+     * 判断参数是否存在。多 action 共享同一 actionPath (方法重载)时需使用该方法进一步匹配参数
+     */
     @Override
     public boolean has(int index) {
         return getStr(index) != null || pathPara.length > index;
     }
 
+    /**
+     * 获取 Bean。若参数 name 为 ""，则将 json 整体而非内部字段转换为 bean
+     */
     @Override
     public <T> T getBean(String name, Class<T> type) {
+        // 支持参数名为 "" 以及 @Para(name = "") 用法
         if ("".equals(name)) {
             return getData().to(type);
+        } else {
+            return getData().getObject(name, type);
         }
-        return getData().getObject(name, type);
     }
 
+    /**
+     * 获取 List
+     *
+     * <pre>
+     * getList 设计：
+     *  1: 若参数 name 为 ""，则将 json 整体而非内部字段转换为 array。
+     *  2: 可被 getArray 转调并满足其需求。
+     *  3: 支持内部元素为上传文件 UploadedFile。
+     * </pre>
+     */
     @Override
     public <T> List<T> getList(String name, Class<T> type) {
-        getData();
+        getData();    // 确保解析
+
         if ("".equals(name) && arrayData != null) {
             return arrayData.toList(type);
+        } else {
+            return data.getList(name, type);
         }
-        return data.getList(name, type);
     }
 
+    /**
+     * 获取数组。内部始终转调 getList(...) 共享其所支持的所有功能，如支持 name 值为 ""
+     */
     @Override
     @SuppressWarnings("unchecked")
     public <T> T[] getArray(String name, Class<T> type) {
@@ -94,8 +122,12 @@ public class In implements Input, NoMatch {
         return ret != null ? ret.toArray((T[]) Array.newInstance(type, ret.size())) : null;
     }
 
+    /**
+     * 获取 getMap。若参数 name 为 ""，则将 json 整体而非内部字段转换为 Map
+     */
     @Override
     public Map<String, Object> getMap(String name) {
+        // 支持参数名为空字符串 "" 用法，以及 @Para(name = "") 用法
         return "".equals(name) ? getData() : getData().getJSONObject(name);
     }
 
@@ -109,12 +141,16 @@ public class In implements Input, NoMatch {
         if (index < 0) {
             return pathParaStr;
         }
+
         if (pathPara == null) {
+            // pathParaStr 可能为 ""，见 Router.getAction(String)
             if (pathParaStr == null || pathParaStr.isEmpty()) {
                 pathPara = EMPTY_PATH_PARA;
             } else {
+                // pathParaSeparator 改由用户直接定制，而非安排配置
                 pathPara = pathParaStr.split("-");
             }
+
             for (int i = 0; i < pathPara.length; i++) {
                 if ("".equals(pathPara[i])) {
                     pathPara[i] = null;
@@ -132,6 +168,7 @@ public class In implements Input, NoMatch {
     @Override
     public Integer getInt(int index) {
         String str = getStr(index);
+        // paraPath 可产生 ""、" "、" a " 这类字符串，需使用 isBlank(str)、trim()
         return StrUtil.isBlank(str) ? null : Integer.valueOf(str.trim());
     }
 
@@ -170,6 +207,8 @@ public class In implements Input, NoMatch {
 
     @Override
     public Boolean getBoolean(String name) {
+        // 不使用 fastjson 转换，其仅明确了 true 值条件，未明确 false 值条件
+        // return getData().getBoolean(name);
         Object b = getData().get(name);
         if (b instanceof Boolean) {
             return (Boolean) b;
@@ -206,3 +245,5 @@ public class In implements Input, NoMatch {
         return getData().getLocalDateTime(name);
     }
 }
+
+

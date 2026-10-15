@@ -10,17 +10,17 @@ import cn.aifei.config.AifeiConfig;
 import cn.aifei.config.Plugins;
 import cn.aifei.config.Routes;
 import cn.aifei.config.Settings;
+import cn.aifei.demo.common.arch.In;
+import cn.aifei.demo.common.arch.IoDispatcher;
+import cn.aifei.demo.common.arch.IoHandler;
+import cn.aifei.demo.common.arch.Out;
+import cn.aifei.demo.common.arch.OutCode;
 import cn.aifei.log.log4j.Log4jLogFactory;
-import cn.hg.aifei.sentinel.aifei.SentinelInterceptor;
-import cn.hg.aifei.sentinel.core.SentinelKit;
 import cn.aifei.server.undertow.UndertowServer;
 import cn.aifei.util.Prop;
 import cn.aifei.util.PropKit;
-import cn.hg.aifei.sentinel.demo.arch.In;
-import cn.hg.aifei.sentinel.demo.arch.IoDispatcher;
-import cn.hg.aifei.sentinel.demo.arch.IoHandler;
-import cn.hg.aifei.sentinel.demo.arch.Out;
-import cn.hg.aifei.sentinel.demo.arch.OutCode;
+import cn.hg.aifei.sentinel.aifei.SentinelInterceptor;
+import cn.hg.aifei.sentinel.core.SentinelKit;
 
 /** 装配中心：自写 HIO + Sentinel 拦截器 + 规则加载（两种运行模式由配置文件决定） */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
@@ -36,7 +36,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         p = PropKit.use(System.getProperty(CONFIG_KEY, DEFAULT_CONFIG));
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
-                .addHandler(new IoHandler());
+                .addHandler(new IoHandler(p.getBoolean("printAction", false), "view"));
     }
 
     @Override

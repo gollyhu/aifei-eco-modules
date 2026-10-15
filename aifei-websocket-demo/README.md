@@ -3,8 +3,8 @@
 `aifei-websocket` 的本地回环演示工程（**示例工程，不发布**）：在**同一个进程内**装配一个 WebSocket 服务端与
 一个 WebSocket 客户端，客户端连接服务端，用来现场演示 **建连 → 收发 → 心跳 → 断线自动重连** 的全过程。
 
-- 结构对齐 `aifei-sentinel-demo`：`DemoApp` → `Aifei.start(DemoAppConfig)`，自写 HIO（`common/arch` 包，
-  应用侧代码）+ 一个 Just Service（`service` 包）。
+- 结构对齐 `aifei-sentinel-demo`：`DemoApp` → `Aifei.start(DemoAppConfig)`，HIO 逐字同步自官方
+  `jfinal/aifei-eco`（保留官方包名 `cn.aifei.demo.common.arch` 与版权块）+ 一个 Just Service（`service` 包）。
 - 两个 WebSocket 实例都由装配入口注册，Service 里用 `@Inject WebSocketClient` / `@Inject WebSocketServer` 取用，
   即 `aifei-websocket` 推荐的标准用法。
 

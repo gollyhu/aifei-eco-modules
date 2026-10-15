@@ -8,7 +8,7 @@ package cn.hg.aifei.sentinel.demo.service;
 
 import cn.aifei.core.Para;
 import cn.aifei.core.Path;
-import cn.hg.aifei.sentinel.demo.arch.Out;
+import cn.aifei.demo.common.arch.Out;
 
 /** 演示三种治理能力：index 流控、slow 熔断、detail 热点参数 */
 @Path("/demo")
