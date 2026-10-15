@@ -1,0 +1,9 @@
+# ===== aifei-mq-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18100 传入，本文件只放 mq.* 配置。
+
+# 消息后端类型：缺省即 memory（内存/本地实现，进程内、零第三方）；显式写出便于演示与排查
+mq.type = memory
+# 内存后端无任何额外配置键（没有 mq.memory.* ；后端专有键一律经 MqConfig 拼接读取）
+
+# 打开后每个 action 调用会打印到控制台（默认 false）
+# printAction = true

@@ -15,6 +15,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，Java-WebSocket 后端可替换 |
 | [aifei-websocket-demo](aifei-websocket-demo/README.md) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
 | [aifei-mq](aifei-mq/README.md) | `io.github.gollyhu:aifei-mq:1.0.0` | 异步消息能力：生产者发送 + 消费者订阅，内存后端开箱即用，真实 MQ 后端可扩展 |
+| [aifei-mq-demo](aifei-mq-demo/README.md) | （示例工程，不发布） | aifei-mq 的完整接入示例：内存后端的发送 / 订阅消费闭环演示 |
 
 ### aifei-cache
 
