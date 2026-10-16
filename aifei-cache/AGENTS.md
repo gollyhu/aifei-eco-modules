@@ -25,7 +25,7 @@
 
 ### 契约
 
-- `CaffeineCache` / `RedisCache`、`CaffeineCounter` / `RedisCounter` 必须遵循相同的接口契约与公共行为。
+- `CaffeineCache` / `RedisCache`、`CaffeineCounter` / `RedisCounter` 必须遵循**共同的契约底线**（公共类型、关键行为与异常分类保持一致）；
 - 未经设计决策，不得自行确定空值语义、过期语义、序列化格式、异常类型或 key 规则。
 - **名字与命名空间不得含 `:`**（名字 = `cacheName` / `counterName`）：它是物理 key 的分段符，进入名字会造成层级歧义。名字违规时写路径抛 `IllegalArgumentException`、读路径按未命中处理；`namespace` 违规时在配置解析期（`Config.resolveNamespace`）直接失败，不进入读 / 写路径。`key` 不受此限。它与实例名的既有合法性规则同源，判定只在 `internal.CacheValidator` 一处。
 - TTL 上限为 `Integer.MAX_VALUE` 秒，超限不截断、直接抛 `IllegalArgumentException`。

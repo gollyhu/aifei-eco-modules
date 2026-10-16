@@ -16,7 +16,7 @@
 设计原则六条：
 
 1. **接口极简**：`Cache` / `Counter` 只暴露通路能力，不依赖运行期环境；业务只依赖接口，公共 API 不得暴露 Caffeine、Jedis、Fury 等实现类型。
-2. **实现可替换**：切换 Caffeine / Redis 只改配置与装配，不改业务代码；两个后端遵循同一套契约与公共行为。`Cache` / `Counter` 的实现类各共用无行为元数据基类 `internal.AbstractCache` / `internal.AbstractCounter`，都不得再引入其它跨实现基类（装配侧的 provider 抽象父类不在此限，见「实现约束」）。
+2. **实现可替换**：切换 Caffeine / Redis 只改配置与装配，不改业务代码；两个后端遵循**共同的契约底线**，因后端 / 存储差异而必然不同的行为见「跨实现契约：共同底线与允许差异」。`Cache` / `Counter` 的实现类各共用无行为元数据基类 `internal.AbstractCache` / `internal.AbstractCounter`，都不得再引入其它跨实现基类（装配侧的 provider 抽象父类不在此限，见「实现约束」）。
 3. **实例隔离**：单应用可持多实例，靠实例名标识、`namespace` 隔离，互不覆盖。同一应用内所有实例（含主缓存）的 `namespace` 必须互不相同；参与排他判定的实例（实现 `internal.UniqueNameAware` 的后端，目前是 jedis）由启动期排他校验拦截。
 4. **平滑演进**：单实例本地缓存扩到集群只改配置与装配，本地模式与集群模式的配置差异只在 `cache.type`。
 5. **保持极简**：不做未被需求驱动的抽象；新增能力先过设计决策。

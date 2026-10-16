@@ -73,10 +73,10 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 
 为 aifei 应用补齐框架未覆盖的异步消息能力（解耦、削峰）。业务代码只依赖公共接口，换 MQ 中间件只改配置、不改代码。
 
-- 公共面固定 7 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqKit` / `MqException`
+- 公共面固定 8 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`
 - 同步投递、单主题 FIFO、多订阅者按登记顺序回调；无订阅者视为成功，监听器运行时异常就地隔离
-- 首批后端为**内存实现**（零第三方运行依赖），真实后端（Kafka / RocketMQ 等）以 provider 扩展点追加
-- 取用二选一：`@Inject Producer` / `@Inject Consumer`，或静态门面 `MqKit`
+- 内置**内存后端**（零第三方运行依赖）与 **RocketMQ 真实后端**（`mq.type=rocketmq`，客户端 `optional` 由消费方自带）；其它后端以 provider 扩展点追加
+- 取用二选一：`@Inject Producer` / `@Inject Consumer`，或静态工具类 `ProducerUtil` / `ConsumerUtil`（`use(name)` 取命名实例）
 - 详细用法见 [aifei-mq/README.md](aifei-mq/README.md)，设计文档见 [docs/design.md](aifei-mq/docs/design.md)
 
 ## 构建
@@ -101,7 +101,7 @@ cd aifei-mq        && mvn clean install
 - `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
 - `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
 - `aifei-websocket`：`aifei-all` 为 `provided`，`Java-WebSocket` 为 `optional`（消费方自带，另需自带 `slf4j-api` 与日志绑定）
-- `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；无第三方运行依赖
+- `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；内存后端零第三方运行依赖，内置 RocketMQ 后端客户端（`rocketmq-client`）为 `optional`（用 RocketMQ 时消费方自带，不向下游传递）
 
 ## 许可证
 
