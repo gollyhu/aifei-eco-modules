@@ -18,8 +18,8 @@ import cn.aifei.log.log4j.Log4jLogFactory;
 import cn.aifei.server.undertow.UndertowServer;
 import cn.aifei.util.Prop;
 import cn.aifei.util.PropKit;
+import cn.hg.aifei.mq.ConsumerUtil;
 import cn.hg.aifei.mq.MessageListener;
-import cn.hg.aifei.mq.MqKit;
 import cn.hg.aifei.mq.aifei.MqPlugin;
 import cn.hg.aifei.mq.demo.mq.DemoMessageListener;
 import cn.hg.aifei.mq.demo.mq.DemoMessageLog;
@@ -102,12 +102,12 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
      * 装配期订阅演示主题，写装配快照并打印关键信息。
      *
      * <p>订阅点必须是这里：{@code config(Plugins)} 只登记插件，{@code MqPlugin.start()} 在之后才建总线并
-     * 注册单例，此刻 {@link MqKit#consumer()} 才可用。订阅只在本方法内注册一次，避免重复登记导致同一消息
+     * 注册实例，此刻 {@link ConsumerUtil#use()} 才可用。订阅只在本方法内注册一次，避免重复登记导致同一消息
      * 被多次记录；订阅失败不吞异常，启动期明确失败优于「静默无订阅」。</p>
      */
     @Override
     public void onStart() {
-        MqKit.consumer().subscribe(DEMO_TOPIC, listener);
+        ConsumerUtil.use().subscribe(DEMO_TOPIC, listener);
         DemoMessageLog.markStartup(p.get(MQ_TYPE_KEY, "memory"), DEMO_TOPIC, DemoMessageListener.NAME);
         System.out.println("[aifei-mq-demo] mq.type: " + p.get(MQ_TYPE_KEY, "memory")
                 + "，已订阅主题: " + DEMO_TOPIC

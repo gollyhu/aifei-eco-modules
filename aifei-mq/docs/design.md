@@ -4,7 +4,7 @@
 
 > **交付性质**：`aifei-mq` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。因此**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator；只有「公共 API + 内部实现 + 一个装配用 `MqPlugin`」。
 >
-> **文档状态**：1.0.0 已按本文实现，并通过模块内自测（架构门禁 5 项 + 总线契约：共同底线 **10** 项 + 内存专有 **10** 项，模块内执行用例共 **61** 项；另有 **10** 个 RocketMQ 集成用例**默认跳过**），**尚未对外发布**。§5 的三项裁决（投递语义 / provider 抽象粒度 / 关闭语义）与公共面（§3）属**已定档**契约；其余为实现细节。已定档项变更前**必须先更新本文**。
+> **文档状态**：1.0.0 已按本文实现，并通过模块内自测（**`Tests run: 87 / Failures: 0 / Errors: 0 / Skipped: 10`**——即模块内**执行用例 77 项** + **跳过 10 项**；执行 77 = 架构门禁 **5** 项 + 总线契约 **20** 项〔共同底线 **10** + 内存专有 **10**〕+ 单元测试 **52** 项；跳过的 **10** 项为 RocketMQ 集成用例，**默认关闭**），**尚未对外发布**。§5 的三项裁决（投递语义 / provider 抽象粒度 / 关闭语义）与公共面（§3）属**已定档**契约；其余为实现细节。已定档项变更前**必须先更新本文**。
 
 ---
 
@@ -48,9 +48,9 @@
 
 | # | 纪律 |
 | --- | --- |
-| 1 | **公共 API 零第三方类型**：根包 7 个公共类型**不含**任何第三方类型 |
+| 1 | **公共 API 零第三方类型**：根包 8 个公共类型**不含**任何第三方类型 |
 | 2 | **公共 API 零框架类型**：`cn.aifei.*` 只允许出现在 `cn.hg.aifei.mq.aifei` 接入包（即只允许 `MqPlugin` 一个类引用框架） |
-| 3 | 根包公共类型**逐个列出并说明职责**（§3），**精确 7 个**；新增公共类型必须先过设计决策 |
+| 3 | 根包公共类型**逐个列出并说明职责**（§3），**精确 8 个**；新增公共类型必须先过设计决策 |
 | 4 | **第三方依赖分层隔离**：内存后端**零第三方运行依赖**；真实后端**按其 provider 实现包自带 `optional` 依赖**（如 `rocketmq-client`），**不向下游传递**；**公共面（根包）零第三方类型**。框架内核 `cn.aifei:aifei-all` 为 `provided`，测试依赖 `junit` 为 `test` |
 | 5 | Java 8 语法与 API；主 JAR class major version = 52 |
 | 6 | 每类规则只有一个定义点（校验 / 配置域常量 / 编解码 / 注册表 / 总线投递 / 单例持有） |
@@ -59,7 +59,7 @@
 
 ### 1.5 设计原则
 
-1. **接口极简、实现无关**：业务只依赖根包 7 类型与 `MqKit`；实现经 `@Inject Producer` / `@Inject Consumer` 或 `MqKit` 取用。
+1. **接口极简、实现无关**：业务只依赖根包 8 类型与 `ProducerUtil` / `ConsumerUtil`；实现经 `@Inject Producer` / `@Inject Consumer` 或 `ProducerUtil` / `ConsumerUtil` 取用。
 2. **零依赖优先**：默认内存后端零第三方依赖；`aifei-all` 为 `provided`。
 3. **行为契约可测**：投递语义、异常分类、关闭语义、配置键名全部定档到「可写断言」的程度（§5）。
 4. **保持极简**：不做未被需求驱动的抽象；provider 扩展点是需求内唯一允许的抽象。
@@ -79,18 +79,22 @@
 | **消费者 Consumer** | 订阅端视图：`subscribe` / `unsubscribe` | 根包（公共接口） |
 | **监听器 MessageListener** | 消费回调：`onMessage(Message)`，函数式接口 | 根包（公共接口） |
 | **发送结果 SendResult** | `topic` + `messageId`；失败即抛异常，**无 success 布尔** | 根包（公共） |
-| **门面 MqKit** | `send`×3 + `subscribe` + `producer()` / `consumer()` | 根包（公共） |
+| **生产者工具类 ProducerUtil** | 静态取用 `use()` / `use(instanceName)` + `send`×3 静态镜像 | 根包（公共） |
+| **消费者工具类 ConsumerUtil** | 静态取用 `use()` / `use(instanceName)` + `subscribe` / `unsubscribe` 静态镜像 | 根包（公共） |
+| **命名实例** | 由 `mq.names` 声明的扩展实例；主实例走根级 `mq.*`，命名实例走 `mq.<name>.*` | 配置域 |
 | **总线 MessageBus** | 后端统一内部对象：产出 Producer / Consumer 两个视图 + 生命周期 | `internal`（契约）/ `memory`（实现） |
 | **后端标识 type** | `mq.type` 取值，如 `"memory"`；白名单由注册表派生 | `internal` |
 | **后端 provider** | 一种后端的装配契约：解析配置并建总线；**必须无状态** | `internal`（契约）/ 各实现包 |
 | **注册表** | `type` → 无状态 provider 的映射，静态初始化块注册 | `internal.MqProviderRegistry` |
-| **单例持有 MqHolder** | 运行期登记 `Producer` / `Consumer` 单例，供 `MqKit` 取用 | `internal` |
+| **实例注册表 MqHolder** | 运行期按**实例名**登记 / 取用 `Producer` / `Consumer`（多实例），供 `ProducerUtil` / `ConsumerUtil` 取用 | `internal` |
 
 ---
 
-## 3. 公共 API 契约（根包精确 7 类型）
+## 3. 公共 API 契约（根包精确 8 类型）
 
-根包 `cn.hg.aifei.mq` **精确 7 个公共类型**：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqKit` / `MqException`。此清单为门禁断言 `EXPECTED_PUBLIC_TYPES` 的**唯一事实来源**。
+根包 `cn.hg.aifei.mq` **精确 8 个公共类型**：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`。此清单为门禁断言 `EXPECTED_PUBLIC_TYPES` 的**唯一事实来源**。
+
+> **定档变更记录**：`MqKit`（原单一静态门面）已**删除**，拆分为 `ProducerUtil` + `ConsumerUtil` 两个公共工具类（形态照 `aifei-cache` 的 `CacheUtil` / `CounterUtil` 范式）；根包公共类型 **7 → 8**。此属**有意的公共面扩张**，经**项目所有者拍板**（见 §13）。
 
 ### 3.1 `Message`（不可变值对象）
 
@@ -193,24 +197,50 @@ public class MqException extends RuntimeException {
 - **仅在「运行时故障」场景抛出**；参数非法用 `IllegalArgumentException`、状态非法用 `IllegalStateException`（分类见 §5.4）。
 - 内存后端**无外部运行时故障源**，故本版不会从 `memory` 抛出 `MqException`；该类型为后续真实后端与运行时故障保留。
 
-### 3.7 `MqKit`（公共门面）
+### 3.7 `ProducerUtil` 与 `ConsumerUtil`（公共静态工具类）
+
+`MqKit`（原单一静态门面）已**删除**，其门面职责拆分为**两个**公共工具类，形态照 `aifei-cache` 的 `CacheUtil` / `CounterUtil` 范式——「静态方法与『实例方法』分属两个不同类，故无同名冲突」。两者均为 `final` + 私有构造的**零状态工具类**，只在取用期经 `internal.MqHolder` 按实例名取运行期实例。
+
+#### 3.7.1 `ProducerUtil`
 
 ```java
-public final class MqKit {
-    private MqKit() { }
+public final class ProducerUtil {
+    private ProducerUtil() { }
 
-    public static Producer producer();                    // 未启动 → IllegalStateException
-    public static Consumer consumer();                    // 未启动 → IllegalStateException
+    public static Producer use();                          // 主实例（对齐 Config.MAIN_INSTANCE_NAME 机制）
+    public static Producer use(String instanceName);       // 命名实例
+    // ↓ 静态镜像方法，一律作用于主实例（转发，不重复校验、不转换异常）
     public static SendResult send(Message message);
     public static SendResult send(String topic, byte[] payload);
     public static SendResult send(String topic, String text);
-    public static void subscribe(String topic, MessageListener listener);
 }
 ```
 
-- 镜像 `CacheUtil` / `WebSocketKit` 的便捷入口范式：`producer()` / `consumer()` 经 `internal.MqHolder` 取运行期单例；`send`×3 与 `subscribe` 只做转发（**不重复校验、不转换异常**）。
-- 未启动 / 已停止时取单例 → `IllegalStateException`（与 `CacheUtil.use()` 语义一致）。
-- **本版不为 `unsubscribe` 增加门面镜像**：`MqKit` 只暴露 `subscribe`，**不提供** `MqKit.unsubscribe`。理由：公共面收敛纪律——**无需求驱动的门面扩张不做**；需要取消时经 `MqKit.consumer()` 取到 `Consumer` 后调用 `consumer().unsubscribe(topic, listener)` 即可，门面无需重复镜像（与「`Consumer` 接口本身提供取消能力」不冲突）。
+- **`use()` / `use(instanceName)`**：经 `internal.MqHolder` 取运行期已登记的生产者视图。`use()` 取**主实例**（对齐 `Config.MAIN_INSTANCE_NAME` 机制，取值与语义见 §5.5）；`use(instanceName)` 取 `mq.names` 声明的**命名实例**。**取到的是与 `@Inject Producer` 注入的同一个对象**——`@Inject` 只对应**主实例**，命名实例只能经 `use(name)` 取（见 §5.5）。
+- **静态镜像**：`send`×3 **只做转发**——**不重复校验、不转换异常**；参数与异常契约同 `Producer` 的对应方法（`send(topic, text)` 的 UTF-8 编码仍由后端实现经 `internal.TextCodec` 完成）。
+- **异常口径**（与 `aifei-cache` 的 `CacheManager.lookup` 逐条对齐，**先判状态、后判参数**）：
+  - **先判状态**：未启动 / 已停止 → **`IllegalStateException`**（`use()` 与三个 `send` 镜像同此）。
+  - **后判参数**：实例名为空 / 含非法字符 / 为保留名 / 未注册 → **`IllegalArgumentException`**（仅 `use(instanceName)` 会命中）。
+
+#### 3.7.2 `ConsumerUtil`
+
+```java
+public final class ConsumerUtil {
+    private ConsumerUtil() { }
+
+    public static Consumer use();                          // 主实例（对齐 Config.MAIN_INSTANCE_NAME 机制）
+    public static Consumer use(String instanceName);       // 命名实例
+    // ↓ 静态镜像方法，一律作用于主实例（转发，不重复校验、不转换异常）
+    public static void subscribe(String topic, MessageListener listener);
+    public static void unsubscribe(String topic, MessageListener listener);
+}
+```
+
+- **`use()` / `use(instanceName)`**：同 `ProducerUtil`（**取到的是与 `@Inject Consumer` 注入的同一个对象**）。
+- **静态镜像**：`subscribe` **与** `unsubscribe` **均镜像**（`unsubscribe` 是阶段 1 已落地的能力，本轮一并镜像）；两者**只做转发**——**不重复校验、不转换异常**；参数与异常契约同 `Consumer` 的对应方法（含「按实例身份移除 listener」「重复取消 / 未登记为幂等 no-op」的既有定档，§3.3）。
+- **异常口径**：同 `ProducerUtil`（**先状态、后参数**；`IllegalStateException` / `IllegalArgumentException`）。
+
+> **与 `CacheUtil` / `CounterUtil` 的一致性**：① `use()` 取主实例；② `use(name)` 取命名实例；③ 静态镜像一律转发到主实例；④ 只做转发、不重复校验、不转换异常——四点逐条对齐。差异仅在于本模块的运行期注册表为 `internal.MqHolder`（cache 为 `internal.CacheManager`），且 `Producer` / `Consumer` 是两个类型、故镜像方法落在两个工具类。
 
 ### 3.8 公共面计数口径（供门禁复用）
 
@@ -223,8 +253,11 @@ public final class MqKit {
 | 3 | `Consumer` | interface |
 | 4 | `MessageListener` | interface（函数式） |
 | 5 | `SendResult` | final class |
-| 6 | `MqKit` | final class（静态门面） |
-| 7 | `MqException` | class（extends RuntimeException） |
+| 6 | `MqException` | class（extends RuntimeException） |
+| 7 | `ProducerUtil` | final class（静态工具） |
+| 8 | `ConsumerUtil` | final class（静态工具） |
+
+> **计数口径**：本表**精确 8 个**，为门禁断言 `EXPECTED_PUBLIC_TYPES` / `EXPECTED_ROOT_TYPES` 的唯一事实来源（§12.2）。本次 **7 → 8** 系 `MqKit` 拆分的结果（`-MqKit` / `+ProducerUtil` / `+ConsumerUtil`，净 +1）。
 
 ---
 
@@ -237,9 +270,9 @@ public final class MqKit {
 | 类型 | 形态 | 职责 |
 | --- | --- | --- |
 | `MqValidator` | final + 静态方法 | **参数校验唯一定义点**：`requireTopic` / `requirePayload` / `requireText` / `requireMessage` / `requireMessageId` / `requireListener` / `requireProducer` / `requireConsumer`（违规抛 `IllegalArgumentException`） |
-| `MqConfig` | final 值对象 | **配置域与键常量唯一定义点**：`ROOT_PREFIX="mq"`、`TYPE_KEY="mq.type"`、`DEFAULT_TYPE="memory"`；`parse(Properties, Set)`（读 `mq.type`，缺省 `memory`，未注册类型抛 `IllegalArgumentException`）；`type()` / `prefix()`（`"mq." + type`）/ `get(relativeKey)`（读 `mq.<type>.<relativeKey>`） |
+| `MqConfig` | final 值对象 | **配置域与键常量唯一定义点**：`ROOT_PREFIX="mq"`、`TYPE_KEY="mq.type"`、`NAMES_KEY="mq.names"`、`DEFAULT_TYPE="memory"`、`MAIN_INSTANCE_NAME="__MAIN__"`；`parseInstanceNames(Properties, String)`（解析并校验 `mq.names`：空项 / 重名 / 保留名 / `__MAIN__` 即 `IllegalArgumentException`）；`requireInstanceName(String)`（实例名合法性唯一定义点）；`parse(Properties, Set, String instanceName)`（按实例名派生**实例前缀**——主实例 `mq`、命名实例 `mq.<name>`——读 `<实例前缀>.type`，缺省 `memory`，未注册类型抛 `IllegalArgumentException`）；`instanceName()` / `type()` / `prefix()`（实例前缀）/ `get(relativeKey)`（读 `<实例前缀>.<type>.<relativeKey>`） |
 | `TextCodec` | final + 静态方法 | **编解码唯一定义点**：`encode(String) : byte[]`（UTF-8）；本版只提供编码方向（`Message` 不解码） |
-| `MqHolder` | final + 静态方法 | **运行期单例持有唯一定义点**：`register(Producer, Consumer)` / `producer()` / `consumer()` / `clear()`；未登记时取用抛 `IllegalStateException` |
+| `MqHolder` | final + 静态方法 | **运行期实例注册表唯一定义点（多实例）**：`register(String instanceName, Producer, Consumer)` / `producer(String instanceName)` / `consumer(String instanceName)` / `clear()`（清空全部实例）；**取用期先生命周期后参数**——未启动 / 已停止（尚未登记过任何实例、或已 `clear()`）抛 `IllegalStateException`，实例名为空 / 非法 / 未注册抛 `IllegalArgumentException` |
 | `MessageBus` | interface（`extends AutoCloseable`） | **总线契约**：`producer()` / `consumer()`（同一总线上的两个视图）/ `close()`；后端实现另提供**消费者侧委托操作** `subscribe(String, MessageListener)` / `unsubscribe(String, MessageListener)`（登记 / 取消），其**方法集与公共 `Consumer` 一一对应**，供消费视图委托 |
 | `MqProvider` | interface | **后端扩展点**：`type()` / `createBus(MqConfig)` |
 | `AbstractMqProvider` | abstract | **provider 装配骨架**：`createBus` 为 `final` 模板方法（校验 `config` 非空后委托），`buildBus(MqConfig)` 抽象；基类**不持有实例字段**、可多线程复用 |
@@ -275,9 +308,9 @@ public final class MqKit {
 | `RocketMqProducer` | implements `Producer`（包级 `final`） | 生产视图：经 `MqValidator` 校验后委托 `bus.publish`；`send(topic, String)` 经 `TextCodec.encode` |
 | `RocketMqConsumer` | implements `Consumer`（包级 `final`） | 消费视图：经 `MqValidator` 校验后委托 `bus.subscribe` / `bus.unsubscribe` |
 
-**配置键**（经 `MqConfig.get(relativeKey)` 读取；键名字面量集中在本实现包，**不得**手写 `"mq.rocketmq."` 前缀）：
+**配置键**（经 `MqConfig.get(relativeKey)` 读取；键名字面量集中在本实现包，**不得**手写 `"mq.rocketmq."` 前缀——命名实例下实际前缀为 `mq.<name>.rocketmq.`，仍由 `MqConfig.get(relativeKey)` 统一拼装）：
 
-| 键（相对 `mq.rocketmq.`） | 必填 | 默认 | 说明 |
+| 键（相对 `<实例前缀>.rocketmq.`；主实例即 `mq.rocketmq.`） | 必填 | 默认 | 说明 |
 | --- | --- | --- | --- |
 | `namesrv-addr` | **是** | — | nameserver 地址，形如 `host:port`（多个以 `;` 分隔）；缺失即 `MqException`（**配置错误**：启动期失败，不留半装配；**不校验连通性**，见下方「装配与建连时机」与 §5.6 B12） |
 | `producer-group` | 否 | `DEFAULT_PRODUCER` | `DefaultMQProducer` 生产者组 |
@@ -287,7 +320,7 @@ public final class MqKit {
 
 **装配与建连时机（须区分「配置」与「连通性」）**：链路为 `MqPlugin.start()` → `createBus` → `buildBus` → `new RocketMqMessageBus(config)`。
 
-- **配置层面（启动期完成，失败即启动失败，不留半装配）**：`mq.type` 指向未注册后端、必填键 `namesrv-addr` 缺失或值非法，均在 `MqPlugin.start()` 链路内**立即**抛出（`IllegalArgumentException` / `MqException`）；此时尚未注册单例，**不留半装配状态**（§5.5）。
+- **配置层面（启动期完成，失败即启动失败，不留半装配）**：`mq.type` 指向未注册后端、必填键 `namesrv-addr` 缺失或值非法，均在 `MqPlugin.start()` 链路内**立即**抛出（`IllegalArgumentException` / `MqException`）；此时尚未注册任何实例，**不留半装配状态**（§5.5）。
 - **连通性层面（随后端而定，RocketMQ 不保证启动期暴露）**：producer 在总线构造内调用 `DefaultMQProducer#start()`，但**该调用不校验 nameserver 连通性**（懒连接：初始化即可成功，真正连网发生在首次发送 / 拉取）。故 nameserver 不可达时 `MqPlugin.start()` **不会失败**，应用照常启动，故障**延迟到首次 `send`（或消费拉取）才暴露**为 `MqException`。即**「启动成功」≠「后端可达」**（§5.6 B12 与 (C) B12）。
 - **consumer 延迟启动**：订阅主题在启动时未知，故 `consumer.subscribe(topic, "*")` + `consumer.start()` 延迟到**首次 `subscribe(topic, listener)`**；后续新增主题再次 `consumer.subscribe(...)`。首次 `subscribe` 时 consumer 启动失败抛 `MqException`（运行时故障，§5.4）。
 
@@ -297,9 +330,17 @@ public final class MqKit {
 
 | 类型 | 形态 | 职责 |
 | --- | --- | --- |
-| `MqPlugin` | implements `cn.aifei.plugin.Plugin` | **全模块唯一 import 框架类型的类**；构造只持 `Prop`；`start()` 解析配置并注册单例，`stop()` 注销并关闭总线 |
+| `MqPlugin` | implements `cn.aifei.plugin.Plugin` | **全模块唯一 import 框架类型的类**；构造只持 `Prop`；`start()` 按 `mq.names` 装配**多个实例**（主实例 + 命名实例）并注册，`stop()` 注销并关闭**全部**实例 |
 
-装配细节：`MqPlugin` 构造器 `MqPlugin(Prop prop)`（`prop == null` 抛 `IllegalArgumentException`），**单构造器**（已拍板决策第 4 条：单个 `MqPlugin` 同时注册 `Producer` / `Consumer` 单例，共用 `mq.*` 配置）。
+装配细节：`MqPlugin` 构造器 `MqPlugin(Prop prop)`（`prop == null` 抛 `IllegalArgumentException`），**单构造器**（已拍板决策第 4 条：单个 `MqPlugin` 同时装配 `Producer` / `Consumer`，共用 `mq.*` 配置体系）。
+
+**多实例装配口径（对齐 `aifei-cache` 的 `CachePlugin`）**：
+
+- **实例名单**：`MqConfig.parseInstanceNames(prop.getProperties(), MqConfig.NAMES_KEY)` 解析 `mq.names` 得到命名实例；待装配名单 = **主实例（恒在首位）** + 命名实例（`mq.names` 顺序）。
+- **逐实例装配**：对每个实例名，`MqConfig.parse(prop.getProperties(), registry.types(), instanceName)` → `registry.getProvider(type)` → `provider.createBus(config)` → 取 `producer()` / `consumer()` → `MqHolder.register(instanceName, producer, consumer)`；同时把该实例的总线纳入本次装配的关闭清单。
+- **主实例与命名实例的注册**：`@Inject` 只注入**主实例**（`AopKit.addSingletonObject(Producer.class, 主实例 producer)` / `addSingletonObject(Consumer.class, 主实例 consumer)`）——`AopKit` **按类型注册、无按名通道**（与 `aifei-cache` 现状一致），命名实例只能经 `ProducerUtil.use(name)` / `ConsumerUtil.use(name)` 取。主实例名取 `MqConfig.MAIN_INSTANCE_NAME`（`"__MAIN__"`，沿用 `aifei-cache` 的 `Config.MAIN_INSTANCE_NAME` 机制，§5.5）。
+- **装配原子性**：任一实例装配失败（配置非法 / `mq.type` 未注册 / 建总线失败）→ **立即抛出**（`IllegalArgumentException` / `MqException`），`start()` **不留半装配**——已登记的实例全部回滚（`MqHolder.clear()`）并关闭已建成的总线，应用启动失败。
+- **生命周期**：`stop()` 关闭**全部**实例（幂等，§5.3）。
 
 ---
 
@@ -375,11 +416,12 @@ public final class MqProviderRegistry {
 | 维度 | 定档 |
 | --- | --- |
 | `MqPlugin.stop()` 幂等 | **是**：未启动时直接返回，不重复关闭 |
+| `stop()` 关闭范围 | **全部实例**：关闭**主实例与全部命名实例**（`mq.names` 声明的每个实例各一条总线），**不是**只关主实例 |
 | drain 在途消息 | **不需要**：同步投递下 `send` 返回即已投递完毕，总线上无在途消息 |
 | `stop()` 后 `send` / `subscribe` / `unsubscribe` | **抛 `IllegalStateException`**（见下方⚠️修正；`unsubscribe` 与 `subscribe` 同属「状态非法」） |
 | 监听器运行时异常 | **由总线就地隔离捕获**：不中断同主题其他订阅者、**不上抛**给生产者 |
-| `MqPlugin.stop()` 与总线 `close()` 关系 | `stop()` 内**先** `MqHolder.clear()`（此后 `MqKit` 取单例即失败）、**再** `bus.close()`（幂等）、最后 `bus=null; started=false` |
-| plugin 生命周期 | `start()`：解析配置 → 注册单例（`MqHolder.register` + `AopKit.addSingletonObject(Producer.class/Consumer.class)`）；`stop()`：注销单例（`MqHolder.clear()`）→ 关闭总线 |
+| `MqPlugin.stop()` 与总线 `close()` 关系 | `stop()` 内**先** `MqHolder.clear()`（此后 `ProducerUtil` / `ConsumerUtil` 取实例即失败——`use()` 与静态镜像均命中）、**再**逐个 `bus.close()`（**关闭全部实例**，各总线 `close()` 幂等）、最后清空实例清单；`started=false` |
+| plugin 生命周期 | `start()`：解析配置（`mq.names`）→ **逐实例装配**（`MqHolder.register(instanceName, producer, consumer)` + **主实例** `AopKit.addSingletonObject(Producer.class/Consumer.class)`）；`stop()`：注销（`MqHolder.clear()`）→ 关闭**全部**实例总线 |
 
 > ⚠️ **对拟定稿的修正**：拟定稿写「`stop()` 后 `send`/`subscribe` 抛 `MqException`」。这与§4 已锁定的**异常分类**（「**状态非法（`stop()` 后调用 / 未启动）→ `IllegalStateException`**」）冲突。**以已锁定的分类为准**，本设计定档为 **`IllegalStateException`**：`stop()` 后属**状态非法**，不是运行时故障。`MqException` 只留「运行时故障」一档。
 
@@ -391,8 +433,8 @@ public final class MqProviderRegistry {
 
 | 场景 | 异常 |
 | --- | --- |
-| **参数非法**（topic 空、payload / text / listener / message / prop / messageId 为 null、`mq.type` 未注册；含 `unsubscribe` 的 topic 空 / 空白与 listener 为 null） | `IllegalArgumentException` |
-| **状态非法**（`stop()` 后 `send` / `subscribe` / `unsubscribe`；`MqKit` 未启动时取 `producer()` / `consumer()`） | `IllegalStateException` |
+| **参数非法**（topic 空、payload / text / listener / message / prop / messageId 为 null、`mq.type` 未注册；`use(instanceName)` 的实例名为空 / 含非法字符 / 为保留名 / 未注册；含 `unsubscribe` 的 topic 空 / 空白与 listener 为 null） | `IllegalArgumentException` |
+| **状态非法**（`stop()` 后 `send` / `subscribe` / `unsubscribe`；`ProducerUtil` / `ConsumerUtil` **未启动 / 已停止**时取 `use()` / `use(name)` 或调用静态镜像） | `IllegalStateException` |
 | **运行时故障**（后端运行时错误；真实后端连接失败等） | `MqException` |
 
 > **分层提示**：本分类属**共同底线**（§5.6 A6），任一后端一致；后端新增的**运行时故障**一律归 `MqException`，**不得新增异常类型或改变既有分类**。
@@ -401,11 +443,30 @@ public final class MqProviderRegistry {
 
 | 键 | 必填 | 默认 | 说明 |
 | --- | --- | --- | --- |
-| `mq.type` | **可选** | `memory` | 后端类型；指向**未注册**后端时 `start()` **立即** `IllegalArgumentException`，**不留半装配状态** |
-| `mq.<type>.*` | 后端自定 | — | 后端专有配置，经 `MqConfig.get(relativeKey)` 读取；**内存后端无额外键**（**不引入** `mq.memory.*`） |
-| `mq.rocketmq.*` | 见 §4.3 | — | **阶段 2**：RocketMQ 后端专有键（`namesrv-addr` 必填；`producer-group` / `consumer-group` 可选） |
+| `mq.type` | **可选** | `memory` | **主实例**的后端类型；指向**未注册**后端时 `start()` **立即** `IllegalArgumentException`，**不留半装配状态** |
+| `mq.names` | 可选 | — | 声明**命名实例**，逗号分隔；**主实例不在此声明**（主实例恒存在、无需声明）；空项 / 重名 / 保留名 / `__MAIN__` 即 `IllegalArgumentException`（校验口径见下） |
+| `mq.<type>.*` | 后端自定 | — | **主实例**的后端专有配置，经 `MqConfig.get(relativeKey)` 读取；**内存后端无额外键**（**不引入** `mq.memory.*`） |
+| `mq.rocketmq.*` | 见 §4.3 | — | **阶段 2**：**主实例**的 RocketMQ 后端专有键（`namesrv-addr` 必填；`producer-group` / `consumer-group` 可选） |
+| `mq.<name>.type` | 可选 | `memory` | **命名实例** `name` 的后端类型（命名实例的实例前缀为 `mq.<name>`，故其类型键为 `mq.<name>.type`） |
+| `mq.<name>.<type>.*` | 后端自定 | — | **命名实例** `name` 的后端专有配置（如 `mq.orders.rocketmq.namesrv-addr`），同样经 `MqConfig.get(relativeKey)` 读取 |
 
-配置解析**全部在 `MqPlugin.start()` 内**完成；构造函数只持 `Prop` 引用，不解析、不校验。使用 RocketMQ 后端时**必须显式**配 `mq.type = rocketmq`（缺省仍是 `memory`）。
+**键归属与实例前缀**（对齐 `aifei-cache` 的 `cache.names` 做法）：
+
+- **主实例**：配置走**根级** `mq.*`——类型键 `mq.type`、后端专有键 `mq.<type>.*`。
+- **命名实例**：配置走 `mq.<name>.*`——其**实例前缀**为 `mq.<name>`，故类型键为 `mq.<name>.type`、后端专有键为 `mq.<name>.<type>.*`。
+- **主实例名**：`MqConfig.MAIN_INSTANCE_NAME = "__MAIN__"`（**沿用 `aifei-cache` 的 `Config.MAIN_INSTANCE_NAME` 实际取值**）；`use()` 取主实例、`use(name)` 取命名实例，**取到的是与 `@Inject` 注入的同一对象**（`@Inject` 只对应主实例）。
+
+**`mq.names` 校验口径**（逐项去空白后校验；任一不过即 `IllegalArgumentException`，由 `MqConfig.parseInstanceNames` 唯一实现，与 `aifei-cache` 的 `Config.parseInstanceNames` 同构）：
+
+| 校验 | 规则 |
+| --- | --- |
+| 空项 | 逗号分隔后出现空白项（如 `a,,b`、尾随逗号）→ 失败 |
+| 非法字符 | 实例名含 `.` / `=` / `:` 或空白字符 → 失败 |
+| 保留名 | 实例名为**根级配置键名**（`type` / `names`）→ 失败 |
+| 主实例名 | 实例名为 `__MAIN__` → 失败（属保留名，不可作为命名实例声明） |
+| 重名 | 同一 `mq.names` 内重复出现 → 失败 |
+
+配置解析**全部在 `MqPlugin.start()` 内**完成；构造函数只持 `Prop` 引用，不解析、不校验。使用 RocketMQ 后端时**必须显式**配 `mq.type = rocketmq`（缺省仍是 `memory`；命名实例同理，需**显式**配 `mq.<name>.type`）。
 
 > **注意**：此处「解析」仅指**配置**层面（键存在性与取值合法性），**不含**对外部**连通性**的校验；真实后端是否在启动期校验后端可达性**随后端而定**（RocketMQ **不**校验，见 §4.3 与 §5.6 B12 / (C) B12）。
 
@@ -423,7 +484,7 @@ public final class MqProviderRegistry {
 | A4 | `MessageListener` | **函数式单方法** `onMessage(Message)`（`@FunctionalInterface`）；**监听器异常隔离**——监听器抛出的 `RuntimeException` **不中断同主题其它订阅者**、**不上抛给生产者**。 |
 | A5 | `SendResult` | 字段**仅** `topic` + `messageId`，**无 success 布尔**；**失败一律抛异常**（不返回「失败结果」）；唯一工厂 `SendResult.of`。 |
 | A6 | `MqException` | **唯一未受检异常**（`extends RuntimeException`，层次不细分）。**异常分类**：参数非法 → `IllegalArgumentException`；状态非法 → `IllegalStateException`；运行时故障 → `MqException`。 |
-| A7 | `MqKit` | 未启动 / 已停止时取单例（`producer()` / `consumer()`）→ **`IllegalStateException`**；`send`×3 与 `subscribe` **只做转发**——**不重复校验、不转换异常**。 |
+| A7 | `ProducerUtil` / `ConsumerUtil` | **未启动 / 已停止**时 `use()`、`use(name)` 与全部静态镜像（`ProducerUtil.send`×3；`ConsumerUtil.subscribe` / `unsubscribe`）→ **`IllegalStateException`**；`use(name)` 的实例名为空 / 含非法字符 / 为保留名 / **未注册** → **`IllegalArgumentException`**（**先判状态、后判参数**）。全部静态镜像**只做转发**——**不重复校验、不转换异常**。 |
 | A8 | 参数校验 | **唯一定义点** `internal.MqValidator`；任一后端与门面**不得复制校验规则**（topic / payload / text / message / messageId / listener / producer / consumer）。 |
 | A9 | 生命周期 | 总线 `close()` 与插件 `stop()` **幂等**；**`stop()` 后 `send` / `subscribe` / `unsubscribe` → `IllegalStateException`**。 |
 | A10 | 配置契约 | 键名口径一致（`mq.type` + `mq.<type>.*`）；配置解析**一律在 `MqPlugin.start()` 内**完成，构造只持 `Prop`；**provider 必须无状态**。 |
@@ -487,13 +548,13 @@ public final class MqProviderRegistry {
 
 ## 6. 数据结构与接口（类图）
 
-> 源文件：`docs/diagrams/class.mermaid`；覆盖根包 7 个公共类型、`internal` 支撑、`memory` 默认后端与 `rocketmq` 真实后端（阶段 2，4 个类块及其继承 / 实现 / 委托 / 注册关系）、`aifei` 装配包。
+> 源文件：`docs/diagrams/class.mermaid`；覆盖根包 8 个公共类型、`internal` 支撑、`memory` 默认后端与 `rocketmq` 真实后端（阶段 2，4 个类块及其继承 / 实现 / 委托 / 注册关系）、`aifei` 装配包。
 
 ```mermaid
 classDiagram
     direction LR
 
-    %% ─────────── 根包 cn.hg.aifei.mq（精确 7 个公共类型） ───────────
+    %% ─────────── 根包 cn.hg.aifei.mq（精确 8 个公共类型） ───────────
     class Message {
         -String topic
         -byte[] payload
@@ -528,13 +589,19 @@ classDiagram
         +messageId() String
     }
 
-    class MqKit {
-        +static producer() Producer
-        +static consumer() Consumer
+    class ProducerUtil {
+        +static use() Producer
+        +static use(String instanceName) Producer
         +static send(Message message) SendResult
         +static send(String topic, byte[] payload) SendResult
         +static send(String topic, String text) SendResult
+    }
+
+    class ConsumerUtil {
+        +static use() Consumer
+        +static use(String instanceName) Consumer
         +static subscribe(String topic, MessageListener listener) void
+        +static unsubscribe(String topic, MessageListener listener) void
     }
 
     class MqException {
@@ -558,11 +625,17 @@ classDiagram
     class MqConfig {
         +static final ROOT_PREFIX
         +static final TYPE_KEY
+        +static final NAMES_KEY
         +static final DEFAULT_TYPE
+        +static final MAIN_INSTANCE_NAME
+        -String instanceName
         -String type
         -String prefix
         -Properties properties
-        +static parse(Properties properties, Set~String~ registeredTypes) MqConfig
+        +static parseInstanceNames(Properties properties, String key) List~String~
+        +static requireInstanceName(String instanceName) String
+        +static parse(Properties properties, Set~String~ registeredTypes, String instanceName) MqConfig
+        +instanceName() String
         +type() String
         +prefix() String
         +get(String relativeKey) String
@@ -575,9 +648,9 @@ classDiagram
 
     class MqHolder {
         <<utility>>
-        +static register(Producer producer, Consumer consumer) void
-        +static producer() Producer
-        +static consumer() Consumer
+        +static register(String instanceName, Producer producer, Consumer consumer) void
+        +static producer(String instanceName) Producer
+        +static consumer(String instanceName) Consumer
         +static clear() void
     }
 
@@ -687,7 +760,7 @@ classDiagram
     class MqPlugin {
         -Prop prop
         -MqProviderRegistry registry
-        -MessageBus bus
+        -List~MessageBus~ buses
         -boolean started
         +MqPlugin(Prop prop)
         +start() void
@@ -746,13 +819,14 @@ classDiagram
     RocketMqMessageBus ..> MessageListener : invokes
     RocketMqMessageBus ..> MqConfig : reads config
 
-    MqKit ..> MqHolder : uses
-    MqKit ..> Producer : returns
-    MqKit ..> Consumer : returns
+    ProducerUtil ..> MqHolder : uses
+    ProducerUtil ..> Producer : returns / delegates
+    ConsumerUtil ..> MqHolder : uses
+    ConsumerUtil ..> Consumer : returns / delegates
     MqHolder o-- Producer
     MqHolder o-- Consumer
 
-    MqPlugin ..> MqConfig : parse
+    MqPlugin ..> MqConfig : parse / parseInstanceNames
     MqPlugin ..> MqProviderRegistry : getProvider
     MqPlugin ..> MessageBus : createBus / close
     MqPlugin ..> MqHolder : register / clear
@@ -763,6 +837,8 @@ classDiagram
 ## 7. 程序调用流程（时序图）
 
 > 源文件：`docs/diagrams/sequence.mermaid`；覆盖 ① 启动链路 ② send 同步投递链路 ③ subscribe 消费链路 ④ unsubscribe 取消订阅链路 ⑤ stop 链路。
+>
+> **链路入口（双 Util）**：静态镜像 `ProducerUtil.send(...)` / `ConsumerUtil.subscribe(...)` **作用于主实例**，`use(name)` 取 **`mq.names` 声明的命名实例**；两者取用一律经 `internal.MqHolder` **按实例名**。启动段与停止段示意**多实例**（主实例 + 命名实例）——**图仅示意**，多实例装配的权威口径见 §4.4 / §5.5。
 >
 > **适用范围（不误导声明）**：上述五段链路均以**内存后端（`memory`，同步投递）**为例（参与者也以 `Memory*` 命名），**不是**真实后端的链路。阶段 2 的**真实后端（`rocketmq`）**为**异步生产 + 拉取消费**：`send` 只把消息提交到 broker（返回 `SendResult` ≠ 已被消费），消费回调发生在 **RocketMQ 自有消费线程**而非生产者调用线程——本图**未**把该异步语义画成同步；`rocketmq` 链路的权威描述见 §5.6 (C)（与 §4.3）。
 
@@ -779,6 +855,8 @@ sequenceDiagram
     participant Bus as MemoryMessageBus
     participant Prod as MemoryProducer
     participant Cons as MemoryConsumer
+    participant PUtil as ProducerUtil
+    participant CUtil as ConsumerUtil
     participant Holder as MqHolder
     participant Aop as AopKit（框架）
     participant Val as MqValidator
@@ -786,35 +864,41 @@ sequenceDiagram
     participant Listener as MessageListener
 
     %% ===================== ① 启动链路 =====================
-    Note over App,Aop: ① 启动链路：AppConfig.config(Plugins) 注册 → Plugin.start() 解析配置 → 解析 provider → 建总线 → 注册单例
+    Note over App,Aop: ① 启动链路：AppConfig.config(Plugins) 注册 → Plugin.start() 解析 mq.names → 逐实例装配（主实例 + 命名实例）→ 建总线 → 注册实例与主实例单例
     App->>Aifei: AppConfig.config(Plugins plugins): plugins.add(new MqPlugin(prop))
     App->>Aifei: Aifei.start(config)
     Aifei->>Plugin: start()
-    Plugin->>Cfg: parse(prop.getProperties(), Reg.types())
-    Cfg->>Reg: types()
-    Reg-->>Cfg: {"memory"}
-    Note over Cfg: 读 mq.type；缺省 "memory"；未注册类型 → IllegalArgumentException（不留半装配）
-    Cfg-->>Plugin: MqConfig(type="memory", prefix="mq.memory")
-    Plugin->>Reg: getProvider("memory")
-    Reg-->>Plugin: MemoryMqProvider
-    Plugin->>Prov: createBus(config)
-    Prov->>Bus: new MemoryMessageBus(config)
-    Bus-->>Prov: bus
-    Prov-->>Plugin: MessageBus
-    Plugin->>Bus: producer()
-    Bus-->>Plugin: MemoryProducer
-    Plugin->>Bus: consumer()
-    Bus-->>Plugin: MemoryConsumer
-    Plugin->>Holder: register(producer, consumer)
-    Plugin->>Aop: addSingletonObject(Producer.class, producer)
-    Plugin->>Aop: addSingletonObject(Consumer.class, consumer)
-    Plugin-->>Aifei: 装配完成（started = true）
+    Plugin->>Cfg: parseInstanceNames(prop.getProperties(), "mq.names")
+    Cfg-->>Plugin: 命名实例名单（主实例恒在首位、恒存在）
+    Note over Plugin,Cfg: 待装配名单 = 主实例（__MAIN__）+ mq.names 声明的命名实例；逐实例装配，任一失败 → 全部回滚（MqHolder.clear() + 关闭已建总线），不留半装配（权威口径见设计 §4.4 / §5.5）
+    loop 逐个实例（主实例 → 各命名实例）
+        Plugin->>Cfg: parse(prop.getProperties(), Reg.types(), instanceName)
+        Cfg->>Reg: types()
+        Reg-->>Cfg: {"memory", "rocketmq"}
+        Note over Cfg: 读 实例前缀.type（主实例 mq.type、命名实例 mq.<name>.type）；缺省 "memory"；未注册类型 → IllegalArgumentException
+        Cfg-->>Plugin: MqConfig(instanceName, type, prefix)
+        Plugin->>Reg: getProvider(type)
+        Reg-->>Plugin: MemoryMqProvider
+        Plugin->>Prov: createBus(config)
+        Prov->>Bus: new MemoryMessageBus(config)
+        Bus-->>Prov: bus
+        Prov-->>Plugin: MessageBus
+        Plugin->>Bus: producer()
+        Bus-->>Plugin: MemoryProducer
+        Plugin->>Bus: consumer()
+        Bus-->>Plugin: MemoryConsumer
+        Plugin->>Holder: register(instanceName, producer, consumer)
+    end
+    Plugin->>Aop: addSingletonObject(Producer.class, 主实例 producer)
+    Plugin->>Aop: addSingletonObject(Consumer.class, 主实例 consumer)
+    Plugin-->>Aifei: 装配完成（started = true；@Inject 只给主实例）
 
     %% ===================== ② send 同步投递链路 =====================
-    Note over App,Listener: ② send 同步投递链路：send 在调用线程内同步回调全部订阅者，无订阅者也成功
-    App->>Holder: MqKit.send("topic", "hello")
-    Holder-->>App: Producer（未启动 → IllegalStateException）
-    App->>Prod: send(topic, text)
+    Note over App,Listener: ② send 同步投递链路：静态镜像 ProducerUtil.send(...) 作用于主实例；send 在调用线程内同步回调全部订阅者，无订阅者也成功
+    App->>PUtil: ProducerUtil.send("topic", "hello")
+    PUtil->>Holder: producer(主实例名 __MAIN__)
+    Holder-->>PUtil: Producer（主实例；未启动 → IllegalStateException）
+    PUtil->>Prod: send(topic, text)（只转发：不重复校验、不转换异常）
     Prod->>Val: requireText(text)
     Prod->>Codec: encode(text)
     Codec-->>Prod: byte[]（UTF-8）
@@ -830,13 +914,15 @@ sequenceDiagram
         end
         Bus-->>Prod: SendResult(topic, messageId)
     end
-    Prod-->>App: SendResult
+    Prod-->>PUtil: SendResult
+    PUtil-->>App: SendResult
 
     %% ===================== ③ subscribe + 消费链路 =====================
-    Note over App,Listener: ③ subscribe 消费链路：登记后由 ② 的 publish 触发回调
-    App->>Holder: MqKit.subscribe("topic", listener)
-    Holder-->>App: Consumer（未启动 → IllegalStateException）
-    App->>Cons: subscribe(topic, listener)
+    Note over App,Listener: ③ subscribe 消费链路：静态镜像 ConsumerUtil.subscribe(...) 作用于主实例；登记后由 ② 的 publish 触发回调
+    App->>CUtil: ConsumerUtil.subscribe("topic", listener)
+    CUtil->>Holder: consumer(主实例名 __MAIN__)
+    Holder-->>CUtil: Consumer（主实例；未启动 → IllegalStateException）
+    CUtil->>Cons: subscribe(topic, listener)（只转发：不重复校验、不转换异常）
     Cons->>Val: requireTopic(topic) / requireListener(listener)
     Cons->>Bus: subscribe(topic, listener)
     alt 总线已关闭
@@ -845,12 +931,15 @@ sequenceDiagram
         Bus->>Bus: subscriptions[topic].add(listener)（CopyOnWriteArrayList，登记顺序即回调顺序）
         Bus-->>Cons: void
     end
-    Cons-->>App: void
+    Cons-->>CUtil: void
+    CUtil-->>App: void
 
     %% ===================== ④ unsubscribe 取消订阅链路 =====================
-    Note over App,Listener: ④ unsubscribe 取消订阅链路：按实例身份移除登记，此后 ② 的 publish 不再回调该 listener；重复取消 / 未登记 → 静默 no-op
-    App->>Holder: MqKit.consumer()
-    Holder-->>App: Consumer（未启动 → IllegalStateException）
+    Note over App,Listener: ④ unsubscribe 取消订阅链路（此处以命名实例 "order" 的取用为例）：按实例身份移除登记，此后 ② 的 publish 不再回调该 listener；重复取消 / 未登记 → 静默 no-op
+    App->>CUtil: ConsumerUtil.use("order")
+    CUtil->>Holder: consumer("order")
+    Holder-->>CUtil: Consumer（命名实例；未启动 → IllegalStateException；未注册 → IllegalArgumentException）
+    CUtil-->>App: Consumer
     App->>Cons: unsubscribe("topic", listener)
     Cons->>Val: requireTopic(topic) / requireListener(listener)
     Cons->>Bus: unsubscribe(topic, listener)
@@ -863,17 +952,19 @@ sequenceDiagram
     Cons-->>App: void
 
     %% ===================== ⑤ stop 链路 =====================
-    Note over App,Bus: ⑤ stop 链路：幂等；同步投递无在途消息，无需 drain
+    Note over App,Bus: ⑤ stop 链路：幂等；关闭全部实例（主实例 + 命名实例）；同步投递无在途消息，无需 drain
     App->>Aifei: 应用停止
     Aifei->>Plugin: stop()
     alt 未启动
         Plugin-->>Aifei: 直接返回（幂等，不重复关闭）
     else 已启动
-        Plugin->>Holder: clear()（此后 MqKit.producer()/consumer() → IllegalStateException）
-        Plugin->>Bus: close()
-        Bus->>Bus: closed = true；subscriptions.clear()（幂等）
-        Bus-->>Plugin: void
-        Plugin->>Plugin: bus = null；started = false
+        Plugin->>Holder: clear()（清空全部实例；此后 ProducerUtil / ConsumerUtil 取实例 → IllegalStateException）
+        loop 全部实例总线（主实例 + 命名实例）
+            Plugin->>Bus: close()
+            Bus->>Bus: closed = true，subscriptions.clear()（幂等）
+            Bus-->>Plugin: void
+        end
+        Plugin->>Plugin: buses 清空；started = false
         Plugin-->>Aifei: 关闭完成
     end
 ```
@@ -900,13 +991,14 @@ aifei-mq/
     │   ├── Consumer.java                     # 【公共】接口
     │   ├── MessageListener.java              # 【公共】函数式接口
     │   ├── SendResult.java                   # 【公共】不可变值对象
-    │   ├── MqKit.java                        # 【公共】静态门面
     │   ├── MqException.java                  # 【公共】唯一未受检异常
+    │   ├── ProducerUtil.java                 # 【公共】生产者静态工具类
+    │   ├── ConsumerUtil.java                 # 【公共】消费者静态工具类
     │   ├── internal/                         # 非承诺 API（框架无关）
     │   │   ├── MqValidator.java              # 参数校验唯一定义点
     │   │   ├── MqConfig.java                 # 配置域与键常量唯一定义点
     │   │   ├── TextCodec.java                # 编解码唯一定义点（UTF-8）
-    │   │   ├── MqHolder.java                 # 运行期单例持有唯一定义点
+    │   │   ├── MqHolder.java                 # 运行期实例注册表唯一定义点（多实例）
     │   │   ├── MessageBus.java               # 总线契约
     │   │   ├── MqProvider.java               # 后端扩展点契约
     │   │   ├── AbstractMqProvider.java       # provider 装配骨架
@@ -931,14 +1023,15 @@ aifei-mq/
         ├── MessageTest.java                  # 值对象单测（含防御性拷贝）
         ├── SendResultTest.java               # 值对象单测
         ├── MqValidatorTest.java              # 校验规则与异常类型
-        ├── MqHolderTest.java                 # 单例持有 / 未启动异常
-        ├── MqKitTest.java                    # 门面转发与状态异常
+        ├── MqHolderTest.java                 # 运行期实例注册表 / 未启动异常
+        ├── ProducerUtilTest.java             # 静态工具类：转发与状态 / 参数异常（P2：由 MqKitTest 拆分而来）
+        ├── ConsumerUtilTest.java             # 静态工具类：转发与状态 / 参数异常（P2：由 MqKitTest 拆分而来）
         ├── MqPluginTest.java                 # 装配生命周期与幂等
         └── rocketmq/                         # 真实后端测试（阶段 2）
             └── RocketMqMessageBusContractTest.java  # RocketMQ 集成契约（默认关闭）
 ```
 
-**新增文件计数**：主源码 24 个（根包 7 + internal 8 + memory 4 + rocketmq 4 + aifei 1）；测试 11 个（根包 10 + rocketmq 1）。
+**新增文件计数**：主源码 **25** 个（根包 **8** + internal 8 + memory 4 + rocketmq 4 + aifei 1）；测试 **12** 个（根包 11 + rocketmq 1）。根包 11 个测试文件 = `ArchitectureBoundaryTest` / `MessageBusContractTest` / `MemoryMessageBusContractTest` / `MqConfigTest` / `MessageTest` / `SendResultTest` / `MqValidatorTest` / `MqHolderTest` / `ProducerUtilTest` / `ConsumerUtilTest` / `MqPluginTest`（**`MqKitTest` 已随 P2 拆分为 `ProducerUtilTest` / `ConsumerUtilTest`**）。逐类实测用例数见 §10 执行状态。
 
 ---
 
@@ -987,7 +1080,11 @@ aifei-mq/
 
 > **执行角色**：本任务**只激活 `aifei-service-engineer`**（数据层与前端不激活——无表结构、无 UI）。下列 5 个任务设计为**由服务工程师单角色顺序执行**。
 >
-> **执行状态**：阶段 1（T01–T05）与阶段 2（T06–T08）均已执行完毕（主源码 24 个、测试 11 个齐备，与 §8 文件清单一致），模块内自测通过（架构门禁 5 项 + 总线契约：共同底线 **10** 项 + 内存专有 **10** 项，模块内执行用例共 **61** 项；另有 **10** 个 RocketMQ 集成用例**默认跳过**）；**尚未对外发布**。
+> **执行状态**：阶段 1（T01–T05）、阶段 2（T06–T08）与 **P2 公共面重构**均已执行完毕（**已实现**：主源码 **25** 个、测试 **12** 个齐备），模块内自测通过（**`Tests run: 87 / Failures: 0 / Errors: 0 / Skipped: 10`**——即模块内**执行用例 77 项** + **跳过 10 项**；执行 77 = 架构门禁 **5** 项 + 总线契约 **20** 项〔共同底线 **10** + 内存专有 **10**〕+ 单元测试 **52** 项；跳过的 **10** 项为 RocketMQ 集成用例，**默认关闭**）；**尚未对外发布**。
+>
+> **逐类实测用例数（`mvn clean verify`，总 87）**：`ArchitectureBoundaryTest` **5** · `ConsumerUtilTest` **4** · `MemoryMessageBusContractTest` **20**（共同底线 10 + 内存专有 10）· `MessageTest` **5** · `MqConfigTest` **11** · `MqHolderTest` **5** · `MqPluginTest` **12** · `MqValidatorTest` **8** · `ProducerUtilTest` **4** · `RocketMqMessageBusContractTest` **10（全部跳过）** · `SendResultTest` **3**。
+>
+> **P2 已实现（如实标注）**：本文件已定档并**已落地**的**公共面重构**——`MqKit` 删除 → `ProducerUtil` + `ConsumerUtil`（§3.7）、命名实例（§5.5）、多实例 `MqPlugin` / `MqHolder`（§4.4 / §5.3）——均已实现，即 §8 所列**当前态**（主源码 **25** 个）；`MqKitTest` 已拆分为 `ProducerUtilTest` / `ConsumerUtilTest`，测试文件计数已随之校准（**测试 12 个**）。
 >
 > **硬上限 ≤ 5 个任务**；每任务 ≥ 3 个相关文件；按**功能**分组，不按单文件拆分。
 
@@ -995,15 +1092,15 @@ aifei-mq/
 
 | 任务 ID | 任务名称 | 源文件 | 依赖 | 优先级 | 建议执行者 |
 | --- | --- | --- | --- | --- | --- |
-| **T01** | 模块骨架、公共 API 面与内部支撑 | `pom.xml`；`Message.java`、`Producer.java`、`Consumer.java`、`MessageListener.java`、`SendResult.java`、`MqException.java`、`MqKit.java`；`internal/MqValidator.java`、`internal/TextCodec.java`、`internal/MqHolder.java` | — | P0 | `aifei-service-engineer` |
+| **T01** | 模块骨架、公共 API 面与内部支撑 | `pom.xml`；`Message.java`、`Producer.java`、`Consumer.java`、`MessageListener.java`、`SendResult.java`、`MqException.java`、`ProducerUtil.java`、`ConsumerUtil.java`；`internal/MqValidator.java`、`internal/TextCodec.java`、`internal/MqHolder.java` | — | P0 | `aifei-service-engineer` |
 | **T02** | 配置域与 provider 扩展点 | `internal/MqConfig.java`、`internal/MessageBus.java`、`internal/MqProvider.java`、`internal/AbstractMqProvider.java`、`internal/MqProviderRegistry.java` | T01 | P0 | `aifei-service-engineer` |
 | **T03** | 内存后端实现 | `memory/MemoryMqProvider.java`、`memory/MemoryMessageBus.java`、`memory/MemoryProducer.java`、`memory/MemoryConsumer.java` | T01, T02 | P0 | `aifei-service-engineer` |
 | **T04** | aifei 接入装配与文档 | `aifei/MqPlugin.java`；`README.md`、`AGENTS.md`、`docs/testing.md` | T01, T02, T03 | P0 | `aifei-service-engineer` |
-| **T05** | 架构门禁、契约测试与单元测试 | `ArchitectureBoundaryTest.java`、`MessageBusContractTest.java`、`MemoryMessageBusContractTest.java`、`MqConfigTest.java`、`MessageTest.java`、`SendResultTest.java`、`MqValidatorTest.java`、`MqHolderTest.java`、`MqKitTest.java`、`MqPluginTest.java` | T01–T04 | P0 | `aifei-service-engineer` |
+| **T05** | 架构门禁、契约测试与单元测试 | `ArchitectureBoundaryTest.java`、`MessageBusContractTest.java`、`MemoryMessageBusContractTest.java`、`MqConfigTest.java`、`MessageTest.java`、`SendResultTest.java`、`MqValidatorTest.java`、`MqHolderTest.java`、`ProducerUtilTest.java`、`ConsumerUtilTest.java`、`MqPluginTest.java` | T01–T04 | P0 | `aifei-service-engineer` |
 
 **任务要点**：
 
-- **T01**：先落 `pom.xml`（Java 8 / `aifei-all` provided / junit test），再落 7 个公共类型与 3 个内部支撑。`Message.of` / `SendResult.of` 的校验经 `MqValidator`；`MqKit` 经 `MqHolder`。完成后应可独立 `mvn clean compile`。
+- **T01**：先落 `pom.xml`（Java 8 / `aifei-all` provided / junit test），再落 8 个公共类型与 3 个内部支撑。`Message.of` / `SendResult.of` 的校验经 `MqValidator`；`ProducerUtil` / `ConsumerUtil` 经 `MqHolder` 按实例名取用。完成后应可独立 `mvn clean compile`。
 - **T02**：`MqProviderRegistry` 静态初始化块注册 `"memory"`（引用 `MemoryMqProvider.TYPE`）——此时 `memory` 包尚未建，允许先以引用占位、由 T03 补齐（或 T02/T03 连做一次编译）。`MqConfig` 为纯 JDK 依赖，不得 import `Prop`。
 - **T03**：`MemoryMessageBus` 实现同步投递、订阅登记、`close()` 幂等与监听器异常隔离（§5.1 / §5.3）。
 - **T04**：`MqPlugin` 是**唯一** import `cn.aifei.*` 的类；`start()` 读 `prop.getProperties()` 后交 `MqConfig.parse`。
@@ -1074,13 +1171,13 @@ graph TD
 | 规则 | 唯一定义点 |
 | --- | --- |
 | 参数校验（topic / payload / text / message / messageId / listener / producer / consumer） | `internal.MqValidator` |
-| 配置域与键常量、`mq.type` 解析与校验、`mq.<type>.<relative>` 键拼装 | `internal.MqConfig` |
+| 配置域与键常量、`mq.type` 解析与校验、`mq.names` 解析与实例名校验、`<实例前缀>.<type>.<relative>` 键拼装 | `internal.MqConfig` |
 | `String` → `byte[]` 编码（UTF-8） | `internal.TextCodec` |
 | 后端扩展点契约 | `internal.MqProvider` |
 | provider 装配骨架 | `internal.AbstractMqProvider` |
 | 后端注册表（静态初始化块一行） | `internal.MqProviderRegistry` |
 | 总线契约 | `internal.MessageBus` |
-| 运行期单例持有 | `internal.MqHolder` |
+| 运行期实例注册表（多实例，按实例名登记 / 取用） | `internal.MqHolder` |
 | 内存订阅登记、投递、`close()` | `memory.MemoryMessageBus` |
 | 内存 `messageId` 生成 | `memory.MemoryMessageBus` |
 | 后端标识字面量 `"memory"` | `internal.MqConfig.DEFAULT_TYPE`（`MemoryMqProvider.TYPE` 引用之） |
@@ -1122,7 +1219,7 @@ graph TD
   - `SOURCE_ROOT = "src/main/java"`
   - `ROOT_PACKAGE = "cn/hg/aifei/mq/"`
   - `BRIDGE_PACKAGE = "cn/hg/aifei/mq/aifei/"`
-  - `EXPECTED_PUBLIC_TYPES = 7`
+  - `EXPECTED_PUBLIC_TYPES = 8`
 
 ### 12.1 断言清单
 
@@ -1132,12 +1229,12 @@ graph TD
 | ② | `frameworkOnlyInBridgePackage` | 含框架 import（`import cn.aifei.…` 且**不是** `import cn.hg.aifei.mq.…`）的文件，其路径必须包含 `BRIDGE_PACKAGE`，否则失败。 |
 | ③ | `noSqlReference` | 全模块不得出现 `import java.sql.`，否则失败。 |
 | ④ | `aifeiBridgePackageExists` | `SOURCE_ROOT/BRIDGE_PACKAGE` 必须为目录（接入包非空）；且存在以 `BRIDGE_PACKAGE + "MqPlugin.java"` 结尾的源文件。 |
-| ⑤ | `publicSurfaceExact` | 根包**直接子文件**（路径含 `ROOT_PACKAGE` 且其后不再含 `/`）的 `.java` 数量**精确等于** `EXPECTED_PUBLIC_TYPES`（= 7）；且其文件名集合**精确等于**下方 7 个名字。 |
+| ⑤ | `publicSurfaceExact` | 根包**直接子文件**（路径含 `ROOT_PACKAGE` 且其后不再含 `/`）的 `.java` 数量**精确等于** `EXPECTED_PUBLIC_TYPES`（= 8）；且其文件名集合**精确等于**下方 8 个名字。 |
 
 ### 12.2 `EXPECTED_PUBLIC_TYPES` 钉死（唯一事实来源）
 
 ```java
-private static final int EXPECTED_PUBLIC_TYPES = 7;
+private static final int EXPECTED_PUBLIC_TYPES = 8;
 
 // 断言 ⑤ 同时校验文件名集合精确相等（防同名替换）
 private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Arrays.asList(
@@ -1146,23 +1243,26 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
         "Consumer.java",
         "MessageListener.java",
         "SendResult.java",
-        "MqKit.java",
-        "MqException.java"
+        "MqException.java",
+        "ProducerUtil.java",
+        "ConsumerUtil.java"
 ));
 ```
 
 > 口径说明：**「根包公共类型数量」= `src/main/java/cn/hg/aifei/mq/` 目录的直接子 `.java` 文件数**（子包 `internal` / `memory` / `aifei` 下的文件不计入；`MqPlugin` 在 `aifei/` 故不计入）。`isDirectRootFile(path)` 判定：`path` 含 `ROOT_PACKAGE` 且 `ROOT_PACKAGE` 之后的相对路径**不含 `/`**。
+>
+> **本次变更（P1 定档，P2 已落地）**：`EXPECTED_PUBLIC_TYPES` 由 **7 → 8**、`EXPECTED_ROOT_TYPES` 文件名集合同步更新（`-MqKit.java` / `+ProducerUtil.java` / `+ConsumerUtil.java`）。此属**有意的公共面扩张**（经**项目所有者拍板**，§3 / §13），**不是**放宽或绕过门禁；门禁测试的这两个常量**已随 P2 同步改毕**。
 
 ### 12.3 契约测试与单元测试（同属 T05）
 
 - `MessageBusContractTest`（abstract）：抽象工厂 `protected abstract MessageBus newBus();`，只覆盖**共同底线**（§5.6 A）：「生产 → 订阅 → 消费」闭环（**只断言「至少收到且内容正确」**）、无订阅者成功（**仅断言 (A) A5 的「`send` 仍成功返回 `SendResult`（含 `messageId`）」；「消息丢弃 / 留存」属 (B) B6，不在该用例断言范围**）、`close()` 幂等、`close()` 后 `send`/`subscribe`/`unsubscribe` 抛 `IllegalStateException`、监听器异常隔离不中断其余订阅者、「取消后不再向该 listener 派发」（`unsubscribe` 生效）、「重复 / 未登记的取消为幂等 no-op」（`unsubscribe` 幂等）；为真实后端提供**异步轮询等待钩子**。**投递强度**：基类只断言「**至少收到且内容正确**」，**不得**断言「**恰好一次**」——「恰好一次」属 (B) B4 差异（真实后端 at-least-once、可能重复消费），其强度落**内存专有**子类 `MemoryMessageBusContractTest`。**单主题 FIFO / 多订阅者登记顺序 / `messageId` 递增格式 / 同一消息对象**属 §5.6 (B) 差异，**已移出基类**、放 `MemoryMessageBusContractTest`（阶段 2，见 `docs/testing.md`）。
 - `MemoryMessageBusContractTest extends MessageBusContractTest`：`newBus()` 返回 `new MemoryMessageBus(config)`；另承载内存专有用例（含上述被移入的 4 项）。
 - `RocketMqMessageBusContractTest extends MessageBusContractTest`（阶段 2）：`newBus()` 返回 RocketMQ 总线；**默认关闭**，`-Drocketmq.integration=true` 开启后须连上 broker（后端不可达时用例失败，**不得**用 `Assume` 掩盖；因 `producer.start()` **不校验**连通性，失败通常出现在**首个 `send` / `subscribe`** 而非 `newBus()` 建总线处，见 §5.6 B12 与 `docs/testing.md`）。
-- 单元测试：`MqConfigTest`（默认值 / 未注册类型 / `prefix` / `get`）、`MessageTest`（校验 + 双向防御性拷贝）、`SendResultTest`、`MqValidatorTest`（异常类型）、`MqHolderTest`、`MqKitTest`（未启动 `IllegalStateException` + 转发）、`MqPluginTest`（生命周期 + 幂等 + 未注册后端启动失败不留半装配）。
+- 单元测试（**P2 已落地**，括号内为**逐类实测用例数**）：`MqConfigTest`（11：默认值 / 未注册类型 / `prefix` / `get` / `mq.names` 解析与校验）、`MessageTest`（5：校验 + 双向防御性拷贝）、`SendResultTest`（3）、`MqValidatorTest`（8：异常类型）、`MqHolderTest`（5：多实例登记 / 按名取用 / 清除，先状态后参数）、`ProducerUtilTest`（4：未启动状态异常 / `use(name)` 实例名校验与判定顺序 / 静态短写转发）、`ConsumerUtilTest`（4：同前 + `subscribe` / `unsubscribe` 转发）、`MqPluginTest`（11：生命周期 + 幂等 + 多实例装配与实例隔离 + 未注册后端 / 非法实例名 / 命名实例失败 / 框架桥失败均不留半装配）。跨后端**共同底线**由契约基类 `MessageBusContractTest` 承载（内存实现 `MemoryMessageBusContractTest` 实测 **20** 项 = 共同底线 **10** + 内存专有 **10**）；**架构门禁** `ArchitectureBoundaryTest` **5** 项；RocketMQ 集成 `RocketMqMessageBusContractTest` **10** 项**默认跳过**。
 
 ### 12.4 阶段 2：新实现包与门禁的合规性（**无需改断言**）
 
-- **根包仍精确 7 类型**：`RocketMqProvider` 等落 `cn.hg.aifei.mq.rocketmq` **子包**，不计入「根包直接子 `.java`」，门禁⑤ `publicSurfaceExact` 不受影响。
+- **根包精确 8 类型**（P1 定档，原 7）：`RocketMqProvider` 等落 `cn.hg.aifei.mq.rocketmq` **子包**，不计入「根包直接子 `.java`」，门禁⑤ `publicSurfaceExact` 不受影响。
 - **门禁① 自动放行**：`rocketmq` 包文件路径**既非**根包直接子文件、**也不含** `/internal/`、**也不含** `cn/hg/aifei/mq/aifei/`，故 `inImplementationPackage` 为真，其 `org.apache.rocketmq.*` import 合规。
 - **`internal.MqProviderRegistry` 引用新实现类合规**：`cn.hg.aifei.mq.rocketmq.RocketMqProvider` 以 `cn.hg.aifei.mq.` 开头，属允许 import（门禁① `isAllowedImport`），且非框架类型（门禁②不涉及）——与既有 `import cn.hg.aifei.mq.memory.MemoryMqProvider` **同构**。
 - **门禁② 不受影响**：`rocketmq` 实现包**不得** import `cn.aifei.*`（配置经 `internal.MqConfig` 读取，不经框架类型）。
@@ -1183,21 +1283,24 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | 7 | 后端标识字面量与 `mq.type` 默认值的单一来源 | `MqConfig.DEFAULT_TYPE = "memory"` 为唯一字面量；`MemoryMqProvider.TYPE` 引用之 |
 | 8 | 跨线程并发 `send` 的顺序 | 不保证相对顺序（各调用线程内同步完成）；单线程连续 `send` 严格保序（§5.1） |
 | 9 | 是否支持消费组 / 重试 / 持久化 | **不在本模块承诺范围**（P1/P2，需求文档第四节）；**取消订阅 `unsubscribe` 已纳入本版**（§3.3 / §5.6 A3 / B10）。**注**：RocketMQ 后端由 broker **天然提供**消费组 / 重试 / 持久化，属**后端特性**（§5.6 (C) B4 / B5 / B9），**非**本模块新增的承诺 API |
-| 10 | `MqKit` 是否为 `unsubscribe` 增加门面镜像 | **不增加**：公共面收敛纪律——无需求驱动的门面扩张不做；需要取消时可经 `MqKit.consumer().unsubscribe(topic, listener)`（§3.7） |
+| 10 | `ConsumerUtil` 是否镜像 `unsubscribe`（原 `MqKit` 门面镜像问题） | **已随 P1 定档变更：镜像**。原 `MqKit` 单一门面按「无需求驱动的门面扩张不做」**不镜像** `unsubscribe`；现 `MqKit` 已**删除**、拆为 `ProducerUtil` / `ConsumerUtil`（§3.7），工具类采用「**静态镜像与其对应接口的方法一一对应**」范式（照 `CacheUtil` / `CounterUtil`），故 `ConsumerUtil` **同时镜像** `subscribe` 与 `unsubscribe`——`unsubscribe` 是**阶段 1 已落地的接口能力**，镜像它不属新能力扩张。**实现状态**：**已随 P2 落地**。 |
 | 11 | **RocketMQ broker 验证盲区** | 本机**无 Docker / 无 RocketMQ 环境**（`docker` 命令不存在），真实 broker 需 **nameserver + broker 两进程**。故 RocketMQ 集成测试**默认关闭**（`-Drocketmq.integration=true` 开启），**本设计未在真实 broker 上验证**；语义正确性依赖后续在具备 broker 的环境执行集成测试（§5.6 (C) 与 `docs/testing.md`） |
 | 12 | **consumer 延迟启动与「不留半装配」的适用范围** | consumer 订阅主题在 `start()` 时未知，故其 `start()` 延迟到**首次 `subscribe`**。**「不留半装配」只适用于配置错误**（未注册后端 / 必填键缺失或非法）——仍由 `MqPlugin.start()` 链路内**立即失败**保证（§5.5）。**连通性不在此列**：RocketMQ 的 `producer.start()` **不校验 nameserver 连通性**，nameserver 不可达时启动仍成功、故障延迟到首次使用（§4.3 / §5.6 B12 / (C) B12）。首次 `subscribe` 时 consumer 启动失败抛 `MqException`（运行时故障，§5.4） |
 | 13 | **契约基类需新增异步等待钩子** | 基类现有用例多为**同步即时**断言；真实后端投递异步。故 T08 为基类加**轮询等待**钩子，并把 §5.6 明确**非共同底线**的用例（单主题 FIFO、多订阅者登记顺序、`messageId` 递增格式）**移出基类、移入 `MemoryMessageBusContractTest`**。此为**对齐 §5.6 的同步修订**，**不改动** §5.6 (A) 共同底线与 (B) 差异定档 |
 | 14 | **RocketMQ 消费组一致性约束** | 同一 `consumer-group` 的多个实例须有**相同订阅集合**，否则 rebalance 异常（§5.6 (C) B9）。本模块**不**为每个 topic 派生独立消费组（保持「单消费者、单组」，与「一个 bus 一个后端实例」一致）；需严格隔离时，调用方可为不同订阅集合配置不同 `consumer-group` |
 | 15 | **`unsubscribe` 是否调用 broker 侧取消** | **不调用** `consumer.unsubscribe(topic)`：避免影响**同 topic 其它本地监听器**与消费组一致性；仅做本地按实例身份解绑（尽力语义，§5.6 (C) B10） |
-| 16 | **类图 / 时序图的 `rocketmq` 部分** | **本轮（图谱同步）已处置**：`docs/diagrams/class.mermaid` 与 §6 内嵌副本**已补入 `rocketmq` 实现包 4 个类块**（`RocketMqProvider` / `RocketMqMessageBus` / `RocketMqProducer` / `RocketMqConsumer`）及其继承 / 实现 / 委托 / 注册关系（含与 `MqProviderRegistry` 的注册边），既有 `memory` 内容**不丢不改**。`docs/diagrams/sequence.mermaid` 与 §7 内嵌副本**有意保持「内存后端五段」的结构与语义不变**（**未**新增真实后端链路；仅修正 2 处消息文本标点，见第 19 条），改在 §7 引言声明适用范围：五段以内存后端（同步投递）为例，真实后端为**异步生产 + 拉取消费**、回调在后端自有线程，**不把异步语义画成同步**。**残余落差**：`rocketmq` 运行时语义仍**未经真机 broker 验证**（第 11 / 17 / 20 条）；`rocketmq` 类型与行为的权威仍为 §4.3 表与 §5.6 (C) |
+| 16 | **类图 / 时序图的 `rocketmq` 部分** | **本轮（图谱同步）已处置**：`docs/diagrams/class.mermaid` 与 §6 内嵌副本**已补入 `rocketmq` 实现包 4 个类块**（`RocketMqProvider` / `RocketMqMessageBus` / `RocketMqProducer` / `RocketMqConsumer`）及其继承 / 实现 / 委托 / 注册关系（含与 `MqProviderRegistry` 的注册边），既有 `memory` 内容**不丢不改**。`docs/diagrams/sequence.mermaid` 与 §7 内嵌副本**仍保持「内存后端五段」的结构**（**未**新增真实后端链路），但已由 `MqKit` 单一门面**改为双 Util**（`ProducerUtil` / `ConsumerUtil`）+ **命名实例**语义（第 19 条曾修标点，本轮 P3 进一步改写，见第 27 条）：静态镜像（`ProducerUtil.send` / `ConsumerUtil.subscribe`）**作用于主实例**、其取用经 `internal.MqHolder` **按实例名**；启动段以 `loop` 示意**多实例装配**（主实例 + `mq.names`）、`stop` 段示意关闭**全部**实例（多实例装配的**权威口径仍是 §4.4 / §5.5**，图仅示意、不作第二事实来源）；改在 §7 引言声明适用范围：五段以内存后端（同步投递）为例，真实后端为**异步生产 + 拉取消费**、回调在后端自有线程，**不把异步语义画成同步**。**残余落差**：`rocketmq` 运行时语义仍**未经真机 broker 验证**（第 11 / 17 / 20 条）；`rocketmq` 类型与行为的权威仍为 §4.3 表与 §5.6 (C) |
 | 17 | **RocketMQ 消费位点策略（`CONSUME_FROM_FIRST_OFFSET`）** | 设计**未规定**消费位点策略（属 §5.6 (B) B9 维度）；实现**选择 `CONSUME_FROM_FIRST_OFFSET`**（新消费组首次消费自队列**最早**位点开始，见 §5.6 (C) 实现期决策 1）。**该选择的副作用未经真机 broker 验证**（首次订阅可能回溯历史消息、重复消费面扩大、与 broker 位点持久化的交互未核）；须在具备 broker 的环境验证后回填 §5.6 (C) 与本节 |
 | 18 | **RocketMQ 依赖安全面** | `rocketmq-client:4.9.7` 的**传递依赖**含 `com.alibaba:fastjson:1.2.69_noneautotype`、`io.netty:netty-all:4.1.65.Final` 等（属该客户端**既有依赖面**，§9）。模块侧已以 `<optional>true</optional>` 声明、**不向下游传递**；但**使用者自行引入该客户端时需自行评估 CVE 与版本** |
-| 19 | **时序图既有的 Mermaid 语法缺陷（本轮发现并修正）** | `docs/diagrams/sequence.mermaid` 有两条**消息文本**（`Bus->>Bus: closed = true; subscriptions.clear()（幂等）` 与 `Plugin->>Plugin: bus = null; started = false`）含**半角分号**——Mermaid 的 sequence **消息文本不接受**半角分号（`Note` 内可以），实测 **mermaid v11 与 v12 均解析失败**（`Parse error ... got 'ACTOR'`），即该图**修正前无法渲染**。本轮**最小修正**：两处改为**全角分号**（语义不变，与该文件既有中文标点写法一致），源文件与 §7 内联副本**同步同改**；修正后 `class.mermaid` 与 `sequence.mermaid` 在 **v11 / v12 双版本下均 `mermaid.parse` 通过**。**影响面**：sequence.mermaid 与阶段 1 版本**仅 2 行标点差异**，五段链路的结构与语义未变 |
+| 19 | **时序图既有的 Mermaid 语法缺陷（本轮发现并修正）** | `docs/diagrams/sequence.mermaid` 有两条**消息文本**（`Bus->>Bus: closed = true; subscriptions.clear()（幂等）` 与 `Plugin->>Plugin: bus = null; started = false`）含**半角分号**——Mermaid 的 sequence **消息文本不接受**半角分号（`Note` 内可以），实测 **mermaid v11 与 v12 均解析失败**（`Parse error ... got 'ACTOR'`），即该图**修正前无法渲染**。本轮**最小修正**：两处改为**全角分号**（语义不变，与该文件既有中文标点写法一致），源文件与 §7 内联副本**同步同改**；修正后 `class.mermaid` 与 `sequence.mermaid` 在 **v11 / v12 双版本下均 `mermaid.parse` 通过**。**影响面（当时）**：sequence.mermaid 与阶段 1 版本**仅 2 行标点差异**，五段链路的结构与语义未变（**其后 P3 又对 `sequence.mermaid` 做过双 Util / 命名实例改写，见第 16 / 27 条**）。 |
 | 20 | **RocketMQ 运行时行为未经真机验证（消费组 / 位点 / 重试 / 取消）** | 消费位点、rebalance、`at-least-once` 重试与**重复消费**、broker 持久化等**运行时行为均依赖 broker**，本模块**未在真机 broker 上验证**（§5.6 (C) B4 / B5 / B9）；`unsubscribe` **不调用** broker 侧取消（尽力语义，§5.6 (C) B10），其运行时效果亦未验证；同一 `consumer-group` 多实例须有相同订阅集合的约束（第 14 条）同样未在真机验证 |
 | 21 | **RocketMQ 启动期不校验 nameserver 连通性（「启动成功」≠「后端可达」）** | 据**源码核对**（`DefaultMQProducer#start()` 不做连通性探测，属懒连接）与**无 broker 环境实测**（nameserver 不可达时 `MqPlugin.start()` 不抛、应用照常启动）推断：`mq.type=rocketmq` 时**启动成功不等于 nameserver 可达**，故障**延迟到首次 `send` / 消费拉取**才以 `MqException` 暴露（§4.3 / §5.6 B12 与 (C) B12）。**验证程度：源码核对 + 无 broker 环境实测推断，未经真机 broker 复核**；真机复核待环境就绪后补验（与第 11 / 20 条同属 broker 验证盲区）。**配置层面**（未注册后端 / 必填键缺失 / 值非法）仍在启动期立即失败且不留半装配，不受本条影响 |
 | 22 | **契约基类「恰好一次」断言与 at-least-once 的测试风险** | 真实后端为 **at-least-once**（§5.6 B4）：故障 / 重试 / 位点回退下**可能重复消费**。若契约测试用例断言「**恰好一次**」，在**真机 broker 上可能偶发失败**（重复投递使计数 > 1）。**现状处置**：契约基类 `MessageBusContractTest` 已只断言「**至少收到且内容正确**」，**不含**「恰好一次」；「恰好一次」作为**内存后端特性**（B4 差异）已归**内存专有**子类 `MemoryMessageBusContractTest`（§12.3 / `docs/testing.md`）。**验证程度**：本机**无 broker**（无 Docker、无 RocketMQ），该风险**未经真机验证**；真机复核待环境就绪后补验（与第 11 / 20 / 21 条同属 broker 验证盲区）。 |
 | 23 | **消费组是否进入公共 API（决策）** | **决策：维持现状、由配置表达**（`mq.<type>.consumer-group`），**不进公共 API**——`Consumer.subscribe` 维持 `subscribe(String topic, MessageListener listener)`，**不增** `group` 参数（§3.3 签名不变）。**理由**：① RocketMQ / Kafka 的消费组由 **broker 天然提供**——**多实例同组即竞争消费**，无需我们的 API 参与；② **MQTT 3.1.1 根本没有消费组概念**（若加该参数，后端只能**忽略**它 → 参数沦为**装饰品**），**MQTT 5.0** 需依赖 broker 的**共享订阅** `$share/{group}/{topic}`（**非所有 broker、且非 3.1.1**）；③ 故 `group` **不满足 §5.7 准入判据**，写进 `Consumer.subscribe` 签名即**违反本原则**。**与既有条目的关系**：第 9 条（消费组不在本模块承诺范围）、§5.6 (C) B9（RocketMQ 消费组由 broker 提供、经 `mq.rocketmq.consumer-group` 配置）、第 14 条（同组多实例须相同订阅集合）、第 15 条（`unsubscribe` 不调用 broker 侧取消）——四条均与本决策**一致、无冲突**。 |
-| 24 | **进程内多个消费组的未来方向：命名实例** | **方向（非本轮实现）**：若将来确需「**进程内多个消费组**」，既定方案是学 `aifei-cache` 引入**命名实例**——`mq.names` 声明多个命名实例，各自一份配置（含自己的 `consumer-group`），经 `MqKit.use("name")` 取用；**组名藏在实例配置里，不进公共 API 签名**。**为何优于「给 `subscribe` 加 group 参数」**：① 不把后端特有概念钉进公共面（满足 §5.7）；② 与 `aifei-cache` 的「**实例名 / 缓存名 / 命名空间**」**三层名字** + `use()` 范式**同构**，认知成本最低；③ MQTT 后端可把组名映射为 `$share/<group>/<topic>`（**实现包内的事**，公共面零感知）。**代价**：配置域需扩展（`mq.names` + `mq.<name>.*`）、`MqHolder` 需支持多实例、`@Inject` 只能给**主实例**（`__MAIN__`）、其余经 `use()` 取——与 `aifei-cache` **现状一致**。**触发条件**：同一进程内需让**两个业务模块各自成组**、或需**同主题全量各收**（每个模块都收到全部消息）时，才值得做。**与第 23 条的关系**：第 23 条是**本轮决策**（消费组不进公共 API）；本条是**未来若需进程内多组的既定方向**——两者**互补不冲突**（都坚持「组名不进公共 API 签名」，区别只在「由单份配置表达」还是「由命名实例配置表达」）。 |
+| 24 | **进程内多个消费组 → 命名实例（本轮已定档）** | **本轮决策（P1 定档；P2 已落地）**：已确认采用**命名实例**——`mq.names` 声明多个命名实例，各自一份配置（含自己的 `consumer-group`），经 `ProducerUtil.use("name")` / `ConsumerUtil.use("name")` 取用（§3.7）；**组名藏在实例配置里，不进公共 API 签名**（`Consumer.subscribe` 签名不变，§3.3）。**与原方向一致之处**：① 不把后端特有概念钉进公共面（满足 §5.7）；② 与 `aifei-cache` 的「**实例名 / 缓存名 / 命名空间**」**三层名字** + `use()` 范式**同构**，认知成本最低；③ MQTT 后端可把组名映射为 `$share/<group>/<topic>`（**实现包内的事**，公共面零感知）。**本轮已落地为设计定档**：配置域扩展（`mq.names` + `mq.<name>.*`，§5.5）、`MqHolder` 支持多实例（§4.1）、`MqPlugin` 按 `mq.names` 装配多实例（§4.4）、`@Inject` 只给**主实例**（`__MAIN__`）、其余经 `use(name)` 取——与 `aifei-cache` **现状一致**。**实现状态**：**已落地**（P2 服务工程师已按 §3.7 / §4.1 / §4.4 / §5.5 实现）。**与第 23 条的关系**：第 23 条（消费组不进公共 API）仍成立；本条在该前提下给出「进程内多组」的实现载体——两者**互补不冲突**（都坚持「组名不进公共 API 签名」）。 |
+| 25 | **`MqKit` 拆分 → `ProducerUtil` + `ConsumerUtil`（公共面 7 → 8，拍板）** | **本轮决策（P1 定档；经项目所有者拍板；P2 已落地）**：删除 `MqKit`，替换为 `ProducerUtil` + `ConsumerUtil` 两个公共工具类，形态照 `aifei-cache` 的 `CacheUtil` / `CounterUtil`（静态方法与「实例方法」分属两个类、无同名冲突）。**根包公共类型 7 → 8**（§3.8），门禁 `EXPECTED_PUBLIC_TYPES` / `EXPECTED_ROOT_TYPES` 同步为 8（§12.2）——属**有意的公共面扩张**，**不是**放宽或绕过门禁。`unsubscribe` 镜像见第 10 条；命名实例取用见第 24 条。**实现状态**：**已随 P2 落地**。 |
+| 26 | **延迟消息：本轮不做（决策落档）** | **决策结论：本轮不做。** **理由链（如实落档）**：项目所有者明确**不允许内存后端引入调度线程** → 内存后端**无法实现「到点才投递」** → 延迟参数在内存后端下**无意义** → 按本文 **§5.7 准入判据**「**只能被部分后端实现的概念不得进方法签名**」⇒ **`delayMillis` / `delayLevel` 不得进公共 API**（`Producer.send` 维持恰好 3 个重载，§3.2 / §5.6 A2 不变）。**替代方式（模块零改动）**：需要延迟由**调用方自调度**——业务侧自行定时后（如 `ScheduledExecutorService`）再 `send`；本模块**不**引入任何延迟相关配置键或实现包能力。**未来重启触发条件**：① 项目所有者**放行内存后端引入调度线程**（届时须按 §5.7 正式修订 §5.1 与 §5.6 (B) B2 内存列，先改本文再改代码），**或** ② 需求变更为「仅真实后端原生延迟、公共面**不承诺**跨后端一致」且接受（`delayMillis` / `delayLevel`）**不进公共签名**的表达方式。**论证留痕**：`docs/delayed-message-proposal.md`（草案全文保留，含判据裁定、候选对比、各后端落地与验证程度）。 |
+| 27 | **P3 文档与图谱收口（本轮）** | **本轮（P3）只改文档、不改任何代码**：① 时序图 `docs/diagrams/sequence.mermaid` 与 §7 内嵌副本**同步改写**为**双 Util + 命名实例**链路（见第 16 条；两处**逐字一致**，核验方式：内联块正文与源文件 `TrimEnd(LF)` 逐字节比对）；② 测试计数校准为**逐类实测**值——模块内 `mvn clean verify` 实测 `Tests run: 86 / Failures: 0 / Errors: 0 / Skipped: 10`（**执行 76 项** + **默认跳过的 RocketMQ 集成 10 项**），据此更新首部「文档状态」、§10 执行状态（含逐类明细）、§12.3，及 `docs/testing.md`；③ 把 `MqKit` 的**过时引用**（§8 文件清单 / §10.1 T05 / §12.2 / §12.3）更正为 `ProducerUtil` / `ConsumerUtil`，**保留**如实的历史说明（§3.7「`MqKit` 已删除」、第 10 / 19 / 25 条的变更记录）。**契约实质不变**：§3 / §5.6 / §5.7 与阶段 0 / 1 / 2 已定档条款**均未改**。**（P4 收口后计数）**：P4 新增 1 个装配回滚断言用例，实测变为 `Tests run: 87 / Failures: 0 / Errors: 0 / Skipped: 10`（执行 **77**）——见首部「文档状态」 |
 
 ---
 
@@ -1219,7 +1322,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | A4 | **经评估无风险**（**有交互注记**） | 「监听器异常**不中断**同主题其它订阅者、**不上抛**生产者」是**本地捕获**行为，任一后端可实现。**注记**：MQTT **QoS≥1** 的**重投递**（ack 时机）与隔离的交互会影响**重复消费面**——但重复面属 **(B) B4** 范畴，**不由 A4 约束**（与 §5.6 测试口径一致）。 |
 | A5 | **有风险** | 见 **R1**（`messageId` **强制非空**；MQTT 无 broker 侧消息 ID）。「字段仅 `topic` + `messageId`、无 success 布尔、失败抛异常」本身任一后端可实现，风险集中在 `messageId` 的非空要求（§3.5 经 `internal.MqValidator.requireMessageId` 校验）。 |
 | A6 | **经评估无风险**（**有边界界定注记**） | 三类分类（参数非法 / 状态非法 / 运行时故障）与「**唯一未受检异常**」是**后端无关**约定，任一后端可实现。**注记**：新后端须自行界定其「运行时故障」边界（阶段 2 的既有经验），该界定属**实现包内映射**，**不进 (A)**。 |
-| A7 | **经评估无风险** | `MqKit` 只做**单例取用与转发**（未启动取单例 → `IllegalStateException`）；任一后端共用同一门面，语义不变。（未来命名实例若加 `MqKit.use()` 属**公共面扩张**，非对 A7 的违背，见 §13 第 24 条。） |
+| A7 | **经评估无风险** | `ProducerUtil` / `ConsumerUtil` 只做**实例取用与转发**（未启动 / 已停止取实例 → `IllegalStateException`；`use(name)` 实例名非法 / 未注册 → `IllegalArgumentException`，**先状态、后参数**）；任一后端共用同一工具类，语义不变。**命名实例已随 P1 定档落地**为 `ProducerUtil.use(name)` / `ConsumerUtil.use(name)`（§3.7）——该「公共面扩张」已在 **§13 第 25 条**记录，且属对 A7 的**合法实现**（仅增加取用入口，未改变「只做取用与转发、不重复校验、不转换异常」的底线），**非**对 A7 的违背。 |
 | A8 | **经评估无风险** | 参数校验集中于 `internal.MqValidator`，与后端无关；任一后端复用同一校验点。 |
 | A9 | **经评估无风险** | 「`close()` / `stop()` 幂等」与「停止后 `send` / `subscribe` / `unsubscribe` 抛 `IllegalStateException`」由本地 `closed` 标志实现，任一后端一致；MQTT 的连接断开顺序不影响该语义。 |
 | A10 | **经评估无风险**（**有适配注记**） | `mq.type` + `mq.<type>.*` 口径、解析**一律在 `MqPlugin.start()` 内**、**provider 无状态**——任一后端均可满足。**注记**：MQTT 需**额外**的会话 / 客户端标识键（`clientId` / `cleanSession` 等），一律落 **`mq.mqtt.*`**，**不改 A10 口径**（与 `mq.rocketmq.*` 同构）。 |
@@ -1251,4 +1354,4 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 
 ---
 
-> **一句话总览**：根包 7 个公共类型（`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqKit` / `MqException`）+ `internal` 非承诺支撑（校验 / 配置 / 编解码 / 单例持有 / 总线契约 / provider 契约与注册表）+ `memory` 默认后端（同步投递、单主题 FIFO、无订阅者成功、`close()` 幂等、监听器异常隔离）+ `rocketmq` 真实后端（阶段 2，RocketMQ 4.9.7、异步投递 / 拉取消费、broker 持久化，`optional` 依赖）+ `aifei.MqPlugin` 单一装配入口；后端可替换 = provider + 注册表一行。
+> **一句话总览**：根包 8 个公共类型（`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`）+ `internal` 非承诺支撑（校验 / 配置 / 编解码 / 多实例注册表 / 总线契约 / provider 契约与注册表）+ `memory` 默认后端（同步投递、单主题 FIFO、无订阅者成功、`close()` 幂等、监听器异常隔离）+ `rocketmq` 真实后端（阶段 2，RocketMQ 4.9.7、异步投递 / 拉取消费、broker 持久化，`optional` 依赖）+ `aifei.MqPlugin` 单一装配入口（按 `mq.names` 装配**多实例**，关闭**全部**实例）；后端可替换 = provider + 注册表一行。**（公共面 7 → 8、双工具类、命名实例为 P1 定档，**已随 P2 落地**。）**

@@ -9,15 +9,21 @@ package cn.hg.aifei.mq;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 
+import cn.hg.aifei.mq.internal.MqConfig;
 import cn.hg.aifei.mq.internal.MqHolder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
- * {@link MqHolder} 的登记、取用与清除，以及未登记时的状态异常。
+ * {@link MqHolder} 的多实例登记、按名取用与清除，以及取用期的状态 / 参数异常。
  */
 public class MqHolderTest {
+
+    /**
+     * 命名实例名；主实例名用 {@link MqConfig#MAIN_INSTANCE_NAME}。
+     */
+    private static final String NAMED = "orders";
 
     /**
      * 每个用例前清空登记，避免静态状态串场。
@@ -36,25 +42,30 @@ public class MqHolderTest {
     }
 
     /**
-     * 未登记时取生产者与消费者都抛 {@link IllegalStateException}。
+     * 未登记任何实例时按名取生产者与消费者都抛 {@link IllegalStateException}。
      */
     @Test
     public void shouldFailWhenNotRegistered() {
-        assertThrows(IllegalStateException.class, MqHolder::producer);
-        assertThrows(IllegalStateException.class, MqHolder::consumer);
+        assertThrows(IllegalStateException.class, () -> MqHolder.producer(MqConfig.MAIN_INSTANCE_NAME));
+        assertThrows(IllegalStateException.class, () -> MqHolder.consumer(MqConfig.MAIN_INSTANCE_NAME));
     }
 
     /**
-     * 登记后取到同一实例。
+     * 登记后按名取到同一实例，且各实例互不串场。
      */
     @Test
     public void shouldReturnRegisteredInstances() {
         Producer producer = new StubProducer();
         Consumer consumer = new StubConsumer();
-        MqHolder.register(producer, consumer);
+        Producer namedProducer = new StubProducer();
+        Consumer namedConsumer = new StubConsumer();
+        MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, producer, consumer);
+        MqHolder.register(NAMED, namedProducer, namedConsumer);
 
-        assertSame(producer, MqHolder.producer());
-        assertSame(consumer, MqHolder.consumer());
+        assertSame(producer, MqHolder.producer(MqConfig.MAIN_INSTANCE_NAME));
+        assertSame(consumer, MqHolder.consumer(MqConfig.MAIN_INSTANCE_NAME));
+        assertSame(namedProducer, MqHolder.producer(NAMED));
+        assertSame(namedConsumer, MqHolder.consumer(NAMED));
     }
 
     /**
@@ -62,23 +73,43 @@ public class MqHolderTest {
      */
     @Test
     public void shouldFailAfterClear() {
-        MqHolder.register(new StubProducer(), new StubConsumer());
+        MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, new StubProducer(), new StubConsumer());
+        MqHolder.register(NAMED, new StubProducer(), new StubConsumer());
 
         MqHolder.clear();
 
-        assertThrows(IllegalStateException.class, MqHolder::producer);
-        assertThrows(IllegalStateException.class, MqHolder::consumer);
+        assertThrows(IllegalStateException.class, () -> MqHolder.producer(MqConfig.MAIN_INSTANCE_NAME));
+        assertThrows(IllegalStateException.class, () -> MqHolder.consumer(MqConfig.MAIN_INSTANCE_NAME));
+        assertThrows(IllegalStateException.class, () -> MqHolder.producer(NAMED));
     }
 
     /**
-     * 登记 {@code null} 参数时失败。
+     * 登记时实例名非法或生产 / 消费者为 {@code null} 都失败。
      */
     @Test
     public void shouldRejectNullArguments() {
         assertThrows(IllegalArgumentException.class,
-                () -> MqHolder.register(null, new StubConsumer()));
+                () -> MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, null, new StubConsumer()));
         assertThrows(IllegalArgumentException.class,
-                () -> MqHolder.register(new StubProducer(), null));
+                () -> MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, new StubProducer(), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> MqHolder.register("", new StubProducer(), new StubConsumer()));
+    }
+
+    /**
+     * 取用期判定顺序为先状态、后参数：未登记前实例名非法也抛状态异常，登记后未注册才抛参数异常。
+     */
+    @Test
+    public void shouldJudgeStateBeforeInstanceName() {
+        assertThrows(IllegalStateException.class, () -> MqHolder.producer(""));
+        assertThrows(IllegalStateException.class, () -> MqHolder.consumer("a.b"));
+
+        MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, new StubProducer(), new StubConsumer());
+
+        assertThrows(IllegalArgumentException.class, () -> MqHolder.producer(""));
+        assertThrows(IllegalArgumentException.class, () -> MqHolder.producer("a b"));
+        assertThrows(IllegalArgumentException.class, () -> MqHolder.producer("payments"));
+        assertThrows(IllegalArgumentException.class, () -> MqHolder.consumer("payments"));
     }
 
     /**

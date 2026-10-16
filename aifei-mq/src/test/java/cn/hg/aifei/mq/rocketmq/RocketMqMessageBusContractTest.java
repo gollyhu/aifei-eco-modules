@@ -113,7 +113,8 @@ public class RocketMqMessageBusContractTest extends MessageBusContractTest {
         properties.setProperty("mq.rocketmq.producer-group", "aifeimq_producer_" + instanceId);
         properties.setProperty("mq.rocketmq.consumer-group", "aifeimq_consumer_" + instanceId);
 
-        MessageBus created = new RocketMqMessageBus(MqConfig.parse(properties, new MqProviderRegistry().types()));
+        MessageBus created = new RocketMqMessageBus(MqConfig.parse(properties,
+                new MqProviderRegistry().types(), MqConfig.MAIN_INSTANCE_NAME));
         this.bus = created;
         return created;
     }

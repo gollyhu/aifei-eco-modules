@@ -139,7 +139,7 @@ public class RocketMqMessageBus implements MessageBus {
         String namesrvAddr = config.get(KEY_NAMESRV_ADDR);
         if (namesrvAddr == null || namesrvAddr.trim().isEmpty()) {
             throw new MqException("rocketmq nameserver address is required: "
-                    + config.prefix() + "." + KEY_NAMESRV_ADDR);
+                    + config.prefix() + "." + config.type() + "." + KEY_NAMESRV_ADDR);
         }
         String address = namesrvAddr.trim();
 

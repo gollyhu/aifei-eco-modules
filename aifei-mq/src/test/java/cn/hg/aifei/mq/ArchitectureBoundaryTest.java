@@ -32,7 +32,7 @@ import org.junit.Test;
  * ② import cn.aifei.*（除 cn.hg.aifei.mq.*）只允许出现在接入包 cn.hg.aifei.mq.aifei
  * ③ 全模块禁止 import java.sql.
  * ④ 接入包存在且含 MqPlugin.java
- * ⑤ 根包公共类型精确 7 个，且文件名集合精确等于那 7 个
+ * ⑤ 根包公共类型精确 8 个，且文件名集合精确等于那 8 个
  * </pre>
  *
  * <p>扫描对象为 {@code src/main/java} 下全部 {@code .java}，因此本测试必须在模块根目录（{@code aifei-mq}）内执行。</p>
@@ -57,7 +57,7 @@ public class ArchitectureBoundaryTest {
     /**
      * 根包公共类型的期望个数（设计 §3.8）。
      */
-    private static final int EXPECTED_PUBLIC_TYPES = 7;
+    private static final int EXPECTED_PUBLIC_TYPES = 8;
 
     /**
      * 根包公共类型的期望文件名集合（唯一事实来源，防同名替换）。
@@ -68,8 +68,9 @@ public class ArchitectureBoundaryTest {
             "Consumer.java",
             "MessageListener.java",
             "SendResult.java",
-            "MqKit.java",
-            "MqException.java"
+            "MqException.java",
+            "ProducerUtil.java",
+            "ConsumerUtil.java"
     ));
 
     /**
@@ -145,7 +146,7 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
-     * 门禁⑤：根包公共类型精确 7 个，且文件名集合精确相等。
+     * 门禁⑤：根包公共类型精确 8 个，且文件名集合精确相等。
      *
      * @throws IOException 遍历目录失败
      */

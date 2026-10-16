@@ -26,7 +26,7 @@
 ### 公共面收敛（不得放宽）
 
 - **公共 API 零第三方类型、零框架类型**。
-- 根包公共类型固定为 **7 个**：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqKit` / `MqException`。新增公共类型必须先过设计决策。
+- 根包公共类型固定为 **8 个**：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`。新增公共类型必须先过设计决策。（`MqKit` 已删除、拆为 `ProducerUtil` + `ConsumerUtil`，见 `docs/design.md` §3.7 / §13 第 25 条。）
 - `internal` / `memory` / `aifei` 均属**非承诺 API**，消费方不得引用。
 - 公共面（根包）不得出现 `internal` 包行话（唯一定义点、注册表、总线、视图等）。
 
@@ -38,7 +38,7 @@
 | `cn.aifei.*`（除 `cn.hg.aifei.mq.*`，框架类型） | 仅 `cn.hg.aifei.mq.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
 | `java.sql.*` | **全模块禁止** | `ArchitectureBoundaryTest#noSqlReference` |
 
-另有门禁 `ArchitectureBoundaryTest#aifeiBridgePackageExists`：断言接入包非空且 `MqPlugin.java` 存在；`publicSurfaceExact`：根包公共类型**精确 7 个**且文件名集合精确等于那 7 个。
+另有门禁 `ArchitectureBoundaryTest#aifeiBridgePackageExists`：断言接入包非空且 `MqPlugin.java` 存在；`publicSurfaceExact`：根包公共类型**精确 8 个**且文件名集合精确等于那 8 个。
 
 `ArchitectureBoundaryTest` 扫描 `src/main/java` 下全部 `.java` 断言上述边界，因此**必须在 `aifei-mq` 模块根目录执行**。**不得为兼容错误用法而放宽或绕过门禁断言。**
 
@@ -49,9 +49,9 @@
 | 规则 | 唯一定义点 |
 | --- | --- |
 | 参数校验（topic / payload / text / message / messageId / listener / producer / consumer） | `internal.MqValidator` |
-| 配置域与键常量、`mq.type` 解析与校验、`mq.<type>.<relative>` 键拼装 | `internal.MqConfig` |
+| 配置域与键常量、`mq.type` 解析与校验、`mq.names` 解析与实例名校验、`<实例前缀>.<type>.<relative>` 键拼装 | `internal.MqConfig` |
 | `String` → `byte[]` 编码（UTF-8） | `internal.TextCodec` |
-| 运行期单例持有 | `internal.MqHolder` |
+| 运行期实例注册表（多实例，按实例名登记 / 取用） | `internal.MqHolder` |
 | 总线契约 | `internal.MessageBus` |
 | 后端扩展点契约 | `internal.MqProvider` |
 | provider 装配骨架 | `internal.AbstractMqProvider` |

@@ -48,16 +48,23 @@ public class OrderService {
     }
 }
 
-// 方式二：静态门面（不注入也能用）
-MqKit.send("order-created", "A1001");
-MqKit.subscribe("order-created", message -> handle(message));
+// 方式二：静态工具类（不注入也能用）
+ProducerUtil.send("order-created", "A1001");
+ConsumerUtil.subscribe("order-created", message -> handle(message));
+
+// 静态短写一律作用于主实例；需要取实例时：
+Producer producer = ProducerUtil.use();          // 主实例（与 @Inject 同一个对象）
+Consumer consumer = ConsumerUtil.use("orders");  // 命名实例（mq.names 声明）
 ```
 
-> 两种方式取到的是同一个实例。`MqKit` 与注入的 `Producer` / `Consumer` 都只在插件启动后可用。
+> 两种方式取到的是**主实例的同一个对象**。`ProducerUtil` / `ConsumerUtil` 与注入的 `Producer` / `Consumer` 都只在插件启动后可用（未启动 / 已停止时调用会抛 `IllegalStateException`）。`@Inject` 只对应**主实例**；**命名实例**只能经 `use(name)` 取。
 
 ## 接口
 
-公共面固定为 7 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqKit` / `MqException`。
+公共面固定为 8 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`。
+
+- `Producer` / `Consumer`：业务接口，经 `@Inject` 取主实例。
+- `ProducerUtil` / `ConsumerUtil`：静态工具类。`use()` 取主实例（与 `@Inject` 同一个对象）；`use(name)` 取 `mq.names` 声明的**命名实例**；静态短写（`ProducerUtil.send(...)` / `ConsumerUtil.subscribe(...)` / `ConsumerUtil.unsubscribe(...)`）**一律作用于主实例**。未启动 / 已停止时调用抛 `IllegalStateException`；`use(name)` 的实例名为空 / 非法 / 未注册抛 `IllegalArgumentException`。
 
 ### Producer
 
@@ -96,6 +103,7 @@ public interface MessageListener {
 - **可重入**：允许在 `onMessage` 内再次 `send`，调用方自行避免无限递归。
 - **监听器异常隔离**：监听器抛出的运行时异常就地丢弃，不中断同主题其他订阅者、不上抛给生产者。
 - **取消订阅**：`unsubscribe` 按**实例身份**移除该监听器；**重复取消**、**取消从未登记过的订阅**均为**幂等静默 no-op**；停止后调用抛 `IllegalStateException`（详见上文 `Consumer` 一节）。
+- **不承诺延迟投递**：本模块**不提供**延迟消息——`send` 一律**立即**投递。**需要延迟请在业务侧自行调度**（如用 `ScheduledExecutorService` 定时后再 `send`），模块零改动。**理由**：`delayMillis` / `delayLevel` 这类延迟参数只能被**部分后端**有意义地实现（内存后端不允许引入调度线程），按设计 **§5.7 准入判据**不得进入公共 API（决策与理由链见 `docs/design.md` **§13 第 26 条**）。
 
 > **跨后端差异说明**：上列各项描述的是当前**内存后端**的行为。本模块后续可用 provider 扩展真实后端（如 RocketMQ）。**跨后端一致**的是核心契约：`Message` 不可变与双向防御性拷贝、`Producer` 的 3 个 `send` 重载（文本按 UTF-8）、`Consumer.subscribe` 的登记语义与 `Consumer.unsubscribe` 的取消语义（**取消后本进程不再向该 listener 派发该主题消息**）、`MessageListener` 异常隔离、`SendResult` 无 success 布尔（失败抛异常）、无订阅者时 `send` 仍成功返回 `SendResult`（§5.6 A5）、异常分类（参数非法 `IllegalArgumentException` / 状态非法 `IllegalStateException` / 运行时故障 `MqException`）、`close()` / `stop()` 幂等与停止后调用抛 `IllegalStateException`。**随后端而变**的是：投递模型（内存同步投递 vs 真实后端异步 + 拉取，`send` 返回不等于已消费）、线程模型、有序性、投递保证（内存精确一次 vs 真实后端 at-least-once、可能重复消费）、持久化、无订阅者时消息是否丢弃 / 留存（§5.6 B6）、`messageId` 生成、可观测性、真实后端特有的消费位点 / 消费组，以及**取消订阅的尽力语义**（真实后端在拉取 / 消费组模型下「按 listener 取消」不保证 broker 侧立即撤销）。完整清单见 `docs/design.md` §5.6。
 
@@ -103,8 +111,8 @@ public interface MessageListener {
 
 | 场景 | 异常 |
 | --- | --- |
-| 参数非法（topic 空、payload / text / listener / message / prop / messageId 为 null、`mq.type` 未注册） | `IllegalArgumentException` |
-| 状态非法（停止后 `send` / `subscribe` / `unsubscribe`；未启动时取 `MqKit.producer()` / `consumer()`） | `IllegalStateException` |
+| 参数非法（topic 空、payload / text / listener / message / prop / messageId 为 null、`mq.type` 未注册；`use(name)` 的实例名为空 / 非法 / 未注册） | `IllegalArgumentException` |
+| 状态非法（停止后 `send` / `subscribe` / `unsubscribe`；未启动 / 已停止时 `ProducerUtil` / `ConsumerUtil` 的 `use()` / `use(name)` / 静态短写） | `IllegalStateException` |
 | 运行时故障（后端运行时错误，如真实后端连接失败） | `MqException` |
 
 ## 配置
@@ -116,6 +124,8 @@ public interface MessageListener {
 | `mq.rocketmq.namesrv-addr` | **是**（用 RocketMQ 时） | — | RocketMQ nameserver 地址，多个用 `;` 分隔 |
 | `mq.rocketmq.producer-group` | 否 | `DEFAULT_PRODUCER` | RocketMQ 生产者组 |
 | `mq.rocketmq.consumer-group` | 否 | `DEFAULT_CONSUMER` | RocketMQ 消费者组 |
+| `mq.names` | 否 | — | 声明**命名实例**（逗号分隔）；主实例恒存在、无需声明。空项 / 重名 / 保留名（`type` / `names`）/ `__MAIN__` 即启动失败 |
+| `mq.<name>.*` | 否 | — | **命名实例** `name` 的配置：类型键 `mq.<name>.type`、后端专有键 `mq.<name>.<type>.*`（如 `mq.orders.rocketmq.namesrv-addr`） |
 
 `app-config.txt`：
 
@@ -124,9 +134,24 @@ public interface MessageListener {
 mq.type = memory
 ```
 
+**命名实例（可选）**：需在同一进程内用多个后端实例（如各自一个消费组）时，用 `mq.names` 声明，经 `use(name)` 取；主实例走根级 `mq.*`、命名实例走 `mq.<name>.*`（对齐 `aifei-cache` 的 `cache.names`）：
+
+```properties
+mq.type = rocketmq
+mq.rocketmq.namesrv-addr = 127.0.0.1:9876
+
+mq.names = orders,payments
+mq.orders.type = rocketmq
+mq.orders.rocketmq.namesrv-addr = 127.0.0.1:9876
+mq.orders.rocketmq.consumer-group = ORDER_CONSUMER
+mq.payments.type = rocketmq
+mq.payments.rocketmq.namesrv-addr = 127.0.0.1:9876
+mq.payments.rocketmq.consumer-group = PAY_CONSUMER
+```
+
 ## 换后端 / 使用 RocketMQ
 
-换后端**只改配置、不改代码**：把 `mq.type` 指向目标后端即可（业务仍只依赖 `Producer` / `Consumer` / `MqKit`）。
+换后端**只改配置、不改代码**：把 `mq.type` 指向目标后端即可（业务仍只依赖 `Producer` / `Consumer` 与 `ProducerUtil` / `ConsumerUtil`）。
 
 ### 使用 RocketMQ（内置真实后端）
 
@@ -170,7 +195,7 @@ mvn test -Dtest=RocketMqMessageBusContractTest -Drocketmq.integration=true -Droc
 
 > **⚠️ 必要约束**：**同一消费组的多个实例必须有相同的订阅集合**。若组内实例订阅的 topic 不同，broker 的 **rebalance 会异常**（依据 `docs/design.md` §5.6 (C) B9 与 §13 第 14 条）。需要**不同订阅集合**时，请为它们配置**不同的 `mq.rocketmq.consumer-group`**。
 
-> **反向需求**：若要让**每个实例都收到全部消息**（同主题全量各收 / 广播效果），**不要**让它们共用同一消费组——配置**不同的 `consumer-group`** 即可各收一份。「**单进程内多个消费组**」属**未来方向**（学 `aifei-cache` 的命名实例，见 `docs/design.md` §13 第 24 条），**本版未实现**。
+> **反向需求**：若要让**每个实例都收到全部消息**（同主题全量各收 / 广播效果），**不要**让它们共用同一消费组——配置**不同的 `consumer-group`** 即可各收一份。「**单进程内多个消费组**」已**定档**为**命名实例**方案（学 `aifei-cache`，见 `docs/design.md` §13 第 24 条 / §5.5 / §3.7）：用 `mq.names` 声明、经 `use(name)` 取，**已随 P2 落地**（配置域见 `docs/design.md` §5.5）。
 
 ### 扩展全新后端
 
@@ -179,8 +204,8 @@ mvn test -Dtest=RocketMqMessageBusContractTest -Drocketmq.integration=true -Droc
 
 ## 生命周期
 
-- `start()`：解析配置 → 创建总线 → 注册 `Producer` / `Consumer` 单例。重复启动不重复装配；**配置**有误（未注册后端 / 必填键缺失或非法）即失败，不留半装配状态。**注意**：这里的「失败」只覆盖**配置**；外部**连通性**不保证在启动期校验——`mq.type = rocketmq` 时即使 nameserver 不可达，`start()` 仍可能成功（懒连接），故障延迟到首次使用（见上文「使用 RocketMQ」的运维提示）。
-- `stop()`：注销单例（此后 `MqKit` 取实例即失败）→ 关闭总线。重复停止不重复关闭。
+- `start()`：解析配置（含 `mq.names`）→ **按实例逐个**创建总线 → 注册各实例（**主实例**同时注册为 `@Inject` 的 `Producer` / `Consumer` 单例）。重复启动不重复装配；**配置**有误（未注册后端 / 必填键缺失或非法 / `mq.names` 非法）即失败，不留半装配状态。**注意**：这里的「失败」只覆盖**配置**；外部**连通性**不保证在启动期校验——`mq.type = rocketmq` 时即使 nameserver 不可达，`start()` 仍可能成功（懒连接），故障延迟到首次使用（见上文「使用 RocketMQ」的运维提示）。
+- `stop()`：注销各实例（此后 `ProducerUtil` / `ConsumerUtil` 取实例即失败）→ 关闭**全部实例**总线。重复停止不重复关闭。
 
 ## 文档
 

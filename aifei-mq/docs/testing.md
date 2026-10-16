@@ -22,13 +22,34 @@ mvn test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbsent   # 单方法
 | `MessageBusContractTest` | 契约基类（abstract） | `MessageBus` 的**共同底线**（§5.6 A，含订阅取消：取消后不再派发、幂等 no-op、`close()` 后 `IllegalStateException`）；提供**异步轮询等待钩子**供真实后端复用 |
 | `MemoryMessageBusContractTest` | 契约实现 | 内存后端继承运行契约；另加**内存专有**用例（单主题 FIFO、多订阅者登记顺序、`messageId` 十进制递增、投递同一消息对象、多总线独立计数、取消末个监听器后保留空列表等） |
 | `RocketMqMessageBusContractTest` | 契约实现（集成） | RocketMQ 后端继承运行**共同底线**契约；**默认关闭**，`-Drocketmq.integration=true` 开启（须连上 broker）；后端差异用例见 `docs/design.md` §5.6 (C) |
-| `MqConfigTest` | 单元 | 配置默认值、类型白名单、前缀与后端键读取 |
+| `MqConfigTest` | 单元 | 配置默认值、类型白名单、实例前缀与后端键读取、命名实例解析、`mq.names` 解析与校验 |
 | `MessageTest` | 单元 | 值对象校验、双向防御性拷贝、值语义 |
 | `SendResultTest` | 单元 | 值对象校验与值语义 |
 | `MqValidatorTest` | 单元 | 参数校验规则与异常类型 |
-| `MqHolderTest` | 单元 | 单例登记 / 取用 / 清除与状态异常 |
-| `MqKitTest` | 单元 | 门面未启动状态异常与转发 |
-| `MqPluginTest` | 单元 | 装配生命周期、幂等、未注册后端失败不留半装配 |
+| `MqHolderTest` | 单元 | 多实例登记 / 按名取用 / 清除，以及取用期的状态与参数异常（先状态、后参数） |
+| `ProducerUtilTest` | 单元 | `ProducerUtil` 未启动状态异常、`use(name)` 实例名校验与判定顺序、静态短写转发 |
+| `ConsumerUtilTest` | 单元 | `ConsumerUtil` 未启动状态异常、`use(name)` 实例名校验与判定顺序、`subscribe` / `unsubscribe` 静态短写转发 |
+| `MqPluginTest` | 单元 | 装配生命周期、多实例装配与实例隔离、幂等、未注册后端 / 非法实例名 / 命名实例失败 / 框架桥失败均不留半装配 |
+
+### 逐类实测用例数（`mvn clean verify`）
+
+总 `Tests run: 87 / Failures: 0 / Errors: 0 / Skipped: 10`，即**执行 77 项** + **默认跳过 10 项**（RocketMQ 集成默认关闭）：
+
+| 测试类 | 用例数 | 备注 |
+| --- | --- | --- |
+| `ArchitectureBoundaryTest` | 5 | 架构门禁 |
+| `ConsumerUtilTest` | 4 | 单元 |
+| `MemoryMessageBusContractTest` | 20 | 契约：共同底线 10 + 内存专有 10 |
+| `MessageTest` | 5 | 单元 |
+| `MqConfigTest` | 11 | 单元 |
+| `MqHolderTest` | 5 | 单元 |
+| `MqPluginTest` | 12 | 单元 |
+| `MqValidatorTest` | 8 | 单元 |
+| `ProducerUtilTest` | 4 | 单元 |
+| `RocketMqMessageBusContractTest` | 10（全部跳过） | 集成，默认关闭 |
+| `SendResultTest` | 3 | 单元 |
+
+> 上述数字以 `aifei-mq` 模块根目录内 `mvn clean verify` 的 surefire 输出为准（`MessageBusContractTest` 为 abstract 基类，不含独立用例，其共同底线用例经 `MemoryMessageBusContractTest` 运行计入该行的 20 项）。
 
 ## 架构门禁（`ArchitectureBoundaryTest`）
 
@@ -38,7 +59,7 @@ mvn test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbsent   # 单方法
 2. `frameworkOnlyInBridgePackage`：`import cn.aifei.*`（除 `cn.hg.aifei.mq.*`）只允许出现在 `cn.hg.aifei.mq.aifei`。
 3. `noSqlReference`：全模块禁止 `import java.sql.`。
 4. `aifeiBridgePackageExists`：接入包存在且含 `MqPlugin.java`。
-5. `publicSurfaceExact`：根包公共类型精确 7 个，且文件名集合精确等于那 7 个。
+5. `publicSurfaceExact`：根包公共类型精确 8 个，且文件名集合精确等于那 8 个。
 
 > 门禁扫描源码文本，因此**必须在模块根目录内执行**；在仓库根执行会因找不到 `src/main/java` 而失败。
 

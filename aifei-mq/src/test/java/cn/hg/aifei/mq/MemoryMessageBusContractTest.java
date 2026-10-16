@@ -245,7 +245,8 @@ public class MemoryMessageBusContractTest extends MessageBusContractTest {
      * @return 新的内存消息总线
      */
     private static MemoryMessageBus newMemoryBus() {
-        MqConfig config = MqConfig.parse(new Properties(), new MqProviderRegistry().types());
+        MqConfig config = MqConfig.parse(new Properties(), new MqProviderRegistry().types(),
+                MqConfig.MAIN_INSTANCE_NAME);
         return new MemoryMessageBus(config);
     }
 

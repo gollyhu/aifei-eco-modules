@@ -7,7 +7,7 @@
   HIO 逐字同步自官方 `jfinal/aifei-eco`（保留官方包名 `cn.aifei.demo.common.arch` 与版权块）+
   一个 Just Service（`service` 包）。
 - 生产者 / 消费者由装配入口 `MqPlugin` 注册为 `@Inject` 单例，Service 里 `@Inject Producer` / `@Inject Consumer`
-  取用；订阅则用静态门面 `MqKit.consumer().subscribe(...)`，同一 demo 里两种取用方式都被演示。
+  取用；订阅则用静态工具类 `ConsumerUtil.use().subscribe(...)`，同一 demo 里两种取用方式都被演示。
 - **无页面**：本 demo 只有 HTTP 端点（JSON），不提供前端页面。
 
 ## 端口
@@ -85,7 +85,7 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 | 依赖 | 用途 |
 | --- | --- |
 | `cn.aifei:aifei-all` | 框架内核（`aifei-mq` 内为 `provided`，消费方自带） |
-| `io.github.gollyhu:aifei-mq` | 被演示模块（`MqPlugin` + 7 个公共类型） |
+| `io.github.gollyhu:aifei-mq` | 被演示模块（`MqPlugin` + 8 个公共类型） |
 | `io.undertow:undertow-core` | HTTP 命令式服务端（不用 Servlet） |
 | `org.apache.logging.log4j:log4j-core` | `Log4jLogFactory` 的运行时实现 |
 
