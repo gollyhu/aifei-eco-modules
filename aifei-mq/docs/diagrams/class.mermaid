@@ -1,0 +1,266 @@
+classDiagram
+    direction LR
+
+    %% ─────────── 根包 cn.hg.aifei.mq（精确 7 个公共类型） ───────────
+    class Message {
+        -String topic
+        -byte[] payload
+        +static of(String topic, byte[] payload) Message
+        +topic() String
+        +payload() byte[]
+    }
+
+    class Producer {
+        <<interface>>
+        +send(Message message) SendResult
+        +send(String topic, byte[] payload) SendResult
+        +send(String topic, String text) SendResult
+    }
+
+    class Consumer {
+        <<interface>>
+        +subscribe(String topic, MessageListener listener) void
+        +unsubscribe(String topic, MessageListener listener) void
+    }
+
+    class MessageListener {
+        <<interface>>
+        +onMessage(Message message) void
+    }
+
+    class SendResult {
+        -String topic
+        -String messageId
+        +static of(String topic, String messageId) SendResult
+        +topic() String
+        +messageId() String
+    }
+
+    class MqKit {
+        +static producer() Producer
+        +static consumer() Consumer
+        +static send(Message message) SendResult
+        +static send(String topic, byte[] payload) SendResult
+        +static send(String topic, String text) SendResult
+        +static subscribe(String topic, MessageListener listener) void
+    }
+
+    class MqException {
+        +MqException(String message)
+        +MqException(String message, Throwable cause)
+    }
+
+    %% ─────────── internal（非承诺 API，框架无关） ───────────
+    class MqValidator {
+        <<utility>>
+        +static requireTopic(String topic) void
+        +static requirePayload(byte[] payload) void
+        +static requireText(String text) void
+        +static requireMessage(Message message) void
+        +static requireMessageId(String messageId) void
+        +static requireListener(MessageListener listener) void
+        +static requireProducer(Producer producer) void
+        +static requireConsumer(Consumer consumer) void
+    }
+
+    class MqConfig {
+        +static final ROOT_PREFIX
+        +static final TYPE_KEY
+        +static final DEFAULT_TYPE
+        -String type
+        -String prefix
+        -Properties properties
+        +static parse(Properties properties, Set~String~ registeredTypes) MqConfig
+        +type() String
+        +prefix() String
+        +get(String relativeKey) String
+    }
+
+    class TextCodec {
+        <<utility>>
+        +static encode(String text) byte[]
+    }
+
+    class MqHolder {
+        <<utility>>
+        +static register(Producer producer, Consumer consumer) void
+        +static producer() Producer
+        +static consumer() Consumer
+        +static clear() void
+    }
+
+    class MessageBus {
+        <<interface>>
+        +producer() Producer
+        +consumer() Consumer
+        +close() void
+    }
+
+    class MqProvider {
+        <<interface>>
+        +type() String
+        +createBus(MqConfig config) MessageBus
+    }
+
+    class AbstractMqProvider {
+        <<abstract>>
+        +type() String
+        +createBus(MqConfig config) MessageBus
+        #buildBus(MqConfig config) MessageBus
+    }
+
+    class MqProviderRegistry {
+        -static Map~String,MqProvider~ PROVIDERS
+        +getProvider(String type) MqProvider
+        +types() Set~String~
+    }
+
+    %% ─────────── memory 实现包（默认后端；第三方类型允许的落点之一） ───────────
+    class MemoryMqProvider {
+        +static final TYPE
+        +type() String
+        #buildBus(MqConfig config) MessageBus
+    }
+
+    class MemoryMessageBus {
+        -Map~String,List~MessageListener~~ subscriptions
+        -AtomicLong messageSeq
+        -boolean closed
+        +producer() Producer
+        +consumer() Consumer
+        +close() void
+        ~publish(Message message) SendResult
+        ~subscribe(String topic, MessageListener listener) void
+        ~unsubscribe(String topic, MessageListener listener) void
+    }
+
+    class MemoryProducer {
+        -MemoryMessageBus bus
+        +send(Message message) SendResult
+        +send(String topic, byte[] payload) SendResult
+        +send(String topic, String text) SendResult
+    }
+
+    class MemoryConsumer {
+        -MemoryMessageBus bus
+        +subscribe(String topic, MessageListener listener) void
+        +unsubscribe(String topic, MessageListener listener) void
+    }
+
+    %% ─────────── rocketmq 实现包（真实后端，阶段 2；第三方类型允许的落点之一） ───────────
+    %% 消费由 RocketMQ 消费线程经总线内私有嵌套适配器（MessageListenerConcurrently）驱动，非生产者调用线程；该适配器为私有嵌套类，不单列类块
+
+    class RocketMqProvider {
+        +static final TYPE
+        +type() String
+        #buildBus(MqConfig config) MessageBus
+    }
+
+    class RocketMqMessageBus {
+        -static final KEY_NAMESRV_ADDR
+        -static final KEY_PRODUCER_GROUP
+        -static final KEY_CONSUMER_GROUP
+        -static final DEFAULT_PRODUCER_GROUP
+        -static final DEFAULT_CONSUMER_GROUP
+        -static final DEFAULT_TAG_EXPRESSION
+        -Map~String,List~MessageListener~~ subscriptions
+        -Set~String~ subscribedTopics
+        -DefaultMQProducer producerClient
+        -DefaultMQPushConsumer consumerClient
+        -Object consumerLock
+        -boolean consumerStarted
+        -boolean closed
+        +producer() Producer
+        +consumer() Consumer
+        +close() void
+        ~publish(Message message) SendResult
+        ~subscribe(String topic, MessageListener listener) void
+        ~unsubscribe(String topic, MessageListener listener) void
+    }
+
+    class RocketMqProducer {
+        -RocketMqMessageBus bus
+        +send(Message message) SendResult
+        +send(String topic, byte[] payload) SendResult
+        +send(String topic, String text) SendResult
+    }
+
+    class RocketMqConsumer {
+        -RocketMqMessageBus bus
+        +subscribe(String topic, MessageListener listener) void
+        +unsubscribe(String topic, MessageListener listener) void
+    }
+
+    %% ─────────── aifei 接入包（框架类型唯一允许的落点） ───────────
+    class MqPlugin {
+        -Prop prop
+        -MqProviderRegistry registry
+        -MessageBus bus
+        -boolean started
+        +MqPlugin(Prop prop)
+        +start() void
+        +stop() void
+    }
+
+    class Plugin {
+        <<framework cn.aifei.plugin>>
+    }
+    class Prop {
+        <<framework cn.aifei.util>>
+    }
+
+    %% ─────────── 关系 ───────────
+    MqException --|> RuntimeException
+    MemoryMqProvider --|> AbstractMqProvider
+    AbstractMqProvider ..|> MqProvider
+    MemoryMessageBus ..|> MessageBus
+    MemoryProducer ..|> Producer
+    MemoryConsumer ..|> Consumer
+    RocketMqProvider --|> AbstractMqProvider
+    RocketMqMessageBus ..|> MessageBus
+    RocketMqProducer ..|> Producer
+    RocketMqConsumer ..|> Consumer
+    MqPlugin ..|> Plugin
+    MqPlugin --> Prop
+
+    MemoryMessageBus --> MemoryProducer : creates
+    MemoryMessageBus --> MemoryConsumer : creates
+    MemoryProducer --> MemoryMessageBus : delegates publish
+    MemoryConsumer --> MemoryMessageBus : delegates subscribe / unsubscribe
+    MemoryProducer ..> Message : creates
+    MemoryProducer ..> TextCodec : encode
+    MemoryProducer ..> MqValidator : validates
+    MemoryConsumer ..> MqValidator : validates
+    MemoryMessageBus ..> SendResult : creates
+    MemoryMessageBus ..> MessageListener : invokes
+    Message ..> MqValidator : validates
+    SendResult ..> MqValidator : validates
+
+    MqProvider ..> MessageBus : creates
+    MqProvider ..> MqConfig : reads
+    MqProviderRegistry o-- MqProvider : holds
+    MqProviderRegistry ..> MemoryMqProvider : registers
+    MqProviderRegistry ..> RocketMqProvider : registers
+
+    RocketMqMessageBus --> RocketMqProducer : creates
+    RocketMqMessageBus --> RocketMqConsumer : creates
+    RocketMqProducer --> RocketMqMessageBus : delegates publish
+    RocketMqConsumer --> RocketMqMessageBus : delegates subscribe / unsubscribe
+    RocketMqProducer ..> Message : creates
+    RocketMqProducer ..> TextCodec : encode
+    RocketMqProducer ..> MqValidator : validates
+    RocketMqConsumer ..> MqValidator : validates
+    RocketMqMessageBus ..> SendResult : creates
+    RocketMqMessageBus ..> MessageListener : invokes
+    RocketMqMessageBus ..> MqConfig : reads config
+
+    MqKit ..> MqHolder : uses
+    MqKit ..> Producer : returns
+    MqKit ..> Consumer : returns
+    MqHolder o-- Producer
+    MqHolder o-- Consumer
+
+    MqPlugin ..> MqConfig : parse
+    MqPlugin ..> MqProviderRegistry : getProvider
+    MqPlugin ..> MessageBus : createBus / close
+    MqPlugin ..> MqHolder : register / clear
