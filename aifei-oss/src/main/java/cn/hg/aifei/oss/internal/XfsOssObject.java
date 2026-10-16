@@ -23,11 +23,6 @@ import org.dromara.x.file.storage.core.FileInfo;
 public final class XfsOssObject implements OssObject {
 
     /**
-     * 对象大小未知时的回退值。
-     */
-    private static final long UNKNOWN_SIZE = -1L;
-
-    /**
      * 完整逻辑对象路径。
      */
     private final String path;
@@ -60,7 +55,7 @@ public final class XfsOssObject implements OssObject {
      */
     public XfsOssObject(FileInfo fileInfo, Downloader downloader) {
         this.path = OssPaths.join(fileInfo.getPath(), fileInfo.getFilename());
-        this.contentLength = (fileInfo.getSize() == null) ? UNKNOWN_SIZE : fileInfo.getSize();
+        this.contentLength = OssMappers.sizeOf(fileInfo);
         this.contentType = fileInfo.getContentType();
         this.platform = fileInfo.getPlatform();
         this.downloader = downloader;

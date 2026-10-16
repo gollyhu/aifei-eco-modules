@@ -33,8 +33,8 @@ import org.dromara.x.file.storage.core.FileStorageServiceBuilder;
  * {@code FileStorageServiceBuilder.create(properties).useDefault().build()} 构建——{@code useDefault()} 不可省，
  * 否则会缺失全部文件包装适配器，导致「字节数组 / 输入流」上传路径整体不可用。</p>
  *
- * <p>平台族只在对应列表非空时构建（由底层构建器保证），未配置的平台族不受影响。云厂商 SDK 缺失属运行期故障，
- * 不在本类启动期强制加载。</p>
+ * <p>平台族只在对应列表非空时构建（由底层构建器保证），未配置的平台族不受影响。云厂商 SDK 缺失会在构建期暴露
+ * （底层会立即实例化各已配置平台的客户端），并由本类统一翻译为 {@link cn.hg.aifei.oss.OssException}。</p>
  *
  * <p>本类属非承诺 API：因装配需要声明为 {@code public}，但不是公共 API，消费方不得引用。</p>
  */

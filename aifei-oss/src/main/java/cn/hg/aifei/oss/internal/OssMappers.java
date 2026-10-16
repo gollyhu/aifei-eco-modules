@@ -34,6 +34,20 @@ public final class OssMappers {
     }
 
     /**
+     * 取对象字节数，底层未返回大小时回退为 {@link #UNKNOWN_SIZE}；<b>大小回退口径的唯一定义点</b>。
+     *
+     * @param fileInfo 底层文件信息
+     * @return 对象字节数；未知时为 {@code -1}
+     * @throws OssException {@code fileInfo} 为 {@code null}
+     */
+    public static long sizeOf(FileInfo fileInfo) {
+        if (fileInfo == null) {
+            throw new OssException("file info can not be null");
+        }
+        return (fileInfo.getSize() == null) ? UNKNOWN_SIZE : fileInfo.getSize();
+    }
+
+    /**
      * 把底层文件信息映射为公共元数据对象。
      *
      * <p>对象路径由 {@code path}（目录段）与 {@code filename}（末段）拼回；大小未知时以 {@code -1} 表示。</p>
@@ -47,7 +61,7 @@ public final class OssMappers {
             throw new OssException("file info can not be null");
         }
         String path = OssPaths.join(fileInfo.getPath(), fileInfo.getFilename());
-        long size = (fileInfo.getSize() == null) ? UNKNOWN_SIZE : fileInfo.getSize();
+        long size = sizeOf(fileInfo);
         return new OssFileInfo(
                 path,
                 size,

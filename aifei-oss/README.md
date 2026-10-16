@@ -7,7 +7,7 @@
 ## 特性
 
 - **多平台**：本地 / FTP / SFTP / 阿里云 OSS / 腾讯云 COS / 华为云 OBS / 七牛 / MinIO / AWS S3 / Azure / Google Cloud 等（由 X File Storage 提供）。
-- **统一接口**：`OssClient` 提供上传 / 下载 / 删除 / 存在性 / 元数据 / 签名 URL（`copy` 本期未接线，调用即抛 `OssException`）。
+- **统一接口**：`OssClient` 提供上传 / 下载 / 删除 / 存在性 / 元数据 / 签名 URL / 同平台复制（`copy` 仅支持同平台，跨平台不在本期范围）。
 - **多平台共存**：`@Inject OssClient` 用默认平台，`OssKit.use("name")` 按平台取用。
 - **实现无关**：公共 API 不暴露 X File Storage 与云厂商 SDK 类型。
 - **Java 8**：编译目标与产物均为 Java 8。
@@ -102,7 +102,7 @@ public class FileService {
 ## 常见问题
 
 - **启动报错「未装配 / 未知平台」**：确认已 `plugins.add(new OssPlugin(prop))` 且 `oss.default-platform` 指向已声明的平台。
-- **运行报 `NoClassDefFoundError`（某云 SDK）**：该平台的云厂商 SDK 未引入，请按需自带。
+- **启动报 `oss build storage service failed`**：该平台的云厂商 SDK 未引入（例如用 MinIO 需自带 `io.minio:minio`），请按需自带。云 SDK 缺失属**装配期**故障，应用启动即失败，不存在「启动成功但用不了」的隐形故障。
 - **`generatePresignedUrl` 抛异常**：当前平台不支持签名 URL。
 
 ## 文档

@@ -46,11 +46,25 @@ public final class OssConfig {
      * @throws cn.hg.aifei.oss.OssException {@code platform} 或 {@code type} 为空白
      */
     public OssConfig(String platform, String type, Map<String, String> options) {
-        this.platform = requireText(platform, "platform");
+        this.platform = requirePlatform(platform);
         this.type = requireText(type, "type");
         this.options = (options == null || options.isEmpty())
                 ? Collections.<String, String>emptyMap()
                 : Collections.unmodifiableMap(new LinkedHashMap<>(options));
+    }
+
+    /**
+     * 校验平台标识非空白；<b>平台标识校验的唯一定义点</b>，装配与取用路径一律调用此处，不得复制。
+     *
+     * @param platform 平台标识
+     * @return 原平台标识
+     * @throws cn.hg.aifei.oss.OssException 平台标识为 {@code null} 或全为空白
+     */
+    public static String requirePlatform(String platform) {
+        if (platform == null || platform.trim().isEmpty()) {
+            throw new cn.hg.aifei.oss.OssException("oss platform can not be blank");
+        }
+        return platform;
     }
 
     /**

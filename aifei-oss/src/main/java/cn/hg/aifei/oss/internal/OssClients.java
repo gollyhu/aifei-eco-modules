@@ -54,9 +54,7 @@ public final class OssClients {
      * @throws OssException 平台标识为空白，或客户端为 {@code null}
      */
     public static void register(String platform, OssClient client) {
-        if (platform == null || platform.trim().isEmpty()) {
-            throw new OssException("oss platform can not be blank");
-        }
+        OssConfig.requirePlatform(platform);
         if (client == null) {
             throw new OssException("oss client can not be null, platform: " + platform);
         }
@@ -110,9 +108,7 @@ public final class OssClients {
             if (REGISTRY.isEmpty()) {
                 throw new OssException("oss has not been initialized, add the oss plugin first");
             }
-            if (platform == null || platform.trim().isEmpty()) {
-                throw new OssException("oss platform can not be blank");
-            }
+            OssConfig.requirePlatform(platform);
             OssClient client = REGISTRY.get(platform);
             if (client == null) {
                 throw new OssException(

@@ -70,9 +70,9 @@
 - **删除**：不存在返回 `false`（不抛异常）；成功返回 `true`。
 - **存在性**：不存在返回 `false`。
 - **签名 URL**：平台不支持时抛 `OssException`。
-- **复制**：本期**未接线**，调用即抛 `OssException`（底层 x-file-storage 已具备同平台复制与支持度探测能力，是否接线在 `docs/design.md` §10.3 定档）；跨平台复制不在本期范围。
+- **复制**：**已接线，仅同平台复制**——先探测平台支持度，不支持即抛 `OssException`；成功返回 `true`。跨平台复制不在本期范围。
 - **平台选择**：`@Inject OssClient` = 默认平台；多平台经 `OssKit.use(name)`。
-- **装配失败即启动失败**：必填配置缺失 / 平台类型未知，在 `OssPlugin.start()` 即失败，不留半装配状态；**云 SDK 缺失属运行期故障**（客户端惰性建连，首次使用该平台才抛 `NoClassDefFoundError`）。
+- **装配失败即启动失败**：必填配置缺失 / 平台类型未知 / **云 SDK 缺失**，均在 `OssPlugin.start()` 即失败（统一抛 `OssException`，**不**泄漏 `NoClassDefFoundError`），不留半装配状态。**配置与装配问题一律在启动期暴露**，不存在「启动成功但用不了」的隐形故障。
 - **脱敏**：`OssConfig` 的 `toString` 不得输出 `secretKey` 等敏感字段。
 
 ## 验证
@@ -82,10 +82,10 @@
 ```bash
 cd aifei-oss && mvn clean verify                        # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest                # 单跑门禁
-mvn verify -Doss.integration=true                       # 开启 MinIO 集成测试（参数已定档，用例未实现，见 docs/testing.md §4）
+mvn verify -Doss.integration=true                       # 开启默认关闭的用例（云 SDK 缺失装配期契约；真实对象存储集成用例未落，见 docs/testing.md §4）
 ```
 
-当前基线：`mvn clean verify` 实测 **6 项用例**（门禁 4 + 字节码 1 + 本地存储契约 1）0 failure / 0 error。已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
+当前基线：`mvn clean verify` 实测 **7 项用例 0 failure / 0 error**（门禁 4 + 字节码 1 + 本地存储契约 1 + 装配期契约 1，其中装配期契约用例默认跳过 → 1 skipped）；加 `-Doss.integration=true` 时 7 项全跑、0 skipped。已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
 
 ## 文档同步要求
 

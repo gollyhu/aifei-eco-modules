@@ -15,6 +15,7 @@ import java.util.Date;
 import org.dromara.x.file.storage.core.Downloader;
 import org.dromara.x.file.storage.core.FileInfo;
 import org.dromara.x.file.storage.core.FileStorageService;
+import org.dromara.x.file.storage.core.constant.Constant.CopyMode;
 import org.dromara.x.file.storage.core.get.RemoteFileInfo;
 
 /**
@@ -24,8 +25,8 @@ import org.dromara.x.file.storage.core.get.RemoteFileInfo;
  * 后调用存在性 / 删除 / 下载 / 获取文件，<b>不</b>使用依赖文件记录器、且默认记录器恒抛异常的 String url 一族
  * API。</p>
  *
- * <p>上传以 {@code setPath(dir).setSaveFilename(filename)} 写入，使「按路径再次定位」成立；{@code copy} 本期
- * 未接线，调用即抛 {@link OssException}。</p>
+ * <p>上传以 {@code setPath(dir).setSaveFilename(filename)} 写入，使「按路径再次定位」成立；{@code copy} 只做同平台
+ * 复制，平台不支持同平台复制时抛 {@link OssException}。</p>
  *
  * <p>本类属非承诺 API：因装配需要声明为 {@code public}，但不是公共 API，消费方不得引用。</p>
  */
@@ -55,13 +56,10 @@ public final class XfsOssClient implements OssClient {
      * @throws OssException {@code platform} 为空白，或 {@code service} 为 {@code null}
      */
     public XfsOssClient(String platform, String basePath, FileStorageService service) {
-        if (platform == null || platform.trim().isEmpty()) {
-            throw new OssException("oss platform can not be blank");
-        }
         if (service == null) {
             throw new OssException("file storage service can not be null");
         }
-        this.platform = platform;
+        this.platform = OssConfig.requirePlatform(platform);
         this.basePath = basePath;
         this.service = service;
     }
@@ -204,11 +202,27 @@ public final class XfsOssClient implements OssClient {
 
     /**
      * {@inheritDoc}
+     *
+     * <p>只做<b>同平台</b>复制：源与目标各自经 {@link OssPaths} 换算为 {@code FileInfo} 后，以同平台复制模式执行；
+     * 平台不支持同平台复制时抛 {@link OssException}。跨平台复制不在本期范围。</p>
      */
     @Override
     public boolean copy(String sourcePath, String destPath) {
-        throw new OssException(
-                "same-platform copy is not wired yet, platform: " + platform
-                        + ", source: " + sourcePath + ", dest: " + destPath);
+        FileInfo source = OssPaths.toFileInfo(platform, basePath, sourcePath);
+        String destDir = OssPaths.directoryOf(destPath);
+        String destFilename = OssPaths.filenameOf(destPath);
+        try {
+            if (!service.isSupportSameCopy(platform)) {
+                throw new OssException("platform does not support same-platform copy: " + platform);
+            }
+            FileInfo copied = service.copy(source)
+                    .setCopyMode(CopyMode.SAME)
+                    .setPath(destDir)
+                    .setFilename(destFilename)
+                    .copy();
+            return copied != null;
+        } catch (RuntimeException e) {
+            throw OssErrors.translate("copy", platform, sourcePath, e);
+        }
     }
 }

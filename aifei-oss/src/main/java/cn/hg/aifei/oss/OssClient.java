@@ -102,12 +102,13 @@ public interface OssClient {
     /**
      * 同平台内复制对象。
      *
-     * <p><b>本期未接线</b>：调用即抛 {@link OssException}。跨平台复制不在本期范围。</p>
+     * <p>仅支持<b>同平台</b>复制（源与目标同属本实例的存储平台）；平台不支持同平台复制时抛
+     * {@link OssException}。跨平台复制不在本期范围。</p>
      *
      * @param sourcePath 源对象路径
      * @param destPath 目标对象路径
      * @return 复制是否成功
-     * @throws OssException 本期固定抛出，说明同平台复制尚未支持
+     * @throws OssException 路径非法、源对象不存在、平台不支持同平台复制或复制失败
      */
     boolean copy(String sourcePath, String destPath);
 }

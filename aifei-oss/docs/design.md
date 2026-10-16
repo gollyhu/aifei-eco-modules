@@ -64,7 +64,7 @@
 - **禁止**引入 `x-file-storage-spring` / `x-file-storage-solon`：这两者是框架集成层，`spring` 模块基于更高 JDK / Spring Boot 基线，且与 aifei 的 `Plugin` 装配范式冲突。
 - `FileStorageService` 一律用 **`FileStorageServiceBuilder` 编程式构建**，不使用任何 Spring 注解 / 自动配置。
 - 构建固定走 `FileStorageServiceBuilder.create(properties).useDefault().build()`：只有 `useDefault()` 会装配默认文件记录器、Tika 工厂与**全部 `FileWrapperAdapter`**；缺了适配器，`of(InputStream)` / `of(byte[])` 的上传路径不可用。
-- 平台族只在 `FileStorageProperties` 对应列表非空时构建，未配置的平台族不受影响；但**云 SDK 缺失不会在启动期被发现**（平台客户端惰性建连），见 §7。
+- 平台族只在 `FileStorageProperties` 对应列表非空时构建，未配置的平台族不受影响；**云 SDK 缺失会在启动期被发现**——底层构建服务时会立即实例化各已配置平台的客户端，缺失即于装配期失败（经适配层统一翻译为 `OssException`），见 §7。
 
 ### 3.4 aifei 框架依赖
 
@@ -113,7 +113,7 @@ public interface OssClient {
     boolean exists(String path);                                         // 存在性判断
     OssFileInfo getFileInfo(String path);                                // 查询元数据
     String generatePresignedUrl(String path, long ttlSeconds);           // 生成限时访问 URL
-    boolean copy(String sourcePath, String destPath);                    // 同平台内复制（本期未实现，见 §7）
+    boolean copy(String sourcePath, String destPath);                    // 同平台内复制，见 §7
 }
 ```
 
@@ -178,9 +178,9 @@ public final class OssKit {
 - **删除**：`delete` 对不存在对象返回 `false`（不抛异常）；删除成功返回 `true`。
 - **存在性**：`exists` 对不存在对象返回 `false`。
 - **签名 URL**：`generatePresignedUrl` 的可用性取决于平台能力，不支持时抛 `OssException`。
-- **复制**：`copy` **本期未接线**——调用即抛 `OssException`。底层能力**已存在**：x-file-storage 2.3.0 提供 `copy(FileInfo)` / `copy(String url)`（返回 `CopyPretreatment`）与 `isSupportSameCopy()` 支持度探测；接线与否待定档（见 §10.3 第 2 项）。跨平台复制不在本期范围。
+- **复制**：`copy` **仅做同平台复制**（源与目标同属本实例的存储平台）——先经 `isSupportSameCopy(platform)` 探测平台支持度，不支持即抛 `OssException`；支持时以同平台复制模式执行，成功返回 `true`。跨平台复制不在本期范围（底层 `CopyMode.CROSS` / `AUTO` 均不使用）。底层另有 `copy(String url)` 变体，因其委托文件记录器，**不得使用**（见本节 String url 一族禁用条款）。
 - **平台选择**：`@Inject OssClient` = 默认平台；多平台经 `OssKit.use(name)`。
-- **装配失败即启动失败**：未配置任何平台、平台类型未知或必填配置缺失，在 `OssPlugin.start()` 即抛异常使应用启动失败，不留半装配状态。**注意**：云厂商 SDK 缺失属**运行期**故障——x-file-storage 的平台客户端惰性建连，通常延迟到首次使用该平台时才抛 `NoClassDefFoundError`（见 `README.md`「常见问题」），本模块不在启动期强制加载各平台 SDK。
+- **装配失败即启动失败**：未配置任何平台、平台类型未知、必填配置缺失或**云厂商 SDK 缺失**，均在 `OssPlugin.start()` 即抛 `OssException` 使应用启动失败，不留半装配状态。**已实测**（`CloudSdkMissingTest`，开关 `-Doss.integration=true`）：底层构建服务时会立即实例化各已配置平台的客户端，故 SDK 缺失**不会**延迟到首次使用；底层抛出的 `Error` 由适配层统一翻译为 `OssException`，公共面既不泄漏第三方类型、也不泄漏 `NoClassDefFoundError`。**结论**：配置与装配问题一律在启动期暴露，不存在「启动成功但用不了」的隐形故障。
 
 ## 8. 测试与验收
 
@@ -222,7 +222,7 @@ public final class OssKit {
 | `path` 语义 | 平台 `base-path` 之下的完整逻辑对象 key；`dir` 保留尾 `/`（底层逐字拼接不补分隔符） |
 | `OssObject` 关闭语义 | **不声明** `AutoCloseable`（底层回调式下载，调用方无需关闭） |
 | 异常口径 | `OssKit` 未装配 / 未知平台**统一抛 `OssException`**，与 `aifei-cache` 的分层口径差异属**有意为之** |
-| `copy` | 本期**未接线**，调用即抛 `OssException` |
+| `copy` | **已接线：仅同平台复制**（先探测平台支持度，不支持即抛 `OssException`）；跨平台复制不在本期范围 |
 | 集成测试参数 | `oss.integration` / `oss.endpoint` / `oss.access-key` / `oss.secret-key` / `oss.bucket`（surefire 透传） |
 
 ### 10.2 前次裁决记录（2026-10-16 拍板）
@@ -236,11 +236,12 @@ public final class OssKit {
 5. **`OssObject` 是否声明 `AutoCloseable`**：**不声明**，并在 javadoc 写清「无需关闭，`bytes()` / `writeTo(OutputStream)` 按次读取，流由实现内部管理」。
 6. **集成测试连接参数命名**：`-Doss.integration=true`（开关）/ `-Doss.endpoint`（默认 `http://127.0.0.1:9000`）/ `-Doss.access-key`、`-Doss.secret-key`（默认 `minioadmin`）/ `-Doss.bucket`（默认 `aifei-oss-test`）；取短名 `endpoint` 以区别于平台配置键 `end-point`。
 7. **异常口径**：**保留统一 `OssException`**，视为有意差异（本模块公共异常只有一种，调用方只需 catch 一种）。
+8. **`copy` 接线（2026-10-17 追加拍板）**：**接线为「仅同平台复制」**——先以 `isSupportSameCopy(platform)` 探测支持度，不支持即抛 `OssException`；支持时执行同平台复制并返回 `true`；跨平台复制不在本期范围（不使用底层的 `CopyMode.AUTO` / `CROSS`）。该项原列于 §10.3 第 2 项，已裁决移出。
+9. **「云 SDK 缺失」语义订正（2026-10-17 追加拍板）**：原声明「云 SDK 缺失属运行期故障、首次使用才抛 `NoClassDefFoundError`」**被实测推翻**——底层构建服务时会立即实例化各平台客户端，故缺失在 `OssPlugin.start()` 即失败，且底层 `Error` 由适配层统一翻译为 `OssException`（不泄漏 `NoClassDefFoundError`），不留半装配状态。契约随之简化为「**配置与装配问题一律在启动期暴露**」。已同步订正 §3.3、§7、`README.md`「常见问题」、`AGENTS.md` 与 `OssPlugin` javadoc，并由 `CloudSdkMissingTest`（默认关闭）固化。
 
 ### 10.3 后续演进须裁决
 
 1. `generatePresignedUrl` 在各平台的可用性与统一实现方式（当前直传 x-file-storage 的 presigned 能力）。
-2. `copy` 是否接线：底层 x-file-storage 2.3.0 **已提供** `copy(FileInfo)` / `CopyPretreatment` 与 `isSupportSameCopy()` 支持度探测，本期的公共方法「调用即抛 `OssException`」属占位；接线 / 从公共面移除 / 维持现状三选一。
-3. 是否需要 `upload` 的「禁止覆盖 / if-absent」变体（当前跟随默认覆盖）。
-4. 文件列表 / 分页列举（`listFiles`）是否纳入公共 API。
-5. 是否提供 `aifei-oss-demo` 示例工程。
+2. 是否需要 `upload` 的「禁止覆盖 / if-absent」变体（当前跟随默认覆盖）。
+3. 文件列表 / 分页列举（`listFiles`）是否纳入公共 API。
+4. 是否提供 `aifei-oss-demo` 示例工程。

@@ -138,8 +138,11 @@ public class LocalStorageTest {
         assertThrows(OssException.class, () -> client.exists("/bad.txt"));
         assertThrows(OssException.class, () -> client.upload(data, "/bad.txt", null));
         assertThrows(OssException.class, () -> OssKit.use("missing-platform"));
-        assertThrows("copy 本期未接线，调用即抛 OssException",
-                OssException.class, () -> client.copy(path, "upload/2026/copy.txt"));
+        // 同平台复制：本地平台支持同平台复制，目标生成且源保留
+        assertTrue("同平台复制应成功", client.copy(path, "upload/2026/copied.txt"));
+        assertTrue("复制后目标对象应存在", client.exists("upload/2026/copied.txt"));
+        assertArrayEquals("复制出的内容应与源一致", data, client.download("upload/2026/copied.txt").bytes());
+        assertTrue("复制后源对象应仍在", client.exists(path));
 
         // 配置值对象脱敏：toString 不得输出 options（可能含 secret-key 等敏感项）
         OssConfig sensitive = new OssConfig("local", "local",
