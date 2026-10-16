@@ -20,10 +20,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 进程内发布-订阅总线：同步投递、单主题保序、订阅登记与关闭语义的唯一实现。
+ * 进程内发布-订阅总线：同步投递、单主题保序、订阅登记与取消、关闭语义的唯一实现。
  *
  * <p>投递在调用线程内按订阅登记顺序逐个同步回调；单个监听器抛出的运行时异常就地隔离，不中断其余订阅者、
- * 也不上抛给生产者。关闭幂等，关闭后发送与订阅视为状态非法。</p>
+ * 也不上抛给生产者。取消按实例身份移除该监听器实例。关闭幂等，关闭后发送、订阅与取消均视为状态非法。</p>
  */
 public class MemoryMessageBus implements MessageBus {
 
@@ -126,5 +126,26 @@ public class MemoryMessageBus implements MessageBus {
             throw new IllegalStateException("message bus has been closed");
         }
         subscriptions.computeIfAbsent(topic, key -> new CopyOnWriteArrayList<>()).add(listener);
+    }
+
+    /**
+     * 取消订阅登记：从该主题的登记列表中按<b>实例身份</b>移除该监听器实例。
+     *
+     * <p>按引用相等判定（{@code e == listener}），不使用 {@code equals}；目标主题未登记或列表内无该实例时静默返回。
+     * 移除后保留该主题的空列表（不移除主题键）。</p>
+     *
+     * @param topic 主题
+     * @param listener 监听器
+     * @throws IllegalStateException 总线已关闭
+     */
+    void unsubscribe(String topic, MessageListener listener) {
+        if (closed) {
+            throw new IllegalStateException("message bus has been closed");
+        }
+        List<MessageListener> listeners = subscriptions.get(topic);
+        if (listeners == null) {
+            return;
+        }
+        listeners.removeIf(e -> e == listener);
     }
 }

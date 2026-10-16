@@ -23,6 +23,9 @@ public abstract class AbstractMqProvider implements MqProvider {
      * {@inheritDoc}
      *
      * @throws IllegalArgumentException {@code config} 为 {@code null}
+     * @throws cn.hg.aifei.mq.MqException 真实后端构建总线失败（如必填配置缺失、生产者客户端启动失败）时由
+     *         {@link #buildBus(MqConfig)} 传播；构建总线<b>不校验</b>后端连通性（如 RocketMQ nameserver 不可达
+     *         不在此失败，见 {@code RocketMqMessageBus}）；内存后端不抛
      */
     @Override
     public final MessageBus createBus(MqConfig config) {

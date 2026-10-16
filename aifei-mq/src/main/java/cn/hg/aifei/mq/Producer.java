@@ -9,8 +9,13 @@ package cn.hg.aifei.mq;
 /**
  * 发送端视图：把消息投递到主题。
  *
- * <p>投递为同步语义：{@code send} 在调用线程内完成投递并返回，返回前订阅者回调已执行完毕。主题上没有
- * 订阅者时视为成功，消息被丢弃但仍返回发送结果。</p>
+ * <p>投递语义随后端而变（差异见 §5.6 (B)）：内存后端为<b>同步投递</b>——{@code send} 在调用线程内完成投递
+ * 并返回，返回前订阅者回调已执行完毕；真实后端为<b>异步生产 + 拉取消费</b>——{@code send} 只表示消息已
+ * 提交到 broker，返回 {@link SendResult} 不等于已被消费，回调发生在后端自有线程。</p>
+ *
+ * <p>「无订阅者」须区分两层语义：<b>无订阅者时 {@code send} 仍成功返回 {@link SendResult}（含 {@code messageId}）</b>
+ * 属跨后端<b>共同底线</b>（§5.6 A5）；而消息<b>被丢弃还是留存</b>随后端而变（§5.6 B6）——内存后端丢弃，
+ * 真实后端由 broker 独立存储，待消费者上线后消费。</p>
  */
 public interface Producer {
 
@@ -20,6 +25,8 @@ public interface Producer {
      * @param message 消息
      * @return 发送结果
      * @throws IllegalArgumentException {@code message} 为 {@code null}
+     * @throws IllegalStateException 发送时所属总线已停止
+     * @throws MqException 真实后端运行时故障（如 broker 不可达、发送未成功）时抛出；内存后端不抛
      */
     SendResult send(Message message);
 
@@ -30,6 +37,8 @@ public interface Producer {
      * @param payload 字节载荷
      * @return 发送结果
      * @throws IllegalArgumentException {@code topic} 空白或 {@code payload} 为 {@code null}
+     * @throws IllegalStateException 发送时所属总线已停止
+     * @throws MqException 真实后端运行时故障时抛出；内存后端不抛
      */
     SendResult send(String topic, byte[] payload);
 
@@ -40,6 +49,8 @@ public interface Producer {
      * @param text 文本载荷
      * @return 发送结果
      * @throws IllegalArgumentException {@code topic} 空白或 {@code text} 为 {@code null}
+     * @throws IllegalStateException 发送时所属总线已停止
+     * @throws MqException 真实后端运行时故障时抛出；内存后端不抛
      */
     SendResult send(String topic, String text);
 }

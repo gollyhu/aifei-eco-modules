@@ -63,7 +63,12 @@ public class MqPlugin implements Plugin {
     /**
      * 解析配置、创建总线并注册生产者与消费者单例；重复启动不会重复装配。
      *
+     * <p>本方法只在<b>配置</b>层面失败即中止（不留半装配）；<b>不校验</b>后端连通性——如 {@code mq.type=rocketmq}
+     * 时 nameserver 不可达，本方法<b>不会</b>失败，故障通常延迟到首次 {@code send} / 消费拉取才暴露。</p>
+     *
      * @throws IllegalArgumentException 配置非法或 {@code mq.type} 指向未注册的后端
+     * @throws cn.hg.aifei.mq.MqException 真实后端总线构建失败（如必填配置缺失、客户端启动失败）；抛出即应用启动
+     *         失败，不留半装配状态
      */
     @Override
     public synchronized void start() {

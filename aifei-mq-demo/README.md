@@ -70,8 +70,11 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
   字符串（从 `1` 开始），仅在同一进程生命周期内唯一。
 - **同步投递**：`send` 在调用线程内直接回调订阅者后才返回，因此「发送后立刻查询 `messages`」必定能看到刚
   发的那条；主题上没有订阅者时视为成功，消息被丢弃但仍返回 `messageId`。
-- **本版无取消订阅**：`Consumer` 只有 `subscribe`，订阅一旦登记不会（也无需）清理；因此 demo 把订阅只放在
-  装配期注册一次，避免重复登记导致同一消息被记录多次。
+- **订阅与取消订阅**：`Consumer` 现有 `subscribe` 与 `unsubscribe` 两个方法。`unsubscribe` 按**实例身份**（引用
+  相等）从该主题移除监听器实例，`MessageListener` 是函数式接口，lambda / 方法引用的 `equals` 无可靠语义，故
+  不按 `equals` 判定；**重复取消**与**取消一个从未登记过的订阅**均为**幂等静默 no-op**（不抛异常），总线停止
+  后调用抛 `IllegalStateException`。本 demo 的订阅只在装配期注册一次，这是**演示选择**而非语言 / 库限制——目的
+  是避免重复登记导致同一消息被记录多次。
 - **`send(topic, byte[])` 与 `send(topic, String)` 等价**：`/mq/demo/send` 走文本捷径，`/mq/demo/send/message`
   走 `Message` 对象路径，两者除返回体多一项 `payloadSize` 外行为一致。
 - **收到的消息无 `messageId`**：`messageId` 只存在于发送结果 `SendResult` 上，订阅侧拿到的 `Message` 只有

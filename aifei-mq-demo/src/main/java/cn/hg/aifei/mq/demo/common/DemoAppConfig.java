@@ -102,8 +102,8 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
      * 装配期订阅演示主题，写装配快照并打印关键信息。
      *
      * <p>订阅点必须是这里：{@code config(Plugins)} 只登记插件，{@code MqPlugin.start()} 在之后才建总线并
-     * 注册单例，此刻 {@link MqKit#consumer()} 才可用。本版无 {@code unsubscribe}，重复订阅会重复登记，
-     * 故订阅只在本方法内注册一次；订阅失败不吞异常，启动期明确失败优于「静默无订阅」。</p>
+     * 注册单例，此刻 {@link MqKit#consumer()} 才可用。订阅只在本方法内注册一次，避免重复登记导致同一消息
+     * 被多次记录；订阅失败不吞异常，启动期明确失败优于「静默无订阅」。</p>
      */
     @Override
     public void onStart() {

@@ -21,7 +21,7 @@
 - 主 JAR 内全部 class 的 major version 必须为 **52**。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、配置键名与异常消息）；文件头版权块属归属信息，不得改写。
 - **`cn.aifei:aifei-all` 为 `provided`**：消费方自带，不向下游传递。
-- **零第三方运行依赖**：默认内存后端零第三方；**不得**引入任何 MQ 客户端或日志绑定。
+- **第三方依赖分层**：内存后端**零第三方运行依赖**；真实后端**按其 provider 实现包自带 `optional` 依赖**（如 `org.apache.rocketmq:rocketmq-client:4.9.7`），**不向下游传递**；公共面（根包 / `internal` / `aifei`）**不得**出现第三方类型，也**不引入日志绑定**。
 
 ### 公共面收敛（不得放宽）
 
@@ -34,7 +34,7 @@
 
 | 类型族 | 允许出现的包 | 门禁断言 |
 | --- | --- | --- |
-| 第三方 / 其它模块 import | 仅实现包（`memory` 及未来后端实现包） | `ArchitectureBoundaryTest#thirdPartyOnlyInImplementationPackage` |
+| 第三方 / 其它模块 import | 仅实现包（`memory` / `rocketmq` 及未来后端实现包） | `ArchitectureBoundaryTest#thirdPartyOnlyInImplementationPackage` |
 | `cn.aifei.*`（除 `cn.hg.aifei.mq.*`，框架类型） | 仅 `cn.hg.aifei.mq.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
 | `java.sql.*` | **全模块禁止** | `ArchitectureBoundaryTest#noSqlReference` |
 
@@ -56,16 +56,22 @@
 | 后端扩展点契约 | `internal.MqProvider` |
 | provider 装配骨架 | `internal.AbstractMqProvider` |
 | 后端注册表（静态初始化块一行） | `internal.MqProviderRegistry` |
-| 内存订阅登记、投递、`close()`、`messageId` 生成 | `memory.MemoryMessageBus` |
+| 内存订阅登记与取消、投递、`close()`、`messageId` 生成 | `memory.MemoryMessageBus` |
 | 后端标识字面量 `"memory"` | `internal.MqConfig.DEFAULT_TYPE`（`MemoryMqProvider.TYPE` 引用之） |
+| 后端标识字面量 `"rocketmq"` | `rocketmq.RocketMqProvider.TYPE` |
+| RocketMQ 订阅登记、投递（同步 `send`）、`close()`、建连 | `rocketmq.RocketMqMessageBus` |
+| RocketMQ 后端专有配置键名（`namesrv-addr` / `producer-group` / `consumer-group`） | `rocketmq.RocketMqMessageBus`（键名常量集中于此；前缀经 `MqConfig.get(relativeKey)` 拼装，**不得手写** `"mq.rocketmq."`） |
 
 ## 行为契约要点速查
 
+> 本清单描述的是**内存后端**的行为；其中「同步投递 / 无线程池与背压 / 单主题 FIFO / `messageId` 格式」等**不是跨后端共同底线**。**「无订阅者」须区分**：**`send` 仍成功返回 `SendResult`（`messageId` 已分配）属共同底线（§5.6 A5）**；**消息被丢弃还是留存属后端差异（§5.6 B6）**。跨后端的**共同底线**与**允许差异**见 `docs/design.md` §5.6；**新增后端的差异须在 §5.6（B）逐项列明**，共同底线不得更改。
+
 - **投递语义**：同步投递；回调在生产者调用线程内直接执行；无线程池 / 队列 / 背压。
 - **有序范围**：单主题 FIFO；同一主题多个订阅者按 `subscribe` 登记顺序回调；不保证跨主题顺序。
-- **无订阅者**：视为成功，消息丢弃但返回 `SendResult`（`messageId` 已分配）。
+- **无订阅者**：`send` 仍成功返回 `SendResult`（`messageId` 已分配）——属**共同底线**（§5.6 A5）；消息**被丢弃还是留存**随后端而变（内存后端丢弃，broker 独立存储，§5.6 B6）。
+- **取消订阅**：`unsubscribe` 从该主题登记列表中按**实例身份**移除该 listener（**不用 `equals`**——`MessageListener` 是函数式接口，lambda / 方法引用的 `equals` 无可靠语义）；**重复取消 / 取消未登记的订阅**均**幂等静默 no-op**（不抛）；参数非法抛 `IllegalArgumentException`、`close()` 后抛 `IllegalStateException`；「**取消后本进程不再向该 listener 派发该主题消息**」属**共同底线**（§5.6 A3），真实后端「按 listener 取消」属**尽力语义**（§5.6 B10）。取消最后一个监听器后**保留该主题的空列表**（不移除主题键）。
 - **`messageId`（内存后端）**：进程内全局单调递增的长整型十进制字符串（`Long.toString(messageSeq.incrementAndGet())`）。
-- **关闭语义**：`close()` 幂等；关闭后 `send` / `subscribe` 抛 `IllegalStateException`；同步投递下无在途消息，无需 drain。
+- **关闭语义**：`close()` 幂等；关闭后 `send` / `subscribe` / `unsubscribe` 抛 `IllegalStateException`；同步投递下无在途消息，无需 drain。
 - **监听器异常**：由总线就地隔离捕获，不中断同主题其他订阅者、不上抛给生产者（本版静默丢弃，不引入日志依赖）。
 - **异常分类**：参数非法 `IllegalArgumentException`；状态非法 `IllegalStateException`；运行时故障 `MqException`。内存后端无外部运行时故障源，本版不会从 `memory` 抛出 `MqException`。
 - **provider 必须无状态**：不得声明实例字段保存解析结果，配置在 `createBus(config)` 内经参数现读现用。
@@ -75,6 +81,10 @@
 ## provider 扩展点
 
 新增后端 = 新增 `XxxMqProvider extends AbstractMqProvider` + 在 `MqProviderRegistry` 的静态初始化块注册一行；**不回头改 `MqPlugin` 装配逻辑**。`MqProviderRegistry` **不提供** `register` 公开方法。
+
+新增后端的**行为差异须在 `docs/design.md` §5.6（B）逐项列明**，**共同底线（§5.6 A）不得更改**；真实后端还须按 §5.6（C）的样式补出本后端的**逐项实际落点**；后端集成测试默认关闭，开启须连上（见 `docs/testing.md`）。
+
+真实后端（如 `rocketmq`）的**建连时机 / 线程模型 / `close()` 语义**全部落在其**实现包内**：producer 在总线构造（= `MqPlugin.start()` 链路）内启动；consumer 因订阅主题启动时未知而**延迟到首次 `subscribe`** 启动。**「启动期失败、不留半装配」只适用于配置错误**（未注册后端 / 必填键缺失或非法）——**不得假设「启动期必连上真实后端」**：如 RocketMQ 的 `DefaultMQProducer#start()` **不校验 nameserver 连通性**（懒连接），nameserver 不可达时启动**仍成功**，故障延迟到首次使用（`docs/design.md` §5.6 B12）。**provider 必须无状态**，配置只在 `buildBus(config)` 内经 `MqConfig.get(relativeKey)` 现读现用。
 
 ## 注释规范
 
@@ -89,6 +99,7 @@
 ```bash
 cd aifei-mq && mvn clean verify   # 必须 0 failure / 0 error
 mvn test -Dtest=MqConfigTest      # 单用例：类名或 类名#方法名
+mvn test -Dtest=RocketMqMessageBusContractTest -Drocketmq.integration=true -Drocketmq.namesrv-addr=127.0.0.1:9876   # RocketMQ 集成测试（默认关闭，开启须连上）
 ```
 
 ## 文档同步要求

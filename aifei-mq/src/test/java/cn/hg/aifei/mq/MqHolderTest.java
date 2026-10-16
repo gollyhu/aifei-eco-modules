@@ -50,8 +50,7 @@ public class MqHolderTest {
     @Test
     public void shouldReturnRegisteredInstances() {
         Producer producer = new StubProducer();
-        Consumer consumer = (topic, listener) -> {
-        };
+        Consumer consumer = new StubConsumer();
         MqHolder.register(producer, consumer);
 
         assertSame(producer, MqHolder.producer());
@@ -63,8 +62,7 @@ public class MqHolderTest {
      */
     @Test
     public void shouldFailAfterClear() {
-        MqHolder.register(new StubProducer(), (topic, listener) -> {
-        });
+        MqHolder.register(new StubProducer(), new StubConsumer());
 
         MqHolder.clear();
 
@@ -78,8 +76,7 @@ public class MqHolderTest {
     @Test
     public void shouldRejectNullArguments() {
         assertThrows(IllegalArgumentException.class,
-                () -> MqHolder.register(null, (topic, listener) -> {
-                }));
+                () -> MqHolder.register(null, new StubConsumer()));
         assertThrows(IllegalArgumentException.class,
                 () -> MqHolder.register(new StubProducer(), null));
     }
@@ -102,6 +99,20 @@ public class MqHolderTest {
         @Override
         public SendResult send(String topic, String text) {
             return null;
+        }
+    }
+
+    /**
+     * 仅用于登记测试的最小消费者。
+     */
+    private static final class StubConsumer implements Consumer {
+
+        @Override
+        public void subscribe(String topic, MessageListener listener) {
+        }
+
+        @Override
+        public void unsubscribe(String topic, MessageListener listener) {
         }
     }
 }

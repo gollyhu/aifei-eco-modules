@@ -137,5 +137,9 @@ public class MqKitTest {
             this.topic = topic;
             this.listener = listener;
         }
+
+        @Override
+        public void unsubscribe(String topic, MessageListener listener) {
+        }
     }
 }

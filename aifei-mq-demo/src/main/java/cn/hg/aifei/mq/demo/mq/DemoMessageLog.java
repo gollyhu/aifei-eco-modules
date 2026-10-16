@@ -202,8 +202,8 @@ public final class DemoMessageLog {
     }
 
     /**
-     * 清空消息记录与两个累计计数，便于演示前重置现场；装配快照（订阅与 {@code mq.type}）保留，
-     * 因为订阅事实无法（本版也无 {@code unsubscribe}）被「清空」。
+     * 清空消息记录与两个累计计数，便于演示前重置现场；装配快照（订阅与 {@code mq.type}）保留——本方法
+     * 只重置 demo 侧记录，不触碰订阅登记（该取舍是 demo 的选择：{@code Consumer.unsubscribe} 现已提供，本 demo 未使用）。
      */
     public static void clear() {
         synchronized (LOCK) {

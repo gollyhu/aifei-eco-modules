@@ -7,6 +7,7 @@
 package cn.hg.aifei.mq.internal;
 
 import cn.hg.aifei.mq.memory.MemoryMqProvider;
+import cn.hg.aifei.mq.rocketmq.RocketMqProvider;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,6 +28,7 @@ public final class MqProviderRegistry {
 
     static {
         PROVIDERS.put(MemoryMqProvider.TYPE, new MemoryMqProvider());
+        PROVIDERS.put(RocketMqProvider.TYPE, new RocketMqProvider());
     }
 
     /**

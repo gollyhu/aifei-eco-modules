@@ -126,8 +126,8 @@ public class MqDemoService {
     }
 
     /**
-     * 清空演示侧消息记录与累计计数，便于演示前重置现场；订阅与 {@code mq.type} 快照保留
-     * （本版无 {@code unsubscribe}，订阅事实无可清）。
+     * 清空演示侧消息记录与累计计数，便于演示前重置现场；订阅与 {@code mq.type} 快照保留。本方法只重置
+     * demo 侧记录，不涉及订阅登记——该取舍是 demo 的选择：{@code Consumer.unsubscribe} 现已提供，本 demo 未使用。
      *
      * @return 操作结果
      */

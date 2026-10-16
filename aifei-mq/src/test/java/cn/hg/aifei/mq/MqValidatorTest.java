@@ -130,5 +130,9 @@ public class MqValidatorTest {
         @Override
         public void subscribe(String topic, MessageListener listener) {
         }
+
+        @Override
+        public void unsubscribe(String topic, MessageListener listener) {
+        }
     }
 }

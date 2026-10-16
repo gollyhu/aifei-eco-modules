@@ -11,7 +11,7 @@ import cn.hg.aifei.mq.MessageListener;
 import cn.hg.aifei.mq.internal.MqValidator;
 
 /**
- * 消费视图：校验参数后把订阅登记委托给所属总线。
+ * 消费视图：校验参数后把订阅登记与取消委托给所属总线。
  */
 final class MemoryConsumer implements Consumer {
 
@@ -37,5 +37,15 @@ final class MemoryConsumer implements Consumer {
         MqValidator.requireTopic(topic);
         MqValidator.requireListener(listener);
         bus.subscribe(topic, listener);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void unsubscribe(String topic, MessageListener listener) {
+        MqValidator.requireTopic(topic);
+        MqValidator.requireListener(listener);
+        bus.unsubscribe(topic, listener);
     }
 }

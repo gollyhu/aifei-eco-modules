@@ -26,6 +26,9 @@ public interface MqProvider {
      *
      * @param config 配置对象
      * @return 消息总线
+     * @throws IllegalArgumentException {@code config} 为 {@code null}
+     * @throws cn.hg.aifei.mq.MqException 真实后端构建总线失败（如必填配置缺失、客户端启动失败）时抛出；构建总线
+     *         <b>不校验</b>后端连通性（如 RocketMQ nameserver 不可达不在此抛）；内存后端不抛
      */
     MessageBus createBus(MqConfig config);
 }
