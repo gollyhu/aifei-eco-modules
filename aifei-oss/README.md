@@ -7,7 +7,7 @@
 ## 特性
 
 - **多平台**：本地 / FTP / SFTP / 阿里云 OSS / 腾讯云 COS / 华为云 OBS / 七牛 / MinIO / AWS S3 / Azure / Google Cloud 等（由 X File Storage 提供）。
-- **统一接口**：`OssClient` 提供上传 / 下载 / 删除 / 存在性 / 元数据 / 签名 URL / 复制。
+- **统一接口**：`OssClient` 提供上传 / 下载 / 删除 / 存在性 / 元数据 / 签名 URL（`copy` 本期未接线，调用即抛 `OssException`）。
 - **多平台共存**：`@Inject OssClient` 用默认平台，`OssKit.use("name")` 按平台取用。
 - **实现无关**：公共 API 不暴露 X File Storage 与云厂商 SDK 类型。
 - **Java 8**：编译目标与产物均为 Java 8。
@@ -25,6 +25,7 @@
 - **`x-file-storage-core` 由本模块传递引入**（`compile` 依赖），消费方无需再声明可正常使用。
 - **各云厂商 SDK 需消费方按需自带**（例如阿里云 `com.aliyun.oss:aliyun-sdk-oss`、AWS `com.amazonaws:aws-java-sdk-s3`、MinIO `io.minio:minio`）。仅使用本地存储时无需引入任何云 SDK。
 - aifei 框架（`cn.aifei:aifei-all`）为 `provided`，由应用自带。
+- **尚未对外发布**：本仓库当前仅 `aifei-cache` 具备 Maven Central 发布能力，上列坐标为预留，暂无发布产物。
 
 > **Java 8 说明**：X File Storage 官方文档中的「JDK 11+」指其**自身构建环境**要求；其发布 jar 的字节码为 Java 8，可被 Java 8 应用直接依赖运行。aifei-oss 与消费方均无需升级 JDK。
 
@@ -87,8 +88,8 @@ public class FileService {
 
 | 键 | 必填 | 说明 |
 | --- | --- | --- |
-| `oss.default-platform` | 多平台时必填 | 默认平台标识 |
-| `oss.<name>.type` | 是 | 平台类型（`local` / `aliyun-oss` / `tencent-cos` / `minio` / `s3` / `huawei-obs` 等） |
+| `oss.default-platform` | 多平台时必填 | 默认平台标识；**单平台时可省略**（即以该平台为默认），**平台数 ≥ 2 时必填**，缺失或指向未声明的平台则**启动失败**，**不会静默沿用**底层的 `local` |
+| `oss.<name>.type` | 是 | 平台类型，合法取值全集为 20 项：`local` / `local-plus` / `huawei-obs` / `aliyun-oss` / `qiniu-kodo` / `tencent-cos` / `baidu-bos` / `upyun-uss` / `minio` / `amazon-s3` / `amazon-s3-v2` / `ftp` / `sftp` / `webdav` / `google-cloud-storage` / `fastdfs` / `azure-blob` / `mongo-gridfs` / `go-fastdfs` / `volcengine-tos`；未列入的类型**启动即失败** |
 | `oss.<name>.access-key` | 视平台 | 访问密钥 |
 | `oss.<name>.secret-key` | 视平台 | 访问密钥 |
 | `oss.<name>.end-point` | 视平台 | 服务端点 |

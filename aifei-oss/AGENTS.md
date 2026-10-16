@@ -25,15 +25,15 @@
 
 ### 依赖策略（**例外，见 `docs/design.md` §3**）
 
-- **`x-file-storage-core` 为 `compile` 依赖**：这是仓库根「第三方依赖一律 `optional` 或 `provided`」的**显式例外**（理由见 `docs/design.md` §3.2），**不得**擅自改为 `optional` / `provided`。
+- **`x-file-storage-core` 为 `compile` 依赖**：这是仓库根「第三方依赖一律 `optional` 或 `provided`」的**显式例外**（理由见 `docs/design.md` §3.2），**不得**擅自改为 `optional` / `provided`。**授权状态**：**已获授权**——该例外已按仓库根 `AGENTS.md`「已登记的 `compile` 例外」条款登记，落地即合规；新增例外仍须先登记后方可落地。
 - **仅依赖 `core`**：禁止引入 `x-file-storage-spring` / `x-file-storage-solon`；`FileStorageService` 一律用 `FileStorageServiceBuilder` 编程式构建。
-- **各云厂商 SDK 不代为引入**：由消费方按需自带；本模块 `pom.xml` 不得声明 `aliyun-sdk-oss` / `aws-java-sdk-s3` / `minio` 等平台 SDK（测试用内存 / 本地实现除外）。
+- **各云厂商 SDK 不代为引入**：由消费方按需自带；本模块 `pom.xml` 不得声明 `aliyun-sdk-oss` / `aws-java-sdk-s3` / `minio` 等平台 SDK；测试只用 `core` 内置的本地存储，**不引入任何云 SDK，也不引入 SQL / 持久化文件记录器**。
 - **加 / 升 x-file-storage 版本前必须重跑 P0 门禁**（`major version = 52`，见 `docs/design.md` §3.1），并先更新设计决策。
 
 ### 公共面收敛（不得放宽）
 
 - **公共 API 零第三方类型、零框架类型**。
-- 公共类型固定为 **6 个，全部在根包 `cn.hg.aifei.oss`**：`OssClient` / `OssKit` / `OssConfig` / `OssFileInfo` / `OssObject` / `OssException`。新增公共类型必须先过设计决策。
+- 公共类型固定为 **5 个，全部在根包 `cn.hg.aifei.oss`**：`OssClient` / `OssKit` / `OssFileInfo` / `OssObject` / `OssException`。新增公共类型必须先过设计决策。**`OssConfig` 不属公共 API**（未出现在任何公共 API 签名中，位于 `internal`，见 `docs/design.md` §5.3）。
 - `internal` 与 `aifei` 均属**非承诺 API**：实现类因装配需要可声明为 `public`，但**明确不是公共 API**，消费方不得引用。
 - 异常消息中**不得**包含任何第三方类型名（x-file-storage / 云 SDK 类型）；底层异常一律在适配层翻译为 `OssException` 后再上浮。
 
@@ -45,32 +45,34 @@
 | `cn.aifei.*`（框架类型，除 `cn.hg.aifei.oss.*`） | **仅** `cn.hg.aifei.oss.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
 | `java.sql.*` / `io.undertow.*` | **全模块禁止** | `ArchitectureBoundaryTest#noSqlOrUndertowReference` |
 
-另有 `ArchitectureBoundaryTest#publicSurfaceExact`：断言根包公共类型**精确 6 个**。
+另有 `ArchitectureBoundaryTest#publicSurfaceExact`：断言根包公共类型**精确 5 个**，且文件名集合精确相等（防同名替换）。
 
-`ArchitectureBoundaryTest` 扫描 `src/main/java` 下全部 `.java` 断言上述边界，因此**必须在模块根目录执行**。**不得为兼容错误用法而放宽或绕过门禁断言。**
+`ArchitectureBoundaryTest` 扫描 `src/main/java` 下全部 `.java` 断言上述边界，因此**必须在模块根目录执行**。**不得为兼容错误用法而放宽或绕过门禁断言。** 注意门禁按**源码文本**匹配（不区分注释）：`internal` 之外的文件，**含 javadoc / 注释，也不得出现** `org.dromara.x.file.storage` 字样，否则会误报。
 
 ## 唯一定义点清单（实现类不得复制）
 
 | 规则 | 唯一定义点 |
 | --- | --- |
 | 配置键名与解析（`Prop` → 平台配置） | `aifei.OssConfigLoader` |
-| 字段级配置校验 | `OssConfig` |
-| `FileStorageService` 构建与平台装配 | `internal`（适配层构建类） |
-| `FileInfo` → `OssFileInfo` / `OssObject` 映射 | `internal`（适配层映射类） |
-| 异常翻译（x-file-storage / 云 SDK → `OssException`） | `internal`（适配层翻译类） |
+| 对象路径 → `FileInfo` 换算 | `internal.OssPaths` |
+| 字段级配置校验 | `internal.OssConfig` |
+| `FileStorageService` 构建与平台装配 | `internal.OssStorageFactory` |
+| `FileInfo` → `OssFileInfo` / `OssObject` 映射 | `internal.OssMappers` |
+| 异常翻译（x-file-storage / 云 SDK → `OssException`） | `internal.OssErrors` |
 
-> 适配层具体类名在实现阶段定档后回填本表；无论类名如何，规则实现**只有一处**。
+> 类名以 `docs/design.md` §4.1 为准；无论类名如何，规则实现**只有一处**。
 
 ## 行为契约要点速查
 
+- **对象定位（硬约束）**：**禁用** `getFileInfoByUrl` / `delete(String)` / `exists(String)` / `download(String)` 等 String url 一族 API（它们一律委托 `FileRecorder`，默认 `DefaultFileRecorder.getByUrl()` 恒抛异常）；定位一律自行构造 `FileInfo` 后调用 `FileInfo` 一族 API，换算的唯一定义点是 `internal.OssPaths`。
 - **上传**：成功返回 `OssFileInfo`；失败抛 `OssException`；同名路径**跟随 x-file-storage 默认覆盖语义**。
-- **下载**：不存在抛 `OssException`；返回的 `OssObject` 由调用方关闭（try-with-resources）。
+- **下载**：不存在抛 `OssException`；返回的 `OssObject` **无需关闭**——底层下载器为回调式（无 `getInputStream()`），内容经 `bytes()` / `writeTo(OutputStream)` 按次读取，流在实现内部开启并关闭。
 - **删除**：不存在返回 `false`（不抛异常）；成功返回 `true`。
 - **存在性**：不存在返回 `false`。
 - **签名 URL**：平台不支持时抛 `OssException`。
-- **复制**：仅限**同一平台内**；跨平台不在本期范围。
+- **复制**：本期**未接线**，调用即抛 `OssException`（底层 x-file-storage 已具备同平台复制与支持度探测能力，是否接线在 `docs/design.md` §10.3 定档）；跨平台复制不在本期范围。
 - **平台选择**：`@Inject OssClient` = 默认平台；多平台经 `OssKit.use(name)`。
-- **装配失败即启动失败**：必填配置缺失 / 平台 SDK 未引入，应用启动即失败，不留半装配状态。
+- **装配失败即启动失败**：必填配置缺失 / 平台类型未知，在 `OssPlugin.start()` 即失败，不留半装配状态；**云 SDK 缺失属运行期故障**（客户端惰性建连，首次使用该平台才抛 `NoClassDefFoundError`）。
 - **脱敏**：`OssConfig` 的 `toString` 不得输出 `secretKey` 等敏感字段。
 
 ## 验证
@@ -80,10 +82,10 @@
 ```bash
 cd aifei-oss && mvn clean verify                        # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest                # 单跑门禁
-mvn verify -Doss.integration=true                       # 开启 MinIO 集成测试（默认关闭）
+mvn verify -Doss.integration=true                       # 开启 MinIO 集成测试（参数已定档，用例未实现，见 docs/testing.md §4）
 ```
 
-当前基线：以 `mvn clean verify` 的实测结果为准，要求 0 failure / 0 error。已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
+当前基线：`mvn clean verify` 实测 **6 项用例**（门禁 4 + 字节码 1 + 本地存储契约 1）0 failure / 0 error。已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
 
 ## 文档同步要求
 

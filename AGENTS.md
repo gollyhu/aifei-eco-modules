@@ -32,6 +32,7 @@
 - 不得使用 Java 8 之后才有的 **API**：如 `List.of` / `Map.of` 等 Java 9+ 集合工厂方法、`Optional.orElseThrow()` 无参版等。
 - 源码编码 **UTF-8**；缩进 4 空格。
 - 第三方依赖一律 `optional` 或 `provided`：不向下游传递，由消费方按需自带。
+- **已登记的 `compile` 例外**（模块须先在自身 `docs/design.md` 作出设计决策，并在此登记后方可落地）：`aifei-oss` 的 `org.dromara.x-file-storage:x-file-storage-core` 为 `compile`——它是该模块的实现内核，脱离它门面无任何功能，标 `optional` 只会迫使消费方重复声明；理由见 `aifei-oss/docs/design.md` §3.2。**新增例外一律须先在此登记**，不得由模块文档单方面声明。
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。
 
@@ -104,7 +105,7 @@
 ## 提交前检查清单
 
 - [ ] 已在模块目录执行该模块 `AGENTS.md` 指定的验证命令，且 0 failure / 0 error。
-- [ ] 未引入 Java 8 之后才有的语法 / API；未新增未声明 `optional` 或 `provided` 的第三方依赖。
+- [ ] 未引入 Java 8 之后才有的语法 / API；未新增未声明 `optional` 或 `provided` 的第三方依赖（本文件已登记的 `compile` 例外除外）。
 - [ ] 未改动已发布的冻结契约与数据格式；如确需改动，已先在 `docs/design.md` 记录决策并补齐固定向量用例。
 - [ ] 每类规则仍只有唯一定义点，实现类未复制规则；多实现模块已遵循共同契约底线，允许差异已在模块 `docs/design.md` 逐项列明（单实现模块不适用）。
 - [ ] 架构门禁测试未被放宽；公共 API 未暴露具体实现类型。

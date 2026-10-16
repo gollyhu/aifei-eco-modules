@@ -9,7 +9,7 @@
 | 单元 / 契约 | 公共门面到本地存储平台的完整链路（上传 / 下载 / 存在性 / 元数据 / 删除） | 否 | `LocalStorageTest` |
 | 架构门禁 | `src/main/java` 源码文本的分层边界与公共面收敛 | 否 | `ArchitectureBoundaryTest` |
 | 字节码约束 | 主 JAR 内全部 class 的 major version = 52 | 否 | `ClassFileVersionTest` |
-| 集成（默认关闭） | 真实对象存储（MinIO，S3 兼容） | 是 | 待补（见 §4） |
+| 集成（默认关闭） | 真实对象存储（MinIO，S3 兼容） | 是 | **待实现**（见 §4） |
 
 ## 2. 用例清单
 
@@ -20,7 +20,7 @@
 | `xfsOnlyInAdapterPackage` | `org.dromara.x.file.storage.*` 只出现在 `cn.hg.aifei.oss.internal` |
 | `frameworkOnlyInBridgePackage` | `cn.aifei.*` 只出现在 `cn.hg.aifei.oss.aifei` |
 | `noSqlOrUndertowReference` | 全模块无 `java.sql.*` / `io.undertow.*` |
-| `publicSurfaceExact` | 根包公共类型精确 6 个 |
+| `publicSurfaceExact` | 根包公共类型精确 5 个，且文件名集合精确相等 |
 
 ### 2.2 `ClassFileVersionTest`（1 项）
 
@@ -28,7 +28,7 @@
 
 ### 2.3 `LocalStorageTest`（1 项）
 
-- `uploadDownloadDeleteExists`：以本地存储平台（临时目录）验证 `upload → exists → download → getFileInfo → delete → !exists` 完整链路，并断言上传后的对象路径与平台标识。
+- `uploadDownloadDeleteExists`：以本地存储平台（临时目录）验证 `upload → exists → download → getFileInfo → delete → !exists` 完整链路，并断言上传后的对象路径与平台标识；全程**不得依赖 `FileRecorder`**（定位一律走 `FileInfo` 一族 API）。
 
 ## 3. 运行
 
@@ -40,7 +40,7 @@ mvn test -Dtest=ArchitectureBoundaryTest  # 单跑门禁
 mvn test -Dtest=LocalStorageTest#uploadDownloadDeleteExists
 ```
 
-开启 MinIO 集成测试（默认关闭）：
+开启 MinIO 集成测试（**用例待实现**，默认关闭）：
 
 ```bash
 mvn verify -Doss.integration=true
@@ -49,6 +49,7 @@ mvn verify -Doss.integration=true
 ## 4. 新增约定
 
 - 公共行为变更必须同步更新对应用例；已修复的缺陷必须固化为**回归测试**。
+- 用例不得依赖 `FileRecorder`：`DefaultFileRecorder.getByUrl()` 恒抛异常，定位一律走 `FileInfo` 一族 API。
 - 测试须**独立且幂等**：`LocalStorageTest` 使用临时目录并在结束时 `OssClients.clear()` 与清理临时目录，不得依赖执行顺序。
-- 涉及真实外部服务（MinIO 等）的用例默认关闭；一旦开启，连不上必须使测试失败，不得静默跳过（命名对齐 `aifei-cache` 的 `redis.integration`）。
+- 涉及真实外部服务（MinIO 等）的用例默认关闭；一旦开启，连不上必须使测试失败，不得静默跳过（命名对齐 `aifei-cache` 的 `redis.integration`）。连接参数**已定档**：`-Doss.integration=true`（开关，默认 `false`）/ `-Doss.endpoint`（默认 `http://127.0.0.1:9000`）/ `-Doss.access-key`、`-Doss.secret-key`（默认 `minioadmin`）/ `-Doss.bucket`（默认 `aifei-oss-test`），经 surefire `systemPropertyVariables` 透传（`pom.xml` 已配置）。取值用短名 `endpoint`，**刻意区别于**平台配置键 `end-point`。**本期只落开关与参数透传，未落实际用例**（见 §2 与 `docs/design.md` §10.3）。
 - 新增平台实现时，应补一组「上传 / 下载 / 删除」的集成用例，并保证不联网的本地存储用例仍可独立运行。
