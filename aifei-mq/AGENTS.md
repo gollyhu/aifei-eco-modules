@@ -21,7 +21,7 @@
 - 主 JAR 内全部 class 的 major version 必须为 **52**。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、配置键名与异常消息）；文件头版权块属归属信息，不得改写。
 - **`cn.aifei:aifei-all` 为 `provided`**：消费方自带，不向下游传递。
-- **第三方依赖分层**：内存后端**零第三方运行依赖**；真实后端**按其 provider 实现包自带 `optional` 依赖**（如 `org.apache.rocketmq:rocketmq-client:4.9.7`），**不向下游传递**；公共面（根包 / `internal` / `aifei`）**不得**出现第三方类型，也**不引入日志绑定**。
+- **第三方依赖分层**：内存后端**零第三方运行依赖**；真实后端**按其 provider 实现包自带 `optional` 依赖**（如 `org.apache.rocketmq:rocketmq-client:4.9.7`），**不向下游传递**；公共面（根包 / `internal` / `aifei`）**不得**出现第三方类型，也**不引入日志绑定**。**本轮新增 5 个 `optional` 客户端**（均 `<optional>true</optional>`、**仅各自实现包使用、不向下游传递**）：`org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`（`mqtt`）、`org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`（`mqtt5`）、`com.rabbitmq:amqp-client:5.21.0`（`rabbitmq`）、`org.apache.kafka:kafka-clients:3.9.1`（`kafka`，**必须停 3.x**，4.x 要求 Java 11+）、`redis.clients:jedis:8.0.1`（`redisstream`，与 `aifei-cache` 版本对齐、Jedis 直连）；除这 5 个客户端外**不新增任何直接依赖**，也**不得引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j` 等一律禁止；`slf4j-api` 只以**门面**身份随传递依赖出现）。
 
 ### 公共面收敛（不得放宽）
 
@@ -34,7 +34,7 @@
 
 | 类型族 | 允许出现的包 | 门禁断言 |
 | --- | --- | --- |
-| 第三方 / 其它模块 import | 仅实现包（`memory` / `rocketmq` 及未来后端实现包） | `ArchitectureBoundaryTest#thirdPartyOnlyInImplementationPackage` |
+| 第三方 / 其它模块 import | 仅实现包（`memory` / `rocketmq` / `mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream`） | `ArchitectureBoundaryTest#thirdPartyOnlyInImplementationPackage` |
 | `cn.aifei.*`（除 `cn.hg.aifei.mq.*`，框架类型） | 仅 `cn.hg.aifei.mq.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
 | `java.sql.*` | **全模块禁止** | `ArchitectureBoundaryTest#noSqlReference` |
 
@@ -43,6 +43,8 @@
 `ArchitectureBoundaryTest` 扫描 `src/main/java` 下全部 `.java` 断言上述边界，因此**必须在 `aifei-mq` 模块根目录执行**。**不得为兼容错误用法而放宽或绕过门禁断言。**
 
 > 关键推论：`internal` 与 `memory` **一律不得 import `cn.aifei.*`**；`MqPlugin` 是全模块唯一 import 框架类型的类。
+>
+> **本轮（R 轮）新增 5 个实现包**（`mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream`，各 4 个类）的门禁合规性：这 5 个包的文件路径**既非**根包直接子文件、**也不含** `/internal/`、**也不含** `cn/hg/aifei/mq/aifei/`，故门禁① `thirdPartyOnlyInImplementationPackage` **自动放行**（其 `org.eclipse.paho.*` / `com.rabbitmq.*` / `org.apache.kafka.*` / `redis.clients.*` import 合规，与既有 `memory` / `rocketmq` 同构）；**根包仍精确 8 类型**（新类全部落子包，门禁⑤ `publicSurfaceExact` 不受影响）；`internal` 与 5 个实现包**一律不得 import `cn.aifei.*`**（配置经 `internal.MqConfig` 读取，不经框架类型），`MqPlugin` 仍是全模块唯一 import 框架类型的类。
 
 ## 唯一定义点清单（实现类不得复制）
 
@@ -61,6 +63,13 @@
 | 后端标识字面量 `"rocketmq"` | `rocketmq.RocketMqProvider.TYPE` |
 | RocketMQ 订阅登记、投递（同步 `send`）、`close()`、建连 | `rocketmq.RocketMqMessageBus` |
 | RocketMQ 后端专有配置键名（`namesrv-addr` / `producer-group` / `consumer-group`） | `rocketmq.RocketMqMessageBus`（键名常量集中于此；前缀经 `MqConfig.get(relativeKey)` 拼装，**不得手写** `"mq.rocketmq."`） |
+| 后端标识字面量 `"mqtt"` | `mqtt.MqttProvider.TYPE` |
+| 后端标识字面量 `"mqtt5"` | `mqtt5.Mqtt5Provider.TYPE` |
+| 后端标识字面量 `"rabbitmq"` | `rabbitmq.RabbitMqProvider.TYPE` |
+| 后端标识字面量 `"kafka"` | `kafka.KafkaProvider.TYPE` |
+| 后端标识字面量 `"redisstream"` | `redisstream.RedisStreamProvider.TYPE` |
+| 各新后端专有配置键名（`docs/design.md` §4.6–§4.10 各键表；**一后端一处**） | 各后端**各自**的 `XxxMessageBus`：`mqtt.MqttMessageBus` / `mqtt5.Mqtt5MessageBus` / `rabbitmq.RabbitMqMessageBus` / `kafka.KafkaMessageBus` / `redisstream.RedisStreamMessageBus`（键名常量集中于此；前缀经 `MqConfig.get(relativeKey)` 拼装，**不得手写** `"mq.mqtt."` / `"mq.kafka."` 等字面量） |
+| 各新后端的订阅登记 / 投递 / 建连 / `close()`（**一后端一处**） | 各后端**各自**的 `XxxMessageBus`：`mqtt.MqttMessageBus`（构造内建连 + 投递 + `close()`）/ `mqtt5.Mqtt5MessageBus`（同构）/ `rabbitmq.RabbitMqMessageBus`（构造内建连；首次 `subscribe` 声明队列并投递）/ `kafka.KafkaMessageBus`（构造内建 producer；首次 `subscribe` 起拉取循环）/ `redisstream.RedisStreamMessageBus`（连接池；首次 `subscribe` 建组并起拉取循环）。视图类（`XxxProducer` / `XxxConsumer`）**只委托**，不得复制登记 / 建连 / 投递逻辑 |
 
 ## 行为契约要点速查
 
@@ -77,6 +86,8 @@
 - **provider 必须无状态**：不得声明实例字段保存解析结果，配置在 `createBus(config)` 内经参数现读现用。
 - **配置解析时机**：一律在 `MqPlugin.start()` 内完成；构造函数只保留 `Prop` 引用，不解析、不校验、不建总线。
 - **配置读取唯一口径**：后端专有键一律经 `MqConfig.get(relativeKey)`（内部拼 `prefix + "." + relativeKey`），**不得手写** `"mq.memory."` 等字面量。
+- **启动期连通性（后端差异）**：`mqtt` / `mqtt5` / `rabbitmq` **构造期即建连、fail-fast**——broker 不可达则 `MqPlugin.start()` 失败并回滚；`kafka` / `redisstream`（及既有 `rocketmq`）为**懒连接**——**「启动成功」≠「后端可达」**，故障延迟到首次收发才以 `MqException` 暴露（`docs/design.md` §5.6 B12 与 (C) 各表 B12 行）。
+- **`topic` 语义（后端差异）**：MQTT（`mqtt` / `mqtt5`）的 `topic` 是**过滤器**（支持 `+` / `#` 通配；`Consumer.subscribe` 签名不变）；其余后端（`memory` / `rocketmq` / `rabbitmq` / `kafka` / `redisstream`）为**精确名**（RabbitMQ 为队列名 / routing key，Kafka 为 topic 名，Redis Streams 为流键）。**精确匹配是通配匹配的特例**（`docs/design.md` §5.6 B14）。
 
 ## provider 扩展点
 
@@ -100,7 +111,16 @@
 cd aifei-mq && mvn clean verify   # 必须 0 failure / 0 error
 mvn test -Dtest=MqConfigTest      # 单用例：类名或 类名#方法名
 mvn test -Dtest=RocketMqMessageBusContractTest -Drocketmq.integration=true -Drocketmq.namesrv-addr=127.0.0.1:9876   # RocketMQ 集成测试（默认关闭，开启须连上）
+mvn test -Dtest=MqttMessageBusContractTest -Dmqtt.integration=true -Dmqtt.broker-url=tcp://127.0.0.1:1883          # MQTT v3（默认关闭，开启须连上）
+mvn test -Dtest=Mqtt5MessageBusContractTest -Dmqtt5.integration=true -Dmqtt5.broker-url=tcp://127.0.0.1:1883        # MQTT v5（同上）
+mvn test -Dtest=RabbitMqMessageBusContractTest -Drabbitmq.integration=true -Drabbitmq.host=127.0.0.1 -Drabbitmq.port=5672   # RabbitMQ（同上）
+mvn test -Dtest=KafkaMessageBusContractTest -Dkafka.integration=true -Dkafka.bootstrap-servers=127.0.0.1:9092        # Kafka（同上）
+mvn test -Dtest=RedisStreamMessageBusContractTest -Dredisstream.integration=true -Dredisstream.host=127.0.0.1 -Dredisstream.port=6379   # Redis Streams（同上）
 ```
+
+> **集成测试纪律**：上述 5 个集成开关（连同既有 `-Drocketmq.integration`）**默认关闭**（未开启时整类经 `Assume` 跳过）；**一旦开启，连不上必须使测试失败**，**不得**用 `Assume` 掩盖。开关名与连接参数须与 `pom.xml` 的 `systemPropertyVariables` **逐字一致**（见 `docs/testing.md`）。
+>
+> **文件 / 用例计数（实测）**：主源码 **45** 个（`src/main/java`）/ 测试 **18** 个（`src/test/java`）；模块内 `mvn clean verify` 实测 **`Tests run: 143 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **83** 项 + 跳过 **60** 项；跳过的 60 项为 6 个集成子类各 10 条，默认关闭）。
 
 ## 文档同步要求
 

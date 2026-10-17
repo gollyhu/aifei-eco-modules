@@ -18,11 +18,38 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aifei.version>1.1.1</aifei.version>
         <rocketmq.version>4.9.7</rocketmq.version>   <!-- 4.9.x 以 source/target 1.6 编译（class major 50），与 Java 8 基线兼容 -->
+        <mqttv3.version>1.2.5</mqttv3.version>       <!-- Paho MQTT v3.1.1 客户端 -->
+        <mqttv5.version>1.2.5</mqttv5.version>       <!-- Paho MQTT v5.0 客户端 -->
+        <rabbitmq.version>5.21.0</rabbitmq.version>  <!-- RabbitMQ Java 客户端 -->
+        <kafka.version>3.9.1</kafka.version>         <!-- Apache Kafka 客户端 -->
+        <jedis.version>8.0.1</jedis.version>         <!-- Redis Jedis 客户端 -->
         <junit.version>4.13.2</junit.version>
 
         <!-- RocketMQ 集成测试开关，可用 -Drocketmq.integration=true -Drocketmq.namesrv-addr=host:port 覆盖 -->
         <rocketmq.integration>false</rocketmq.integration>
         <rocketmq.namesrv-addr>127.0.0.1:9876</rocketmq.namesrv-addr>
+
+        <!-- MQTT v3.1.1 集成测试开关，可用 -Dmqtt.integration=true -Dmqtt.broker-url=tcp://host:port 覆盖 -->
+        <mqtt.integration>false</mqtt.integration>
+        <mqtt.broker-url>tcp://127.0.0.1:1883</mqtt.broker-url>
+
+        <!-- MQTT v5.0 集成测试开关，可用 -Dmqtt5.integration=true -Dmqtt5.broker-url=tcp://host:port 覆盖 -->
+        <mqtt5.integration>false</mqtt5.integration>
+        <mqtt5.broker-url>tcp://127.0.0.1:1883</mqtt5.broker-url>
+
+        <!-- RabbitMQ 集成测试开关，可用 -Drabbitmq.integration=true -Drabbitmq.host=host -Drabbitmq.port=port 覆盖 -->
+        <rabbitmq.integration>false</rabbitmq.integration>
+        <rabbitmq.host>127.0.0.1</rabbitmq.host>
+        <rabbitmq.port>5672</rabbitmq.port>
+
+        <!-- Kafka 集成测试开关，可用 -Dkafka.integration=true -Dkafka.bootstrap-servers=host:port 覆盖 -->
+        <kafka.integration>false</kafka.integration>
+        <kafka.bootstrap-servers>127.0.0.1:9092</kafka.bootstrap-servers>
+
+        <!-- Redis Streams 集成测试开关，可用 -Dredisstream.integration=true -Dredisstream.host=host -Dredisstream.port=port 覆盖 -->
+        <redisstream.integration>false</redisstream.integration>
+        <redisstream.host>127.0.0.1</redisstream.host>
+        <redisstream.port>6379</redisstream.port>
     </properties>
 
     <dependencies>
@@ -39,6 +66,46 @@
             <groupId>org.apache.rocketmq</groupId>
             <artifactId>rocketmq-client</artifactId>
             <version>${rocketmq.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- MQTT v3.1.1 客户端：optional，仅 cn.hg.aifei.mq.mqtt 实现包使用，不向下游传递 -->
+        <dependency>
+            <groupId>org.eclipse.paho</groupId>
+            <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+            <version>${mqttv3.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- MQTT v5.0 客户端：optional，仅 cn.hg.aifei.mq.mqtt5 实现包使用，不向下游传递 -->
+        <dependency>
+            <groupId>org.eclipse.paho</groupId>
+            <artifactId>org.eclipse.paho.mqttv5.client</artifactId>
+            <version>${mqttv5.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- RabbitMQ 客户端：optional，仅 cn.hg.aifei.mq.rabbitmq 实现包使用，不向下游传递 -->
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <version>${rabbitmq.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Kafka 客户端：optional，仅 cn.hg.aifei.mq.kafka 实现包使用，不向下游传递 -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafka.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Redis Jedis 客户端：optional，仅 cn.hg.aifei.mq.redisstream 实现包使用，不向下游传递 -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>${jedis.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -70,6 +137,18 @@
                     <systemPropertyVariables>
                         <rocketmq.integration>${rocketmq.integration}</rocketmq.integration>
                         <rocketmq.namesrv-addr>${rocketmq.namesrv-addr}</rocketmq.namesrv-addr>
+                        <mqtt.integration>${mqtt.integration}</mqtt.integration>
+                        <mqtt.broker-url>${mqtt.broker-url}</mqtt.broker-url>
+                        <mqtt5.integration>${mqtt5.integration}</mqtt5.integration>
+                        <mqtt5.broker-url>${mqtt5.broker-url}</mqtt5.broker-url>
+                        <rabbitmq.integration>${rabbitmq.integration}</rabbitmq.integration>
+                        <rabbitmq.host>${rabbitmq.host}</rabbitmq.host>
+                        <rabbitmq.port>${rabbitmq.port}</rabbitmq.port>
+                        <kafka.integration>${kafka.integration}</kafka.integration>
+                        <kafka.bootstrap-servers>${kafka.bootstrap-servers}</kafka.bootstrap-servers>
+                        <redisstream.integration>${redisstream.integration}</redisstream.integration>
+                        <redisstream.host>${redisstream.host}</redisstream.host>
+                        <redisstream.port>${redisstream.port}</redisstream.port>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

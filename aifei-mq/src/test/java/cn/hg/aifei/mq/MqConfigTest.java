@@ -90,8 +90,8 @@ public class MqConfigTest {
      */
     @Test
     public void shouldRejectUnregisteredType() {
-        Properties properties = props(MqConfig.TYPE_KEY, "kafka");
-        Properties namedProperties = props("mq.orders.type", "kafka");
+        Properties properties = props(MqConfig.TYPE_KEY, "nosuch");
+        Properties namedProperties = props("mq.orders.type", "nosuch");
 
         assertThrows(IllegalArgumentException.class, () -> MqConfig.parse(properties, REGISTERED, MAIN));
         assertThrows(IllegalArgumentException.class,

@@ -162,7 +162,7 @@ public class MqPluginTest {
      */
     @Test
     public void shouldFailFastOnUnregisteredType() {
-        plugin = new MqPlugin(prop("mq.type", "kafka"));
+        plugin = new MqPlugin(prop("mq.type", "nosuch"));
 
         assertThrows(IllegalArgumentException.class, plugin::start);
 
@@ -219,7 +219,7 @@ public class MqPluginTest {
      */
     @Test
     public void shouldRollBackWhenNamedInstanceFails() {
-        plugin = new MqPlugin(prop("mq.names", ORDERS, "mq.orders.type", "kafka"));
+        plugin = new MqPlugin(prop("mq.names", ORDERS, "mq.orders.type", "nosuch"));
 
         assertThrows(IllegalArgumentException.class, plugin::start);
 
@@ -239,7 +239,7 @@ public class MqPluginTest {
     public void shouldCloseAssembledBusWhenAssemblyFailsMidway() {
         CapturingProp capturingProp = new CapturingProp("mq.orders.type");
         capturingProp.getProperties().setProperty("mq.names", ORDERS);
-        capturingProp.getProperties().setProperty("mq.orders.type", "kafka");
+        capturingProp.getProperties().setProperty("mq.orders.type", "nosuch");
         plugin = new MqPlugin(capturingProp);
 
         assertThrows(IllegalArgumentException.class, plugin::start);

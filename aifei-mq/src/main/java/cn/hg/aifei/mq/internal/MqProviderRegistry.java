@@ -6,7 +6,12 @@
 
 package cn.hg.aifei.mq.internal;
 
+import cn.hg.aifei.mq.kafka.KafkaProvider;
 import cn.hg.aifei.mq.memory.MemoryMqProvider;
+import cn.hg.aifei.mq.mqtt.MqttProvider;
+import cn.hg.aifei.mq.mqtt5.Mqtt5Provider;
+import cn.hg.aifei.mq.rabbitmq.RabbitMqProvider;
+import cn.hg.aifei.mq.redisstream.RedisStreamProvider;
 import cn.hg.aifei.mq.rocketmq.RocketMqProvider;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -29,6 +34,11 @@ public final class MqProviderRegistry {
     static {
         PROVIDERS.put(MemoryMqProvider.TYPE, new MemoryMqProvider());
         PROVIDERS.put(RocketMqProvider.TYPE, new RocketMqProvider());
+        PROVIDERS.put(MqttProvider.TYPE, new MqttProvider());
+        PROVIDERS.put(Mqtt5Provider.TYPE, new Mqtt5Provider());
+        PROVIDERS.put(RabbitMqProvider.TYPE, new RabbitMqProvider());
+        PROVIDERS.put(KafkaProvider.TYPE, new KafkaProvider());
+        PROVIDERS.put(RedisStreamProvider.TYPE, new RedisStreamProvider());
     }
 
     /**
