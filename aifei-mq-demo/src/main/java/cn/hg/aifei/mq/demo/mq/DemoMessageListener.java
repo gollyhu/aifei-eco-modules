@@ -10,7 +10,7 @@ import cn.hg.aifei.mq.Message;
 import cn.hg.aifei.mq.MessageListener;
 
 /**
- * 演示用的消息监听器：把订阅到的消息写入 {@link DemoMessageLog}。
+ * 演示用的消息监听器：把订阅到的消息写入所属实例的 {@link DemoMessageLog} 分片。
  *
  * <p>回调由后端在生产者调用线程内直接执行（本模块为同步投递），运行期不抛异常——总线会就地隔离并静默
  * 丢弃监听器异常，故这里只做无副作用的记录。{@link Message} 只提供 {@code topic()} 与字节 {@code payload()}，
@@ -24,18 +24,34 @@ public class DemoMessageListener implements MessageListener {
     public static final String NAME = "DemoMessageListener";
 
     /**
-     * 创建监听器；无状态，可安全地被消费者持有。
+     * 本实例的消息记录分片，构造时定死。
+     */
+    private final DemoMessageLog log;
+
+    /**
+     * 创建主实例（{@code __MAIN__}）的监听器；本类只做记录，可安全地被消费者持有。
      */
     public DemoMessageListener() {
+        this(MqInstanceCatalog.MAIN);
     }
 
     /**
-     * 接收一条消息并记入演示日志。
+     * 创建指定实例的监听器。
+     *
+     * @param instanceName 实例名
+     * @throws IllegalArgumentException 实例名为空白
+     */
+    public DemoMessageListener(String instanceName) {
+        this.log = DemoMessageLog.of(instanceName);
+    }
+
+    /**
+     * 接收一条消息并记入所属实例的分片。
      *
      * @param message 收到的消息；永不为 {@code null}
      */
     @Override
     public void onMessage(Message message) {
-        DemoMessageLog.record(NAME, message);
+        log.record(NAME, message);
     }
 }

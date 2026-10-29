@@ -22,7 +22,11 @@ import cn.hg.aifei.mq.ConsumerUtil;
 import cn.hg.aifei.mq.MessageListener;
 import cn.hg.aifei.mq.aifei.MqPlugin;
 import cn.hg.aifei.mq.demo.mq.DemoMessageListener;
-import cn.hg.aifei.mq.demo.mq.DemoMessageLog;
+import cn.hg.aifei.mq.demo.mq.DemoSubscriptions;
+import cn.hg.aifei.mq.demo.mq.E2EventListener;
+import cn.hg.aifei.mq.demo.mq.E2Topics;
+import cn.hg.aifei.mq.demo.mq.MqInstanceCatalog;
+import java.util.List;
 
 /**
  * 装配中心：自写 HIO + aifei-mq 的装配入口（单个 {@link MqPlugin}）。
@@ -72,6 +76,8 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     public void config(Settings<In, Out> settings) {
         // 用 -Ddemo.config=xxx.txt 可切换配置文件；端口由 -Dundertow.port 决定
         p = PropKit.use(System.getProperty(CONFIG_KEY, DEFAULT_CONFIG));
+        // 实例清单在装配早期注入，Service 首次调用即可用（本步只保存引用，解析发生在取用时）
+        MqInstanceCatalog.init(p.getProperties());
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
                 .addHandler(new IoHandler(p.getBoolean("printAction", false), "view"));
@@ -99,18 +105,42 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     }
 
     /**
-     * 装配期订阅演示主题，写装配快照并打印关键信息。
+     * 装配期订阅演示主题并把这次订阅登记进 {@link DemoSubscriptions}，随后打印关键信息。
      *
      * <p>订阅点必须是这里：{@code config(Plugins)} 只登记插件，{@code MqPlugin.start()} 在之后才建总线并
      * 注册实例，此刻 {@link ConsumerUtil#use()} 才可用。订阅只在本方法内注册一次，避免重复登记导致同一消息
      * 被多次记录；订阅失败不吞异常，启动期明确失败优于「静默无订阅」。</p>
+     *
+     * <p>登记时<b>不保存</b>监听器：装配期订阅由本类持有，页面因此无法取回它、也就无法取消它（接口对这类
+     * 主题一律返回 {@code 10001}）。装配期订阅分两类：<b>自由 demo 主题仅主实例</b>（保住 {@code demoA} /
+     * {@code demoB} 消息流从 0 起算）；<b>E2 域 topic 覆盖每个已就绪实例</b>（否则命名实例无法演示 E2 分发，
+     * 见 {@code docs/aifei-mq-demo/design-e2.md} §8.1）。二者均登记为 {@code startup} 槽，页面一律不可取消。</p>
      */
     @Override
     public void onStart() {
+        // 自由 demo 主题：刻意只订阅主实例，命名实例的订阅留给页面端点
         ConsumerUtil.use().subscribe(DEMO_TOPIC, listener);
-        DemoMessageLog.markStartup(p.get(MQ_TYPE_KEY, "memory"), DEMO_TOPIC, DemoMessageListener.NAME);
+        DemoSubscriptions.registerStartup(MqInstanceCatalog.MAIN, DEMO_TOPIC, DemoMessageListener.NAME);
+        // E2 域 topic：每个已就绪实例都要订阅，否则命名实例上 delivered 恒为 0、命中表恒 0
+        int e2Subscriptions = 0;
+        for (MqInstanceCatalog.Instance it : MqInstanceCatalog.list()) {
+            String instanceName = it.instanceName();
+            if (!it.ready()) {
+                System.out.println("[aifei-mq-demo] 跳过实例 " + instanceName + " 的 E2 域订阅：该实例尚未装配完成");
+                continue;
+            }
+            for (String topic : E2Topics.all()) {
+                // 必须用该实例自己的消费者：无参 ConsumerUtil.use() 恒指主实例
+                it.consumer().subscribe(topic, new E2EventListener(instanceName));
+                DemoSubscriptions.registerStartup(instanceName, topic, E2EventListener.NAME);
+                e2Subscriptions++;
+            }
+        }
+        List<String> names = MqInstanceCatalog.names();
         System.out.println("[aifei-mq-demo] mq.type: " + p.get(MQ_TYPE_KEY, "memory")
-                + "，已订阅主题: " + DEMO_TOPIC
+                + "，实例(" + names.size() + "): " + names
+                + "，装配期已订阅: " + MqInstanceCatalog.MAIN + " / " + DEMO_TOPIC
+                + " + E2 域 " + E2Topics.all() + " × " + e2Subscriptions + " 条(按实例)"
                 + "，验证地址: http://localhost:18100/mq/demo/state");
     }
 

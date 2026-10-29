@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MQ 演示</title>
+    <link rel="stylesheet" href="/assets/css/mq-test.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="mq-demo-app" v-cloak>
+
+    <!-- ① 实例信息条 -->
+    <header class="demo-topbar">
+        <div class="info-row">
+            <a class="back-link" href="/" @click.prevent="back">← 返回实例列表</a>
+            <span class="info-item info-instance">
+                <span class="info-k">实例</span>
+                <span class="info-v">{{ view.instance }}</span>
+            </span>
+            <span class="info-item">
+                <span class="info-k">类型</span>
+                <span class="info-v">{{ view.mqType }}</span>
+            </span>
+            <span class="info-item">
+                <span class="info-k">前缀</span>
+                <span class="info-v">{{ view.prefixText }}</span>
+            </span>
+            <span class="chip" :class="statusInfo.cls" aria-live="polite">{{ statusInfo.text }}</span>
+        </div>
+
+        <div class="metrics">
+            <span class="metric">
+                <span class="metric-k">订阅</span>
+                <button class="metric-v metric-link" type="button" @click="scrollToSubs"
+                        :aria-label="'已订阅 ' + view.subscribedTopicCount + ' 个主题，跳到订阅区'">{{ view.subscribedTopicCount }} 主题</button>
+            </span>
+            <span class="metric"><span class="metric-k">发送</span><span class="metric-v">{{ view.sentCount }}</span></span>
+            <span class="metric"><span class="metric-k">接收</span><span class="metric-v">{{ view.receivedCount }}</span></span>
+            <span class="metric"><span class="metric-k">记录</span><span class="metric-v">{{ view.messageLogSize }} / {{ view.messageLogCapacity }}</span></span>
+            <span class="metric metric-err">
+                <span class="metric-k">最近错误</span>
+                <span class="metric-v err-text" :title="lastError.text || '—'">{{ lastError.text || '—' }}</span>
+                <span class="err-time">({{ lastError.time || '—' }})</span>
+            </span>
+            <button class="btn btn-small btn-ghost topbar-tail" type="button"
+                    @click="openDrawer"
+                    aria-haspopup="dialog" aria-controls="mq-drawer" :aria-expanded="drawerOpen ? 'true' : 'false'">
+                <span class="drawer-label">说明</span><span aria-hidden="true">▸</span>
+                <span class="sr-only">打开功能说明</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 固定警示条（语义声明，不可关闭） -->
+    <p class="warn-bar">⚠ 内存后端 · 同步投递 · 无真实 broker —— 消息不过进程边界，重启即清空；无 QoS / retain / 通配符</p>
+
+    <!-- 错误态：读取状态失败 / 未知实例 -->
+    <p class="err-bar" v-if="stateErrorText" role="alert">
+        {{ stateErrorText }}
+        <button class="btn btn-small" type="button" v-if="locked" @click="back">返回实例列表</button>
+    </p>
+
+    <div class="layout">
+        <div class="col-left">
+
+            <!-- ② 订阅卡 -->
+            <section class="card card-sub" id="sub-card" ref="subCard">
+                <h2 class="card-title">订阅</h2>
+
+                <p class="side-effect-badge">⚠ 影响所有浏览器会话（全局副作用）</p>
+                <p class="hint">订阅与取消订阅只作用于当前实例的总线（demoA 的操作不影响 demoB），但会影响访问同一实例的所有浏览器会话。</p>
+
+                <div>
+                    <label class="field-label" for="sub-topic">Topic</label>
+                    <div class="input-row">
+                        <span class="input-wrap">
+                            <input id="sub-topic" class="text-input has-clear" type="text" v-model="subTopic"
+                                   :disabled="locked" autocomplete="off" spellcheck="false"
+                                   placeholder="例如 aifei.mq.demo.topic"
+                                   aria-describedby="sub-topic-hint"
+                                   @keydown.enter.prevent="subscribe">
+                            <button class="input-clear" type="button" v-if="subTopic" :disabled="locked"
+                                    @click="subTopic = ''" aria-label="清空 Topic 输入">×</button>
+                        </span>
+                    </div>
+                    <p class="hint" id="sub-topic-hint" v-if="dupWarning">该主题已由装配期监听器订阅，本次订阅会使同一消息被记录多次</p>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" type="button" :disabled="!canSubscribe" @click="subscribe">
+                        {{ subBusy ? '订阅中…' : '订阅' }}
+                    </button>
+                    <button class="btn btn-danger-ghost" type="button" :disabled="!canUnsubscribe" @click="unsubscribeByInput">
+                        {{ unsubBusy ? '取消中…' : '取消订阅' }}
+                    </button>
+                </div>
+
+                <p class="op-msg" :class="subMsgCls" role="status" v-if="subMsg">{{ subMsg }}</p>
+
+                <div>
+                    <span class="field-label">已订阅主题：</span>
+                    <div class="chip-list" v-if="chips.length">
+                        <span class="topic-chip" v-for="c in chips" :key="c.topic"
+                              :class="{ 'is-locked': !c.canRemove }"
+                              :title="c.canRemove ? c.topic : startupChipTitle">
+                            <span class="chip-topic">{{ c.topic }}</span>
+                            <span class="chip-src" v-for="s in c.sources" :key="s">{{ sourceLabel(s) }}</span>
+                            <button class="chip-x" type="button" v-if="c.canRemove"
+                                    :aria-label="'取消订阅 ' + c.topic" :title="'取消本页对该主题的订阅'"
+                                    @click="unsubscribe(c.topic)">×</button>
+                        </span>
+                    </div>
+                    <p class="hint" v-else>暂无已订阅主题。输入主题后点「订阅」——注意这会影响该实例的所有浏览器会话。</p>
+                </div>
+
+                <p class="hint">提示：主题按字符串精确匹配，无通配符（+ / #）</p>
+            </section>
+
+            <!-- ③ 发布卡 -->
+            <section class="card card-send">
+                <h2 class="card-title">发布</h2>
+
+                <div>
+                    <label class="field-label" for="pub-topic">Topic</label>
+                    <div class="input-row">
+                        <span class="input-wrap">
+                            <input id="pub-topic" class="text-input has-clear" type="text" v-model="pubTopic"
+                                   :disabled="locked" autocomplete="off" spellcheck="false">
+                            <button class="input-clear" type="button" v-if="pubTopic" :disabled="locked"
+                                    @click="pubTopic = ''" aria-label="清空 Topic 输入">×</button>
+                        </span>
+                        <button class="btn btn-small" type="button" :disabled="locked"
+                                title="填入演示默认主题（与 DemoAppConfig.DEMO_TOPIC 一致）"
+                                @click="useDefaultTopic">默认</button>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="field-label">发送方式</span>
+                    <div class="radio-group" role="radiogroup" aria-label="发送方式">
+                        <label class="radio-line">
+                            <input type="radio" name="mq-send-mode" value="text" v-model="sendMode" :disabled="locked">
+                            <span>文本捷径 send</span>
+                        </label>
+                        <label class="radio-line">
+                            <input type="radio" name="mq-send-mode" value="message" v-model="sendMode" :disabled="locked">
+                            <span>Message 对象 send/message</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="field-label" for="pub-text">消息体</label>
+                    <textarea id="pub-text" class="text-area" rows="4" v-model="pubText"
+                              :disabled="locked" placeholder="输入消息内容，Ctrl / ⌘ + Enter 发送"
+                              @keydown="onTextKeydown"></textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" type="button" :disabled="!canSend" @click="send">
+                        {{ sendBusy ? '发送中…' : '发送' }}
+                    </button>
+                    <button class="btn" type="button" :disabled="locked" @click="clearPubInput">清空输入</button>
+                </div>
+
+                <div class="receipt" :class="receipt.cls" role="status" v-if="receipt.show">
+                    <span class="receipt-title">回执</span>
+                    <span class="receipt-line">{{ receipt.head }}</span>
+                    <span class="receipt-line">{{ receipt.detail }}</span>
+                    <span class="receipt-line" v-if="receipt.extra">{{ receipt.extra }}</span>
+                    <span class="receipt-note" v-if="receipt.note">{{ receipt.note }}</span>
+                </div>
+
+                <p class="hint">提示：无订阅者时发送仍成功（delivered=0），消息被丢弃</p>
+            </section>
+
+            <!-- ⑤ E2 事件分发卡（固定 topic + payload 内 type） -->
+            <section class="card card-e2" id="e2-card">
+                <h2 class="card-title">事件分发（E2：固定 topic + payload 内 type）</h2>
+
+                <p class="e2-lead">E2：固定 topic + payload 内 <code>type</code> 路由键 —— 分发在消费侧，不在 broker</p>
+                <p class="hint">本区事件<strong>不进</strong>右侧消息流（E2 有独立监听器，不写消息记录）；在订阅区手动订阅 <code>order-events</code> 会造成双记录（命中表仍只由 E2 监听器计数）。</p>
+
+                <div class="input-row">
+                    <div class="input-wrap">
+                        <label class="field-label" for="e2-domain">业务域（topic）</label>
+                        <select id="e2-domain" class="text-input" v-model="e2.domain" :disabled="e2Locked"
+                                @change="onE2DomainChange">
+                            <option v-for="d in dispatch.domainTopics" :key="d" :value="d">{{ d }}</option>
+                        </select>
+                    </div>
+                    <div class="input-wrap">
+                        <label class="field-label" for="e2-type">事件类型（payload.type）</label>
+                        <select id="e2-type" class="text-input" v-model="e2.type" :disabled="e2Locked"
+                                @change="onE2Edit">
+                            <option v-for="t in e2TypeOptions" :key="t" :value="t">{{ t }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="field-label" for="e2-bizid">业务字段 bizId</label>
+                    <div class="input-row">
+                        <span class="input-wrap">
+                            <input id="e2-bizid" class="text-input has-clear" type="text" v-model="e2.bizId"
+                                   :disabled="e2Locked" autocomplete="off" spellcheck="false"
+                                   placeholder="例如 A1001" aria-describedby="e2-bizid-hint"
+                                   @input="onE2Edit" @keydown.enter.prevent="sendEvent">
+                            <button class="input-clear" type="button" v-if="e2.bizId" :disabled="e2Locked"
+                                    @click="e2.bizId = ''; onE2Edit()" aria-label="清空业务字段输入">×</button>
+                        </span>
+                    </div>
+                    <p class="hint" id="e2-bizid-hint">缺省 A1001；输入后回车即发送</p>
+                </div>
+
+                <div>
+                    <span class="field-label">payload 预览（只读，纯展示，不参与请求）</span>
+                    <p class="e2-preview mono" aria-live="polite">{{ e2Preview }}</p>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" type="button"
+                            :disabled="e2Locked || e2SendBusy || e2ClearBusy || !e2.domain || !e2.type"
+                            @click="sendEvent">
+                        {{ e2SendBusy ? '发送中…' : '发送事件' }}
+                    </button>
+                    <button class="btn btn-danger-ghost" type="button"
+                            :disabled="e2Locked || e2SendBusy || e2ClearBusy" @click="clearDispatch">
+                        {{ e2ClearBusy ? '清空中…' : '清空命中统计' }}
+                    </button>
+                </div>
+
+                <div class="receipt" :class="e2Receipt.cls" role="status" v-if="e2Receipt.show">
+                    <span class="receipt-title">回执</span>
+                    <span class="receipt-line">{{ e2Receipt.head }}</span>
+                    <span class="receipt-line" v-if="e2Receipt.detail">{{ e2Receipt.detail }}</span>
+                    <span class="receipt-line" v-if="e2Receipt.extra">{{ e2Receipt.extra }}</span>
+                    <span class="receipt-note" v-if="e2Receipt.note">{{ e2Receipt.note }}</span>
+                </div>
+
+                <p class="err-bar is-inline" v-if="e2Error && !locked" role="alert">读取分发统计失败：{{ e2Error }}</p>
+
+                <div>
+                    <span class="field-label">命中统计（累计接收 {{ dispatch.totalReceived }} 次 · 未知 type 兜底 {{ dispatch.unknownCount }} 次）</span>
+                    <div class="log-skel" v-if="e2Loading" aria-hidden="true">
+                        <div class="skel-line w-40"></div>
+                        <div class="skel-line w-80"></div>
+                        <div class="skel-line w-60"></div>
+                    </div>
+                    <template v-else>
+                        <div class="e2-table-wrap">
+                            <table class="e2-table">
+                                <caption class="sr-only">E2 事件分发命中统计（按业务域与事件类型）</caption>
+                                <thead>
+                                <tr>
+                                    <th scope="col">业务域</th>
+                                    <th scope="col">事件类型</th>
+                                    <th scope="col" class="e2-num">命中次数</th>
+                                    <th scope="col">最近一次（bizId · 时间）</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr v-for="row in dispatch.rows" :key="row.domain + '|' + row.type">
+                                    <td class="mono">{{ row.domain }}</td>
+                                    <td class="mono">{{ e2TypeText(row.type) }}</td>
+                                    <td class="e2-num">{{ row.count }}</td>
+                                    <td class="mono">{{ e2LastText(row) }}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="hint" v-if="e2Empty">尚未收到事件。选业务域与事件类型后点「发送事件」。</p>
+                        <p class="hint" v-else-if="!locked && dispatch.rows.length === 0">暂无分发统计数据（详见上方提示）。</p>
+                    </template>
+                </div>
+
+                <p class="hint">topic 表达业务域，事件类型在 payload 内，订阅侧本地分发；装配期已为<strong>每个实例</strong>订阅 2 个域 topic（不可取消）。</p>
+            </section>
+        </div>
+
+        <div class="col-right">
+            <!-- ④ 消息流卡（右列整列） -->
+            <section class="card card-log">
+                <div class="log-head">
+                    <h2 class="card-title">消息流</h2>
+                    <div class="log-tools">
+                        <label class="checkbox-line">
+                            <input type="checkbox" v-model="autoScroll">
+                            <span>自动滚动</span>
+                        </label>
+                        <button class="btn btn-small" type="button" @click="togglePause">{{ paused ? '继续' : '暂停' }}</button>
+                        <button class="btn btn-small" type="button" @click="copyLogs">{{ copyLabel }}</button>
+                        <button class="btn btn-small btn-danger" type="button"
+                                :disabled="clearBusy || locked" @click="clearMessages">
+                            {{ clearBusy ? '清空中…' : '清空记录' }}
+                        </button>
+                        <span class="log-count">共 {{ total }} 条 / 上限 {{ view.messageLogCapacity }}</span>
+                    </div>
+                </div>
+
+                <p class="err-bar is-inline" v-if="msgErrorText" role="alert">{{ msgErrorText }}</p>
+                <p class="log-notice" v-if="logNotice">{{ logNotice }}</p>
+
+                <div class="log-body" ref="logBody" aria-live="polite">
+                    <div class="log-skel" v-if="firstLoading" aria-hidden="true">
+                        <div class="skel-line w-40"></div>
+                        <div class="skel-line w-80"></div>
+                        <div class="skel-line w-60"></div>
+                    </div>
+                    <div class="log-empty" v-else-if="total === 0 && !msgErrorText">暂无消息。在上方发布区发一条，或订阅一个已有消息的主题。</div>
+                    <template v-else>
+                        <div class="log-line" v-for="e in entries" :key="e.key">
+                            <div class="log-row1">
+                                <span class="log-time">{{ e.receivedAt }}</span>
+                                <span class="log-dir" :class="e.dir === 'send' ? 'dir-send' : 'dir-recv'">{{ e.dir === 'send' ? '▲发' : '▼收' }}</span>
+                                <span class="log-topic" :title="e.topic">{{ e.topic }}</span>
+                            </div>
+                            <div class="log-row2">
+                                <span class="log-text">{{ e.text }}</span>
+                                <span class="log-meta">{{ e.meta }}</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="log-foot">最新在上 · 发送行由本页记录，接收行来自后端</div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 说明抽屉 -->
+    <div class="mask" v-if="drawerOpen" @click="closeDrawer"></div>
+    <aside id="mq-drawer" class="drawer" v-if="drawerOpen" ref="drawerRef"
+           role="dialog" aria-modal="true" aria-labelledby="mq-drawer-title" tabindex="-1">
+        <div class="drawer-head">
+            <h2 id="mq-drawer-title" class="drawer-title">功能说明</h2>
+            <button class="btn btn-icon" type="button" @click="closeDrawer" aria-label="关闭功能说明">×</button>
+        </div>
+        <div class="drawer-body">
+            <section class="doc-sec">
+                <h3>本页在演示什么</h3>
+                <p>本页是 <code>{{ view.instance }}</code> 这一条总线的现场观察窗：上方是运行态快照（订阅主题数、发送 / 接收计数、记录条数），左列可以订阅主题与发布消息，右列是接收侧的消息记录（最新在上，上限读接口的 <code>messageLogCapacity</code>）。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>内存后端 + 同步投递</h3>
+                <p>消息后端是内存实现：没有外部 broker，消息不跨进程边界，进程重启即清空。发送是<strong>同步投递</strong>——发送调用返回前，订阅者的回调已经在同一条调用链里执行完，所以「发送后立刻查记录」必定能看到那条消息。由此 <code>delivered</code> 就是本次发送触发了几次订阅者回调。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>订阅是全局副作用</h3>
+                <p>订阅登记挂在实例上，不是挂在浏览器会话上：任何页面订阅了某实例的某主题，访问<strong>同一实例</strong>的所有浏览器会话都会一起收到并记录该主题的消息。取消订阅同样影响所有会话。实例之间互不影响（<code>demoA</code> 的操作不会改变 <code>demoB</code>）。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>两种来源的 chip</h3>
+                <p><strong>装配期</strong>：由 <code>DemoAppConfig.onStart()</code> 注册，页面无法取消（不带 <code>×</code>），如需取消请改代码后重启。<strong>本页</strong>：由本页点「订阅」登记，带 <code>×</code> 可取消；后端按 listener 实例身份登记，所以页面能取回并移除它。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>两种发送方式</h3>
+                <p><strong>文本捷径 <code>send</code></strong>：一次调用发出文本，回执无 <code>payloadSize</code>。<strong>Message 对象 <code>send/message</code></strong>：先按 <code>Message.of(topic, bytes)</code> 构造再发送，回执额外给出 <code>payloadSize</code>。两者投递语义完全一致。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>端点速查（全部带 instance）</h3>
+                <table class="doc-table">
+                    <thead>
+                    <tr><th>端点</th><th>用途</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr><td>GET /mq/demo/state</td><td>运行态快照（信息条数据来源）</td></tr>
+                    <tr><td>GET /mq/demo/messages</td><td>消息记录（最新在前，上限读接口的 <code>messageLogCapacity</code>）</td></tr>
+                    <tr><td>GET /mq/demo/messages/clear</td><td>清空记录与发送 / 接收计数（订阅保留）</td></tr>
+                    <tr><td>GET /mq/demo/subscribe</td><td>为本页登记一个主题订阅</td></tr>
+                    <tr><td>GET /mq/demo/unsubscribe</td><td>取消本页登记的主题订阅</td></tr>
+                    <tr><td>GET /mq/demo/send</td><td>文本捷径发送</td></tr>
+                    <tr><td>GET /mq/demo/send/message</td><td>Message 对象方式发送</td></tr>
+                    <tr><td>GET /mq/demo/event/send</td><td>发送 E2 事件（固定域 topic + payload 内 type，参数 domain / type / bizId）</td></tr>
+                    <tr><td>GET /mq/demo/event/dispatch</td><td>E2 分发命中统计（域 / 类型候选 + 逐行命中明细）</td></tr>
+                    <tr><td>GET /mq/demo/event/dispatch/clear</td><td>清空 E2 命中统计（装配期订阅与消息记录保留）</td></tr>
+                    </tbody>
+                </table>
+                <p>全部 GET，HTTP 恒 200，业务结果看响应里的 <code>code</code>（<code>0</code> 为成功）。接收行没有 <code>messageId</code>，故日志不显示该字段。</p>
+            </section>
+        </div>
+    </aside>
+
+</main>
+
+<script src="/assets/js/mq-demo.js"></script>
+</body>
+</html>

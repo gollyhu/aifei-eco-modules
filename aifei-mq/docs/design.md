@@ -904,6 +904,90 @@ public final class MqProviderRegistry {
 
 **落地方式**：新增后端时按 §14 的体检样式逐条复核 (A)；复核结论若要求放宽某条 (A)，则**先更新本文**（按判据正式降级或新增 (B) 条款）**再改代码**——不得只在实现包内默默不同。
 
+### 5.8 Topic 使用模式定档（E2：固定少量 topic + payload 内路由键）
+
+> 本节为**使用模式定档**：不新增 / 不改动任何公共类型与行为契约（§3 与 §5.6 (A) 全部不变），只把「topic 集合如何设计、事件类型放哪里」定为模块推荐用法，并对动态 topic 议题给出决策留痕。**适用契约版本：`aifei-mq:1.0.0` 公共 API 面。**
+
+#### 5.8.1 决策声明
+
+**定档 E2**：topic 表达**稳定的业务域**（少量、启动前确定、终身不变）；**事件类型降级为 payload 内的业务字段**，由订阅侧本地分发。发送侧 `send(topic, payload)` 的 topic 取业务域，消费侧 `subscribe(topic, listener)` 的 topic 与之严格一致。
+
+#### 5.8.2 决策依据（与动态 topic 候选路径的对比）
+
+动态 topic（运行期增减 topic 集合）议题下评估过的候选路径及否决理由：
+
+| 候选路径 | 否决理由 |
+| --- | --- |
+| broker 自动创建开关（RocketMQ `autoCreateTopicEnable` / Kafka `auto.create.topics.enable`） | 只覆盖 2 个后端；RabbitMQ 无此机制（「只 send 从未订阅的 topic」被 broker **静默丢弃且 `send` 仍成功**，§5.6 (A) A5 + (C) rabbitmq B6），MQTT / Redis Streams / memory 不适用或无需 |
+| 通配订阅进公共面（`subscribe` 接受 `+` / `#`） | 仅 MQTT 原生支持、RabbitMQ 可改造获得；`memory` / `rocketmq` / `kafka` / `redisstream` 无 topic 级通配，**违反 §5.7 准入判据** |
+| 预声明 API（如 `Consumer.declare(topic)`） | RocketMQ / Kafka 客户端无「预建 topic」API，无法被全部后端有意义地实现，**违反 §5.7** |
+| 运行期重建后端（`stop()` + `start()` 或单实例重建） | 不改变任何 broker 能力，仅复位配置与连接；且代价大（全量停摆、订阅清空需业务重放、`@Inject` 旧引用失效——框架 `AopKit` **无移除单例的公开 API**（官方源码核实：只能加、不能删），已注入字段不会随重新注册而刷新） |
+
+以上路径均只覆盖部分后端或需扩张公共面；**E2 是唯一零公共面扩张、全后端行为一致的解**，故定档。
+
+#### 5.8.3 零改动论证（对现有契约逐项核对）
+
+| 核对项 | 结论 |
+| --- | --- |
+| 根包公共 8 类型（§3.8 / 门禁 `publicSurfaceExact`） | **不变**：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil` 全部按现状使用 |
+| (A) 共同底线（§5.6 (A) A1–A10） | **不变**：A3 的登记 / 取消语义本就按「主题标识」措辞定档（R2 裁定，§14.2），E2 只是把标识集合收窄为静态精确名 |
+| topic 匹配语义（§5.6 (B) B14） | **不变**：本节不改变任何后端的匹配语义，MQTT 的 `+` / `#` 与各后端精确名维持原状 |
+| 生命周期（§4.4 / §5.5） | **不变**：无新增配置键、无新增装配行为、无重建机制 |
+| `Message` 载荷（A1） | **兼容**：A1 只约定不可变 + 双向防御性拷贝，payload 内容业务自有；与 `redisstream` 后端「单一字段 `payload` 承载原始字节、不引入序列化层」（§4.10）口径一致 |
+
+#### 5.8.4 后端语义矩阵（E2 静态 topic 模式下）
+
+引 §5.6 (B) B14 不重述；仅列 E2 模式下各后端的差异化注意点：
+
+| 后端 | E2 模式下注意点 |
+| --- | --- |
+| `memory` | 启动即完成全部订阅登记，「无订阅者即丢弃」（(B) B6 内存列）的正常路径不再出现 |
+| `rabbitmq` | **核心收益**：订阅集合 = topic 集合，`subscribe` 即 `queueDeclare` + `queueBind`（§4.8），「只 send 未订阅 topic 被静默丢弃且 `send` 仍成功」的坑不再出现（除非运维配错订阅集合） |
+| `rocketmq` / `kafka` | 订阅集合静态化顺带消除「同一消费组多实例须相同订阅集合」约束（§5.6 (C) B9 / §13 第 14 条）的运行期风险；topic 由运维一次性预建或确认 broker 自动创建开关 |
+| `mqtt` / `mqtt5` | 可继续用 `+` / `#` 过滤器（B14），也可按 E2 用精确名——两者不互斥 |
+| `redisstream` | `topic` = 流键（B14）；启动即建组并起拉取循环（§4.10） |
+
+#### 5.8.5 使用模式规范
+
+**topic 命名约定**：小写 kebab-case 领域名（如 `order-events` / `pay-events`），单进程 topic 数量建议个位数到低两位数。归并判据：**消费方集合相同 + 保序 / 保留 / 权限需求相同**的事件进同一 topic；消费方差异大或故障域需硬隔离的，保持拆分。
+
+**payload 结构约定**（业务侧自有，模块不解析）：JSON 对象，含 `type`（事件类型，如 `created` / `paid`）+ `version`（载荷版本，供演进）+ 业务字段。
+
+**运维约定**：topic 集合即订阅契约——订阅在应用启动期一次性登记完毕，运行期不增减 topic；RabbitMQ 场景下不存在「先 send 后 subscribe」的合法路径。
+
+**订阅侧过滤后置代码模式**：一个订阅入口 + 本地按 `type` 分发；新事件类型 = 分发表加一行，框架零感知。未知 `type` 的兜底策略（丢弃 / 告警 / 死信）由业务决定。
+
+```java
+// 发送侧：topic 取业务域，事件类型进 payload（文本以 UTF-8 编码，§3.2）
+producer.send("order-events", "{\"type\":\"created\",\"version\":1,\"orderId\":\"A1001\"}");
+producer.send("order-events", "{\"type\":\"paid\",\"version\":1,\"orderId\":\"A1001\"}");
+
+// 订阅侧：启动期一次性登记，本地按 type 分发
+ConsumerUtil.subscribe("order-events", message -> dispatch(decode(message.payload())));
+```
+
+#### 5.8.6 风险登记
+
+| 风险 | 说明 |
+| --- | --- |
+| 保序语义共享（双刃剑） | 单主题 FIFO（§5.6 (B) B3）：合并后多种事件共享同一条保序流——状态变迁类事件（订单 `created` → `paid` → `cancelled`）这是**特性**；但需要独立并行保序通道的场景，共享 topic 会把它们串行化到同一队列 / 分区。且 `Message` 无 message key 字段（A1 冻结），无法像裸 Kafka（按 key 分区）/ 裸 RocketMQ（`MessageQueueSelector`）在 broker 侧再分流——要更细的并行度只能加 topic |
+| 过滤后置消费侧 | broker 不再按 topic 过滤，所有事件都到达消费方，带宽与反序列化成本上升（对比 MQTT 通配过滤在 broker 侧）；低频事件混入高频 topic 时尤其明显 |
+| broker 级粒度丧失 | ACL、配额、限流、保留策略、位点监控只能按粗粒度 topic 划分，「某类事件单独限流 / 单独清理」做不了；运维排查需在单 topic 内多种事件间下钻 payload |
+
+#### 5.8.7 不适用场景与回退判据
+
+出现以下情形之一即**不应采用 E2**，回归多 topic（并按各后端既有语义管理 topic 集合）：
+
+1. 多租户场景需要 broker 级隔离（每租户独立配额 / 独立清理位点）；
+2. 消费方差异大、故障域需要硬隔离；
+3. 按事件类型有独立的保序 / 并行要求（需 broker 侧分流的 key 保序场景）。
+
+**回退判据**：上述场景出现时拆分 topic 集合，同时重新评估「该后端是否有 broker 级过滤工具可用」（RabbitMQ 通配绑定 / MQTT 过滤器），而非回到「运行期动态增删 topic」。
+
+#### 5.8.8 证据版本绑定声明
+
+本节结论仅对 **E2 定档时锁定的契约版本（`aifei-mq:1.0.0` 公共 API 面）**有效。后续任何偏离——改公共面（§3 / §5.7）、改 (A) 共同底线（§5.6 (A)）、改 topic 匹配语义（§5.6 (B) B14）、或 §5.8.7 回退判据被触发后未重新定档——本节结论显式失效，须重开定档。
+
 ---
 
 ## 6. 数据结构与接口（类图）
@@ -2066,6 +2150,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | 27 | **P3 文档与图谱收口（本轮）** | **本轮（P3）只改文档、不改任何代码**：① 时序图 `docs/diagrams/sequence.mermaid` 与 §7 内嵌副本**同步改写**为**双 Util + 命名实例**链路（见第 16 条；两处**逐字一致**，核验方式：内联块正文与源文件 `TrimEnd(LF)` 逐字节比对）；② 测试计数校准为**逐类实测**值——模块内 `mvn clean verify` 实测 `Tests run: 86 / Failures: 0 / Errors: 0 / Skipped: 10`（**执行 76 项** + **默认跳过的 RocketMQ 集成 10 项**），据此更新首部「文档状态」、§10 执行状态（含逐类明细）、§12.3，及 `docs/testing.md`；③ 把 `MqKit` 的**过时引用**（§8 文件清单 / §10.1 T05 / §12.2 / §12.3）更正为 `ProducerUtil` / `ConsumerUtil`，**保留**如实的历史说明（§3.7「`MqKit` 已删除」、第 10 / 19 / 25 条的变更记录）。**契约实质不变**：§3 / §5.6 / §5.7 与阶段 0 / 1 / 2 已定档条款**均未改**。**（P4 收口后计数）**：P4 新增 1 个装配回滚断言用例，实测变为 `Tests run: 87 / Failures: 0 / Errors: 0 / Skipped: 10`（执行 **77**）——见首部「文档状态」 |
 | 28 | **R 轮：5 个可插拔后端（本轮拍板决策落档，**已实现**）** | **本轮已落地实现**（5 个实现包共 **20** 个主源码类 + **6** 个测试文件；`pom.xml` 加 5 个 `<optional>true</optional>` 客户端依赖）；本轮定档的 **12 项**（均已实现）：① **客户端选型与版本**——MQTT v3 `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`、MQTT v5 `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`、RabbitMQ `com.rabbitmq:amqp-client:5.21.0`、Kafka `org.apache.kafka:kafka-clients:3.9.1`（**必须停 3.x**，4.x 要 Java 11+）、Redis Streams `redis.clients:jedis:8.0.1`（**与 `aifei-cache` 对齐，Jedis 直连、不跨模块依赖 `aifei-cache`**）；**全部 class major = 52、Java 8 加载无障碍（已实测）**，全部 `<optional>true</optional>`、**仅实现包使用、不向下游传递**（§9）。② **MQTT 拆两个独立后端**（`mqtt` = v3.1.1 / `mqtt5` = v5.0，各自 provider / 总线 / 配置命名空间 `mq.mqtt.*` / `mq.mqtt5.*`），**不引入** `mq.mqtt.version` 键。③ **R1 裁定**——**保留** (A) A5「`messageId` 强制非空」，MQTT 由**适配器本地生成** `messageId`；同时把 (B) B7 措辞由「由**后端**生成」放宽为「由**实现**（后端或适配器）生成」，并**定档本地 ID 格式** `<type>:<token>:<seq>`（§5.6 (B)「本地 `messageId` 格式（R1 定档）」段；`§3.5` 措辞同步放宽）。④ **R2 裁定**——**正式放宽** A3 与 §3.3 措辞：`topic` 读作「**主题标识**（精确主题名 **或** 过滤器）」，精确匹配是通配匹配的**特例**；并在 (B) **新增 B14「topic 匹配语义」**逐后端填实（`memory` / `rocketmq` / RabbitMQ / Kafka / Redis Streams = 精确名；MQTT v3/v5 = 过滤器，支持 `+` / `#`）；**`Consumer.subscribe` 签名不变**。⑤ **R3 裁定**——MQTT 的 QoS / retain **只落配置域**（`mq.mqtt.qos` / `mq.mqtt.retain`），`Producer.send` **维持恰好 3 个重载**，不加签名级能力。⑥ **自动重连 / 连接管理**——不扩张公共面、provider 保持无状态；表达方式 = **配置域键**（`mq.<type>.auto-reconnect` 及各自退避 / 重试键）+ **各客户端原生自愈机制**，并在 (B) **新增 B13** 逐后端填实；**A9 不动**（`close()` 幂等、停止后抛 `IllegalStateException`、**关闭后不再重连**）、**A6 不动**（运行期故障 → `MqException`）。⑦ **凭据**——`username` / `password`（Kafka 另含 `security-protocol` / `sasl-mechanism` / `sasl-jaas-config`）**只进配置域**、不进公共 API；(B) **新增 B16**，并在 **§11.2 写入硬纪律**「**异常消息只出现键名、绝不出现取值**」。⑧ **依赖边界**——客户端**传递依赖**（`commons-pool2`、`slf4j-api` 门面等）**可接受**（`optional` 已隐藏、不向下游传递，与 `rocketmq-client` 同构）；**硬约束：不得引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j`），除这 5 个客户端外**不新增直接依赖**（§9）。⑨ **集成测试开关**（与既有 `-Drocketmq.integration=true` 同范式）：`-Dmqtt.integration` / `-Dmqtt5.integration` / `-Drabbitmq.integration` / `-Dkafka.integration` / `-Dredisstream.integration`，**默认关闭、开启后连不上必须失败**（**不得**用 `Assume` 掩盖）；测试文件与开关细节在**文档收口轮**同步 `docs/testing.md`。⑩ **位点 / 起始策略**——Kafka `auto-offset-reset` 默认 `earliest`（呼应既有 `CONSUME_FROM_FIRST_OFFSET` 取舍）；Redis Streams 以 `start-mode`（`new` / `pending`）与 `claim-enabled` + `claim-idle-millis`（pending 回收）表达，**并明确标注「未经真机验证」**。⑪ **topic 映射**——RabbitMQ 默认 `topic` = **队列名**（routing key = topic，走默认交换机；可选 `exchange` / `exchange-type` 高级键）；Kafka `topic` = **Kafka topic**（组取 `group-id`）；Redis Streams `topic` = **流键**（组取 `group`、消费者名取 `consumer-name`）。⑫ **文档同步范围**——本轮 = `docs/design.md` + 类图（`docs/diagrams/class.mermaid` 与 §6 内嵌副本）；`README.md` / `AGENTS.md` / `docs/testing.md` 属**文档收口轮**。**本轮新增的 broker 验证盲区**：**5 个后端的运行期语义全部未经真机验证**——本机**无 Docker、无任何 broker（含 Redis）**；统一声明见 §5.6 (C) 续 5 张表下方的「待验证项」与本节第 11 / 20 / 21 / 22 条（均已按本轮扩展）。**实测口径（文档收口轮）**：模块内 `mvn clean verify` 实测 **`Tests run: 143 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **83** 项 = 架构门禁 **5** + 总线契约 **20** + 单元测试 **58**；跳过的 **60** 项为 **6 个集成子类各 10 条**，**默认关闭**）。**落档位置索引**：实现表 §4.6–§4.10；分层 §5.6 (A) A3 措辞 / (B) B7·B13–B16 / (C) 续 5 张表；配置域 §5.5；文件与计数 §8；依赖 §9；任务 §10.5–§10.6；唯一定义点 §11.1；门禁 §12.5；裁定回填 §14.2 |
 | 29 | **本轮文档计数口径与图谱状态（如实标注，文档收口轮更新）** | ① **计数口径（实测当前态）**：主源码 **25 → 45**（新增 5 个实现包各 4 个 = 20，**均已实现**）；测试 **12 → 18**（新增 5 个后端子类 + `BackendConfigValidationTest`，**均已实现**）——见 §8；模块内 `mvn clean verify` 实测 **`Tests run: 143 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **83** 项；跳过 **60** 项 = 6 个集成子类各 10 条，**默认关闭**）。② **类图**：`docs/diagrams/class.mermaid` 曾在仓库中被删除（commit `bd4f3c7`）——R 轮**按 §6 内嵌副本重建该文件**并加入 5 个新实现包的 20 个类块与注册 / 委托关系（**既有 `memory` / `rocketmq` 内容不丢不改**），恢复「源文件 ↔ 内嵌副本」**逐字一致**；文档收口轮**未改 §6 与类图**，二者**仍逐字一致**。③ **时序图**：`docs/diagrams/sequence.mermaid` 同样已被上述提交删除、**未重建**；§7 的**内嵌副本**是当前唯一副本，其**适用范围声明**已扩展为「同样不代表 5 个新后端的链路」，**五段链路结构不变**。④ **执行状态**：**T09–T13 全部「已执行完毕」**（§10.5）——但 5 个后端的**运行期语义仍未经真机 broker 验证**（本机无 Docker、无任何 broker / Redis），**不得当作已验证事实**。 |
+| 30 | **E2：固定少量 topic + payload 内路由键（本轮定档，零代码改动）** | **本轮决策（经项目所有者拍板）**：topic 表达稳定业务域、事件类型降级为 payload 业务字段、订阅侧本地分发、运行期不增减 topic——决策记录全文见 **§5.8**（含动态 topic 四条候选路径的否决理由、零改动论证、后端语义矩阵、风险登记与回退判据）。**实现状态：无代码改动**（使用模式定档；公共 API 面 8 类型、(A) 共同底线、生命周期均不变）。**文档同步**：`README.md` 增补「Topic 使用模式（E2 定档）」使用小节、`AGENTS.md` 增补开发检查点（不得引入运行期动态 topic 机制），三份文档同源同口径。**证据版本绑定**：仅对 `aifei-mq:1.0.0` 公共 API 面有效（§5.8.8）。 |
 
 ---
 

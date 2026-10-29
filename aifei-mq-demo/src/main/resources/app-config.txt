@@ -3,7 +3,25 @@
 
 # 消息后端类型：缺省即 memory（内存/本地实现，进程内、零第三方）；显式写出便于演示与排查
 mq.type = memory
-# 内存后端无任何额外配置键（没有 mq.memory.* ；后端专有键一律经 MqConfig 拼接读取）
+# 内存后端无任何额外配置键（没有 mq.memory.*；后端专有键一律经 MqConfig 拼接读取）
 
-# 打开后每个 action 调用会打印到控制台（默认 false）
+# ===== 命名实例（本次新增） =====
+# 逗号分隔，逐项去空白；主实例 __MAIN__ 是保留名、走根级 mq.*，不得在此声明。
+# 顺序即入口页卡片顺序（主实例恒在最前，其后按本行声明顺序）。
+# 校验：空项 / 含 '.'、'='、':'、空白 / 保留名 type、names / 重名 → 应用启动失败（无「部分实例」状态）。
+mq.names = demoA,demoB
+
+# 各命名实例的后端类型：前缀 mq.<实例名>，未配置时默认 memory；显式写出便于演示对照。
+mq.demoA.type = memory
+
+mq.demoB.type = mqtt
+# 必填
+mq.demoB.mqtt.broker-url = wss://broker.emqx.io:8084
+# 可选；未配置由客户端生成
+mq.demoB.mqtt.client-id = aifei-mq-demo-client-id
+# 可选，默认 0
+mq.demoB.mqtt.qos = 1
+
+
+# 打开后每个 action 调用会打印到控制台（默认 false）；排查 GET / 是否命中 action 时可临时打开
 # printAction = true

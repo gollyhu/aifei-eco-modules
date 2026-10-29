@@ -17,20 +17,25 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 演示用的进程内消息记录：订阅侧的监听器把收到的消息写进来，由 {@code /mq/demo/*} 端点读出去，
  * 便于现场肉眼验证「发送 → 订阅消费」闭环。
  *
- * <p>记录有固定上限（{@link #MAX_ENTRIES}），超出后丢弃最旧一条，避免长时间演示下无界增长。全部状态由
- * {@link #LOCK} 保护：虽然本模块为同步投递（回调在生产者线程内直接执行），但 Undertow 的请求线程池是
- * 多线程的、两个并发请求会各自在自己的线程里触发回调，且未来换成真实后端后回调必然来自消费线程，
- * 因此这里必须按「回调可能来自任意线程」来加锁。</p>
+ * <p>记录<b>按实例分片</b>：{@link #of(String)} 取某个实例的分片，每个分片独立保存记录与收发计数、各有
+ * {@link #MAX_ENTRIES} 条上限，超出后丢弃最旧一条，避免长时间演示下无界增长。分片对象自身的有状态字段由
+ * 分片内的私锁保护：本模块虽为同步投递（回调在生产者线程内直接执行），但 Undertow 的请求线程池是多线程的，
+ * 两个并发请求会各自在自己的线程里触发回调，且换成真实后端后回调必然来自消费线程，因此必须按「回调可能来自
+ * 任意线程」来加锁。</p>
+ *
+ * <p>本类只负责「消息记录与收发计数」。订阅事实见 {@link DemoSubscriptions}，后端类型与就绪状态见
+ * {@link MqInstanceCatalog}。</p>
  */
 public final class DemoMessageLog {
 
     /**
-     * 消息记录条数上限；超出后丢弃最旧一条。
+     * 每个实例的消息记录条数上限；超出后丢弃最旧一条。
      */
     public static final int MAX_ENTRIES = 200;
 
@@ -40,59 +45,78 @@ public final class DemoMessageLog {
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     /**
-     * 保护本类全部可变状态的唯一锁。
+     * 实例名到分片的映射；惰性建立，进程内长期复用。
      */
-    private static final Object LOCK = new Object();
+    private static final Map<String, DemoMessageLog> SHARDS = new ConcurrentHashMap<String, DemoMessageLog>();
 
     /**
-     * 消息记录，按接收顺序保存；受 {@link #LOCK} 保护。
+     * 本分片所属的实例名。
      */
-    private static final Deque<Map<String, Object>> ENTRIES = new ArrayDeque<Map<String, Object>>();
+    private final String instanceName;
 
     /**
-     * 装配快照：已订阅主题；只在 {@link #markStartup(String, String, String)} 时写入一次。
+     * 保护 {@link #entries} 与两个计数的分片内锁。
      */
-    private static final List<String> SUBSCRIBED_TOPICS = new ArrayList<String>();
+    private final Object lock = new Object();
 
     /**
-     * 装配快照：订阅者名称，与 {@link #SUBSCRIBED_TOPICS} 按下标一一对应。
+     * 消息记录，按接收顺序保存；受 {@link #lock} 保护。
      */
-    private static final List<String> SUBSCRIBER_NAMES = new ArrayList<String>();
-
-    /**
-     * 装配快照：装配期读到的 {@code mq.type} 配置值。
-     */
-    private static String mqType;
+    private final Deque<Map<String, Object>> entries = new ArrayDeque<Map<String, Object>>();
 
     /**
      * 累计发送次数，由 {@link #markSent(String)} 递增。
      */
-    private static long sentCount;
+    private long sentCount;
 
     /**
      * 累计接收次数，由 {@link #record(String, Message)} 递增，并作为记录的 {@code sequence}。
      */
-    private static long receivedCount;
+    private long receivedCount;
 
-    private DemoMessageLog() {
+    /**
+     * 禁止外部构造，只能经 {@link #of(String)} 取分片。
+     */
+    private DemoMessageLog(String instanceName) {
+        this.instanceName = instanceName;
     }
 
     /**
-     * 记录装配快照；只由 {@code DemoAppConfig.onStart()} 调用一次。订阅事实不可被 {@link #clear()} 抹去，
-     * 故快照与消息记录分开存放。
+     * 取指定实例的消息记录分片；首次取用时惰性建立，此后返回同一对象。
      *
-     * @param mqType 装配期读到的 {@code mq.type} 配置值
-     * @param topic 已订阅主题
-     * @param subscriberName 订阅者名称
+     * @param instanceName 实例名，由 {@link MqInstanceCatalog#resolve(String)} 校验后传入
+     * @return 该实例的分片；不为 {@code null}
+     * @throws IllegalArgumentException 实例名为 {@code null} 或只含空白（不静默建分片）
      */
-    public static void markStartup(String mqType, String topic, String subscriberName) {
-        synchronized (LOCK) {
-            DemoMessageLog.mqType = mqType;
-            SUBSCRIBED_TOPICS.clear();
-            SUBSCRIBED_TOPICS.add(topic);
-            SUBSCRIBER_NAMES.clear();
-            SUBSCRIBER_NAMES.add(subscriberName);
+    public static DemoMessageLog of(String instanceName) {
+        if (instanceName == null || instanceName.trim().isEmpty()) {
+            throw new IllegalArgumentException("instanceName can not be blank");
         }
+        DemoMessageLog shard = SHARDS.get(instanceName);
+        if (shard == null) {
+            DemoMessageLog created = new DemoMessageLog(instanceName);
+            DemoMessageLog existing = SHARDS.putIfAbsent(instanceName, created);
+            shard = existing != null ? existing : created;
+        }
+        return shard;
+    }
+
+    /**
+     * 返回本分片所属的实例名。
+     *
+     * @return 实例名
+     */
+    public String instanceName() {
+        return instanceName;
+    }
+
+    /**
+     * 返回记录条数上限；每实例独立计。
+     *
+     * @return 上限值，恒为 {@link #MAX_ENTRIES}
+     */
+    public int capacity() {
+        return MAX_ENTRIES;
     }
 
     /**
@@ -101,8 +125,8 @@ public final class DemoMessageLog {
      * @param subscriberName 收到消息的订阅者名称
      * @param message 收到的消息
      */
-    public static void record(String subscriberName, Message message) {
-        synchronized (LOCK) {
+    public void record(String subscriberName, Message message) {
+        synchronized (lock) {
             receivedCount++;
             Map<String, Object> entry = new LinkedHashMap<String, Object>();
             entry.put("sequence", receivedCount);
@@ -111,10 +135,10 @@ public final class DemoMessageLog {
             entry.put("text", new String(message.payload(), StandardCharsets.UTF_8));
             entry.put("payloadSize", message.payload().length);
             entry.put("receivedAt", LocalDateTime.now().format(TIMESTAMP_FORMAT));
-            if (ENTRIES.size() >= MAX_ENTRIES) {
-                ENTRIES.removeFirst();
+            if (entries.size() >= MAX_ENTRIES) {
+                entries.removeFirst();
             }
-            ENTRIES.addLast(entry);
+            entries.addLast(entry);
         }
     }
 
@@ -123,8 +147,8 @@ public final class DemoMessageLog {
      *
      * @param topic 本次发送的主题（当前仅作记录维度保留，用于后续按主题统计）
      */
-    public static void markSent(String topic) {
-        synchronized (LOCK) {
+    public void markSent(String topic) {
+        synchronized (lock) {
             sentCount++;
         }
     }
@@ -134,10 +158,10 @@ public final class DemoMessageLog {
      *
      * @return 记录副本；不暴露内部集合，不为 {@code null}
      */
-    public static List<Map<String, Object>> snapshot() {
-        synchronized (LOCK) {
-            List<Map<String, Object>> copy = new ArrayList<Map<String, Object>>(ENTRIES.size());
-            Iterator<Map<String, Object>> iterator = ENTRIES.descendingIterator();
+    public List<Map<String, Object>> snapshot() {
+        synchronized (lock) {
+            List<Map<String, Object>> copy = new ArrayList<Map<String, Object>>(entries.size());
+            Iterator<Map<String, Object>> iterator = entries.descendingIterator();
             while (iterator.hasNext()) {
                 copy.add(iterator.next());
             }
@@ -146,68 +170,44 @@ public final class DemoMessageLog {
     }
 
     /**
-     * 返回当前消息记录条数。
+     * 返回本分片当前消息记录条数。
      *
      * @return 条数，最大为 {@link #MAX_ENTRIES}
      */
-    public static int size() {
-        synchronized (LOCK) {
-            return ENTRIES.size();
+    public int size() {
+        synchronized (lock) {
+            return entries.size();
         }
     }
 
     /**
-     * 返回累计接收次数。
+     * 返回本分片累计接收次数。
      *
      * @return 接收次数
      */
-    public static long receivedCount() {
-        synchronized (LOCK) {
+    public long receivedCount() {
+        synchronized (lock) {
             return receivedCount;
         }
     }
 
     /**
-     * 返回累计发送次数。
+     * 返回本分片累计发送次数。
      *
      * @return 发送次数
      */
-    public static long sentCount() {
-        synchronized (LOCK) {
+    public long sentCount() {
+        synchronized (lock) {
             return sentCount;
         }
     }
 
     /**
-     * 返回装配快照：后端类型、已订阅主题、订阅者（含所属主题）与记录容量。
-     *
-     * @return 装配快照；字段均在 {@link #markStartup(String, String, String)} 时写入
+     * 清空本分片的记录与两个累计计数，便于演示前重置现场；其他实例的分片不受影响。
      */
-    public static Map<String, Object> startupSnapshot() {
-        synchronized (LOCK) {
-            Map<String, Object> data = new LinkedHashMap<String, Object>();
-            data.put("mqType", mqType);
-            data.put("subscribedTopics", new ArrayList<String>(SUBSCRIBED_TOPICS));
-            List<Map<String, Object>> subscribers = new ArrayList<Map<String, Object>>(SUBSCRIBER_NAMES.size());
-            for (int i = 0; i < SUBSCRIBER_NAMES.size(); i++) {
-                Map<String, Object> item = new LinkedHashMap<String, Object>();
-                item.put("topic", i < SUBSCRIBED_TOPICS.size() ? SUBSCRIBED_TOPICS.get(i) : null);
-                item.put("name", SUBSCRIBER_NAMES.get(i));
-                subscribers.add(item);
-            }
-            data.put("subscribers", subscribers);
-            data.put("maxEntries", MAX_ENTRIES);
-            return data;
-        }
-    }
-
-    /**
-     * 清空消息记录与两个累计计数，便于演示前重置现场；装配快照（订阅与 {@code mq.type}）保留——本方法
-     * 只重置 demo 侧记录，不触碰订阅登记（该取舍是 demo 的选择：{@code Consumer.unsubscribe} 现已提供，本 demo 未使用）。
-     */
-    public static void clear() {
-        synchronized (LOCK) {
-            ENTRIES.clear();
+    public void clear() {
+        synchronized (lock) {
+            entries.clear();
             sentCount = 0L;
             receivedCount = 0L;
         }

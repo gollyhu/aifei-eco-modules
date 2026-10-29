@@ -88,6 +88,7 @@
 - **配置读取唯一口径**：后端专有键一律经 `MqConfig.get(relativeKey)`（内部拼 `prefix + "." + relativeKey`），**不得手写** `"mq.memory."` 等字面量。
 - **启动期连通性（后端差异）**：`mqtt` / `mqtt5` / `rabbitmq` **构造期即建连、fail-fast**——broker 不可达则 `MqPlugin.start()` 失败并回滚；`kafka` / `redisstream`（及既有 `rocketmq`）为**懒连接**——**「启动成功」≠「后端可达」**，故障延迟到首次收发才以 `MqException` 暴露（`docs/design.md` §5.6 B12 与 (C) 各表 B12 行）。
 - **`topic` 语义（后端差异）**：MQTT（`mqtt` / `mqtt5`）的 `topic` 是**过滤器**（支持 `+` / `#` 通配；`Consumer.subscribe` 签名不变）；其余后端（`memory` / `rocketmq` / `rabbitmq` / `kafka` / `redisstream`）为**精确名**（RabbitMQ 为队列名 / routing key，Kafka 为 topic 名，Redis Streams 为流键）。**精确匹配是通配匹配的特例**（`docs/design.md` §5.6 B14）。
+- **Topic 使用模式（E2 定档，`docs/design.md` §5.8）**：**固定少量 topic + payload 内路由键**是既定设计决策——topic 表达稳定业务域、事件类型进 payload、订阅侧本地分发、运行期不增减 topic。触及 topic 匹配 / `send` / `subscribe` 的代码时检查点：① 公共 API 面 **8 类型不得增加**（§5.8.3 零改动论证）；② **不得**引入「运行期动态 topic」机制——broker 自动创建开关、通配公共参数、预声明 API（如 `Consumer.declare`）、运行期后端重建均已被否决（否决理由见 §5.8.2，其中 `AopKit` 无移除单例 API 已经官方源码核实）；③ 确需偏离时按**回弹机制**停下并回报调度人 / 项目所有者，**先更新 `docs/design.md` §5.8 再动代码**。
 
 ## provider 扩展点
 

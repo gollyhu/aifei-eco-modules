@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-mq-demo · MQ 演示入口</title>
+    <link rel="stylesheet" href="/assets/css/mq-test.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="mq-index-app" v-cloak>
+
+    <!-- ① 顶栏：标题 + 配置摘要 + 刷新 + 说明入口 -->
+    <header class="mq-topbar">
+        <div class="mq-topbar-main">
+            <h1 class="mq-title">aifei-mq-demo · MQ 演示入口</h1>
+            <p class="mq-sub">配置来源：app-config.txt ｜ mq.type = memory ｜ mq.names = demoA,demoB</p>
+        </div>
+        <div class="topbar-actions">
+            <span class="hint" v-if="busy" aria-live="polite">{{ busyHint }}</span>
+            <button class="btn btn-small" type="button" :disabled="busy" @click="reload">
+                <span aria-hidden="true">↻</span>
+                <span>{{ busy ? '刷新中…' : '刷新实例清单' }}</span>
+            </button>
+            <button class="btn btn-small btn-ghost" type="button"
+                    @click="openDrawer"
+                    aria-haspopup="dialog" aria-controls="mq-drawer" :aria-expanded="drawerOpen ? 'true' : 'false'">
+                <span class="drawer-label">说明</span><span aria-hidden="true">▸</span>
+                <span class="sr-only">打开功能说明</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ② 固定警示条（语义声明，不可关闭） -->
+    <p class="warn-bar">⚠ 内存后端 · 同步投递 · 无真实 broker —— 消息不过进程边界，重启即清空；无 QoS / retain / 通配符</p>
+
+    <!-- 错误态 / 降级态 -->
+    <p class="err-bar" v-if="error" role="alert">
+        读取实例清单失败：{{ error }}
+        <button class="btn btn-small" type="button" :disabled="busy" @click="reload">重试</button>
+        <span class="err-time" v-if="dataTime">数据时间 {{ dataTime }}</span>
+    </p>
+    <p class="note-bar" v-if="configError">配置提示：{{ configError }}</p>
+
+    <!-- ③ 实例卡栅格 -->
+
+    <!-- loading：3 个骨架卡 -->
+    <div class="cards-grid" v-if="loading && instances.length === 0" aria-hidden="true">
+        <div class="skel-card" v-for="n in 3" :key="'skel-' + n">
+            <div class="skel-line w-40"></div>
+            <div class="skel-line w-80"></div>
+            <div class="skel-line w-60"></div>
+            <div class="skel-line w-80"></div>
+            <div class="skel-line w-60"></div>
+            <div class="skel-block"></div>
+        </div>
+    </div>
+
+    <!-- 数据态 -->
+    <div class="cards-grid" :class="{ 'is-stale': stale }" v-else-if="instances.length">
+        <div class="inst-card" v-for="inst in instances" :key="inst.instanceName" @click="enter(inst)">
+            <div class="inst-head">
+                <span class="inst-name">{{ inst.instanceName }}</span>
+                <span class="pill pill-main" v-if="inst.main">主实例</span>
+            </div>
+
+            <div class="kv-list">
+                <div class="kv">
+                    <span class="kv-k">后端类型</span>
+                    <span class="kv-v">{{ text(inst.type) }}</span>
+                </div>
+                <div class="kv">
+                    <span class="kv-k">配置前缀</span>
+                    <span class="kv-v" :title="'该实例配置走此前缀：' + prefixText(inst)">{{ prefixText(inst) }}</span>
+                </div>
+                <div class="kv">
+                    <span class="kv-k">状态</span>
+                    <span class="kv-v">
+                        <span class="chip" :class="statusCls(inst)" :title="statusTitle(inst)" aria-live="polite">{{ statusText(inst) }}</span>
+                    </span>
+                </div>
+                <div class="kv">
+                    <span class="kv-k">订阅主题</span>
+                    <span class="kv-v">{{ num(inst.subscribedTopicCount) }}</span>
+                </div>
+                <div class="kv">
+                    <span class="kv-k">消息记录</span>
+                    <span class="kv-v">{{ num(inst.messageLogSize) }} / {{ num(inst.messageLogCapacity) }}</span>
+                </div>
+            </div>
+
+            <div class="inst-foot">
+                <button class="btn btn-primary" type="button"
+                        :aria-label="'进入实例 ' + inst.instanceName + ' 的演示页'"
+                        @click.stop="enter(inst)">进入演示页 →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 空态 -->
+    <div class="empty-state" v-else-if="!loading && !error">
+        <p class="empty-title">未发现任何 MQ 实例</p>
+        <p class="empty-desc">请确认 app-config.txt 中已注册 MqPlugin，且 mq.names 配置正确</p>
+        <button class="btn" type="button" :disabled="busy" @click="reload">重新加载</button>
+    </div>
+
+    <!-- ④ 页脚 -->
+    <footer class="page-foot">
+        <p>提示：每个实例是独立总线，同名 topic 在 demoA / demoB 之间互不可见。</p>
+        <p>数据来源：GET /mq/demo/instances（页面进入时请求一次，可手动刷新）</p>
+    </footer>
+
+    <!-- 说明抽屉：层级 主内容 < 遮罩 < 抽屉 -->
+    <div class="mask" v-if="drawerOpen" @click="closeDrawer"></div>
+    <aside id="mq-drawer" class="drawer" v-if="drawerOpen" ref="drawerRef"
+           role="dialog" aria-modal="true" aria-labelledby="mq-drawer-title" tabindex="-1">
+        <div class="drawer-head">
+            <h2 id="mq-drawer-title" class="drawer-title">功能说明</h2>
+            <button class="btn btn-icon" type="button" @click="closeDrawer" aria-label="关闭功能说明">×</button>
+        </div>
+        <div class="drawer-body">
+            <section class="doc-sec">
+                <h3>三个实例是什么</h3>
+                <p><code>__MAIN__</code> 是主实例，配置走根级 <code>mq.*</code>；<code>demoA</code> / <code>demoB</code> 是命名实例，配置分别走 <code>mq.demoA.*</code> / <code>mq.demoB.*</code>，由 <code>app-config.txt</code> 的 <code>mq.names</code> 声明。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>实例之间互不可见</h3>
+                <p>每个实例是一条独立总线：消息记录、发送 / 接收计数、订阅登记都按实例分片。同名 topic 在 <code>demoA</code> 发出的消息，<code>demoB</code> 上收不到，主实例也收不到。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>为什么页面上没有链路参数</h3>
+                <p>本 demo 的消息后端是内存实现、同步投递：没有外部 broker，消息不跨进程边界，进程重启即清空。因此页面只表达「就绪 / 未装配」，也没有需要填写的链路参数。</p>
+            </section>
+            <section class="doc-sec">
+                <h3>端点速查</h3>
+                <table class="doc-table">
+                    <thead>
+                    <tr><th>端点</th><th>用途</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr><td>GET /mq/demo/instances</td><td>实例清单（本页数据来源）</td></tr>
+                    <tr><td>GET /mq/demo/state?instance=</td><td>该实例的运行态快照</td></tr>
+                    <tr><td>GET /mq/demo/messages?instance=</td><td>该实例的消息记录（最新在前）</td></tr>
+                    <tr><td>GET /mq/demo/subscribe?instance=&amp;topic=</td><td>为该实例订阅一个主题</td></tr>
+                    <tr><td>GET /mq/demo/send?instance=&amp;topic=&amp;text=</td><td>发送一条文本消息</td></tr>
+                    </tbody>
+                </table>
+                <p>全部 GET，HTTP 恒 200，业务结果看响应里的 <code>code</code>（<code>0</code> 为成功）。</p>
+            </section>
+        </div>
+    </aside>
+
+</main>
+
+<script src="/assets/js/mq-index.js"></script>
+</body>
+</html>
