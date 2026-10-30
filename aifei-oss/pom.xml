@@ -76,6 +76,10 @@
 
         <!-- MinIO 集成测试开关，可用 -Doss.integration=true 覆盖（默认关闭） -->
         <oss.integration>false</oss.integration>
+
+        <!-- Central Portal 凭据的 server id（在 settings.xml 中配置）；
+             若已有 ossrh 凭据，可用 -Dcentral.publishing.server.id=ossrh 复用 -->
+        <central.publishing.server.id>aifei</central.publishing.server.id>
     </properties>
 
     <dependencies>
@@ -204,6 +208,13 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
                         <version>${maven-gpg-plugin.version}</version>
+                        <configuration>
+                            <!-- 非交互环境：允许经 -Dgpg.passphrase=... 传入口令（不在此硬编码） -->
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -221,7 +232,7 @@
                         <version>${central-publishing-maven-plugin.version}</version>
                         <extensions>true</extensions>
                         <configuration>
-                            <publishingServerId>aifei</publishingServerId>
+                            <publishingServerId>${central.publishing.server.id}</publishingServerId>
                             <deploymentName>aifei-oss-${project.version}</deploymentName>
                             <autoPublish>false</autoPublish>
                             <waitUntil>validated</waitUntil>
