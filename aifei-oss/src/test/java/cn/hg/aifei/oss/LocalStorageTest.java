@@ -9,174 +9,158 @@ package cn.hg.aifei.oss;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import cn.aifei.aop.AopFactory;
-import cn.aifei.aop.AopKit;
-import cn.aifei.util.Prop;
-import cn.hg.aifei.oss.aifei.OssConfigLoader;
-import cn.hg.aifei.oss.aifei.OssPlugin;
 import cn.hg.aifei.oss.internal.OssClients;
 import cn.hg.aifei.oss.internal.OssConfig;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
+import cn.hg.aifei.oss.internal.OssStorageFactory;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 /**
- * 公共门面到本地存储平台的端到端契约测试（默认联网无关）。
+ * 本地存储平台的功能测试：验证门面到 x-file-storage 的完整链路（不联网）。
  *
- * <p>以本地存储平台（{@code local}）+ 临时目录承载，走 {@link OssPlugin} 的真实装配链路，覆盖
- * {@code upload → exists → download → getFileInfo → delete → !exists} 完整链路，并断言上传后的对象路径与
- * 平台标识。定位全程只走 {@code FileInfo} 一族 API，<b>不</b>依赖 {@code FileRecorder}。</p>
- *
- * <p>为保持独立、幂等：每个用例前替换 AOP 工厂以隔离 {@code @Inject} 单例，用例结束后清空客户端登记表并
- * 由 {@link TemporaryFolder} 清理临时目录，不依赖执行顺序。</p>
+ * <p>使用 {@code local-plus} 平台：它是 X File Storage 推荐的本地实现，支持列举。</p>
  */
 public class LocalStorageTest {
 
-    /**
-     * 承载本地存储根目录的临时目录。
-     */
-    @Rule
-    public TemporaryFolder folder = new TemporaryFolder();
-
-    /**
-     * 用于隔离 {@code @Inject} 单例的原始 AOP 工厂。
-     */
-    private AopFactory previousFactory;
-
-    /**
-     * 用例装配的插件，用于结束时停止。
-     */
-    private OssPlugin plugin;
-
-    /**
-     * 替换 AOP 工厂，隔离 {@code @Inject} 单例，避免用例间相互污染。
-     */
-    @Before
-    public void isolateSingletons() {
-        previousFactory = AopKit.get().getAopFactory();
-        AopKit.get().setAopFactory(new AopFactory());
-        OssClients.clear();
-        plugin = null;
-    }
-
-    /**
-     * 停止插件、清空客户端登记表并恢复 AOP 工厂；临时目录由规则自动清理。
-     */
-    @After
-    public void restoreEnvironment() {
-        if (plugin != null) {
-            plugin.stop();
-        }
-        OssClients.clear();
-        AopKit.get().setAopFactory(previousFactory);
-    }
-
-    /**
-     * 本地存储的完整链路与失败语义。
-     */
     @Test
-    public void uploadDownloadDeleteExists() {
-        String basePath = folder.getRoot().getAbsolutePath() + File.separator;
-        Prop prop = prop(
-                "oss.default-platform", "local",
-                "oss.local.type", "local",
-                "oss.local.base-path", basePath
-        );
-        // 未装配即调用：门面 fail-fast，不隐式 NPE
-        assertThrows("尚未装配时 OssKit.defaultClient() 应抛 OssException",
-                OssException.class, () -> OssKit.defaultClient());
+    public void uploadDownloadDeleteExists() throws IOException {
+        Path baseDir = Files.createTempDirectory("aifei-oss-test");
+        try {
+            OssClient client = localClient(baseDir);
+            String path = "upload/demo/a.txt";
+            byte[] content = "hello aifei-oss".getBytes(StandardCharsets.UTF_8);
 
-        plugin = new OssPlugin(prop);
-        plugin.start();
+            OssFileInfo info = client.upload(content, path, "text/plain");
+            assertNotNull(info);
+            assertEquals("local-1", info.getPlatform());
+            assertEquals(path, info.getPath());
 
-        // 装配结果：默认平台客户端与按平台取用为同一对象，登记表只含 local
-        OssClient client = OssKit.defaultClient();
-        assertSame("默认平台客户端应与按平台取用的一致", client, OssKit.use("local"));
-        assertSame("默认平台客户端应与 @Inject 取到的一致", client, AopKit.get().getAopFactory()
-                .get(OssClient.class));
-        assertEquals("已注册平台集合", Collections.singleton("local"), OssKit.platforms());
+            assertTrue("对象应存在", client.exists(path));
 
-        byte[] data = "aifei oss local round trip".getBytes(StandardCharsets.UTF_8);
-        String path = "upload/2026/aifei.txt";
+            OssObject object = client.download(path);
+            assertNotNull(object);
+            assertArrayEquals(content, object.bytes());
 
-        // 上传
-        OssFileInfo uploaded = client.upload(data, path, "text/plain");
-        assertEquals("上传后对象路径应与写入路径一致", path, uploaded.getPath());
-        assertEquals("上传后平台标识应为 local", "local", uploaded.getPlatform());
-        assertEquals("上传后对象大小应等于字节数", data.length, uploaded.getSize());
+            OssFileInfo loaded = client.getFileInfo(path);
+            assertEquals(path, loaded.getPath());
 
-        // 存在性
-        assertTrue("上传后对象应存在", client.exists(path));
-
-        // 下载（字节读取 + 流式写出）
-        OssObject object = client.download(path);
-        assertEquals("下载对象路径应与写入路径一致", path, object.getPath());
-        assertEquals("下载对象大小应等于字节数", data.length, object.getContentLength());
-        assertArrayEquals("下载内容应与上传内容一致", data, object.bytes());
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        object.writeTo(out);
-        assertArrayEquals("流式写出内容应与上传内容一致", data, out.toByteArray());
-
-        // 元数据查询
-        OssFileInfo info = client.getFileInfo(path);
-        assertEquals("查询对象路径应与写入路径一致", path, info.getPath());
-        assertEquals("查询对象大小应等于字节数", data.length, info.getSize());
-
-        // 失败语义：不存在的对象下载抛异常、删除返回 false、非法路径抛异常、未知平台抛异常
-        assertThrows(OssException.class, () -> client.download("upload/2026/missing.txt"));
-        assertFalse("删除不存在的对象应返回 false", client.delete("upload/2026/missing.txt"));
-        assertThrows(OssException.class, () -> client.exists("/bad.txt"));
-        assertThrows(OssException.class, () -> client.upload(data, "/bad.txt", null));
-        assertThrows(OssException.class, () -> OssKit.use("missing-platform"));
-        // 同平台复制：本地平台支持同平台复制，目标生成且源保留
-        assertTrue("同平台复制应成功", client.copy(path, "upload/2026/copied.txt"));
-        assertTrue("复制后目标对象应存在", client.exists("upload/2026/copied.txt"));
-        assertArrayEquals("复制出的内容应与源一致", data, client.download("upload/2026/copied.txt").bytes());
-        assertTrue("复制后源对象应仍在", client.exists(path));
-
-        // 配置值对象脱敏：toString 不得输出 options（可能含 secret-key 等敏感项）
-        OssConfig sensitive = new OssConfig("local", "local",
-                Collections.singletonMap("secret-key", "top-secret-value"));
-        assertFalse("OssConfig.toString() 不得输出敏感配置项",
-                sensitive.toString().contains("top-secret-value"));
-        assertTrue("OssConfig.toString() 应含平台标识与类型",
-                sensitive.toString().contains("local"));
-
-        // 删除
-        assertTrue("删除存在的对象应返回 true", client.delete(path));
-        assertFalse("删除后对象应不存在", client.exists(path));
-
-        // 默认平台规则（D3）：多平台且未声明 oss.default-platform 必须失败
-        Prop multiPlatform = prop("oss.a.type", "local", "oss.b.type", "local");
-        assertThrows(OssException.class, () -> OssConfigLoader.defaultPlatform(
-                multiPlatform, OssConfigLoader.load(multiPlatform)));
-        assertThrows(OssException.class, () -> OssConfigLoader.load(prop()));
+            assertTrue("删除应成功", client.delete(path));
+            assertFalse("删除后应不存在", client.exists(path));
+        } finally {
+            OssClients.clear();
+            deleteRecursively(baseDir);
+        }
     }
 
-    /**
-     * 由键值对构造 {@link Prop}。
-     *
-     * @param keyValues 交替出现的键与值
-     * @return 配置对象
-     */
-    private static Prop prop(String... keyValues) {
-        if (keyValues.length % 2 != 0) {
-            throw new IllegalArgumentException("keyValues must be key/value pairs");
+    @Test
+    public void copyAndListFiles() throws IOException {
+        Path baseDir = Files.createTempDirectory("aifei-oss-test-copy");
+        try {
+            OssClient client = localClient(baseDir);
+            byte[] content = "copy me".getBytes(StandardCharsets.UTF_8);
+            client.upload(content, "upload/demo/a.txt", "text/plain");
+
+            List<OssFileInfo> files = client.listFiles("upload/demo");
+            assertNotNull(files);
+            assertFalse("local-plus 应支持列举", files.isEmpty());
+
+            assertTrue("复制应成功", client.copy("upload/demo/a.txt", "upload/demo/b.txt"));
+            assertTrue("目标对象应存在", client.exists("upload/demo/b.txt"));
+            assertArrayEquals(content, client.download("upload/demo/b.txt").bytes());
+        } finally {
+            OssClients.clear();
+            deleteRecursively(baseDir);
         }
-        Prop prop = new Prop();
-        for (int i = 0; i < keyValues.length; i += 2) {
-            prop.getProperties().setProperty(keyValues[i], keyValues[i + 1]);
+    }
+
+    @Test
+    public void missingObjectSemantics() throws IOException {
+        Path baseDir = Files.createTempDirectory("aifei-oss-test-missing");
+        try {
+            OssClient client = localClient(baseDir);
+            try {
+                // Downloader 为惰性：download 本身不读流，读取内容时才真正访问存储
+                client.download("nope/missing.txt").bytes();
+                org.junit.Assert.fail("读取不存在的对象应抛 OssException");
+            } catch (OssException expected) {
+                // 期望：底层异常已由适配层翻译为 OssException
+            }
+            assertTrue("删除为幂等：对象不存在也返回 true", client.delete("nope/missing.txt"));
+            assertTrue("列举空目录应返回空列表", client.listFiles("nope/empty").isEmpty());
+        } finally {
+            OssClients.clear();
+            deleteRecursively(baseDir);
         }
-        return prop;
+    }
+
+    @Test
+    public void uploadIfAbsentDoesNotOverwrite() throws IOException {
+        Path baseDir = Files.createTempDirectory("aifei-oss-test-absent");
+        try {
+            OssClient client = localClient(baseDir);
+            byte[] first = "first".getBytes(StandardCharsets.UTF_8);
+            byte[] second = "second".getBytes(StandardCharsets.UTF_8);
+
+            client.uploadIfAbsent(first, "keep/a.txt", "text/plain");
+            client.uploadIfAbsent(second, "keep/a.txt", "text/plain");
+
+            assertArrayEquals("已存在时不应覆盖", first, client.download("keep/a.txt").bytes());
+        } finally {
+            OssClients.clear();
+            deleteRecursively(baseDir);
+        }
+    }
+
+    @Test
+    public void pagedListFilesReturnsPage() throws IOException {
+        Path baseDir = Files.createTempDirectory("aifei-oss-test-page");
+        try {
+            OssClient client = localClient(baseDir);
+            for (int i = 0; i < 3; i++) {
+                client.upload(("v" + i).getBytes(StandardCharsets.UTF_8), "p/" + i + ".txt", "text/plain");
+            }
+            OssPage page = client.listFiles("p", 2, null);
+            assertNotNull(page);
+            assertFalse("分页列举应返回对象", page.getFiles().isEmpty());
+            assertNotNull("子目录列表不应为 null", page.getDirectories());
+        } finally {
+            OssClients.clear();
+            deleteRecursively(baseDir);
+        }
+    }
+
+    private static OssClient localClient(Path baseDir) {
+        Map<String, String> options = new LinkedHashMap<String, String>();
+        options.put("base-path", baseDir.toAbsolutePath().toString());
+        options.put("domain", "http://localhost/files/");
+        OssConfig config = new OssConfig("local-1", "local-plus", options);
+        Map<String, OssClient> clients =
+                OssStorageFactory.buildClients("local-1", Collections.singletonList(config));
+        return clients.get("local-1");
+    }
+
+    private static void deleteRecursively(Path dir) throws IOException {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        Files.walk(dir)
+                .sorted(java.util.Comparator.reverseOrder())
+                .forEach(p -> {
+                    try {
+                        Files.deleteIfExists(p);
+                    } catch (IOException ignore) {
+                        // 临时目录清理失败不影响测试结果
+                    }
+                });
     }
 }

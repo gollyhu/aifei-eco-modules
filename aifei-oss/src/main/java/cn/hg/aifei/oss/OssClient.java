@@ -7,65 +7,75 @@
 package cn.hg.aifei.oss;
 
 import java.io.InputStream;
+import java.util.List;
 
 /**
- * 对象存储门面接口，一个实例对应一个存储平台。
+ * 对象存储门面（对应默认平台或指定平台）。
  *
- * <p><b>对象路径</b>（{@code path}）是平台 {@code base-path} 之下的完整逻辑对象 key，形如
- * {@code upload/2026/a.png}：不得为空、不得以 {@code /} 开头、不得含 {@code ..}、末段不得为空。它既是上传
- * 的目标路径，也是下载 / 删除 / 存在性判断 / 查询 / 签名所依据的定位路径，可无损往返。</p>
- *
- * <p><b>平台选择</b>：{@code @Inject OssClient} 对应默认平台；多平台经 {@link OssKit#use(String)} 按平台
- * 标识取用。</p>
- *
- * <p><b>线程安全</b>：全部方法线程安全，实例可长期持有并并发使用。</p>
- *
- * <p><b>异常</b>：全部失败场景统一抛 {@link OssException}（如路径非法、对象不存在、平台不支持、底层平台
- * 故障），异常消息中不含任何第三方类型名。</p>
+ * <p>由 {@code OssPlugin} 装配为单例，经 {@code @Inject} 取用（默认平台），
+ * 或经 {@link OssKit#use(String)} 按平台取用。全部方法线程安全。
  */
 public interface OssClient {
 
     /**
-     * 上传字节流。
+     * 上传流。
      *
-     * <p>同名路径跟随底层存储平台的默认覆盖语义。{@code in} 由调用方负责关闭，本方法不关闭入参。</p>
-     *
-     * @param in 字节流
-     * @param path 对象路径
-     * @param contentType 对象 MIME 类型，可为 {@code null}（由实现按文件名识别）
-     * @return 上传后对象的元数据
-     * @throws OssException 路径非法或上传失败
+     * @param in          内容流（由本方法负责读取）
+     * @param path        对象路径（如 {@code upload/2026/a.png}）
+     * @param contentType 内容类型，可为 {@code null}
+     * @return 上传后的对象元数据
+     * @throws OssException 上传失败时抛出
      */
     OssFileInfo upload(InputStream in, String path, String contentType);
 
     /**
      * 上传字节数组。
      *
-     * <p>同名路径跟随底层存储平台的默认覆盖语义。</p>
-     *
-     * @param data 字节数组
-     * @param path 对象路径
-     * @param contentType 对象 MIME 类型，可为 {@code null}（由实现按文件名识别）
-     * @return 上传后对象的元数据
-     * @throws OssException 路径非法或上传失败
+     * @param data        内容
+     * @param path        对象路径
+     * @param contentType 内容类型，可为 {@code null}
+     * @return 上传后的对象元数据
+     * @throws OssException 上传失败时抛出
      */
     OssFileInfo upload(byte[] data, String path, String contentType);
 
     /**
-     * 下载对象。
+     * 仅当对象不存在时上传（非原子操作：并发下可能被后写覆盖）。
+     *
+     * @param in          内容流
+     * @param path        对象路径
+     * @param contentType 内容类型，可为 {@code null}
+     * @return 上传后（或已存在）的对象元数据
+     * @throws OssException 上传失败时抛出
+     */
+    OssFileInfo uploadIfAbsent(InputStream in, String path, String contentType);
+
+    /**
+     * 仅当对象不存在时上传（非原子操作）。
+     *
+     * @param data        内容
+     * @param path        对象路径
+     * @param contentType 内容类型，可为 {@code null}
+     * @return 上传后（或已存在）的对象元数据
+     * @throws OssException 上传失败时抛出
+     */
+    OssFileInfo uploadIfAbsent(byte[] data, String path, String contentType);
+
+    /**
+     * 下载对象（惰性：读取内容时才访问存储）。
      *
      * @param path 对象路径
-     * @return 对象内容与元数据；返回的 {@link OssObject} 无需关闭，内容按次读取
-     * @throws OssException 路径非法、对象不存在或下载失败
+     * @return 下载结果（内容按需读取）
+     * @throws OssException 读取时对象不存在或失败抛出
      */
     OssObject download(String path);
 
     /**
-     * 删除对象。
+     * 删除对象（幂等：不存在也返回 {@code true}）。
      *
      * @param path 对象路径
-     * @return {@code true}：对象存在并已删除；{@code false}：对象本就不存在
-     * @throws OssException 路径非法或删除失败
+     * @return 删除成功返回 {@code true}
+     * @throws OssException 删除失败时抛出
      */
     boolean delete(String path);
 
@@ -73,8 +83,8 @@ public interface OssClient {
      * 判断对象是否存在。
      *
      * @param path 对象路径
-     * @return {@code true} 表示对象存在
-     * @throws OssException 路径非法或判断失败
+     * @return 存在返回 {@code true}
+     * @throws OssException 校验失败时抛出
      */
     boolean exists(String path);
 
@@ -83,32 +93,58 @@ public interface OssClient {
      *
      * @param path 对象路径
      * @return 对象元数据
-     * @throws OssException 路径非法、对象不存在或查询失败
+     * @throws OssException 对象不存在或查询失败时抛出
      */
     OssFileInfo getFileInfo(String path);
 
     /**
-     * 生成限时访问 URL。
+     * 列举目录下的全部对象（不递归、一次性返回）。
      *
-     * <p>可用性取决于平台能力：平台不支持签名 URL 时抛 {@link OssException}。</p>
+     * @param path 目录路径（尾斜杠可省略）
+     * @return 对象元数据列表（可能为空）
+     * @throws OssException 平台不支持列举或列举失败时抛出
+     */
+    List<OssFileInfo> listFiles(String path);
+
+    /**
+     * 分页列举目录下的对象与子目录（不递归）。
      *
-     * @param path 对象路径
-     * @param ttlSeconds 有效时长，单位秒
-     * @return 限时访问 URL
-     * @throws OssException 路径非法、平台不支持或生成失败
+     * @param path     目录路径
+     * @param maxFiles 本页最多返回的对象数；{@code <= 0} 表示由平台默认
+     * @param marker   上一页返回的 {@link OssPage#getNextMarker()}；首页传 {@code null}
+     * @return 分页结果（含对象、子目录、下一页游标与是否截断）
+     * @throws OssException 平台不支持列举或列举失败时抛出
+     */
+    OssPage listFiles(String path, int maxFiles, String marker);
+
+    /**
+     * 生成限时访问地址。
+     *
+     * @param path       对象路径
+     * @param ttlSeconds 有效期（秒）
+     * @return 限时访问地址
+     * @throws OssException 平台不支持或生成失败时抛出
      */
     String generatePresignedUrl(String path, long ttlSeconds);
 
     /**
-     * 同平台内复制对象。
-     *
-     * <p>仅支持<b>同平台</b>复制（源与目标同属本实例的存储平台）；平台不支持同平台复制时抛
-     * {@link OssException}。跨平台复制不在本期范围。</p>
+     * 同平台内复制（服务端复制优先，不支持时降级）。
      *
      * @param sourcePath 源对象路径
-     * @param destPath 目标对象路径
-     * @return 复制是否成功
-     * @throws OssException 路径非法、源对象不存在、平台不支持同平台复制或复制失败
+     * @param destPath   目标对象路径
+     * @return 复制成功返回 {@code true}
+     * @throws OssException 复制失败时抛出
      */
     boolean copy(String sourcePath, String destPath);
+
+    /**
+     * 跨平台复制（{@code CopyMode.CROSS}：下载源对象再上传到目标平台）。
+     *
+     * @param destPlatform 目标平台标识（须已装配）
+     * @param sourcePath   源对象路径（本客户端所属平台）
+     * @param destPath     目标对象路径（目标平台）
+     * @return 复制成功返回 {@code true}
+     * @throws OssException 目标平台未知或复制失败时抛出
+     */
+    boolean copyTo(String destPlatform, String sourcePath, String destPath);
 }

@@ -10,22 +10,72 @@
     <packaging>jar</packaging>
 
     <name>aifei-oss</name>
-    <description>Multi-platform object storage capability for aifei applications.</description>
+    <description>Multi-platform object/file storage capability for aifei applications, built on X File Storage.</description>
+    <url>https://github.com/gollyhu/aifei-oss</url>
+
+    <!-- 以下为发布到 Maven Central 的必需元数据，清单见 https://central.sonatype.org/publish/requirements/
+         licenses 元素与仓库根 LICENSE 的 Apache License 2.0 保持一致。 -->
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>gollyhu</name>
+        <url>https://github.com/gollyhu</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>gollyhu</id>
+            <name>糊搞</name>
+            <email>3722711@qq.com</email>
+            <url>https://github.com/gollyhu</url>
+            <roles>
+                <role>maintainer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/gollyhu/aifei-oss.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/gollyhu/aifei-oss.git</developerConnection>
+        <url>https://github.com/gollyhu/aifei-oss</url>
+    </scm>
+
+    <!-- 只声明 snapshot 仓库：release 由 central-publishing-maven-plugin 以 bundle 方式提交，不经
+         maven-deploy-plugin，因此不声明 release 仓库。
+         snapshot 仓库 id 需在 settings.xml 中有同名 server（发布 profile 用的是 aifei）。 -->
+    <distributionManagement>
+        <snapshotRepository>
+            <id>central-portal-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aifei.version>1.1.1</aifei.version>
-        <x-file-storage.version>2.3.0</x-file-storage.version>
+        <xfs.version>2.3.0</xfs.version>
         <junit.version>4.13.2</junit.version>
+        <minio.version>8.5.7</minio.version>
+        <!-- 与 X File Storage 传递的 slf4j-api 版本保持一致 -->
+        <slf4j.version>1.7.36</slf4j.version>
 
-        <!-- MinIO 集成测试开关与连接参数，可用 -Doss.integration=true -Doss.endpoint=... 覆盖 -->
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+
+        <!-- MinIO 集成测试开关，可用 -Doss.integration=true 覆盖（默认关闭） -->
         <oss.integration>false</oss.integration>
-        <oss.endpoint></oss.endpoint>
-        <oss.access-key></oss.access-key>
-        <oss.secret-key></oss.secret-key>
-        <oss.bucket></oss.bucket>
     </properties>
 
     <dependencies>
@@ -37,11 +87,14 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- 实现内核：compile（仓库根「第三方依赖一律 optional/provided」的显式例外，理由见 docs/design.md §3.2） -->
+        <!-- 实现内核：X File Storage（设计决策见 docs/design.md §3.2）。
+             本模块以它为实现底座，作为 compile 依赖（仓库 optional/provided 规则的显式例外）。
+             其自身对云厂商 SDK 均为 provided+optional，消费方按需自带；
+             会传递引入 hutool-core / tika-core / thumbnailator / slf4j-api（均 Java 8 兼容）。 -->
         <dependency>
             <groupId>org.dromara.x-file-storage</groupId>
             <artifactId>x-file-storage-core</artifactId>
-            <version>${x-file-storage.version}</version>
+            <version>${xfs.version}</version>
         </dependency>
 
         <dependency>
@@ -50,34 +103,133 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- 仅测试使用：为 x-file-storage 传递的 slf4j-api 提供绑定，避免 "Failed to load StaticLoggerBinder" 警告 -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- 仅集成测试使用（test scope，不随本模块发布）：真实 MinIO 对象存储 -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>${minio.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <oss.integration>${oss.integration}</oss.integration>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <version>${maven-compiler-plugin.version}</version>
                 <configuration>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven-source-plugin.version}</version>
                 <configuration>
-                    <systemPropertyVariables>
-                        <oss.integration>${oss.integration}</oss.integration>
-                        <oss.endpoint>${oss.endpoint}</oss.endpoint>
-                        <oss.access-key>${oss.access-key}</oss.access-key>
-                        <oss.secret-key>${oss.secret-key}</oss.secret-key>
-                        <oss.bucket>${oss.bucket}</oss.bucket>
-                    </systemPropertyVariables>
+                    <forceCreation>true</forceCreation>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven-javadoc-plugin.version}</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <show>public</show>
+                    <!-- internal / aifei 为非承诺 API，不进对外 Javadoc -->
+                    <excludePackageNames>cn.hg.aifei.oss.internal:cn.hg.aifei.oss.aifei</excludePackageNames>
+                    <doclint>none</doclint>
+                    <detectJavaApiLink>false</detectJavaApiLink>
+                    <detectOfflineLinks>false</detectOfflineLinks>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
+
+    <profiles>
+        <!-- mvn -Pcentral-release clean deploy -->
+        <profile>
+            <id>central-release</id>
+            <build>
+                <plugins>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven-gpg-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-maven-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>aifei</publishingServerId>
+                            <deploymentName>aifei-oss-${project.version}</deploymentName>
+                            <autoPublish>false</autoPublish>
+                            <waitUntil>validated</waitUntil>
+                        </configuration>
+                    </plugin>
+
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

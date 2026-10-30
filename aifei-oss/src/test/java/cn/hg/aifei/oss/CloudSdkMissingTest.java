@@ -26,8 +26,8 @@ import org.junit.Test;
  * 因此 {@code OssPlugin.start()} 即抛 {@link OssException}（底层 {@code Error} 与运行时异常在适配层统一翻译），
  * <b>不</b>会泄漏 {@code NoClassDefFoundError}；失败后不留半装配状态。</p>
  *
- * <p>本用例<b>不需要</b>任何云厂商 SDK 与真实对象存储服务：故意声明一个 {@code minio} 类型平台但不引入
- * {@code io.minio:minio}，因此可在任何环境运行。</p>
+ * <p>本用例<b>不需要</b>任何云厂商 SDK 与真实对象存储服务：故意声明一个 {@code huawei-obs} 类型平台但不引入
+ * 华为云 OBS SDK，因此可在任何环境运行。</p>
  *
  * <p>开启方式（默认关闭，对齐 {@code aifei-cache} 的 {@code -Dredis.integration}）：</p>
  *
@@ -78,12 +78,12 @@ public class CloudSdkMissingTest {
         assumeTrue("默认关闭：需 -Doss.integration=true 开启", Boolean.getBoolean("oss.integration"));
 
         Prop prop = prop(
-                "oss.default-platform", "minio-1",
-                "oss.minio-1.type", "minio",
-                "oss.minio-1.end-point", "http://127.0.0.1:9000",
-                "oss.minio-1.access-key", "minioadmin",
-                "oss.minio-1.secret-key", "minioadmin",
-                "oss.minio-1.bucket-name", "aifei-oss-test"
+                "oss.default-platform", "obs-1",
+                "oss.obs-1.type", "huawei-obs",
+                "oss.obs-1.end-point", "http://127.0.0.1:9000",
+                "oss.obs-1.access-key", "test-access-key",
+                "oss.obs-1.secret-key", "test-secret-key",
+                "oss.obs-1.bucket-name", "aifei-oss-test"
         );
         plugin = new OssPlugin(prop);
 

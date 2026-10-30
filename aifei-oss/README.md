@@ -7,9 +7,9 @@
 ## 特性
 
 - **多平台**：本地 / FTP / SFTP / 阿里云 OSS / 腾讯云 COS / 华为云 OBS / 七牛 / MinIO / AWS S3 / Azure / Google Cloud 等（由 X File Storage 提供）。
-- **统一接口**：`OssClient` 提供上传 / 下载 / 删除 / 存在性 / 元数据 / 签名 URL / 同平台复制（`copy` 仅支持同平台，跨平台不在本期范围）。
+- **统一接口**：上传（含 if-absent）/ 下载 / 删除 / 存在性 / 元数据 / 列举（一次性 + 分页）/ 签名 URL / 复制（同平台 + 跨平台）。
 - **多平台共存**：`@Inject OssClient` 用默认平台，`OssKit.use("name")` 按平台取用。
-- **实现无关**：公共 API 不暴露 X File Storage 与云厂商 SDK 类型。
+- **实现无关**：公共 API 不暴露 X File Storage 与云厂商 SDK 类型（公共类型固定 6 个）。
 - **Java 8**：编译目标与产物均为 Java 8。
 
 ## 依赖
@@ -25,7 +25,7 @@
 - **`x-file-storage-core` 由本模块传递引入**（`compile` 依赖），消费方无需再声明可正常使用。
 - **各云厂商 SDK 需消费方按需自带**（例如阿里云 `com.aliyun.oss:aliyun-sdk-oss`、AWS `com.amazonaws:aws-java-sdk-s3`、MinIO `io.minio:minio`）。仅使用本地存储时无需引入任何云 SDK。
 - aifei 框架（`cn.aifei:aifei-all`）为 `provided`，由应用自带。
-- **尚未对外发布**：本仓库当前仅 `aifei-cache` 具备 Maven Central 发布能力，上列坐标为预留，暂无发布产物。
+- **尚未对外发布**：上列坐标为预留，暂无发布产物。
 
 > **Java 8 说明**：X File Storage 官方文档中的「JDK 11+」指其**自身构建环境**要求；其发布 jar 的字节码为 Java 8，可被 Java 8 应用直接依赖运行。aifei-oss 与消费方均无需升级 JDK。
 
@@ -37,8 +37,8 @@
 # 默认平台（多平台时必填）
 oss.default-platform = local-1
 
-# 本地存储（无需任何云 SDK，适合开发与测试）
-oss.local-1.type = local
+# 本地存储（无需任何云 SDK，适合开发与测试；local-plus 支持列举）
+oss.local-1.type = local-plus
 oss.local-1.base-path = ./data/files
 
 # 阿里云 OSS 示例（需自带 aliyun-sdk-oss）
@@ -73,8 +73,26 @@ public class FileService {
         return info.getUrl();
     }
 
+    public void saveIfAbsent(byte[] data, String path) {
+        oss.uploadIfAbsent(data, path, "application/octet-stream"); // 已存在则不覆盖
+    }
+
     public void remove(String path) {
-        oss.delete(path);
+        oss.delete(path); // 幂等
+    }
+
+    // 分页列举（含子目录与下一页游标）
+    public OssPage page(String dir, int maxFiles, String marker) {
+        return oss.listFiles(dir, maxFiles, marker);
+    }
+
+    // 同平台复制 / 跨平台复制
+    public void duplicate(String src, String dest) {
+        oss.copy(src, dest);
+    }
+
+    public void backupTo(String destPlatform, String src, String dest) {
+        oss.copyTo(destPlatform, src, dest);
     }
 
     // 多平台：按平台标识取用
@@ -88,12 +106,13 @@ public class FileService {
 
 | 键 | 必填 | 说明 |
 | --- | --- | --- |
-| `oss.default-platform` | 多平台时必填 | 默认平台标识；**单平台时可省略**（即以该平台为默认），**平台数 ≥ 2 时必填**，缺失或指向未声明的平台则**启动失败**，**不会静默沿用**底层的 `local` |
-| `oss.<name>.type` | 是 | 平台类型，合法取值全集为 20 项：`local` / `local-plus` / `huawei-obs` / `aliyun-oss` / `qiniu-kodo` / `tencent-cos` / `baidu-bos` / `upyun-uss` / `minio` / `amazon-s3` / `amazon-s3-v2` / `ftp` / `sftp` / `webdav` / `google-cloud-storage` / `fastdfs` / `azure-blob` / `mongo-gridfs` / `go-fastdfs` / `volcengine-tos`；未列入的类型**启动即失败** |
+| `oss.default-platform` | 多平台时必填 | 默认平台标识；单平台时可省略 |
+| `oss.<name>.type` | 是 | 平台类型，合法取值全集 20 项：`local` / `local-plus` / `huawei-obs` / `aliyun-oss` / `qiniu-kodo` / `tencent-cos` / `baidu-bos` / `upyun-uss` / `minio` / `amazon-s3` / `amazon-s3-v2` / `ftp` / `sftp` / `webdav` / `google-cloud-storage` / `fastdfs` / `azure-blob` / `mongo-gridfs` / `go-fastdfs` / `volcengine-tos` |
 | `oss.<name>.access-key` | 视平台 | 访问密钥 |
 | `oss.<name>.secret-key` | 视平台 | 访问密钥 |
 | `oss.<name>.end-point` | 视平台 | 服务端点 |
 | `oss.<name>.bucket-name` | 视平台 | 存储桶 |
+| `oss.<name>.base-path` | 本地平台 | 本地落盘根目录 |
 | `oss.<name>.domain` | 否 | 自定义访问域名 |
 | `oss.<name>.<平台特有键>` | 否 | 透传给对应平台配置 |
 
@@ -102,11 +121,12 @@ public class FileService {
 ## 常见问题
 
 - **启动报错「未装配 / 未知平台」**：确认已 `plugins.add(new OssPlugin(prop))` 且 `oss.default-platform` 指向已声明的平台。
-- **启动报 `oss build storage service failed`**：该平台的云厂商 SDK 未引入（例如用 MinIO 需自带 `io.minio:minio`），请按需自带。云 SDK 缺失属**装配期**故障，应用启动即失败，不存在「启动成功但用不了」的隐形故障。
+- **启动报 `oss build storage service failed`**：该平台的云厂商 SDK 未引入（例如用 MinIO 需自带 `io.minio:minio`），请按需自带。
 - **`generatePresignedUrl` 抛异常**：当前平台不支持签名 URL。
+- **`uploadIfAbsent` 并发下仍可能被覆盖**：该能力非原子（先 `exists` 再上传），强一致场景请依赖平台条件写。
 
 ## 文档
 
 - `docs/design.md`：设计契约与决策（设计事实来源）。
 - `AGENTS.md`：开发约束与验证命令。
-- `docs/testing.md`：测试策略与用例清单（实现阶段补）。
+- `docs/testing.md`：测试策略与用例清单。

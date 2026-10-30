@@ -10,111 +10,82 @@ import cn.hg.aifei.oss.OssException;
 import org.dromara.x.file.storage.core.FileInfo;
 
 /**
- * 对象路径与 {@link FileInfo} 之间换算的<b>唯一定义点</b>，同时是对象路径边界校验的唯一入口。
+ * 对象路径与底层 {@link FileInfo} 之间的换算；非承诺 API。
  *
- * <p><b>路径语义</b>：{@code path} 是平台 {@code base-path} 之下的完整逻辑对象 key，如
- * {@code upload/2026/a.png}。切分口径为：</p>
- *
- * <pre>
- * int i = path.lastIndexOf('/');
- * String dir      = (i &lt; 0) ? "" : path.substring(0, i + 1); // 保留尾 '/'，无 '/' 时为空串
- * String filename = path.substring(i + 1);
- * </pre>
- *
- * <p><b>为何保留尾 {@code '/'}</b>：底层按 {@code basePath + path + filename} <b>逐字拼接、不补分隔符</b>
- * 得到物理 key，故 {@code dir} 必须自带尾 {@code '/'}，否则会粘连成 {@code upload2026/a.png} 之类。上传时以
- * {@code setPath(dir).setSaveFilename(filename)} 写入，与下载侧 {@link #toFileInfo(String, String, String)}
- * 的换算互为逆运算，保证「按路径再次定位」成立。</p>
- *
- * <p><b>边界校验</b>：{@code path} 为空白、以 {@code /} 开头、含 {@code ..}、末段为空，均抛
- * {@link OssException}；其它实现类不得复制该校验。</p>
- *
- * <p>本类属非承诺 API：因装配需要声明为 {@code public}，但不是公共 API，消费方不得引用。</p>
+ * <p>本模块以「完整对象路径」为对外语义（如 {@code upload/2026/a.png}），
+ * 底层以「基路径 {@code basePath} + 目录 {@code path} + 文件名 {@code filename}」表达，
+ * 换算规则集中在本类。
  */
-public final class OssPaths {
+final class OssPaths {
 
     /**
-     * 禁止创建工具类实例。
+     * @param path 完整对象路径
+     * @return 目录部分（含结尾 {@code /}），无目录时返回空串
      */
+    static String directory(String path) {
+        if (path == null) {
+            throw new OssException("对象路径不能为 null");
+        }
+        int idx = path.lastIndexOf('/');
+        return idx < 0 ? "" : path.substring(0, idx + 1);
+    }
+
+    /**
+     * 把目录路径规范化为带结尾 {@code /} 的形式（用于列举）。
+     *
+     * @param path 目录路径，可为 {@code null}
+     * @return 规范化目录；{@code path} 为 {@code null} 或空串时返回空串
+     */
+    static String asDirectory(String path) {
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+        return path.endsWith("/") ? path : path + "/";
+    }
+
+    /**
+     * @param path 完整对象路径
+     * @return 文件名部分
+     * @throws OssException 路径缺少文件名时抛出
+     */
+    static String filename(String path) {
+        String name = directory(path).isEmpty() ? path : path.substring(path.lastIndexOf('/') + 1);
+        if (name == null || name.isEmpty()) {
+            throw new OssException("对象路径缺少文件名: " + path);
+        }
+        return name;
+    }
+
+    /**
+     * 把目录段与文件名段拼回完整对象路径；路径拼接口径的唯一定义点。
+     *
+     * @param path     目录段，可为 {@code null}
+     * @param filename 文件名段，可为 {@code null}
+     * @return 完整对象路径
+     */
+    static String join(String path, String filename) {
+        String dir = path == null ? "" : path;
+        String name = filename == null ? "" : filename;
+        return dir + name;
+    }
+
+    /**
+     * 由平台、基路径与完整对象路径构造底层 {@link FileInfo}（用于按路径定位既有对象）。
+     *
+     * @param platform 平台标识
+     * @param basePath 平台基路径，可为 {@code null}
+     * @param path     完整对象路径
+     * @return 底层 FileInfo
+     */
+    static FileInfo toFileInfo(String platform, String basePath, String path) {
+        FileInfo info = new FileInfo();
+        info.setPlatform(platform);
+        info.setBasePath(basePath);
+        info.setPath(directory(path));
+        info.setFilename(filename(path));
+        return info;
+    }
+
     private OssPaths() {
-    }
-
-    /**
-     * 校验对象路径并返回其目录段（含尾 {@code '/'}，无 {@code '/'} 时为 {@code ""}）。
-     *
-     * @param path 对象路径
-     * @return 目录段，形如 {@code upload/2026/}；路径不含 {@code '/'} 时为空串
-     * @throws OssException 路径空白、以 {@code /} 开头、含 {@code ..} 或末段为空
-     */
-    public static String directoryOf(String path) {
-        String valid = requirePath(path);
-        int i = valid.lastIndexOf('/');
-        return (i < 0) ? "" : valid.substring(0, i + 1);
-    }
-
-    /**
-     * 校验对象路径并返回其末段文件名。
-     *
-     * @param path 对象路径
-     * @return 末段文件名
-     * @throws OssException 路径空白、以 {@code /} 开头、含 {@code ..} 或末段为空
-     */
-    public static String filenameOf(String path) {
-        String valid = requirePath(path);
-        return valid.substring(valid.lastIndexOf('/') + 1);
-    }
-
-    /**
-     * 把目录段与文件名拼回完整逻辑对象路径（目录段自带尾 {@code '/'}）。
-     *
-     * @param dir 目录段
-     * @param filename 文件名
-     * @return 完整逻辑对象路径
-     */
-    public static String join(String dir, String filename) {
-        String d = (dir == null) ? "" : dir;
-        String f = (filename == null) ? "" : filename;
-        return d + f;
-    }
-
-    /**
-     * 按分隔口径把对象路径换算为可定位的 {@link FileInfo}。
-     *
-     * @param platform 所属存储平台标识
-     * @param basePath 平台配置的 {@code base-path}，可为 {@code null}
-     * @param path 对象路径
-     * @return 含 {@code platform} / {@code basePath} / 目录段 {@code path} / 末段 {@code filename} 的
-     *         文件信息
-     * @throws OssException 路径非法
-     */
-    public static FileInfo toFileInfo(String platform, String basePath, String path) {
-        String valid = requirePath(path);
-        int i = valid.lastIndexOf('/');
-        String dir = (i < 0) ? "" : valid.substring(0, i + 1);
-        String filename = valid.substring(i + 1);
-        return new FileInfo(basePath, dir, filename).setPlatform(platform);
-    }
-
-    /**
-     * 对象路径的边界校验；实现类不得复制。
-     *
-     * @param path 对象路径
-     * @return 原路径
-     * @throws OssException 路径空白、以 {@code /} 开头、含 {@code ..} 或末段为空
-     */
-    private static String requirePath(String path) {
-        if (path == null || path.trim().isEmpty()) {
-            throw new OssException("oss object path can not be blank");
-        }
-        if (path.startsWith("/")) {
-            throw new OssException("oss object path must not start with '/': " + path);
-        }
-        if (path.contains("..")) {
-            throw new OssException("oss object path must not contain '..': " + path);
-        }
-        if (path.charAt(path.length() - 1) == '/') {
-            throw new OssException("oss object path must not end with '/': " + path);
-        }
-        return path;
     }
 }

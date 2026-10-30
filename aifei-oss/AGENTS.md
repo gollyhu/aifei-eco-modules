@@ -27,13 +27,14 @@
 
 - **`x-file-storage-core` 为 `compile` 依赖**：这是仓库根「第三方依赖一律 `optional` 或 `provided`」的**显式例外**（理由见 `docs/design.md` §3.2），**不得**擅自改为 `optional` / `provided`。**授权状态**：**已获授权**——该例外已按仓库根 `AGENTS.md`「已登记的 `compile` 例外」条款登记，落地即合规；新增例外仍须先登记后方可落地。
 - **仅依赖 `core`**：禁止引入 `x-file-storage-spring` / `x-file-storage-solon`；`FileStorageService` 一律用 `FileStorageServiceBuilder` 编程式构建。
-- **各云厂商 SDK 不代为引入**：由消费方按需自带；本模块 `pom.xml` 不得声明 `aliyun-sdk-oss` / `aws-java-sdk-s3` / `minio` 等平台 SDK；测试只用 `core` 内置的本地存储，**不引入任何云 SDK，也不引入 SQL / 持久化文件记录器**。
+- **各云厂商 SDK 不代为引入**：由消费方按需自带；本模块 `pom.xml` 不得把 `aliyun-sdk-oss` / `aws-java-sdk-s3` 等平台 SDK 声明为 `compile`；`io.minio:minio` **仅允许以 `test` scope** 引入供集成测试使用，**不随模块发布**；不引入 SQL / 持久化文件记录器。
+- **测试期日志绑定**：`org.slf4j:slf4j-simple` 仅用于 `test` scope（为传递的 `slf4j-api` 提供绑定，消除无绑定警告），不得改为 `compile` 或随模块发布。
 - **加 / 升 x-file-storage 版本前必须重跑 P0 门禁**（`major version = 52`，见 `docs/design.md` §3.1），并先更新设计决策。
 
 ### 公共面收敛（不得放宽）
 
 - **公共 API 零第三方类型、零框架类型**。
-- 公共类型固定为 **5 个，全部在根包 `cn.hg.aifei.oss`**：`OssClient` / `OssKit` / `OssFileInfo` / `OssObject` / `OssException`。新增公共类型必须先过设计决策。**`OssConfig` 不属公共 API**（未出现在任何公共 API 签名中，位于 `internal`，见 `docs/design.md` §5.3）。
+- 公共类型固定为 **6 个，全部在根包 `cn.hg.aifei.oss`**：`OssClient` / `OssKit` / `OssFileInfo` / `OssObject` / `OssPage` / `OssException`。新增公共类型必须先过设计决策。**`OssConfig` 不属公共 API**（未出现在任何公共 API 签名中，位于 `internal`，见 `docs/design.md` §5.3）。
 - `internal` 与 `aifei` 均属**非承诺 API**：实现类因装配需要可声明为 `public`，但**明确不是公共 API**，消费方不得引用。
 - 异常消息中**不得**包含任何第三方类型名（x-file-storage / 云 SDK 类型）；底层异常一律在适配层翻译为 `OssException` 后再上浮。
 
@@ -45,7 +46,7 @@
 | `cn.aifei.*`（框架类型，除 `cn.hg.aifei.oss.*`） | **仅** `cn.hg.aifei.oss.aifei` | `ArchitectureBoundaryTest#frameworkOnlyInBridgePackage` |
 | `java.sql.*` / `io.undertow.*` | **全模块禁止** | `ArchitectureBoundaryTest#noSqlOrUndertowReference` |
 
-另有 `ArchitectureBoundaryTest#publicSurfaceExact`：断言根包公共类型**精确 5 个**，且文件名集合精确相等（防同名替换）。
+另有 `ArchitectureBoundaryTest#publicSurfaceExact`：断言根包公共类型**精确 6 个**，且文件名集合精确相等（防同名替换）。
 
 `ArchitectureBoundaryTest` 扫描 `src/main/java` 下全部 `.java` 断言上述边界，因此**必须在模块根目录执行**。**不得为兼容错误用法而放宽或绕过门禁断言。** 注意门禁按**源码文本**匹配（不区分注释）：`internal` 之外的文件，**含 javadoc / 注释，也不得出现** `org.dromara.x.file.storage` 字样，否则会误报。
 

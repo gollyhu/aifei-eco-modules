@@ -1,6 +1,6 @@
 # aifei-eco-modules 开发约束（全体模块共同遵守）
 
-本文件适用于仓库内全部模块（包括但不限于 `aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-sentinel-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
+本文件适用于仓库内全部模块（包括但不限于 `aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-oss` / `aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-oss-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
 
 各模块的专属约束与验证命令见其自身 `AGENTS.md`。模块文件可**补充、收紧**本文件，但不得**放宽**；两者不一致时以更严格者为执行标准，并应及时消除不一致。
 
