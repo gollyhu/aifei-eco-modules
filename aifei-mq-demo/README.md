@@ -139,3 +139,13 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 
 内存后端零第三方运行依赖；本 demo 不引入任何 MQ 客户端、连接池或数据库驱动。未提供 `log4j2.xml`，
 log4j2 以默认配置运行（控制台 ERROR 级），启动时的 "No Log4j2 configuration file found" 属预期提示。
+
+## 文档
+
+| 文档 | 性质 | 内容 |
+| --- | --- | --- |
+| `docs/aifei-mq-demo/prd.md` | 现行 | 需求与验收口径 |
+| `docs/aifei-mq-demo/design.md` | 现行 | 实例分片与页面契约设计 |
+| `docs/aifei-mq-demo/design-e2.md` | 现行 | E2 事件演示契约 |
+| `docs/aifei-mq-demo/ui-prototype.md` | 现行 | 页面原型与文案 |
+| `docs/archive/` | **历史快照，不再维护** | 验收测试报告 ×2、基线锁定件 |

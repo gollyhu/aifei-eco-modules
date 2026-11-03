@@ -1,6 +1,8 @@
 # aifei-mq-demo 演示页面 · 契约与集成验收测试报告
 
-> 验收标尺：`docs/baseline/aifei-mq-demo-baseline.md`（BASELINE: PASS）+ `docs/aifei-mq-demo/prd.md` §5/§6/§7 + `docs/aifei-mq-demo/ui-prototype.md` + `docs/aifei-mq-demo/design.md` §0/§4/§7.3/§9
+> **归档状态：历史验收快照，不再维护**（2026-11-03 归档）。本文记录当轮验收结论，其中「文档收口缺口 T04」等缺陷后续已修复，**不应据此判断当前状态**。
+
+> 验收标尺：`docs/archive/aifei-mq-demo-baseline.md`（BASELINE: PASS）+ `docs/aifei-mq-demo/prd.md` §5/§6/§7 + `docs/aifei-mq-demo/ui-prototype.md` + `docs/aifei-mq-demo/design.md` §0/§4/§7.3/§9
 > 被测范围：`aifei-mq-demo/src/main/java/cn/hg/aifei/mq/demo/**`（9 文件）+ `src/main/webapp/**`（6 文件）+ `src/main/resources/app-config.txt`
 > 测试类型：契约测试（HTTP 端点矩阵）+ 静态硬约束检查 + 端到端冒烟（无头 Edge）
 > 轮次：第 1 轮（上限 2 轮，本次为最后一轮验收）

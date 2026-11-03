@@ -1,6 +1,6 @@
 # aifei-mq-demo 演示页面 · 系统设计（含任务分解）
 
-> 版本：v1｜作者：架构师 高见远｜输入：`docs/baseline/aifei-mq-demo-baseline.md`（BASELINE: PASS）+ `docs/aifei-mq-demo/prd.md` + `docs/aifei-mq-demo/ui-prototype.md`
+> 版本：v1｜作者：架构师 高见远｜输入：`docs/archive/aifei-mq-demo-baseline.md`（BASELINE: PASS）+ `docs/aifei-mq-demo/prd.md` + `docs/aifei-mq-demo/ui-prototype.md`
 > 范围：**只改 `aifei-mq-demo`（示例工程）**，`aifei-mq` 库**一行不改**。不改表结构（本 demo 无库无表）。
 > 前端形态：**档案 A · Aifei 静态层**（原生 HTML/CSS/JS + 本地全局 Vue，无构建工具），与 `aifei-websocket-demo` 同构。
 > 本文只做设计与任务分解，不含业务代码。
