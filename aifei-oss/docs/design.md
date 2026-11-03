@@ -61,7 +61,7 @@
 
 ### 3.4 aifei 框架依赖
 
-- `cn.aifei:aifei-all:1.1.1` 保持 **`provided`**。
+- `cn.aifei:aifei-all:1.1.2` 保持 **`provided`**。
 
 ### 3.5 各云厂商 SDK 由消费方自带
 

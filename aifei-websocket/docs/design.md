@@ -839,7 +839,7 @@ stateDiagram-v2
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.1</aifei.version>
+        <aifei.version>1.1.2</aifei.version>
         <junit.version>4.13.2</junit.version>
     </properties>
 
@@ -886,7 +886,7 @@ stateDiagram-v2
 
 | 坐标 | 版本 | scope / optional | 用途 |
 | --- | --- | --- | --- |
-| `cn.aifei:aifei-all` | 1.1.1 | `provided` | `Plugin` / `Prop` / `AopKit`（对齐 aifei-weixin：消费方自带） |
+| `cn.aifei:aifei-all` | 1.1.2 | `provided` | `Plugin` / `Prop` / `AopKit`（对齐 aifei-weixin：消费方自带） |
 | `junit:junit` | 4.13.2 | `test` | 单元 / 契约 / 回环测试 |
 
 - **Java 8 编译目标**：`source` / `target` = `1.8`，主 JAR class major version = 52。
@@ -914,7 +914,7 @@ stateDiagram-v2
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.1</aifei.version>
+        <aifei.version>1.1.2</aifei.version>
         <undertow.version>2.2.39.Final</undertow.version>
         <log4j.version>2.26.0</log4j.version>
     </properties>
@@ -1410,8 +1410,8 @@ mvn test -Dtest=BackoffTest#bounds       # 单用例：类名#方法名
 
 | 事实 | 出处 |
 | --- | --- |
-| `cn.aifei.plugin.Plugin` 仅 `start()` / `stop()` 两个方法 | `cn.aifei:aifei-all:1.1.1` 构件中的 `cn.aifei.plugin.Plugin`（可用 `-sources.jar` 核对） |
-| `Prop#get(String)` / `get(String, String)` / `getInt` / `getBoolean` / `containsKey` | `cn.aifei:aifei-all:1.1.1` 构件中的 `cn.aifei.util.Prop` |
+| `cn.aifei.plugin.Plugin` 仅 `start()` / `stop()` 两个方法 | `cn.aifei:aifei-all:1.1.2` 构件中的 `cn.aifei.plugin.Plugin`（可用 `-sources.jar` 核对） |
+| `Prop#get(String)` / `get(String, String)` / `getInt` / `getBoolean` / `containsKey` | `cn.aifei:aifei-all:1.1.2` 构件中的 `cn.aifei.util.Prop` |
 | 装配模式：构造期只持有 `Prop`，解析/建连在 `start()`，`AopKit.get().addSingletonObject` 注册 `@Inject` 单例 | `aifei-cache/src/main/java/cn/hg/aifei/cache/CachePlugin.java` |
 | 门禁测试纪律：包边界自动化断言（第三方类型 / 框架类型分布） | `aifei-weixin/src/test/java/cn/aifei/weixin/KernelBindingTest.java`、`aifei-sa-token/src/test/java/cn/hg/aifei/satoken/KernelBindingTest.java` |
 | `aifei-all` 以 `provided` 引入 | `aifei-weixin/pom.xml`、`aifei-sentinel/pom.xml` |

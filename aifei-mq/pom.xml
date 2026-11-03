@@ -16,7 +16,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.1</aifei.version>
+        <aifei.version>1.1.2</aifei.version>
         <rocketmq.version>4.9.7</rocketmq.version>   <!-- 4.9.x 以 source/target 1.6 编译（class major 50），与 Java 8 基线兼容 -->
         <mqttv3.version>1.2.5</mqttv3.version>       <!-- Paho MQTT v3.1.1 客户端 -->
         <mqttv5.version>1.2.5</mqttv5.version>       <!-- Paho MQTT v5.0 客户端 -->

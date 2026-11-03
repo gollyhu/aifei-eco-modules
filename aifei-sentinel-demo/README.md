@@ -71,7 +71,7 @@ stop-demo.bat               :: 按端口 18080 找到监听进程并结束
 
 | 依赖 | 版本 | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all` | `1.1.1` | aifei 框架（demo 自带） |
+| `cn.aifei:aifei-all` | `1.1.2` | aifei 框架（demo 自带） |
 | `io.github.gollyhu:aifei-sentinel` | `1.0.0` | 本 SDK |
 | `com.alibaba.csp:sentinel-transport-simple-http` | `1.8.8` | **仅 Dashboard 模式**需要（连接官方控制台） |
 | `io.undertow:undertow-core` | `2.2.39.Final` | HIO 的 Web 容器 |

@@ -342,7 +342,7 @@ public interface Counter {
 ## 附 A：依赖与构建约束
 
 - 不依赖 `cn.aifei:aifei-cache` 构件；唯一 aifei 依赖是框架核心 `cn.aifei:aifei`（提供 `Prop`、`@Inject`、`StrUtil`、`Plugin`）。
-- 第三方依赖版本锁定：Caffeine 2.9.3（最后一个支持 JDK 8 的版本）、Jedis 8.0.1、Fury 0.10.3、aifei 1.1.1；Caffeine / Jedis / Fury 必须保持 `<optional>true</optional>`。
+- 第三方依赖版本锁定：Caffeine 2.9.3（最后一个支持 JDK 8 的版本）、Jedis 8.0.1、Fury 0.10.3、aifei 1.1.2；Caffeine / Jedis / Fury 必须保持 `<optional>true</optional>`。
 - 构建：JDK 8 或更高（编译目标 1.8）与 Maven；主 JAR 内 class 的 major version 必须为 52。
 
 ## 附 B：已接受限制与登记

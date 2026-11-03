@@ -1774,7 +1774,7 @@ aifei-mq/
 <dependency>
     <groupId>cn.aifei</groupId>
     <artifactId>aifei-all</artifactId>
-    <version>1.1.1</version>
+    <version>1.1.2</version>
     <scope>provided</scope>
 </dependency>
 
@@ -1839,7 +1839,7 @@ aifei-mq/
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.1` | `provided` | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.AopKit` / `cn.aifei.util.Prop`（**仅 `aifei` 接入包使用**） |
+| `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.AopKit` / `cn.aifei.util.Prop`（**仅 `aifei` 接入包使用**） |
 | `org.apache.rocketmq:rocketmq-client:4.9.7` | `compile` + `optional=true` | **真实后端（RocketMQ）** 客户端；**仅 `rocketmq` 实现包使用**；`optional` 使本依赖**及其传递依赖**均**不向下游传递**；内存后端不使用 |
 | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `compile` + `optional=true` | **`mqtt` 后端（MQTT v3.1.1）** 客户端；**仅 `mqtt` 实现包使用**；`optional` 使本依赖**及其传递依赖**均**不向下游传递** |
 | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `compile` + `optional=true` | **`mqtt5` 后端（MQTT v5.0）** 客户端；**仅 `mqtt5` 实现包使用**——与 v3 客户端**互不替代**（两个独立后端，§13 第 28 条） |

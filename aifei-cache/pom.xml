@@ -69,7 +69,7 @@
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
 
-        <aifei.version>1.1.1</aifei.version>
+        <aifei.version>1.1.2</aifei.version>
 
         <caffeine.version>2.9.3</caffeine.version>     <!-- 注意：高于 2.9.3 版本不支持 JDK 8 -->
         <jedis.version>8.0.1</jedis.version>
