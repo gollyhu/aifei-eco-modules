@@ -86,7 +86,7 @@ cd aifei-websocket && mvn clean verify   # 必须 0 failure / 0 error
 mvn test -Dtest=BackoffTest#shouldRespectJitterBounds   # 单用例：类名#方法名
 ```
 
-当前基线：**以 `mvn clean verify` 的实测结果为准（实现完成后由 QA 回填用例数）**，要求 0 failure / 0 error。公共接口的契约测试以 `ClientContractTest` / `ServerContractTest` 基类承载，由唯一实现（`internal.jdk`）继承运行；已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
+当前基线：11 个可运行测试类 + 2 个抽象契约基类，116 项用例，`mvn clean verify` 实测 0 failure / 0 error（明细见 `docs/testing.md` 第 6 节）。公共接口的契约测试以 `ClientContractTest` / `ServerContractTest` 基类承载，由唯一实现（`internal.jdk`）继承运行；已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
 
 ## 文档同步要求
 

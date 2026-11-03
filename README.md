@@ -12,11 +12,11 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-sentinel-demo](aifei-sentinel-demo/README.md) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
 | [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
 | [aifei-sa-token](aifei-sa-token/README.md) | `io.github.gollyhu:aifei-sa-token:1.0.0` | Sa-Token 认证鉴权接入 SDK：登录态、角色权限、注解鉴权 |
-| [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，Java-WebSocket 后端可替换 |
+| [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，内建 JDK 自实现 RFC6455 |
 | [aifei-websocket-demo](aifei-websocket-demo/README.md) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
 | [aifei-mq](aifei-mq/README.md) | `io.github.gollyhu:aifei-mq:1.0.0` | 异步消息能力：生产者发送 + 消费者订阅，内存后端开箱即用，真实 MQ 后端可扩展 |
 | [aifei-mq-demo](aifei-mq-demo/README.md) | （示例工程，不发布） | aifei-mq 的完整接入示例：内存后端的发送 / 订阅消费闭环演示 |
-| [aifei-oss](aifei-oss/README.md) | `io.github.gollyhu:aifei-oss:1.0.0` | 多平台对象 / 文件存储能力：本地 / FTP / 阿里云 OSS / 腾讯云 COS / MinIO / AWS S3 等 30+ 平台，基于 X File Storage 二次封装 |
+| [aifei-oss](aifei-oss/README.md) | `io.github.gollyhu:aifei-oss:1.0.0` | 多平台对象 / 文件存储能力：基于 X File Storage（覆盖 30+ 平台）二次封装，本模块类型白名单 20 项 |
 | [aifei-oss-demo](aifei-oss-demo/README.md) | （示例工程，不发布） | aifei-oss 的完整接入示例：本地存储的上传 / 下载 / 列举 / 复制 / 删除演示 |
 
 ### aifei-cache
@@ -65,10 +65,10 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 为 aifei 应用补齐框架未覆盖的 WebSocket 双向基础能力，含客户端与服务端两个独立子能力。
 
 - 客户端出站连接第三方 WS 服务（心跳保活 / 自动重连），服务端接收 WS 连接（会话管理 / 广播），两者分别装配、各自独立
-- 公共 API 零第三方类型、零框架类型；换后端只改配置 `websocket.{client|server}.type`，默认 `javawebsocket`
+- 公共 API 零第三方类型、零框架类型；传输层为内建唯一 JDK 实现（自实现 RFC6455），无 `type` 配置与后端 SPI
 - 心跳与自动重连**默认关闭**（`heartbeat-seconds = 0` / `auto-reconnect = false`），需显式开启
 - 不提供发送队列 / 背压：非 `OPEN` 时 `send*` 抛 `IllegalStateException` 且消息被丢弃，缓冲与重放由调用方处理
-- 消费方需自带 `Java-WebSocket`（模块内 `optional` 不传递）与 `slf4j-api` + 一个日志绑定
+- 运行时零第三方依赖：消费方无需自带传输库与日志绑定
 - 详细用法见 [aifei-websocket/README.md](aifei-websocket/README.md)，设计文档见 [docs/design.md](aifei-websocket/docs/design.md)
 
 ### aifei-mq
@@ -77,7 +77,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 
 - 公共面固定 8 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerKit` / `ConsumerKit`
 - 同步投递、单主题 FIFO、多订阅者按登记顺序回调；无订阅者视为成功，监听器运行时异常就地隔离
-- 内置**内存后端**（零第三方运行依赖）与 **RocketMQ 真实后端**（`mq.type=rocketmq`，客户端 `optional` 由消费方自带）；其它后端以 provider 扩展点追加
+- 内置**内存后端**（零第三方运行依赖）与 6 个真实后端：`rocketmq` / `mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream`（客户端均 `optional`，由消费方自带）；后端可经 provider 扩展点继续追加
 - 取用二选一：`@Inject Producer` / `@Inject Consumer`，或静态门面 `ProducerKit` / `ConsumerKit`（`use(name)` 取命名实例）
 - 详细用法见 [aifei-mq/README.md](aifei-mq/README.md)，设计文档见 [docs/design.md](aifei-mq/docs/design.md)
 
@@ -85,10 +85,10 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 
 为 aifei 应用补齐多平台对象 / 文件存储能力，基于 X File Storage 二次封装；业务代码只依赖统一接口，换存储平台不改代码。
 
-- 公共面固定 5 个类型：`OssClient` / `OssKit` / `OssFileInfo` / `OssObject` / `OssException`，不暴露底层与云厂商 SDK 类型
+- 公共面固定 6 个类型：`OssClient` / `OssKit` / `OssFileInfo` / `OssObject` / `OssPage` / `OssException`，不暴露底层与云厂商 SDK 类型
 - 一行配置切换本地磁盘、FTP / SFTP 及阿里云 OSS、腾讯云 COS、华为云 OBS、MinIO、AWS S3 等平台（`oss.<name>.type` 合法值共 20 项）
 - 多平台共存：`@Inject OssClient` 用默认平台，`OssKit.use(name)` 按平台标识取用
-- 定位一律自行构造文件信息（禁用依赖文件记录器的 String url 一族 API）；`copy` 走服务端复制（`CopyMode.AUTO`），平台不支持时自动降级为「下载 + 上传」
+- 定位一律自行构造文件信息（禁用依赖文件记录器的 String url 一族 API）；同平台 `copy` 走服务端复制（`CopyMode.AUTO`），平台不支持时自动降级为「下载 + 上传」；跨平台复制用 `copyTo`（`CopyMode.CROSS`）
 - 各云厂商 SDK 由消费方按需自带，仅用本地存储时无需任何云 SDK
 - 详细用法见 [aifei-oss/README.md](aifei-oss/README.md)，设计文档见 [docs/design.md](aifei-oss/docs/design.md)
 
@@ -114,8 +114,8 @@ cd aifei-oss       && mvn clean install
 - `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带
 - `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
 - `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
-- `aifei-websocket`：`aifei-all` 为 `provided`，`Java-WebSocket` 为 `optional`（消费方自带，另需自带 `slf4j-api` 与日志绑定）
-- `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；内存后端零第三方运行依赖，内置 RocketMQ 后端客户端（`rocketmq-client`）为 `optional`（用 RocketMQ 时消费方自带，不向下游传递）
+- `aifei-websocket`：`aifei-all` 为 `provided`，**运行时零第三方依赖**（传输层为内建 JDK 自实现，无传输库与日志绑定要求）
+- `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；内存后端零第三方运行依赖，6 个真实后端的客户端（`rocketmq-client` / `mqttv3` / `mqttv5` / `amqp-client` / `kafka-clients` / `jedis`）均为 `optional`，用到哪个后端自带哪个，不向下游传递
 - `aifei-oss`：`aifei-all` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
 
 ## 许可证

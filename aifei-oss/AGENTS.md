@@ -2,7 +2,7 @@
 
 本文件面向开发代理与贡献者：改本模块代码前必须遵守的硬约束、包边界与门禁、唯一定义点清单、行为契约要点与验证命令。
 
-四份文档的分工：`README.md` 面向使用者（安装、用法、配置）；`docs/design.md` 面向设计者与实现者（契约、决策、验收，是**设计事实来源**）；本文件面向开发代理与贡献者；`docs/testing.md` 面向测试维护者（实现阶段补）。
+四份文档的分工：`README.md` 面向使用者（安装、用法、配置）；`docs/design.md` 面向设计者与实现者（契约、决策、验收，是**设计事实来源**）；本文件面向开发代理与贡献者；`docs/testing.md` 面向测试维护者（测试结构、运行与新增约定）。
 
 ## 开发前提
 
@@ -71,7 +71,8 @@
 - **删除**：不存在返回 `false`（不抛异常）；成功返回 `true`。
 - **存在性**：不存在返回 `false`。
 - **签名 URL**：平台不支持时抛 `OssException`。
-- **复制**：**已接线，仅同平台复制**——先探测平台支持度，不支持即抛 `OssException`；成功返回 `true`。跨平台复制不在本期范围。
+- **列举**：`listFiles(path)` 返回路径列表；分页 `listFiles(path, maxFiles, marker)` 返回 `OssPage`（含子目录、下一页游标与截断标记）。列举依赖平台能力：`local-plus` 支持、`local` 不支持。
+- **复制**：同平台 `copy`（`CopyMode.AUTO`，服务端复制优先、平台不支持时降级为「下载 + 上传」）与跨平台 `copyTo`（`CopyMode.CROSS`）均已接线；两者都先探测平台支持度，不支持即抛 `OssException`；成功返回 `true`。
 - **平台选择**：`@Inject OssClient` = 默认平台；多平台经 `OssKit.use(name)`。
 - **装配失败即启动失败**：必填配置缺失 / 平台类型未知 / **云 SDK 缺失**，均在 `OssPlugin.start()` 即失败（统一抛 `OssException`，**不**泄漏 `NoClassDefFoundError`），不留半装配状态。**配置与装配问题一律在启动期暴露**，不存在「启动成功但用不了」的隐形故障。
 - **脱敏**：`OssConfig` 的 `toString` 不得输出 `secretKey` 等敏感字段。
@@ -83,10 +84,10 @@
 ```bash
 cd aifei-oss && mvn clean verify                        # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest                # 单跑门禁
-mvn verify -Doss.integration=true                       # 开启默认关闭的用例（云 SDK 缺失装配期契约；真实对象存储集成用例未落，见 docs/testing.md §4）
+mvn verify -Doss.integration=true                       # 开启默认关闭的用例（CloudSdkMissingTest 装配期契约 + MinioIntegrationTest 真实 MinIO 集成）
 ```
 
-当前基线：`mvn clean verify` 实测 **7 项用例 0 failure / 0 error**（门禁 4 + 字节码 1 + 本地存储契约 1 + 装配期契约 1，其中装配期契约用例默认跳过 → 1 skipped）；加 `-Doss.integration=true` 时 7 项全跑、0 skipped。已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
+当前基线：6 个测试类共 19 项用例，`mvn clean verify` 实测 0 failure / 0 error（默认执行 17 项：门禁 4 + 字节码 1 + 本地存储 5 + 配置契约 7；默认跳过 2 项：装配期契约 1 + MinIO 集成 1）。加 `-Doss.integration=true` 时 19 项全跑、0 skipped，逐类明细见 `docs/testing.md`。已修复的缺陷必须固化为**回归测试**，测试须独立且幂等。
 
 ## 文档同步要求
 

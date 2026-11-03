@@ -33,7 +33,7 @@ mvn test -Dtest=Rfc6455FrameCodecTest :: 单个测试类
 | 接入层 | `aifei/WebSocketConfigLoaderTest` | 13 | `Prop` → `ClientConfig` / `ServerConfig`，含必填键缺失与语法非法 |
 | 架构门禁 | `ArchitectureBoundaryTest` | 5 | 包边界与公共面大小（见 §5） |
 
-**合计：11 个可运行测试类 + 2 个抽象契约基类，115 个用例。**
+**合计：11 个可运行测试类 + 2 个抽象契约基类，116 个用例**（其中 22 项由两个契约基类声明、经子类继承执行）。
 
 ## 3. 契约测试机制
 

@@ -1,6 +1,6 @@
 # aifei-sentinel 开发约束
 
-本文件适用于整个仓库，供开发代理和项目贡献者使用。
+本文件适用于 `aifei-sentinel` 模块，供开发代理和项目贡献者使用；仓库级共同底线见根 `AGENTS.md`，两者冲突时以更严格者为准。
 
 ## 开发前提
 
@@ -25,3 +25,24 @@
 - 面向使用者的定位、场景与用法维护在 `README.md`。
 - 设计目标、行为契约与关键决策维护在 `docs/design.md`；测试策略与用例清单维护在 `docs/testing.md`。
 - 新增或改变公共行为时，应同步更新设计文档和测试。
+
+## 验证
+
+**命令一律在模块目录内执行**（门禁 `KernelBindingTest` 依赖相对路径 `src/main/java`）：
+
+```bat
+cd aifei-sentinel
+mvn test          :: 单元 + 门禁测试，必须 0 failure / 0 error
+mvn clean verify  :: 发布前：打包并检查 JAR、源码包与 Java 8 字节码
+```
+
+测试全部离线，不启动 HTTP、不连 Dashboard、不连库；transport 缺失、Dashboard 端到端等分支由 `docs/testing.md` 第 5 节列明，需人工验证。
+
+## 提交前检查清单
+
+- [ ] 已在模块目录执行 `mvn test`（发布前 `mvn clean verify`），0 failure / 0 error。
+- [ ] 业务代码零 Sentinel 类型；`cn.aifei.aop.*` / `cn.aifei.core.*` 仍只出现在 `cn.hg.aifei.sentinel.aifei` 包。
+- [ ] 两种运行模式仍互斥；`sentinel-transport-*` 仍只经运行时反射探测，未新增硬引用。
+- [ ] `SentinelInterceptor` 中 `entry` / `entry.exit` 仍成对，`exit` 在 `finally`。
+- [ ] 未引入 Java 8 之后语法 / API，未新增未声明 `optional` 或 `provided` 的第三方依赖。
+- [ ] 公共行为变化已同步 `docs/design.md` 与 `README.md`，并有测试覆盖。

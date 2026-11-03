@@ -26,6 +26,7 @@
 - 项目代码、依赖和 API 必须兼容 Java 8。
 - `cn.aifei:aifei-all` 与 `io.undertow:undertow-core` 必须保持 `provided`；不得为省事改成 `compile` 向下游传递框架 JAR。
 - `io.github.gollyhu:aifei-cache` 必须保持 `optional`；不得改为 `compile` 把所有使用者的运行时都绑上缓存组件。
+- `cn.dev33:sa-token-core` 必须保持 `compile`（仓库根 `AGENTS.md` 已登记的例外）：公共 API 签名暴露其类型（`StpInterface` / `SaTokenDao` 等），改 `optional` / `provided` 会迫使消费方重复声明并在编译期缺类型。
 
 ## 文档维护
 
@@ -41,3 +42,12 @@ mvn clean test
 ```
 
 提交前必须 0 failure / 0 error。架构门禁用例依赖相对路径 `src/main/java`，因此**必须在模块目录内执行**。
+
+## 提交前检查清单
+
+- [ ] 已在 `aifei-sa-token` 目录执行 `mvn clean test`，0 failure / 0 error。
+- [ ] 分层边界仍成立：`cn.aifei.aop.*` 只在 `satoken.aifei` 包、`io.undertow.*` 只在 `satoken.undertow` 包、`cn.hg.aifei.cache.*` 只在 `satoken.dao` 包；`cn.aifei.vip.*` / `java.sql.*` 零引用。
+- [ ] 上下文清理仍在 `finally`（`clearContext` + `clearInput` + `clearExchange`）；桥接对象无状态、未调用 `exchange.endExchange()`。
+- [ ] 依赖 scope 未变：`aifei-all` / `undertow-core` 为 `provided`，`aifei-cache` 为 `optional`，`sa-token-core` 为 `compile`（已登记例外）。
+- [ ] 未引入 Java 8 之后语法 / API 与 JDBC、消费方表结构等具体持久化类型。
+- [ ] 公共行为变化已同步 `docs/design.md`、`docs/testing.md` 与 `README.md`。

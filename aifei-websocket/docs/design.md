@@ -15,7 +15,7 @@
 - **client（客户端能力）**：应用主动出站连接第三方 WS 服务，含心跳保活与自动重连。
 - **server（服务端能力）**：Aifei 应用接收 WS 连接，管理会话与广播。
 
-**WebSocket 不在 Aifei 框架白名单内**（依据 `.codebuddy/skills/aifei-dev/references/capability-scope.md`：框架自身零第三方依赖、服务端为 Undertow）。因此本模块是**自研能力模块**：传输层基于 `java.net.Socket` / `javax.net.ssl.SSLSocket` 自实现 RFC6455，**运行时零第三方依赖**；公共 API 零第三方类型、零框架类型。
+**WebSocket 不在 Aifei 框架白名单内**（框架自身零第三方依赖、服务端为 Undertow）。因此本模块是**自研能力模块**：传输层基于 `java.net.Socket` / `javax.net.ssl.SSLSocket` 自实现 RFC6455，**运行时零第三方依赖**；公共 API 零第三方类型、零框架类型。
 
 ### 1.2 为什么「双向合一模块」
 
@@ -1410,10 +1410,10 @@ mvn test -Dtest=BackoffTest#bounds       # 单用例：类名#方法名
 
 | 事实 | 出处 |
 | --- | --- |
-| `cn.aifei.plugin.Plugin` 仅 `start()` / `stop()` 两个方法 | 框架源码 `aifei/src/main/java/cn/aifei/plugin/Plugin.java` |
-| `Prop#get(String)` / `get(String, String)` / `getInt` / `getBoolean` / `containsKey` | 框架源码 `aifei/src/main/java/cn/aifei/util/Prop.java` |
-| 装配模式：构造期只持有 `Prop`，解析/建连在 `start()`，`AopKit.get().addSingletonObject` 注册 `@Inject` 单例 | `aifei-cache` 源码 `CachePlugin.java` |
-| 门禁测试纪律：包边界自动化断言（第三方类型 / 框架类型分布） | `aifei-weixin/src/test/java/cn/aifei/weixin/KernelBindingTest.java`、`aifei-sa-token/src/test/java/cn/aifei/satoken/KernelBindingTest.java` |
+| `cn.aifei.plugin.Plugin` 仅 `start()` / `stop()` 两个方法 | `cn.aifei:aifei-all:1.1.1` 构件中的 `cn.aifei.plugin.Plugin`（可用 `-sources.jar` 核对） |
+| `Prop#get(String)` / `get(String, String)` / `getInt` / `getBoolean` / `containsKey` | `cn.aifei:aifei-all:1.1.1` 构件中的 `cn.aifei.util.Prop` |
+| 装配模式：构造期只持有 `Prop`，解析/建连在 `start()`，`AopKit.get().addSingletonObject` 注册 `@Inject` 单例 | `aifei-cache/src/main/java/cn/hg/aifei/cache/CachePlugin.java` |
+| 门禁测试纪律：包边界自动化断言（第三方类型 / 框架类型分布） | `aifei-weixin/src/test/java/cn/aifei/weixin/KernelBindingTest.java`、`aifei-sa-token/src/test/java/cn/hg/aifei/satoken/KernelBindingTest.java` |
 | `aifei-all` 以 `provided` 引入 | `aifei-weixin/pom.xml`、`aifei-sentinel/pom.xml` |
 | demo 组织方式（`DemoApp` → `Aifei.start` + 自写 HIO + 批处理） | `aifei-sentinel-demo/` |
 | RFC6455 握手：`Sec-WebSocket-Accept = Base64(SHA1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))`；服务端回 `101 Switching Protocols` | RFC 6455 §1.3 / §4.1 / §4.2.2 |

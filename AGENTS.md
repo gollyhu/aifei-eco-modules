@@ -1,6 +1,6 @@
 # aifei-eco-modules 开发约束（全体模块共同遵守）
 
-本文件适用于仓库内全部模块（包括但不限于 `aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-oss` / `aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-oss-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
+本文件适用于仓库内全部模块（包括但不限于 `aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
 
 各模块的专属约束与验证命令见其自身 `AGENTS.md`。模块文件可**补充、收紧**本文件，但不得**放宽**；两者不一致时以更严格者为执行标准，并应及时消除不一致。
 
@@ -32,7 +32,10 @@
 - 不得使用 Java 8 之后才有的 **API**：如 `List.of` / `Map.of` 等 Java 9+ 集合工厂方法、`Optional.orElseThrow()` 无参版等。
 - 源码编码 **UTF-8**；缩进 4 空格。
 - 第三方依赖一律 `optional` 或 `provided`：不向下游传递，由消费方按需自带。
-- **已登记的 `compile` 例外**（模块须先在自身 `docs/design.md` 作出设计决策，并在此登记后方可落地）：`aifei-oss` 的 `org.dromara.x-file-storage:x-file-storage-core` 为 `compile`——它是该模块的实现内核，脱离它门面无任何功能，标 `optional` 只会迫使消费方重复声明；理由见 `aifei-oss/docs/design.md` §3.2。**新增例外一律须先在此登记**，不得由模块文档单方面声明。
+- **已登记的 `compile` 例外**（模块须先在自身 `docs/design.md` 作出设计决策，并在此登记后方可落地）：
+  - `aifei-oss` 的 `org.dromara.x-file-storage:x-file-storage-core` 为 `compile`——它是该模块的实现内核，脱离它门面无任何功能，标 `optional` 只会迫使消费方重复声明；理由见 `aifei-oss/docs/design.md` §3.2。
+  - `aifei-sa-token` 的 `cn.dev33:sa-token-core` 为 `compile`——公共 API 签名直接暴露其类型（`StpInterface` / `SaTokenDao` 等），插件与上下文桥接也以内核实现为前提，标 `optional` 会让消费方被迫重复声明且编译期缺类型；理由见 `aifei-sa-token/docs/design.md` §2 与 §3 依赖表。
+  **新增例外一律须先在此登记**，不得由模块文档单方面声明。
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。
 
