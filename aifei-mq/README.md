@@ -212,6 +212,128 @@ orders.subscribe("order-events", message -> handle(message));
 
 `mqtt` / `mqtt5` 的 `subscribe` 参数是 **MQTT 过滤器**，可用 `+`（单层）与 `#`（多层）；但 `send` 的 topic 仍是**精确名**。其余后端（`memory` / `rocketmq` / `rabbitmq` / `kafka` / `redisstream`）精确匹配；RabbitMQ 的通配匹配只在配置了 `exchange` 后由 broker 侧绑定承担。
 
+```properties
+mq.type = mqtt
+mq.mqtt.broker-url = tcp://127.0.0.1:1883
+mq.mqtt.qos = 1
+```
+
+```java
+// 订阅：用过滤器覆盖运行期才出现的动态段（订单号 / 设备号）
+ConsumerKit.subscribe("order-events/+/created", message -> {
+    // message.topic() 是「实际发布的主题」，不是过滤器本身
+    System.out.println(message.topic());   // 如 order-events/A1001/created
+});
+
+// 多层：匹配 order-events 下任意层数（含零层）；# 只能作为最后一段
+ConsumerKit.subscribe("order-events/#", message -> audit(message));
+
+// 发送：topic 必须是精确名，不能把 + / # 当发送目标
+ProducerKit.send("order-events/A1001/created", "{\"type\":\"created\",\"version\":1}");
+```
+
+- `+` 只匹配**一层**：`order-events/+/created` 命中 `order-events/A1001/created`，不命中 `order-events/A1001/x/created`。
+- 过滤器只作用于**订阅侧**；监听器拿到的 `message.topic()` 是实际主题，可据此区分动态段。
+- 同一实例登记**重叠**过滤器（`order-events/#` 与 `order-events/+/created`）时是否重复回调由 **broker 决定**，本模块不去重。
+
+### MQTT v5 共享订阅（`$share`）
+
+v5 的共享订阅由调用方在 **topic 内**表达，本模块不解析、不新增参数（broker 需支持 MQTT v5 共享订阅）：
+
+```properties
+mq.type = mqtt5
+mq.mqtt5.broker-url = tcp://127.0.0.1:1883
+mq.mqtt5.qos = 1
+```
+
+```java
+// 同一 $share 组内的多个实例分摊消息；不同组各收一份
+ConsumerKit.subscribe("$share/order-workers/order-events/#", message -> handle(message));
+
+// 发送侧仍是真实主题，不带 $share 前缀
+ProducerKit.send("order-events/created", "{\"type\":\"created\",\"version\":1}");
+```
+
+`message.topic()` 为 `order-events/created`（`$share/<group>/` 前缀不会出现在回调里）；`$share` 可与 `+` / `#` 组合使用。
+
+### RocketMQ / Kafka：消费组决定「分摊」还是「各收一份」
+
+这两种后端的分发差异**只由消费组决定**，代码写法不变：
+
+```properties
+mq.type = rocketmq
+mq.rocketmq.namesrv-addr = 127.0.0.1:9876
+mq.rocketmq.consumer-group = ORDER_CONSUMER   # 同组多实例 = 分摊
+
+# 另起一个组（命名实例）实现「各收一份」
+mq.names = broadcast
+mq.broadcast.type = rocketmq
+mq.broadcast.rocketmq.namesrv-addr = 127.0.0.1:9876
+mq.broadcast.rocketmq.consumer-group = ORDER_BROADCAST
+```
+
+```java
+// 主实例：与同 consumer-group 的其它实例分摊消息
+ConsumerKit.subscribe("order-events", message -> handle(message));
+
+// 命名实例：另一个消费组，同一 topic 全量各收一份
+ConsumerKit.use("broadcast").subscribe("order-events", message -> cache(message));
+```
+
+换 Kafka 时只改配置（`mq.type = kafka`、`bootstrap-servers`、`group-id`），上面两行 Java 一字不改。
+
+- **同组实例必须订阅相同的 topic 集合**，否则 RocketMQ rebalance 异常、Kafka 分区反复重分配（见[多实例部署与分工消费](#多实例部署与分工消费)）。
+- Kafka 的 `mq.kafka.auto-offset-reset` 只在**消费组无位点 / 位点越界**时决定起点，已有位点时不生效。
+- RocketMQ 的 tag 过滤不在本模块暴露（订阅恒用 `*` 表达式），**事件类型请放 payload**，不要指望 tag 过滤。
+
+### RabbitMQ：队列即 topic，交换机承担路由
+
+```properties
+mq.type = rabbitmq
+mq.rabbitmq.host = 127.0.0.1
+mq.rabbitmq.exchange = aifei.events        # 非空才走交换机（默认交换机下绑定无需声明）
+mq.rabbitmq.exchange-type = topic
+mq.rabbitmq.publisher-confirms = true      # 开启后 send 等 broker 确认，messageId 取确认序号
+```
+
+```java
+// 订阅：topic 即队列名；首次订阅时声明该队列，配置了 exchange 就再绑定上去（binding key = 队列名）
+ConsumerKit.subscribe("order-events.created", message -> audit(message));
+
+// 发送：topic 作为 routing key，走同一个交换机
+ProducerKit.send("order-events.created", "{\"type\":\"created\",\"version\":1}");
+```
+
+- **默认交换机**（不配 `exchange`）：`topic` 就是队列名、直接路由；该队列从未被订阅过就被 broker **静默丢弃**（`send` 仍成功）。
+- 本模块的绑定键**恒等于 topic（队列名）**。要让一个队列收多个 routing key（如 `order-events.#` 这类通配绑定），需在 broker 侧预先声明该绑定，且**队列名与本模块 `subscribe` 的 topic 一致**（本模块的 `queueDeclare` 属幂等复用）。
+- 同一 topic（同一队列）被多实例订阅 = **竞争消费**；要各收一份，需在 broker 侧把同一 routing key 绑定到多个队列，各实例分别订阅各自的队列名。
+
+### Redis Streams：起点、回收与裁剪
+
+```properties
+mq.type = redisstream
+mq.redisstream.host = 127.0.0.1
+mq.redisstream.group = order-group              # 同组实例竞争消费
+mq.redisstream.consumer-name = order-worker-1   # 同组内每个实例必须唯一
+mq.redisstream.start-mode = pending             # 重启后先补齐本消费者未确认消息
+mq.redisstream.claim-enabled = true             # 接管同组内空闲超时的 pending
+mq.redisstream.claim-idle-millis = 60000
+mq.redisstream.maxlen = 100000                  # 近似的流长度上限
+```
+
+```java
+ConsumerKit.subscribe("order-events", message -> {
+    // message.topic() = 流键；payload 是流条目 payload 字段的原始字节
+    handle(message.payload());
+});
+ProducerKit.send("order-events", "{\"type\":\"created\",\"version\":1}");
+```
+
+- `start-mode=new`（默认）只读订阅之后的新消息；`pending` 先重读**本消费者**未确认消息再切新消息——重启补漏用它，重复面随之扩大。
+- `claim-enabled=true` 会把同组内空闲超过 `claim-idle-millis` 的 pending **收归本消费者**处理（其它实例宕机时接管），同样扩大重复面，**监听器必须幂等**。
+- `maxlen` 是**近似裁剪**，超限的旧条目会被丢弃，不适合当作消息存档。
+- 多个实例共享 `group` 时 `consumer-name` 必须各不相同（未配置时实现生成唯一标识）。
+
 ### 取消订阅
 
 - **按实例身份**移除：`unsubscribe(topic, listener)` 必须传**同一个 listener 对象**。`message -> handle(message)` 每写一次就是新对象，用它取消不掉任何订阅——需要取消时把 listener 存成字段或变量。
