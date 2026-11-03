@@ -29,7 +29,7 @@ import org.junit.Test;
 /**
  * 连接状态机的合法迁移表与非法迁移处理（设计 §4.6 / §6.1 / §6.4）。
  *
- * <p>状态迁移由 {@code internal.AbstractWebSocketClient} 驱动，本测试经公共 API（{@link WebSocketKit}）在
+ * <p>状态迁移由 {@code internal.AbstractWebSocketClient} 驱动，本测试经公共 API（{@link WebSocketUtil}）在
  * 本地回环上驱动真实迁移，不依赖内部类型。</p>
  */
 public class ConnectionStateTest {
@@ -56,7 +56,7 @@ public class ConnectionStateTest {
      */
     @Test
     public void shouldStartClosed() {
-        WebSocketClient client = WebSocketKit.createClient(
+        WebSocketClient client = WebSocketUtil.createClient(
                 clientConfig("ws://127.0.0.1:1/"), new ClientRecorder());
         try {
             assertSame(ConnectionState.CLOSED, client.state());
@@ -75,7 +75,7 @@ public class ConnectionStateTest {
     public void shouldReachOpenAfterConnect() throws Exception {
         WebSocketServer server = startLoopbackServer();
         ClientRecorder listener = new ClientRecorder();
-        WebSocketClient client = WebSocketKit.createClient(clientConfig(uriOf(server)), listener);
+        WebSocketClient client = WebSocketUtil.createClient(clientConfig(uriOf(server)), listener);
         try {
             client.connect();
             assertTrue("应在超时内建立连接", listener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
@@ -96,7 +96,7 @@ public class ConnectionStateTest {
     public void shouldReachClosedAfterClose() throws Exception {
         WebSocketServer server = startLoopbackServer();
         ClientRecorder listener = new ClientRecorder();
-        WebSocketClient client = WebSocketKit.createClient(clientConfig(uriOf(server)), listener);
+        WebSocketClient client = WebSocketUtil.createClient(clientConfig(uriOf(server)), listener);
         try {
             client.connect();
             assertTrue(listener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
@@ -119,7 +119,7 @@ public class ConnectionStateTest {
     public void shouldReachClosedWhenPeerCloses() throws Exception {
         WebSocketServer server = startLoopbackServer();
         ClientRecorder listener = new ClientRecorder();
-        WebSocketClient client = WebSocketKit.createClient(clientConfig(uriOf(server)), listener);
+        WebSocketClient client = WebSocketUtil.createClient(clientConfig(uriOf(server)), listener);
         try {
             client.connect();
             assertTrue(listener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
@@ -143,7 +143,7 @@ public class ConnectionStateTest {
     public void shouldRejectConnectWhileConnecting() throws Exception {
         BlackholeServer blackhole = new BlackholeServer();
         ClientRecorder listener = new ClientRecorder();
-        WebSocketClient client = WebSocketKit.createClient(clientConfig(blackhole.uri()), listener);
+        WebSocketClient client = WebSocketUtil.createClient(clientConfig(blackhole.uri()), listener);
         try {
             client.connect();
             assertSame(ConnectionState.CONNECTING, client.state());
@@ -163,7 +163,7 @@ public class ConnectionStateTest {
     public void shouldRejectConnectWhileOpen() throws Exception {
         WebSocketServer server = startLoopbackServer();
         ClientRecorder listener = new ClientRecorder();
-        WebSocketClient client = WebSocketKit.createClient(clientConfig(uriOf(server)), listener);
+        WebSocketClient client = WebSocketUtil.createClient(clientConfig(uriOf(server)), listener);
         try {
             client.connect();
             assertTrue(listener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
@@ -181,7 +181,7 @@ public class ConnectionStateTest {
      */
     @Test
     public void shouldRejectSendWhenNotOpen() {
-        WebSocketClient client = WebSocketKit.createClient(
+        WebSocketClient client = WebSocketUtil.createClient(
                 clientConfig("ws://127.0.0.1:1/"), new ClientRecorder());
         try {
             assertThrows(IllegalStateException.class, () -> client.send("x"));
@@ -199,7 +199,7 @@ public class ConnectionStateTest {
     @Test
     public void shouldTreatCloseAsNoOpWhenClosed() throws Exception {
         ClientRecorder listener = new ClientRecorder();
-        WebSocketClient client = WebSocketKit.createClient(clientConfig("ws://127.0.0.1:1/"), listener);
+        WebSocketClient client = WebSocketUtil.createClient(clientConfig("ws://127.0.0.1:1/"), listener);
 
         client.close();
         client.close();
@@ -217,7 +217,7 @@ public class ConnectionStateTest {
     public void shouldAllowConnectAfterClose() throws Exception {
         WebSocketServer server = startLoopbackServer();
         ClientRecorder listener = new ClientRecorder();
-        WebSocketClient client = WebSocketKit.createClient(clientConfig(uriOf(server)), listener);
+        WebSocketClient client = WebSocketUtil.createClient(clientConfig(uriOf(server)), listener);
         try {
             client.connect();
             assertTrue(listener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
@@ -243,7 +243,7 @@ public class ConnectionStateTest {
         ServerConfig config = new ServerConfig();
         config.setHost("127.0.0.1");
         config.setPort(0);
-        WebSocketServer server = WebSocketKit.createServer(config, new NoopServerListener());
+        WebSocketServer server = WebSocketUtil.createServer(config, new NoopServerListener());
         server.start();
         return server;
     }

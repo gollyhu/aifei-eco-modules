@@ -9,7 +9,7 @@ package cn.hg.aifei.websocket;
 /**
  * 客户端能力接口：主动向第三方 WebSocket 服务发起并维持一条出站连接，可选心跳保活与自动重连。
  *
- * <p>业务代码只依赖本接口，通过 {@code @Inject} 注入装配好的实例，或用 {@link WebSocketKit} 自行创建；
+ * <p>业务代码只依赖本接口，通过 {@code @Inject} 注入装配好的实例，或用 {@link WebSocketUtil} 自行创建；
  * 传输层为内建实现，无可替换后端扩展点。</p>
  *
  * <p>本接口所有方法均可从任意线程调用。连接结果与断线、重连事件经 {@link ClientListener} 回调；

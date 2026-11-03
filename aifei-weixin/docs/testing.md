@@ -5,7 +5,7 @@
 ## 1. 测试原则
 
 - 用例**不联网、不连数据库、不启持久 HTTP 服务**，可在任意环境离线执行。
-- Api 链路通过注入伪 `HttpKit` / `PayHttpKit` 驱动，回调链路通过伪 `WeixinIo` 直接驱动 `WeixinHandler`，不经过真实网络与容器。
+- Api 链路通过注入伪 `HttpClient` / `PayHttpClient` 驱动，回调链路通过伪 `WeixinIo` 直接驱动 `WeixinHandler`，不经过真实网络与容器。
 - 密码学与协议格式用**固定向量 / 官方报文**钉住：加密结果可与按官方 AES-CBC 布局手工构造的密文互通，签名可被同对公钥验证。
 - 架构约束交给门禁测试自动断言，不依赖人工 review。
 - 日志系统在测试中替换为空实现，避免依赖真实日志后端。
@@ -17,20 +17,20 @@
 | 层次 | 测试类 | 用例数 |
 | --- | --- | --- |
 | 架构门禁 | `KernelBindingTest` | 4 |
-| 协议内核（双入口） | `MsgKitTest` | 11 |
+| 协议内核（双入口） | `MsgUtilTest` | 11 |
 | 协议内核（加密 / 签名） | `WxCryptTest` | 7 |
 | 协议内核（消息解析） | `InMsgParserTest` | 5 |
 | 协议内核（模板分发） | `MsgHandlerDispatchTest` | 2 |
-| 协议内核（XML 构建与安全解析） | `OutMsgXmlBuilderTest` / `XmlKitTest` | 4 / 4 |
+| 协议内核（XML 构建与安全解析） | `OutMsgXmlBuilderTest` / `XmlUtilTest` | 4 / 4 |
 | 协议内核（账号 SPI） | `WeixinAccountTest` | 4 |
 | 接入层 | `WeixinHandlerTest` | 7 |
 | Api 客户端 | `ApiCallerTest` | 22 |
-| Api 客户端（HTTP 实现） | `JdkHttpKitTest` | 4 |
+| Api 客户端（HTTP 实现） | `JdkHttpClientTest` | 4 |
 | 小程序 | `MiniAppApiTest` | 9 |
 | 支付（下单 / 查单 / 关单 / 退款） | `PayApiTest` | 6 |
 | 支付（商户凭据） | `PayMerchantTest` | 4 |
 | 支付（签名） | `PaySignatureTest` | 3 |
-| 支付（回调） | `PayNotifyKitTest` | 6 |
+| 支付（回调） | `PayNotifyUtilTest` | 6 |
 | 支付（平台证书） | `PlatformCertManagerTest` | 4 |
 | 支付（GCM） | `AesGcmTest` | 3 |
 
@@ -39,8 +39,8 @@
 | 辅助类 | 作用 |
 | --- | --- |
 | `support.FakeWeixinIo` | 伪 `WeixinIo`：`params` 供 `query`、`body` 供 `body`、`getRequest` 供 `isGet`；`replyXml` 记录结果并累加回复次数 |
-| `core.http.FakeHttpKit` | 伪公众号 `HttpKit`：记录 GET / POST / multipart / download 的 URL 与 body，按 `Supplier` 定制响应；对 `/cgi-bin/token` 单独计数并返回 `tokenResponse` |
-| `support.FakePayHttpKit` | 伪 `PayHttpKit`：记录 URL、请求头与 body，直接返回预设的 `PayHttpResponse` |
+| `core.http.FakeHttpClient` | 伪公众号 `HttpClient`：记录 GET / POST / multipart / download 的 URL 与 body，按 `Supplier` 定制响应；对 `/cgi-bin/token` 单独计数并返回 `tokenResponse` |
+| `support.FakePayHttpClient` | 伪 `PayHttpClient`：记录 URL、请求头与 body，直接返回预设的 `PayHttpResponse` |
 | `support.PayTestKeys` | 支付素材工厂：RSA 密钥对、PKCS#8 / X.509 PEM 生成、用 `AES/GCM/NoPadding` + `GCMParameterSpec(128, nonce)` 构造官方形态密文 |
 | `support.NoopLog` / `NoopLogFactory` / `TestLogs` | 空日志实现与工厂；`TestLogs.install()` 幂等地把 `LogFactory` 替换为 `NoopLogFactory` |
 
@@ -61,7 +61,7 @@
 
 ### 4.2 协议内核
 
-`MsgKitTest`（静态块装配空日志）：
+`MsgUtilTest`（静态块装配空日志）：
 
 | 用例 | 断言 |
 | --- | --- |
@@ -101,8 +101,8 @@
 | `OutMsgXmlBuilderTest` | `rendersTextReplyInExactOrder` | 文本回复字段顺序精确匹配 |
 | | `rendersNestedMediaAndNewsReplies` | 图片与多篇图文（`ArticleCount`）嵌套渲染正确 |
 | | `rendersMusicAndVideoReplies` | 音乐 / 视频 / 语音渲染正确 |
-| | `escapesInjectionPayload` | 注入载荷被转义且可被 `XmlKit` 还原 |
-| `XmlKitTest` | `parsesCdataEntityAndEmptyNode` | CDATA / 实体 / 空节点 / 嵌套取值解析正确 |
+| | `escapesInjectionPayload` | 注入载荷被转义且可被 `XmlUtil` 还原 |
+| `XmlUtilTest` | `parsesCdataEntityAndEmptyNode` | CDATA / 实体 / 空节点 / 嵌套取值解析正确 |
 | | `rejectsDoctypeToBlockXxe` | DOCTYPE 与外部实体被拒（异常含「XML 解析失败」） |
 | | `rejectsBlankAndMalformedInput` | 空串与畸形 XML 抛异常 |
 | | `xmlBuilderEscapesEverything` | 转义齐全、CDATA 中 `]]>` 正确拆分、`text` 支持数值拼接 |
@@ -137,7 +137,7 @@
 - `MemoryAccessTokenCache` 过期与 `remove`、URL 拼接与参数编码、`JsTicketApi` 复用同一缓存实例。
 - `appId` / `secret` 重载与账号重载共用同一缓存键。
 
-`JdkHttpKitTest`：网络失败（`127.0.0.1:1`）包装为 `WxApiException`；`download` 读超时生效；multipart body 的边界 / 字段名 / 文件名 / 收尾边界正确，空 fields 与 files 时 body 为 `--boundary--`。
+`JdkHttpClientTest`：网络失败（`127.0.0.1:1`）包装为 `WxApiException`；`download` 读超时生效；multipart body 的边界 / 字段名 / 文件名 / 收尾边界正确，空 fields 与 files 时 body 为 `--boundary--`。
 
 ### 4.5 小程序 `MiniAppApiTest`
 
@@ -170,7 +170,7 @@
 | `PaySignatureTest` | `signVerifiesWithPublicKey` | 签名可验证，篡改内容验证失败 |
 | | `buildAuthorizationHeaderFormat` | 头内 `mchid` / `serial_no` / 10 位时间戳 / 32 位随机串正确，message 互验通过 |
 | | `buildJsapiPayParamsSignsOfficialMessage` | JSAPI 二次签名按官方 message 构造且可验证 |
-| `PayNotifyKitTest` | `verifyAcceptsValidSignature` | 合法签名 → `true` |
+| `PayNotifyUtilTest` | `verifyAcceptsValidSignature` | 合法签名 → `true` |
 | | `verifyFailsOnTamperedBodyOrUnknownSerial` | 篡改 body / 未知序列号 / 缺头 → `false` |
 | | `verifyIsCaseInsensitiveOnHeaderNames` | 头名大小写不敏感 |
 | | `decryptResourceReturnsPlaintextTransaction` | `resource` 解密为交易明文 |
@@ -193,7 +193,7 @@ mvn clean test     # 干净构建下重跑
 ```
 
 - `KernelBindingTest` 依赖相对路径 `src/main/java`，**必须在模块根目录执行**。
-- 全部用例离线；`JdkHttpKitTest` 只访问本机回环地址并自建临时 `ServerSocket`。
+- 全部用例离线；`JdkHttpClientTest` 只访问本机回环地址并自建临时 `ServerSocket`。
 - 静态装配（`WxApiConfig.set` / `WxPayConfig.set`）为进程级状态，各测试类在 `@Before` 中重新注入伪实现以保证用例间隔离；`LogFactory` 由 `TestLogs.install()` 幂等替换。
 
 ## 6. 未覆盖项与人工验证
@@ -204,7 +204,7 @@ mvn clean test     # 干净构建下重跑
 | 模板消息与二维码创建 | `TemplateMsgApi.send`、`QrcodeApi.create`、`QrcodeApi.shortUrl` 无自动用例 |
 | OAuth2 其余接口 | `buildAuthorizeUrl` / `getUserInfo` / `refreshToken` 未覆盖（仅 `getAccessToken` 被间接覆盖） |
 | 支付门面透传与降级分支 | `PayApi.buildJsapiPayParams` 未直接测；`refund` 的空 `notifyUrl` 分支、错误体非 JSON 的降级分支未覆盖 |
-| `JdkHttpKit` 成功路径 | GET / POST 正常响应与 `postDownload` 传输未覆盖（仅失败、超时与 multipart 拼装） |
+| `JdkHttpClient` 成功路径 | GET / POST 正常响应与 `postDownload` 传输未覆盖（仅失败、超时与 multipart 拼装） |
 | 真实微信联调 | 首验、消息回调、支付下单与回调需在真实公众号 / 商户环境人工验证 |
 | 多实例 token 共享 | `AccessTokenCache` 共享实现的正确性由消费方环境验证，SDK 只提供接口与内存实现 |
 

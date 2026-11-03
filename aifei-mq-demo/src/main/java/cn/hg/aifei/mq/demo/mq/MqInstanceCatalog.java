@@ -9,9 +9,9 @@ package cn.hg.aifei.mq.demo.mq;
 import cn.aifei.demo.common.arch.Out;
 import cn.aifei.demo.common.arch.OutCode;
 import cn.hg.aifei.mq.Consumer;
-import cn.hg.aifei.mq.ConsumerUtil;
+import cn.hg.aifei.mq.ConsumerKit;
 import cn.hg.aifei.mq.Producer;
-import cn.hg.aifei.mq.ProducerUtil;
+import cn.hg.aifei.mq.ProducerKit;
 import cn.hg.aifei.mq.internal.MqConfig;
 import cn.hg.aifei.mq.internal.MqProviderRegistry;
 import java.util.ArrayList;
@@ -160,8 +160,8 @@ public final class MqInstanceCatalog {
         Instance instance = new Instance(name);
         instance.type = typeOf(name);
         try {
-            instance.producer = ProducerUtil.use(name);
-            instance.consumer = ConsumerUtil.use(name);
+            instance.producer = ProducerKit.use(name);
+            instance.consumer = ConsumerKit.use(name);
         } catch (RuntimeException e) {
             instance.producer = null;
             instance.consumer = null;

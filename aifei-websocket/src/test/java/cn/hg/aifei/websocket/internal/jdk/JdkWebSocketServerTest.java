@@ -12,24 +12,24 @@ import cn.hg.aifei.websocket.ServerConfig;
 import cn.hg.aifei.websocket.ServerContractTest;
 import cn.hg.aifei.websocket.ServerListener;
 import cn.hg.aifei.websocket.WebSocketClient;
-import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketUtil;
 import cn.hg.aifei.websocket.WebSocketServer;
 
 /**
  * 内建 JDK 传输的服务端契约测试：继承 {@link ServerContractTest} 并提供本实现的实例工厂。
  *
- * <p>经 {@link WebSocketKit} 构建；断言全部来自契约基类，本类只需保证实例由内建实现产出。</p>
+ * <p>经 {@link WebSocketUtil} 构建；断言全部来自契约基类，本类只需保证实例由内建实现产出。</p>
  */
 public class JdkWebSocketServerTest extends ServerContractTest {
 
     @Override
     protected WebSocketServer newServer(ServerConfig config, ServerListener listener) {
-        return WebSocketKit.createServer(config, listener);
+        return WebSocketUtil.createServer(config, listener);
     }
 
     @Override
     protected WebSocketClient newClient(ClientConfig config, ClientListener listener) {
-        return WebSocketKit.createClient(config, listener);
+        return WebSocketUtil.createClient(config, listener);
     }
 
     @Override

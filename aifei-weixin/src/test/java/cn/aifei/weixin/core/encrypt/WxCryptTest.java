@@ -37,15 +37,15 @@ public class WxCryptTest {
 
     @Test
     public void sha1MatchesNistVectorAndSortsParts() {
-        assertEquals("a9993e364706816aba3e25717850c26c9cd0d89d", Sha1Kit.sha1("abc"));
-        assertEquals("a9993e364706816aba3e25717850c26c9cd0d89d", Sha1Kit.sortedSign("c", "a", "b"));
+        assertEquals("a9993e364706816aba3e25717850c26c9cd0d89d", Sha1Util.sha1("abc"));
+        assertEquals("a9993e364706816aba3e25717850c26c9cd0d89d", Sha1Util.sortedSign("c", "a", "b"));
     }
 
     @Test
     public void signatureVectorPlainAndEncrypted() {
-        assertEquals("d1a5a45fe5fcb0beb9eb76f795d3bafecbc9c117", Sha1Kit.sortedSign(TOKEN, "1600000000", "1234567890"));
+        assertEquals("d1a5a45fe5fcb0beb9eb76f795d3bafecbc9c117", Sha1Util.sortedSign(TOKEN, "1600000000", "1234567890"));
         assertEquals("1bd888b69e4e1296b33e64f49ef4e7cc248421f6",
-                Sha1Kit.sortedSign(TOKEN, "1600000000", "1234567890", "CIPHERTEXT"));
+                Sha1Util.sortedSign(TOKEN, "1600000000", "1234567890", "CIPHERTEXT"));
     }
 
     @Test

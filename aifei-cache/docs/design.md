@@ -6,7 +6,7 @@
 
 应用代码只依赖缓存抽象接口，不依赖任何具体缓存实现；单实例与多实例、本地与分布式的差别全部通过配置表达。
 
-- 公共 API 面固定 6 个类型：`Cache`、`Counter`、`CacheUtil`、`CounterUtil`、`CachePlugin`、`CacheKeyMatchType`。
+- 公共 API 面固定 6 个类型：`Cache`、`Counter`、`CacheKit`、`CounterKit`、`CachePlugin`、`CacheKeyMatchType`。
 - 实例划分：`internal`（非承诺 API）、`caffeine`（本地实现）、`redis`（分布式实现）。
 - 存储与编解码：Caffeine（本地）、Jedis（Redis）；Redis 的 value 序列化固定用 Fury。
 - 依赖注入：aifei；主缓存与主计数器可通过 `@Inject` 注入。
@@ -33,7 +33,7 @@
 | namespace | 物理 key 的第一段，用于同一存储上的多应用隔离；不得含 `:` |
 | 物理 key | `namespace:cacheName:key`（缓存）、`namespace:COUNTER:counterName:key`（计数） |
 
-实例名**不参与**物理 key 拼接：同一应用内的不同实例靠 `namespace` 区分。主缓存实例名是**保留名**而非「默认值」，取主实例走 `CacheUtil.use()` 或 `@Inject`，调用方无需引用该常量。
+实例名**不参与**物理 key 拼接：同一应用内的不同实例靠 `namespace` 区分。主缓存实例名是**保留名**而非「默认值」，取主实例走 `CacheKit.use()` 或 `@Inject`，调用方无需引用该常量。
 
 ## 配置模型
 
@@ -181,13 +181,13 @@ public interface Counter {
 
 ### 实例注册表 `CacheManager`
 
-- 位置 `cn.hg.aifei.cache.internal.CacheManager`，非承诺 API；持有「实例名 → (Cache, Counter)」，是 `CacheUtil` / `CounterUtil` 取用实例的唯一数据源。
+- 位置 `cn.hg.aifei.cache.internal.CacheManager`，非承诺 API；持有「实例名 → (Cache, Counter)」，是 `CacheKit` / `CounterKit` 取用实例的唯一数据源。
 - `register` 做两件事：派生同源 `Counter`（全项目唯一的派生点）、校验「唯一名 + `namespace`」唯一。
 - `register` 的校验顺序固定：实例名（不能为空白，且须符合已注册名规则）→ `cache` 不能为 `null` → 实现类必须实现 `internal.CounterFactory`（否则被拒）→ 同名重复注册抛 `IllegalStateException` → 排他校验 → 派生出的 `Counter` 不能为 `null`。
 - **排他判据**：两个实例冲突 ⟺ 唯一名相同（且均非空）并且 `namespace` 相同。唯一名由能力接口 `internal.UniqueNameAware` 声明（**不经 `Cache` 接口暴露**）：jedis 返回 `host:port/database`，进程内后端不实现该接口（不参与排他）。冲突抛 `IllegalArgumentException`，消息含 `duplicate key space` 与两个实例名。
 - 排他校验的唯一落脚点是 `register`：它是所有实例进入系统的唯一写入口，无论实例来自自动装配还是手写代码。
 
-### 工具门面 `CacheUtil` / `CounterUtil`
+### 工具门面 `CacheKit` / `CounterKit`
 
 - 两个类都是 `public final` + 私有构造 + 全静态方法；静态方法一律作用于主缓存，扩展实例必须先 `use(name)`。
 - `use(name)` 返回注册表中的同一个实例对象，调用方可以安全缓存引用。
@@ -336,7 +336,7 @@ public interface Counter {
   8. 名称与清理：名字含 `:` 时写路径抛 `IllegalArgumentException`、读路径静默走「不可能命中」；`clear` 清空该名称下的全部数据并精确移除该名称，`remove` 只删条目、完全不改动名称集合；`clear("user")` 不误伤前缀相近的 `users`；清除后再次写入能重新登记；派生计数器继承同源缓存的默认 TTL，省略 TTL 的重载随之生效。
   9. 保留名语义：`__CACHE_NAMES__` / `__COUNTER_NAMES__` 作为业务名与普通名称同等对待（可写入、可读、登记进名称集合、`clear` 真正生效）；Caffeine 侧的名称集合存于实例字段，容量远小于写入量时名称仍完整。
   10. `keys` 的分页与筛选语义：`offset` / `limit` 分页、越界截断、空列表不返回 `null`；字典序排序；`pattern` 为 `null` / 空串不筛选，`EQUALS` / `CONTAINS` / `STARTS_WITH` / `ENDS_WITH` 四种匹配基于业务 key；`cacheName` 非法、`offset < 0`、`limit <= 0`、`matchType` 为 `null` 抛 `IllegalArgumentException`；glob 字符缓存名经转义后精确匹配、不误伤前缀相近名称；Redis 侧下推 glob 但以业务 key 精确筛选（`pattern` 只命中物理 key 前缀时不误报）；`clear` 后为空；哨兵条目的 key 照常返回。
-- **门面完整性**：反射比对 `CacheUtil` / `CounterUtil` 与 `Cache` / `Counter` 的方法集合（`namespace()` 白名单放行，含反向用例）；并钉住 `Cache` / `Counter` 既不声明 `static` 方法也不声明常量；根包公共类型恒为 6 个。
+- **门面完整性**：反射比对 `CacheKit` / `CounterKit` 与 `Cache` / `Counter` 的方法集合（`namespace()` 白名单放行，含反向用例）；并钉住 `Cache` / `Counter` 既不声明 `static` 方法也不声明常量；根包公共类型恒为 6 个。
 - **字节码约束**：主 JAR 内全部 class 的 major version 必须为 52。
 
 ## 附 A：依赖与构建约束
@@ -370,7 +370,7 @@ public interface Counter {
 | 生命周期 | `start()` 失败路径不逐个关闭实例 | 依赖框架捕获异常后终止 JVM |
 | 生命周期 | 进程级注册表 | `CacheManager` 与 `CacheProviderRegistry` 的映射表为 `static`，同 JVM 内插件不可重启 |
 | 行为限制 | `put(key, null, ttl)` 不抛异常 | `cacheNull = false` 时不写入、保持现状，不拒绝 `null` |
-| 行为限制 | 门面提供省略 TTL 的写重载 | `CacheUtil` 镜像 `put` / `putIfAbsent` / `expire` 的省略 TTL 重载，缺省取实例 `ttl()`，与接口保持一致 |
+| 行为限制 | 门面提供省略 TTL 的写重载 | `CacheKit` 镜像 `put` / `putIfAbsent` / `expire` 的省略 TTL 重载，缺省取实例 `ttl()`，与接口保持一致 |
 | 行为限制 | 回源单飞只覆盖单个 JVM | 跨实例不收敛：多实例部署时每个 JVM 各自装载一次。要跨实例收敛须引入分布式互斥，会牵出锁 TTL 与回源耗时的耦合，本轮未采纳 |
 | 行为限制 | 单飞等待被中断即降级为自行回源 | 保证是**有界**的而非无条件：中断不是错误路径，不阻止该线程回源，只是不再复用胜者结果 |
 | 行为限制 | `loader` 内不得嵌套同实例的带 `loader` 的 `get` | 登记与装载之间没有全局顺序，交叉等待会成环；单层 `loader` 是既定使用形态，不为此引入防环检测 |

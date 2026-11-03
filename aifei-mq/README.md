@@ -38,7 +38,7 @@
 
 ## 支持的后端
 
-换后端**只改配置**：把 `mq.type` 指向目标后端（主实例）或 `mq.<name>.type`（命名实例）即可，业务代码仍只依赖 `Producer` / `Consumer`（`@Inject` 或 `ProducerUtil` / `ConsumerUtil`）。
+换后端**只改配置**：把 `mq.type` 指向目标后端（主实例）或 `mq.<name>.type`（命名实例）即可，业务代码仍只依赖 `Producer` / `Consumer`（`@Inject` 或 `ProducerKit` / `ConsumerKit`）。
 
 | `mq.type` 取值 | 后端 | 必填键 | 启动期连通性 | 客户端依赖（需自行引入，`optional` 不传递） |
 | --- | --- | --- | --- | --- |
@@ -82,7 +82,7 @@ public class AppConfig implements AifeiConfig<In, Out> {
 
 ```java
 // 在应用启动后的初始化入口登记一次（不要在收到第一条请求时才订阅）
-ConsumerUtil.subscribe("order-events", message ->
+ConsumerKit.subscribe("order-events", message ->
         System.out.println("收到 " + message.topic() + ": "
                 + new String(message.payload(), StandardCharsets.UTF_8)));
 ```
@@ -127,16 +127,16 @@ public class OrderService {
     }
 }
 
-// 方式二：静态工具类（不注入也能用）
-ProducerUtil.send("order-created", "A1001");
-ConsumerUtil.subscribe("order-created", message -> handle(message));
+// 方式二：静态门面（不注入也能用）
+ProducerKit.send("order-created", "A1001");
+ConsumerKit.subscribe("order-created", message -> handle(message));
 
 // 静态短写一律作用于主实例；需要取实例时：
-Producer producer = ProducerUtil.use();          // 主实例（与 @Inject 同一个对象）
-Consumer consumer = ConsumerUtil.use("orders");  // 命名实例（mq.names 声明）
+Producer producer = ProducerKit.use();          // 主实例（与 @Inject 同一个对象）
+Consumer consumer = ConsumerKit.use("orders");  // 命名实例（mq.names 声明）
 ```
 
-> 两种方式取到的是**主实例的同一个对象**。`ProducerUtil` / `ConsumerUtil` 与注入的 `Producer` / `Consumer` 都只在插件启动后可用（未启动 / 已停止时调用会抛 `IllegalStateException`）。`@Inject` 只对应**主实例**；**命名实例**只能经 `use(name)` 取。
+> 两种方式取到的是**主实例的同一个对象**。`ProducerKit` / `ConsumerKit` 与注入的 `Producer` / `Consumer` 都只在插件启动后可用（未启动 / 已停止时调用会抛 `IllegalStateException`）。`@Inject` 只对应**主实例**；**命名实例**只能经 `use(name)` 取。
 
 ## Topic 与订阅
 
@@ -151,13 +151,13 @@ Consumer consumer = ConsumerUtil.use("orders");  // 命名实例（mq.names 声�
 
 ```java
 // 订阅：把监听器登记到本实例的该 topic 上
-ConsumerUtil.subscribe("order-events", message -> {
+ConsumerKit.subscribe("order-events", message -> {
     String json = new String(message.payload(), StandardCharsets.UTF_8);   // payload() 每次返回副本
     System.out.println(message.topic() + " -> " + json);
 });
 
 // 发送：同一个 topic 字符串
-ProducerUtil.send("order-events", "{\"type\":\"created\",\"version\":1,\"orderId\":\"A1001\"}");
+ProducerKit.send("order-events", "{\"type\":\"created\",\"version\":1,\"orderId\":\"A1001\"}");
 ```
 
 `subscribe` 是**登记**而不是拉取：登记之后，该 topic 上到达的每条消息都会回调该监听器。历史消息是否补发由后端决定（内存后端不补发，见下表）。
@@ -189,7 +189,7 @@ ProducerUtil.send("order-events", "{\"type\":\"created\",\"version\":1,\"orderId
 
 ```java
 // 命名实例的订阅必须写到该实例的 Consumer 上
-Consumer orders = ConsumerUtil.use("orders");
+Consumer orders = ConsumerKit.use("orders");
 orders.subscribe("order-events", message -> handle(message));
 ```
 
@@ -232,10 +232,10 @@ orders.subscribe("order-events", message -> handle(message));
 
 ## 接口
 
-公共面固定为 8 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`。
+公共面固定为 8 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerKit` / `ConsumerKit`。
 
 - `Producer` / `Consumer`：业务接口，经 `@Inject` 取主实例。
-- `ProducerUtil` / `ConsumerUtil`：静态工具类。`use()` 取主实例（与 `@Inject` 同一个对象）；`use(name)` 取 `mq.names` 声明的**命名实例**；静态短写（`ProducerUtil.send(...)` / `ConsumerUtil.subscribe(...)` / `ConsumerUtil.unsubscribe(...)`）**一律作用于主实例**。未启动 / 已停止时调用抛 `IllegalStateException`；`use(name)` 的实例名为空 / 非法 / 未注册抛 `IllegalArgumentException`。
+- `ProducerKit` / `ConsumerKit`：静态门面。`use()` 取主实例（与 `@Inject` 同一个对象）；`use(name)` 取 `mq.names` 声明的**命名实例**；静态短写（`ProducerKit.send(...)` / `ConsumerKit.subscribe(...)` / `ConsumerKit.unsubscribe(...)`）**一律作用于主实例**。未启动 / 已停止时调用抛 `IllegalStateException`；`use(name)` 的实例名为空 / 非法 / 未注册抛 `IllegalArgumentException`。
 
 ### Producer
 
@@ -294,7 +294,7 @@ public interface MessageListener {
 producer.send("order-events", "{\"type\":\"created\",\"version\":1,\"orderId\":\"A1001\"}");
 
 // 订阅：启动期一次登记，本地按 type 分发（新事件类型 = 分发表加一行，模块零感知）
-ConsumerUtil.subscribe("order-events", message -> dispatch(decode(message.payload())));
+ConsumerKit.subscribe("order-events", message -> dispatch(decode(message.payload())));
 ```
 
 **注意**：合并 topic 会共享单主题 FIFO 保序流（状态变迁类事件是收益；需独立并行保序时拆 topic），过滤后置到消费侧，且失去 broker 级 ACL / 配额 / 隔离粒度。不适用场景与回退判据见 `docs/design.md` §5.8.7。
@@ -304,7 +304,7 @@ ConsumerUtil.subscribe("order-events", message -> dispatch(decode(message.payloa
 | 场景 | 异常 |
 | --- | --- |
 | 参数非法（topic 空、payload / text / listener / message / prop / messageId 为 null、`mq.type` 未注册；`use(name)` 的实例名为空 / 非法 / 未注册） | `IllegalArgumentException` |
-| 状态非法（停止后 `send` / `subscribe` / `unsubscribe`；未启动 / 已停止时 `ProducerUtil` / `ConsumerUtil` 的 `use()` / `use(name)` / 静态短写） | `IllegalStateException` |
+| 状态非法（停止后 `send` / `subscribe` / `unsubscribe`；未启动 / 已停止时 `ProducerKit` / `ConsumerKit` 的 `use()` / `use(name)` / 静态短写） | `IllegalStateException` |
 | 运行时故障（后端运行时错误，如真实后端连接失败） | `MqException` |
 
 ## 配置
@@ -343,7 +343,7 @@ mq.payments.rocketmq.consumer-group = PAY_CONSUMER
 
 ## 换后端 / 使用真实后端
 
-换后端**只改配置、不改代码**：把 `mq.type` 指向目标后端即可（业务仍只依赖 `Producer` / `Consumer` 与 `ProducerUtil` / `ConsumerUtil`）。
+换后端**只改配置、不改代码**：把 `mq.type` 指向目标后端即可（业务仍只依赖 `Producer` / `Consumer` 与 `ProducerKit` / `ConsumerKit`）。
 
 ### 使用 RocketMQ（内置真实后端）
 
@@ -643,8 +643,8 @@ mq.events.kafka.group-id = EVENTS_GROUP
 ```
 
 ```java
-Producer rocket = ProducerUtil.use("orders");
-Consumer kafka = ConsumerUtil.use("events");
+Producer rocket = ProducerKit.use("orders");
+Consumer kafka = ConsumerKit.use("events");
 kafka.subscribe("order-events", message -> handle(message));
 ```
 
@@ -678,7 +678,7 @@ mvn test -Dtest=RedisStreamMessageBusContractTest -Dredisstream.integration=true
 ## 生命周期
 
 - `start()`：解析配置（含 `mq.names`）→ **按实例逐个**创建总线 → 注册各实例（**主实例**同时注册为 `@Inject` 的 `Producer` / `Consumer` 单例）。重复启动不重复装配；**配置**有误（未注册后端 / 必填键缺失或非法 / `mq.names` 非法）即失败，不留半装配状态。**注意**：这里的「失败」只覆盖**配置**；外部**连通性**不保证在启动期校验——`mq.type = rocketmq` 时即使 nameserver 不可达，`start()` 仍可能成功（懒连接），故障延迟到首次使用（见上文「使用 RocketMQ」的运维提示）。
-- `stop()`：注销各实例（此后 `ProducerUtil` / `ConsumerUtil` 取实例即失败）→ 关闭**全部实例**总线。重复停止不重复关闭。
+- `stop()`：注销各实例（此后 `ProducerKit` / `ConsumerKit` 取实例即失败）→ 关闭**全部实例**总线。重复停止不重复关闭。
 
 ## 常见问题
 

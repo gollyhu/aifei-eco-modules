@@ -20,7 +20,7 @@ import cn.hg.aifei.websocket.Message;
 import cn.hg.aifei.websocket.ServerConfig;
 import cn.hg.aifei.websocket.ServerListener;
 import cn.hg.aifei.websocket.WebSocketClient;
-import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketUtil;
 import cn.hg.aifei.websocket.WebSocketServer;
 import cn.hg.aifei.websocket.WebSocketSession;
 import java.util.concurrent.BlockingQueue;
@@ -354,7 +354,7 @@ public class LoopbackTest {
      * @return 已启动的服务端
      */
     private static WebSocketServer startServer(ServerConfig config, ServerListener listener) {
-        WebSocketServer server = WebSocketKit.createServer(config, listener);
+        WebSocketServer server = WebSocketUtil.createServer(config, listener);
         server.start();
         return server;
     }
@@ -377,7 +377,7 @@ public class LoopbackTest {
      * @return 客户端实例
      */
     private static WebSocketClient newClient(ClientConfig config, ClientListener listener) {
-        return WebSocketKit.createClient(config, listener);
+        return WebSocketUtil.createClient(config, listener);
     }
 
     /**

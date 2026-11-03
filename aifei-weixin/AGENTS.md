@@ -28,10 +28,10 @@
 
 ### 结构（分层不可打破）
 
-- `cn.aifei.weixin.aifei.WeixinHandler` 是**唯一** `import cn.aifei.core.*` 的类（`KernelBindingTest` 强制）；`cn.aifei.log.Log` 仅允许出现在 `MsgKit` 与 `WeixinHandler`。
+- `cn.aifei.weixin.aifei.WeixinHandler` 是**唯一** `import cn.aifei.core.*` 的类（`KernelBindingTest` 强制）；`cn.aifei.log.Log` 仅允许出现在 `MsgUtil` 与 `WeixinHandler`。
 - 协议内核与接入层通过 `spi` 包通信：`spi` 包不得引用 `cn.aifei.*`，`WeixinIo` 的泛型保持无上界（验签参数一律走 `query`，不得改用内核 `Input.getStr(...)`）。
 - `core.*`、`pay.*`、`miniapp`、`common` 不得引用 aifei 内核类型（含 HIO 与日志）；这些层需能在非 aifei 环境独立使用。日志门面只在内核入口与接入层使用。
-- 协议内核（`core.encrypt` / `core.kit` / `core.msg`）不得感知 HTTP 与 aifei：不引用 `java.net.*`、不引用内核类型。
+- 协议内核（`core.encrypt` / `core.util` / `core.msg`）不得感知 HTTP 与 aifei：不引用 `java.net.*`、不引用内核类型。
 - 公共类型的新增改动须先在 `docs/design.md` 中登记其职责与契约。
 
 ### 契约（不得擅自变更）
@@ -41,9 +41,9 @@
 - **幂等**：SDK 不做去重，`MsgHandler` 与支付回调的幂等由消费方承担——不得在 SDK 内引入隐式去重（会影响多实例语义）。
 - **注册顺序**：`WeixinHandler` 必须注册在 `FrontHandler` 之前，该约束由消费方测试守护，SDK 侧不得通过在 `handle` 内做兜底渲染来"兼容"错误顺序。
 - **敏感脱敏**：`WeixinAccount` / `MiniAppAccount` / `Code2Session` / `PayMerchant` 的 `toString` 不得输出 `secret` / `aesKey` / `apiV3Key` / 私钥 / `sessionKey`；新增值对象沿用该规则。
-- **超时与重试**：`JdkHttpKit` 与 `JdkPayHttpKit` 默认连接 5000 ms、读取 10000 ms，并关闭重定向；token 失效（`40001` / `42001`）只允许重试**一次**；支付链路不自动重试。
+- **超时与重试**：`JdkHttpClient` 与 `JdkPayHttpClient` 默认连接 5000 ms、读取 10000 ms，并关闭重定向；token 失效（`40001` / `42001`）只允许重试**一次**；支付链路不自动重试。
 - **token 语义**：缓存过期时间 = 现在 + `expires_in`（默认 7200 秒）− 5 分钟；缓存键为 `appId`；并发取 token 必须按 appId 分段锁单飞。
-- **异步/同步边界**：`MsgKit` 不得捕获 `Error`，不得吞掉 `WxApiException` 之外的类型语义；异常降级只允许发生在 `MsgKit` 的既定分支上。
+- **异步/同步边界**：`MsgUtil` 不得捕获 `Error`，不得吞掉 `WxApiException` 之外的类型语义；异常降级只允许发生在 `MsgUtil` 的既定分支上。
 
 ### 数据格式（发布后不得更改）
 
@@ -58,19 +58,19 @@
 
 ### 唯一定义点（每类规则只有一处）
 
-- **AES-256-CBC 加解密**：`core.encrypt.WxCrypt`（`MsgKit.encrypt/decrypt` 只做转发）。
-- **SHA-1 签名与摘要**：`core.encrypt.Sha1Kit`（`MsgKit.checkSignature` 只做参数选择与比较）。
-- **随机串**：`core.encrypt.RandomKit`。
-- **XXE 安全解析特征**：`core.kit.XmlKit`（安全特性集中一处，不得在别处另建解析器）。
-- **XML 文本转义与 CDATA 拆分**：`core.kit.XmlBuilder`。
+- **AES-256-CBC 加解密**：`core.encrypt.WxCrypt`（`MsgUtil.encrypt/decrypt` 只做转发）。
+- **SHA-1 签名与摘要**：`core.encrypt.Sha1Util`（`MsgUtil.checkSignature` 只做参数选择与比较）。
+- **随机串**：`core.encrypt.RandomUtil`。
+- **XXE 安全解析特征**：`core.util.XmlUtil`（安全特性集中一处，不得在别处另建解析器）。
+- **XML 文本转义与 CDATA 拆分**：`core.util.XmlBuilder`。
 - **接收消息 / 事件类型判定与解析**：`core.msg.InMsgParser` + `WxConsts.isCustomEvent` / `isVerifyEvent`。
 - **被动回复渲染**：`core.msg.OutMsgXmlBuilder`。
 - **业务分发**：`MsgHandler.process`（钩子顺序即类型判定顺序）。
 - **协议字面量**：`WxConsts`（不得在业务类内散落 `"text"`、`"subscribe"` 等字符串）。
 - **token 获取、注入、失效重试、并发单飞**：`core.api.ApiCaller`；各 `XxxApi` 只拼路径与报文。
-- **HTTP 传输**：公众号 `core.http.JdkHttpKit`、支付 `pay.JdkPayHttpKit`；非 2xx 的处理策略分别固定在这两个类。
-- **支付签名与 `Authorization`**：`pay.core.PaySignature`；**支付验签**：`pay.core.PayVerifier`；**GCM 解密**：`pay.core.AesGcm`；**平台证书**：`pay.core.PlatformCertManager`；**回调验签 + 解密编排**：`pay.PayNotifyKit`。
-- **回调路由与 GET/POST 分流**：`WeixinHandler`（不得把分流下沉到 `MsgKit`）。
+- **HTTP 传输**：公众号 `core.http.JdkHttpClient`、支付 `pay.JdkPayHttpClient`；非 2xx 的处理策略分别固定在这两个类。
+- **支付签名与 `Authorization`**：`pay.core.PaySignature`；**支付验签**：`pay.core.PayVerifier`；**GCM 解密**：`pay.core.AesGcm`；**平台证书**：`pay.core.PlatformCertManager`；**回调验签 + 解密编排**：`pay.PayNotifyUtil`。
+- **回调路由与 GET/POST 分流**：`WeixinHandler`（不得把分流下沉到 `MsgUtil`）。
 
 ### 注释规范
 

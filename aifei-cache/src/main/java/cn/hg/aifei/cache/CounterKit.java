@@ -12,7 +12,7 @@ import java.time.Duration;
 import java.util.Set;
 
 /**
- * {@link Counter} 的静态工具类：不注入也能取到计数器实例，或用静态方法直接操作主计数器。
+ * {@link Counter} 的静态门面：不注入也能取到计数器实例，或用静态方法直接操作主计数器。
  *
  * <p>「主计数器」指由主缓存派生出的计数器，与主缓存同源（共用命名空间与默认 TTL）。配置了
  * 扩展实例时，用 {@link #use(String)} 按实例名取；取到的是同一个对象，可以放心存下来反复
@@ -22,9 +22,9 @@ import java.util.Set;
  * 它们都要先取实例，因此与 {@link #use()} 一样，可能在插件尚未启动或已经停止时抛
  * {@link IllegalStateException}。</p>
  */
-public final class CounterUtil {
+public final class CounterKit {
 
-    private CounterUtil() {
+    private CounterKit() {
     }
 
     /**

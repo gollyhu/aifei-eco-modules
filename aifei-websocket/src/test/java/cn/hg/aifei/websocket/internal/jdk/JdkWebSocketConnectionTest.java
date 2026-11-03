@@ -18,7 +18,7 @@ import cn.hg.aifei.websocket.ClientListener;
 import cn.hg.aifei.websocket.ConnectionState;
 import cn.hg.aifei.websocket.Message;
 import cn.hg.aifei.websocket.WebSocketClient;
-import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketUtil;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +40,7 @@ import org.junit.Test;
  * 协议错误映射与关闭竞态。
  *
  * <p>对端由 {@link FakeEndpoint} 扮演：它是一条裸 {@link Socket}，手工完成握手后直接收发帧，从而可以精确
- * 构造分片序列、非法帧与「永不回 pong」等场景；被测侧一律经公共工厂 {@link WebSocketKit} 创建。</p>
+ * 构造分片序列、非法帧与「永不回 pong」等场景；被测侧一律经公共工厂 {@link WebSocketUtil} 创建。</p>
  */
 public class JdkWebSocketConnectionTest {
 
@@ -58,7 +58,7 @@ public class JdkWebSocketConnectionTest {
     public void shouldAggregateFragmentsWithInterleavedControlFrames() throws Exception {
         FakeEndpoint endpoint = new FakeEndpoint();
         RecordingListener listener = new RecordingListener();
-        WebSocketClient client = WebSocketKit.createClient(config(endpoint.uri(), 0), listener);
+        WebSocketClient client = WebSocketUtil.createClient(config(endpoint.uri(), 0), listener);
         try {
             client.connect();
             endpoint.awaitAccepted(TIMEOUT_MILLIS);
@@ -95,7 +95,7 @@ public class JdkWebSocketConnectionTest {
     public void shouldAutoReplyPongWithSamePayload() throws Exception {
         FakeEndpoint endpoint = new FakeEndpoint();
         RecordingListener listener = new RecordingListener();
-        WebSocketClient client = WebSocketKit.createClient(config(endpoint.uri(), 0), listener);
+        WebSocketClient client = WebSocketUtil.createClient(config(endpoint.uri(), 0), listener);
         try {
             client.connect();
             endpoint.awaitAccepted(TIMEOUT_MILLIS);
@@ -122,7 +122,7 @@ public class JdkWebSocketConnectionTest {
     public void shouldCloseConnectionWhenPongIsMissing() throws Exception {
         FakeEndpoint endpoint = new FakeEndpoint();
         RecordingListener listener = new RecordingListener();
-        WebSocketClient client = WebSocketKit.createClient(config(endpoint.uri(), 1), listener);
+        WebSocketClient client = WebSocketUtil.createClient(config(endpoint.uri(), 1), listener);
         try {
             client.connect();
             endpoint.awaitAccepted(TIMEOUT_MILLIS);
@@ -152,7 +152,7 @@ public class JdkWebSocketConnectionTest {
     public void shouldEchoAndReportPeerCloseFrame() throws Exception {
         FakeEndpoint endpoint = new FakeEndpoint();
         RecordingListener listener = new RecordingListener();
-        WebSocketClient client = WebSocketKit.createClient(config(endpoint.uri(), 0), listener);
+        WebSocketClient client = WebSocketUtil.createClient(config(endpoint.uri(), 0), listener);
         try {
             client.connect();
             endpoint.awaitAccepted(TIMEOUT_MILLIS);
@@ -184,7 +184,7 @@ public class JdkWebSocketConnectionTest {
     public void shouldCloseWithProtocolErrorOnInvalidFrame() throws Exception {
         FakeEndpoint endpoint = new FakeEndpoint();
         RecordingListener listener = new RecordingListener();
-        WebSocketClient client = WebSocketKit.createClient(config(endpoint.uri(), 0), listener);
+        WebSocketClient client = WebSocketUtil.createClient(config(endpoint.uri(), 0), listener);
         try {
             client.connect();
             endpoint.awaitAccepted(TIMEOUT_MILLIS);
@@ -210,7 +210,7 @@ public class JdkWebSocketConnectionTest {
     public void shouldCloseWithMessageTooBigOnOversizedFrame() throws Exception {
         FakeEndpoint endpoint = new FakeEndpoint();
         RecordingListener listener = new RecordingListener();
-        WebSocketClient client = WebSocketKit.createClient(config(endpoint.uri(), 0), listener);
+        WebSocketClient client = WebSocketUtil.createClient(config(endpoint.uri(), 0), listener);
         try {
             client.connect();
             endpoint.awaitAccepted(TIMEOUT_MILLIS);
@@ -242,7 +242,7 @@ public class JdkWebSocketConnectionTest {
     public void shouldFireOnCloseExactlyOnceUnderConcurrentClose() throws Exception {
         FakeEndpoint endpoint = new FakeEndpoint();
         RecordingListener listener = new RecordingListener();
-        final WebSocketClient client = WebSocketKit.createClient(config(endpoint.uri(), 0), listener);
+        final WebSocketClient client = WebSocketUtil.createClient(config(endpoint.uri(), 0), listener);
         try {
             client.connect();
             endpoint.awaitAccepted(TIMEOUT_MILLIS);

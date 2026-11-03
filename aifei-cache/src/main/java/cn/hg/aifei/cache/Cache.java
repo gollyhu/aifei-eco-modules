@@ -17,7 +17,7 @@ import java.util.function.Supplier;
  * 缓存读写接口：业务代码只依赖本接口，不依赖 Caffeine 或 Redis 的具体实现，换后端只改配置。
  *
  * <p>一个应用可以同时持有多个缓存实例：主缓存直接用 {@code @Inject} 注入，或用
- * {@code CacheUtil.use()} 取；配置了扩展实例时，用 {@code CacheUtil.use(实例名)} 按名字取。</p>
+ * {@code CacheKit.use()} 取；配置了扩展实例时，用 {@code CacheKit.use(实例名)} 按名字取。</p>
  *
  * <p><b>接口通用规则</b>：命名与空白校验、TTL 范围、返回值与名称集合语义为本接口与 {@link Counter}
  * 共用，统一写在 README 的「接口通用规则」一节；{@code cacheNull} 语义与带 {@code loader} 的读取

@@ -28,21 +28,21 @@ import javax.net.ssl.SSLContext;
  *
  * <p>可注入 {@link SSLContext}：用于企业网关自签证书信任，或商户证书 mTLS 场景。
  */
-public class JdkPayHttpKit implements PayHttpKit {
+public class JdkPayHttpClient implements PayHttpClient {
 
     private final int connectTimeout;
     private final int readTimeout;
     private final SSLContext sslContext;
 
-    public JdkPayHttpKit() {
+    public JdkPayHttpClient() {
         this(5000, 10000, null);
     }
 
-    public JdkPayHttpKit(SSLContext sslContext) {
+    public JdkPayHttpClient(SSLContext sslContext) {
         this(5000, 10000, sslContext);
     }
 
-    public JdkPayHttpKit(int connectTimeout, int readTimeout, SSLContext sslContext) {
+    public JdkPayHttpClient(int connectTimeout, int readTimeout, SSLContext sslContext) {
         this.connectTimeout = connectTimeout;
         this.readTimeout = readTimeout;
         this.sslContext = sslContext;

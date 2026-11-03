@@ -6,7 +6,7 @@
  * 授权：aifei vip 订阅用户。尊重版权，民富国强！
  */
 
-package cn.aifei.weixin.core.kit;
+package cn.aifei.weixin.core.util;
 
 /**
  * 极简 XML 构建器（微信报文结构极简，不引入 XML 库）。

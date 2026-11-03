@@ -10,10 +10,10 @@ package cn.aifei.weixin;
 
 import cn.aifei.weixin.common.WxApiException;
 import cn.aifei.weixin.core.cache.AccessTokenCache;
-import cn.aifei.weixin.core.http.HttpKit;
+import cn.aifei.weixin.core.http.HttpClient;
 
 /**
- * Api 链路配置入口：静态 *Api 由此取得 {@link HttpKit} 与 {@link AccessTokenCache}。
+ * Api 链路配置入口：静态 *Api 由此取得 {@link HttpClient} 与 {@link AccessTokenCache}。
  *
  * <pre>
  * 使用约定：
@@ -25,16 +25,16 @@ import cn.aifei.weixin.core.http.HttpKit;
  */
 public class WxApiConfig {
 
-    private static volatile HttpKit http;
+    private static volatile HttpClient http;
     private static volatile AccessTokenCache tokenCache;
 
-    public static void set(HttpKit httpKit, AccessTokenCache accessTokenCache) {
-        http = httpKit;
+    public static void set(HttpClient httpClient, AccessTokenCache accessTokenCache) {
+        http = httpClient;
         tokenCache = accessTokenCache;
     }
 
-    public static HttpKit http() {
-        HttpKit ret = http;
+    public static HttpClient http() {
+        HttpClient ret = http;
         if (ret == null) {
             throw new WxApiException("WxApiConfig 未初始化，请先在应用启动时调用 WxApiConfig.set(http, tokenCache)");
         }

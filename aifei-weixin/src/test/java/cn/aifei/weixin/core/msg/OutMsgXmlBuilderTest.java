@@ -13,7 +13,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Map;
-import cn.aifei.weixin.core.kit.XmlKit;
+import cn.aifei.weixin.core.util.XmlUtil;
 import org.junit.Test;
 
 /**
@@ -103,7 +103,7 @@ public class OutMsgXmlBuilderTest {
         assertFalse("不得出现未转义的 ]]>", xml.contains("]]>"));
         assertTrue(xml.contains("a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos; ]]&gt;"));
 
-        Map<String, String> parsed = XmlKit.parse(xml);
+        Map<String, String> parsed = XmlUtil.parse(xml);
         assertEquals("a & b <c> \"d\" 'e' ]]>", parsed.get("Content"));
     }
 }

@@ -33,8 +33,8 @@ mvn test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbsent   # 单方法
 | `SendResultTest` | 单元 | 值对象校验与值语义 |
 | `MqValidatorTest` | 单元 | 参数校验规则与异常类型 |
 | `MqHolderTest` | 单元 | 多实例登记 / 按名取用 / 清除，以及取用期的状态与参数异常（先状态、后参数） |
-| `ProducerUtilTest` | 单元 | `ProducerUtil` 未启动状态异常、`use(name)` 实例名校验与判定顺序、静态短写转发 |
-| `ConsumerUtilTest` | 单元 | `ConsumerUtil` 未启动状态异常、`use(name)` 实例名校验与判定顺序、`subscribe` / `unsubscribe` 静态短写转发 |
+| `ProducerKitTest` | 单元 | `ProducerKit` 未启动状态异常、`use(name)` 实例名校验与判定顺序、静态短写转发 |
+| `ConsumerKitTest` | 单元 | `ConsumerKit` 未启动状态异常、`use(name)` 实例名校验与判定顺序、`subscribe` / `unsubscribe` 静态短写转发 |
 | `MqPluginTest` | 单元 | 装配生命周期、多实例装配与实例隔离、幂等、未注册后端 / 非法实例名 / 命名实例失败 / 框架桥失败均不留半装配 |
 
 ### 逐类实测用例数（`mvn clean verify`）
@@ -45,14 +45,14 @@ mvn test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbsent   # 单方法
 | --- | --- | --- |
 | `ArchitectureBoundaryTest` | 5 | 架构门禁 |
 | `BackendConfigValidationTest` | 6 | 单元（5 个新后端缺必填键快速失败 + 新类型已注册；默认执行、不建连） |
-| `ConsumerUtilTest` | 4 | 单元 |
+| `ConsumerKitTest` | 4 | 单元 |
 | `MemoryMessageBusContractTest` | 20 | 契约：共同底线 10 + 内存专有 10 |
 | `MessageTest` | 5 | 单元 |
 | `MqConfigTest` | 11 | 单元 |
 | `MqHolderTest` | 5 | 单元 |
 | `MqPluginTest` | 12 | 单元 |
 | `MqValidatorTest` | 8 | 单元 |
-| `ProducerUtilTest` | 4 | 单元 |
+| `ProducerKitTest` | 4 | 单元 |
 | `SendResultTest` | 3 | 单元 |
 | `RocketMqMessageBusContractTest` | 10（全部跳过） | 集成，默认关闭 |
 | `MqttMessageBusContractTest` | 10（全部跳过） | 集成，默认关闭 |

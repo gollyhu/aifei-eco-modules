@@ -17,8 +17,8 @@ import cn.aifei.core.Input;
 import cn.aifei.core.Output;
 import cn.aifei.weixin.MsgHandler;
 import cn.aifei.weixin.WxConsts;
-import cn.aifei.weixin.core.encrypt.Sha1Kit;
-import cn.aifei.weixin.core.kit.XmlKit;
+import cn.aifei.weixin.core.encrypt.Sha1Util;
+import cn.aifei.weixin.core.util.XmlUtil;
 import cn.aifei.weixin.core.msg.InTextMsg;
 import cn.aifei.weixin.core.msg.OutMsg;
 import cn.aifei.weixin.core.msg.OutTextMsg;
@@ -95,7 +95,7 @@ public class WeixinHandlerTest {
 
         newHandler().handle("/weixin/" + APP_ID + "/msg", null, null);
 
-        Map<String, String> reply = XmlKit.parse(io.replied);
+        Map<String, String> reply = XmlUtil.parse(io.replied);
         assertEquals("echo:hi", reply.get("Content"));
         assertEquals("openid_user", reply.get("ToUserName"));
         assertEquals("gh_official", reply.get("FromUserName"));
@@ -143,7 +143,7 @@ public class WeixinHandlerTest {
     private void signWithEchostr(String echostr) {
         io.params.put("timestamp", "1600000000");
         io.params.put("nonce", "1234567890");
-        io.params.put("signature", Sha1Kit.sortedSign(TOKEN, "1600000000", "1234567890"));
+        io.params.put("signature", Sha1Util.sortedSign(TOKEN, "1600000000", "1234567890"));
         if (echostr != null) {
             io.params.put("echostr", echostr);
         }

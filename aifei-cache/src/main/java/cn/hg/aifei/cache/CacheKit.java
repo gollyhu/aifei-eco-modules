@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * {@link Cache} 的静态工具类：不注入也能取到缓存实例，或用静态方法直接操作主缓存。
+ * {@link Cache} 的静态门面：不注入也能取到缓存实例，或用静态方法直接操作主缓存。
  *
  * <p>「主缓存」指配置里 {@code cache.*} 那一套，应用启动后就存在。配置了扩展实例时，用
  * {@link #use(String)} 按实例名取；取到的是与 {@code @Inject} 注入的同一个对象，可以放心存下来
@@ -24,9 +24,9 @@ import java.util.function.Supplier;
  * 它们都要先取实例，因此与 {@link #use()} 一样，可能在插件尚未启动或已经停止时抛
  * {@link IllegalStateException}。</p>
  */
-public final class CacheUtil {
+public final class CacheKit {
 
-    private CacheUtil() {
+    private CacheKit() {
     }
 
     /**

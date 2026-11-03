@@ -5,13 +5,13 @@ aifei-cache 是面向 [aifei](https://aifei.cn) 应用的缓存与计数组件�
 它支持一个应用同时持有多个缓存实例——例如「主 Redis 实例 + 本地 Caffeine 实例」：
 
 ```text
-                        ┌─ 主缓存 __MAIN__  → cache.*        → @Inject / CacheUtil.use()
+                        ┌─ 主缓存 __MAIN__  → cache.*        → @Inject / CacheKit.use()
 应用 → Cache/Counter ───┤
-                        └─ 扩展实例 mem    → cache.mem.*    → CacheUtil.use("mem")
+                        └─ 扩展实例 mem    → cache.mem.*    → CacheKit.use("mem")
 ```
 
-- **主缓存**：恒存在，实例名 `__MAIN__`，是唯一能 `@Inject` 注入的实例；也可以用 `CacheUtil.xxx()` 直接操作。
-- **扩展实例**：由 `cache.names` 声明，没有 `@Inject` 入口，只能用 `CacheUtil.use("{name}").xxx()` 操作。
+- **主缓存**：恒存在，实例名 `__MAIN__`，是唯一能 `@Inject` 注入的实例；也可以用 `CacheKit.xxx()` 直接操作。
+- **扩展实例**：由 `cache.names` 声明，没有 `@Inject` 入口，只能用 `CacheKit.use("{name}").xxx()` 操作。
 - 名字分三层，各管一件事：**实例名**（连哪个存储）/ **缓存名**（业务分区）/ **命名空间**（同一存储上区分不同应用）。
 
 只有一个实例时，只需认「主缓存」这一条线，可以完全忽略扩展实例。
@@ -235,9 +235,9 @@ if (failures >= 5) {
 `clear(counterName)` 清空该名称下的全部计数项，并把 `counterName` 本身从名称集合中移除：
 
 ```java
-Set<String> names = CounterUtil.use("mem").counterNames();
+Set<String> names = CounterKit.use("mem").counterNames();
 
-CounterUtil.clear("api-request");        // 清掉 api-request 下的全部计数项，并把它移出名称集合
+CounterKit.clear("api-request");        // 清掉 api-request 下的全部计数项，并把它移出名称集合
 ```
 
 `remove` 只删单个计数项，**不改变** `counterNames()`；可见范围规则见「接口通用规则」。
@@ -350,26 +350,26 @@ cache.mem.caffeine.maxSize = 50000
 主缓存与主计数器直接注入；扩展实例**没有 `@Inject` 入口**，按实例名从静态门面取：
 
 ```java
-Cache local = CacheUtil.use("mem");
+Cache local = CacheKit.use("mem");
 local.put("user", "42", user, 300);
 
-Counter localCounter = CounterUtil.use("mem");
+Counter localCounter = CounterKit.use("mem");
 long hits = localCounter.increase("hit", "42", 1, 300);
 ```
 
 `use(name)` 返回注册表中的同一个实例对象，调用方可以安全缓存引用。
 
-`CacheUtil` / `CounterUtil` 同时提供 `Cache` / `Counter` 业务方法的**静态镜像**（参数逐一对应，静态方法一律作用于主缓存；`namespace()` 不提供镜像，需要时用 `CacheUtil.use().namespace()` 取实例上的值）：
+`CacheKit` / `CounterKit` 同时提供 `Cache` / `Counter` 业务方法的**静态镜像**（参数逐一对应，静态方法一律作用于主缓存；`namespace()` 不提供镜像，需要时用 `CacheKit.use().namespace()` 取实例上的值）：
 
 ```java
-CacheUtil.put("user", "42", user, 1800);     // 等价于 cache.put(...)
-CacheUtil.use("mem").put("user", "42", user, 300);
+CacheKit.put("user", "42", user, 1800);     // 等价于 cache.put(...)
+CacheKit.use("mem").put("user", "42", user, 300);
 ```
 
 `cacheNames()` 返回当前实例曾被写入过的缓存名集合，用于运维自查，规则见「接口通用规则」：
 
 ```java
-Set<String> names = CacheUtil.use("mem").cacheNames();
+Set<String> names = CacheKit.use("mem").cacheNames();
 ```
 
 ## 接口通用规则
@@ -412,8 +412,8 @@ Set<String> names = CacheUtil.use("mem").cacheNames();
 | 读路径参数非法：`get` / `exists` / `remove` / `getTtl` | **不抛**，走「不可能命中」路径 |
 | 计数结果超出 `long` 范围 | `ArithmeticException`，且不改变数值与 TTL |
 | `Counter.get` 读到外部直接写入、无 TTL 或非整数的计数项 | `IllegalStateException`（**仅 jedis 后端**） |
-| `CacheUtil.use()` / `CounterUtil.use()` 时插件未启动或已停止 | `IllegalStateException` |
-| `CacheUtil.use(name)` / `CounterUtil.use(name)` 实例名为空、含非法字符或未注册 | `IllegalArgumentException`（**先生命周期、后参数**） |
+| `CacheKit.use()` / `CounterKit.use()` 时插件未启动或已停止 | `IllegalStateException` |
+| `CacheKit.use(name)` / `CounterKit.use(name)` 实例名为空、含非法字符或未注册 | `IllegalArgumentException`（**先生命周期、后参数**） |
 
 ### `null` 与 `cacheNull`
 

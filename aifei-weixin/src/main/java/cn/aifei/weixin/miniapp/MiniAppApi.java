@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 小程序服务端接口（复用公众号 ApiCaller 的 token 管理与 HttpKit）。
+ * 小程序服务端接口（复用公众号 ApiCaller 的 token 管理与 HttpClient）。
  */
 public class MiniAppApi {
 

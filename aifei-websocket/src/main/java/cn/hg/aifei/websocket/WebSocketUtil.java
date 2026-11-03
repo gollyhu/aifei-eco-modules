@@ -18,12 +18,12 @@ import cn.hg.aifei.websocket.internal.jdk.JdkWebSocketServer;
  * <p>返回的实例不会自动建连或启动，由调用方决定何时 {@link WebSocketClient#connect()} /
  * {@link WebSocketServer#start()}。</p>
  */
-public final class WebSocketKit {
+public final class WebSocketUtil {
 
     /**
      * 禁止创建实例。
      */
-    private WebSocketKit() {
+    private WebSocketUtil() {
     }
 
     /**

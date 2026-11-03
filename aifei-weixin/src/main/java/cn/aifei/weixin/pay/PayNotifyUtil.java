@@ -21,14 +21,14 @@ import java.util.Map;
  *
  * <p>官方文档：https://pay.weixin.qq.com/docs/merchant/apis/jsapi-payment/payment-notice.html
  */
-public class PayNotifyKit {
+public class PayNotifyUtil {
 
     public static final String HEADER_TIMESTAMP = "Wechatpay-Timestamp";
     public static final String HEADER_NONCE = "Wechatpay-Nonce";
     public static final String HEADER_SIGNATURE = "Wechatpay-Signature";
     public static final String HEADER_SERIAL = "Wechatpay-Serial";
 
-    private PayNotifyKit() {
+    private PayNotifyUtil() {
     }
 
     /**

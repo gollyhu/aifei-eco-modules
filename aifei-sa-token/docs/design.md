@@ -261,12 +261,12 @@ public void start() {
 
 | 形态 | 装配方式 | 适用场景 |
 |---|---|---|
-| 纯缓存 | `new SaTokenDaoForCache(CacheUtil.use())` | 登录态无需落库；多实例需缓存后端为 Redis |
-| 缓存加速 + 权威委托 | `new SaTokenDaoForCache(CacheUtil.use(), delegate)` | 登录态需要落库（审计、在线用户列表、按账号反查踢人等），Redis 只做加速层 |
+| 纯缓存 | `new SaTokenDaoForCache(CacheKit.use())` | 登录态无需落库；多实例需缓存后端为 Redis |
+| 缓存加速 + 权威委托 | `new SaTokenDaoForCache(CacheKit.use(), delegate)` | 登录态需要落库（审计、在线用户列表、按账号反查踢人等），Redis 只做加速层 |
 
 ```java
 public void onStart() {
-    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheUtil.use(), new MySaTokenDao()));
+    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheKit.use(), new MySaTokenDao()));
 }
 ```
 

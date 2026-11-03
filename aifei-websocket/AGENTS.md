@@ -32,7 +32,7 @@
 ### 公共面收敛（不得放宽）
 
 - **公共 API 零第三方类型、零框架类型**。
-- 公共类型固定为 **15 个，全部在根包**：`WebSocketClient` / `ClientListener` / `WebSocketServer` / `ServerListener` / `WebSocketSession` / `ConnectionState` / `Message` / `WebSocketConfig` / `ClientConfig` / `ServerConfig` / `MessageCodec` / `WebSocketException` / `WebSocketConnectionException` / `WebSocketCodecException` / `WebSocketKit`。**不再有 `spi` 包**（`MessageCodec` 已由 `spi` 包移入根包），**不再有传输后端 SPI**（`WebSocketProvider` / `AbstractWebSocketProvider` 已删除）。新增公共类型必须先过设计决策。
+- 公共类型固定为 **15 个，全部在根包**：`WebSocketClient` / `ClientListener` / `WebSocketServer` / `ServerListener` / `WebSocketSession` / `ConnectionState` / `Message` / `WebSocketConfig` / `ClientConfig` / `ServerConfig` / `MessageCodec` / `WebSocketException` / `WebSocketConnectionException` / `WebSocketCodecException` / `WebSocketUtil`。**不再有 `spi` 包**（`MessageCodec` 已由 `spi` 包移入根包），**不再有传输后端 SPI**（`WebSocketProvider` / `AbstractWebSocketProvider` 已删除）。新增公共类型必须先过设计决策。
 - `internal` 与 `internal.jdk` 均属**非承诺 API**：其中实现类因装配需要可声明为 `public`，但**明确不是公共 API**，消费方不得引用。
 - 异常消息中**不得**包含任何第三方类型名；底层异常（`IOException` / `SSLException` / 协议错误）一律包装为本模块异常类型后再上浮或交给回调。
 
@@ -64,7 +64,7 @@
 | Socket 创建与连接超时、`wss` 主机名校验、地址格式化、安全关闭 | `internal.jdk.JdkSocketSupport` |
 | 配置键名与解析（`Prop` → 配置对象） | `aifei.WebSocketConfigLoader`（包级私有） |
 
-> 传输实现**唯一且内建**（`internal.jdk`，纯 JDK 自实现 RFC6455）：**无 provider 扩展点、无注册表、无 `type` 配置**。`WebSocketKit` 与两个 `Plugin` 直接 `new` JDK 实现。旧版 `javawebsocket.JavaWebSocketSupport`（状态映射 / `ByteBuffer` 拷贝 / 地址格式化 / 关闭码取值）已随该包删除，其职责由 `internal.jdk` 各类型承接。
+> 传输实现**唯一且内建**（`internal.jdk`，纯 JDK 自实现 RFC6455）：**无 provider 扩展点、无注册表、无 `type` 配置**。`WebSocketUtil` 与两个 `Plugin` 直接 `new` JDK 实现。旧版 `javawebsocket.JavaWebSocketSupport`（状态映射 / `ByteBuffer` 拷贝 / 地址格式化 / 关闭码取值）已随该包删除，其职责由 `internal.jdk` 各类型承接。
 
 ## 行为契约要点速查
 

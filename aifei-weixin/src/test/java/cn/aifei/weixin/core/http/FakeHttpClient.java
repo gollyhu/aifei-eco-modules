@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 /**
  * 单测用伪 HTTP 客户端：记录请求、按需返回、可模拟传输异常，全程不联网
  */
-public class FakeHttpKit implements HttpKit {
+public class FakeHttpClient implements HttpClient {
 
     public final List<String> getUrls = new ArrayList<>();
     public final List<String> postUrls = new ArrayList<>();

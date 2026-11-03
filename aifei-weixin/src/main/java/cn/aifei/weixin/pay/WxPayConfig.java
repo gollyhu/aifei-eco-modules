@@ -13,7 +13,7 @@ import cn.aifei.weixin.pay.core.PlatformKeySource;
 
 /**
  * 支付链路配置入口：静态 {@code PayApi} / {@code PlatformCertManager} 由此取得
- * {@link PayHttpKit} 与 {@link PlatformKeySource}。
+ * {@link PayHttpClient} 与 {@link PlatformKeySource}。
  *
  * <pre>
  * 使用约定（模式对齐公众号 WxApiConfig）：
@@ -25,16 +25,16 @@ import cn.aifei.weixin.pay.core.PlatformKeySource;
  */
 public class WxPayConfig {
 
-    private static volatile PayHttpKit http;
+    private static volatile PayHttpClient http;
     private static volatile PlatformKeySource keySource;
 
-    public static void set(PayHttpKit httpKit, PlatformKeySource platformKeySource) {
-        http = httpKit;
+    public static void set(PayHttpClient httpClient, PlatformKeySource platformKeySource) {
+        http = httpClient;
         keySource = platformKeySource;
     }
 
-    public static PayHttpKit http() {
-        PayHttpKit ret = http;
+    public static PayHttpClient http() {
+        PayHttpClient ret = http;
         if (ret == null) {
             throw new WxApiException("WxPayConfig 未初始化，请先在应用启动时调用 WxPayConfig.set(http, keySource)");
         }

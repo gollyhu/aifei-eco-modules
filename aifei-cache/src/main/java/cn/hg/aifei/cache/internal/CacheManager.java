@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Cache 实例注册表：持有「实例名 → (Cache, Counter)」，是 {@code CacheUtil} / {@code CounterUtil} 取用实例
+ * Cache 实例注册表：持有「实例名 → (Cache, Counter)」，是 {@code CacheKit} / {@code CounterKit} 取用实例
  * 的唯一数据源。
  */
 public final class CacheManager {

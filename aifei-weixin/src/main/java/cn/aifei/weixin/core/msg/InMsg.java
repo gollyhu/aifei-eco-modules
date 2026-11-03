@@ -12,7 +12,7 @@ package cn.aifei.weixin.core.msg;
  * 接收消息基类（公共字段）。
  *
  * <p>接收时 {@code ToUserName} 为公众号、{@code FromUserName} 为用户 openid；
- * 被动回复时由 MsgKit 统一反转。
+ * 被动回复时由 MsgUtil 统一反转。
  */
 public class InMsg {
 

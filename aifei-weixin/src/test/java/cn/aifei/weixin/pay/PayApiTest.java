@@ -15,7 +15,7 @@ import static org.junit.Assert.fail;
 import cn.aifei.weixin.common.WxApiException;
 import cn.aifei.weixin.pay.WxPayConfig;
 import cn.aifei.weixin.pay.core.PayHttpResponse;
-import cn.aifei.weixin.support.FakePayHttpKit;
+import cn.aifei.weixin.support.FakePayHttpClient;
 import cn.aifei.weixin.support.PayTestKeys;
 import com.alibaba.fastjson2.JSONObject;
 import java.security.KeyPair;
@@ -30,14 +30,14 @@ public class PayApiTest {
 
     private KeyPair pair;
     private PayMerchant merchant;
-    private FakePayHttpKit http;
+    private FakePayHttpClient http;
 
     @Before
     public void setUp() {
         pair = PayTestKeys.generateKeyPair();
         merchant = PayMerchant.of(PayTestKeys.MCH_ID, pair.getPrivate(), PayTestKeys.MCH_SERIAL,
                 PayTestKeys.API_V3_KEY);
-        http = new FakePayHttpKit();
+        http = new FakePayHttpClient();
         WxPayConfig.set(http, serial -> pair.getPublic());
     }
 

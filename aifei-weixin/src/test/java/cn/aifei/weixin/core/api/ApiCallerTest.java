@@ -20,7 +20,7 @@ import cn.aifei.weixin.WxApiConfig;
 import cn.aifei.weixin.common.ApiResult;
 import cn.aifei.weixin.common.WxApiException;
 import cn.aifei.weixin.core.cache.MemoryAccessTokenCache;
-import cn.aifei.weixin.core.http.FakeHttpKit;
+import cn.aifei.weixin.core.http.FakeHttpClient;
 import cn.aifei.weixin.spi.WeixinAccount;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
@@ -47,12 +47,12 @@ public class ApiCallerTest {
 
     private final WeixinAccount account = WeixinAccount.of(APP_ID, "secret", "token", null);
 
-    private FakeHttpKit http;
+    private FakeHttpClient http;
     private MemoryAccessTokenCache cache;
 
     @Before
     public void setUp() {
-        http = new FakeHttpKit();
+        http = new FakeHttpClient();
         cache = new MemoryAccessTokenCache();
         WxApiConfig.set(http, cache);
     }
@@ -309,7 +309,7 @@ public class ApiCallerTest {
     public void qrcodeAndJsTicketSignatureHelpers() {
         assertEquals("https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=gQH%2B",
                 QrcodeApi.showQrcodeUrl("gQH+"));
-        assertEquals(cn.aifei.weixin.core.encrypt.Sha1Kit.sha1("jsapi_ticket=TT&noncestr=NN&timestamp=1&url=http://a"),
+        assertEquals(cn.aifei.weixin.core.encrypt.Sha1Util.sha1("jsapi_ticket=TT&noncestr=NN&timestamp=1&url=http://a"),
                 JsTicketApi.sign("TT", "NN", 1L, "http://a"));
     }
 

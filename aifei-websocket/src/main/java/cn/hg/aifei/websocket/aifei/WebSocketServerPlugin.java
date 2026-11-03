@@ -12,7 +12,7 @@ import cn.aifei.util.Prop;
 import cn.hg.aifei.websocket.MessageCodec;
 import cn.hg.aifei.websocket.ServerConfig;
 import cn.hg.aifei.websocket.ServerListener;
-import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketUtil;
 import cn.hg.aifei.websocket.WebSocketServer;
 
 /**
@@ -103,7 +103,7 @@ public class WebSocketServerPlugin implements Plugin {
         if (codec != null) {
             config.setCodec(codec);
         }
-        WebSocketServer created = WebSocketKit.createServer(config, listener);
+        WebSocketServer created = WebSocketUtil.createServer(config, listener);
         created.start();
         AopKit.get().addSingletonObject(WebSocketServer.class, created);
         this.server = created;

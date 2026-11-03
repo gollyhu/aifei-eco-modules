@@ -8,7 +8,7 @@
 
 package cn.aifei.weixin.core.msg;
 
-import cn.aifei.weixin.core.kit.XmlBuilder;
+import cn.aifei.weixin.core.util.XmlBuilder;
 
 /**
  * 被动回复渲染为明文 XML。

@@ -195,7 +195,7 @@ public class AppStpInterface implements StpInterface {
 ```java
 @Override
 public void onStart() {
-    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheUtil.use()));
+    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheKit.use()));
 }
 ```
 
@@ -206,7 +206,7 @@ public void onStart() {
 ```java
 @Override
 public void onStart() {
-    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheUtil.use(), new MySaTokenDao()));
+    SaManager.setSaTokenDao(new SaTokenDaoForCache(CacheKit.use(), new MySaTokenDao()));
 }
 ```
 

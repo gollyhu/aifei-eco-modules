@@ -38,7 +38,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
     /**
      * 使用指定的缓存实例创建纯缓存持久层。
      *
-     * @param cache 缓存实例，通常取自主缓存 {@code CacheUtil.use()}；不能为空
+     * @param cache 缓存实例，通常取自主缓存 {@code CacheKit.use()}；不能为空
      * @throws IllegalArgumentException cache 为空
      */
     public SaTokenDaoForCache(Cache cache) {
@@ -48,7 +48,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
     /**
      * 使用指定的缓存实例与权威持久层创建持久层。
      *
-     * @param cache 缓存实例，通常取自主缓存 {@code CacheUtil.use()}；不能为空
+     * @param cache 缓存实例，通常取自主缓存 {@code CacheKit.use()}；不能为空
      * @param delegate 权威持久层；为 {@code null} 时退化为纯缓存形态
      * @throws IllegalArgumentException cache 为空
      */

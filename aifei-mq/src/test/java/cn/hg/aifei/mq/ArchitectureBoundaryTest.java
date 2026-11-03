@@ -69,8 +69,8 @@ public class ArchitectureBoundaryTest {
             "MessageListener.java",
             "SendResult.java",
             "MqException.java",
-            "ProducerUtil.java",
-            "ConsumerUtil.java"
+            "ProducerKit.java",
+            "ConsumerKit.java"
     ));
 
     /**

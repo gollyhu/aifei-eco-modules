@@ -154,7 +154,7 @@ for (WebSocketSession session : server.sessions()) {  // 快照，可能含正�
 
 ## 接入方式二：程序化（非 aifei 环境 / 多连接场景）
 
-`WebSocketKit` 免 `Prop`、免框架；返回的实例**不会自动 connect / start**，由调用方决定。多连接场景反复调用 `createClient(...)` 即可，每个实例独立。
+`WebSocketUtil` 免 `Prop`、免框架；返回的实例**不会自动 connect / start**，由调用方决定。多连接场景反复调用 `createClient(...)` 即可，每个实例独立。
 
 ### 客户端
 
@@ -167,7 +167,7 @@ import cn.hg.aifei.websocket.ClientConfig;
 import cn.hg.aifei.websocket.ClientListener;
 import cn.hg.aifei.websocket.Message;
 import cn.hg.aifei.websocket.WebSocketClient;
-import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketUtil;
 
 ClientConfig config = new ClientConfig();
 config.setUri("ws://127.0.0.1:9000/ws");
@@ -197,7 +197,7 @@ ClientListener listener = new ClientListener() {
     }
 };
 
-WebSocketClient client = WebSocketKit.createClient(config, listener);
+WebSocketClient client = WebSocketUtil.createClient(config, listener);
 client.connect();                                   // 异步，立即返回
 opened.await(5, TimeUnit.SECONDS);                  // 等待建连成功
 client.send("hello");                               // 仅 OPEN 时成功
@@ -207,7 +207,7 @@ client.send("hello");                               // 仅 OPEN 时成功
 
 ```java
 import cn.hg.aifei.websocket.ServerConfig;
-import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketUtil;
 import cn.hg.aifei.websocket.WebSocketServer;
 
 ServerConfig config = new ServerConfig();
@@ -215,7 +215,7 @@ config.setHost("0.0.0.0");
 config.setPort(0);                                  // 0 = 随机端口，实际端口用 server.port() 读取
 config.setSessionIdleTimeoutSeconds(300);
 
-WebSocketServer server = WebSocketKit.createServer(config, new MyServerListener());
+WebSocketServer server = WebSocketUtil.createServer(config, new MyServerListener());
 server.start();
 System.out.println("listening on " + server.port());
 server.broadcast("notice");
@@ -418,7 +418,7 @@ server.broadcast(notice);                       // 向全部会话广播对象
 ClientConfig config = new ClientConfig();
 config.setUri("ws://127.0.0.1:9000/ws");
 config.setCodec(new JsonCodec());               // 未注入编解码器时 send(Object) 抛 IllegalStateException
-WebSocketClient client = WebSocketKit.createClient(config, listener);
+WebSocketClient client = WebSocketUtil.createClient(config, listener);
 client.connect();
 // ...
 client.send(order);                             // 经 JsonCodec 编码后发送；编码失败抛 WebSocketCodecException

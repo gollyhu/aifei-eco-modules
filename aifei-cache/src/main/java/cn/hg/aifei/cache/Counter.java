@@ -13,8 +13,8 @@ import java.util.Set;
  * 计数读写接口：业务代码只依赖本接口，不依赖 Caffeine 或 Redis 的具体实现，换后端只改配置。
  *
  * <p>计数器由缓存实例派生，与同源的 {@link Cache} 共用命名空间和默认 TTL：主计数器直接用
- * {@code @Inject} 注入，或用 {@code CounterUtil.use()} 取；配置了扩展实例时，用
- * {@code CounterUtil.use(实例名)} 按名字取。</p>
+ * {@code @Inject} 注入，或用 {@code CounterKit.use()} 取；配置了扩展实例时，用
+ * {@code CounterKit.use(实例名)} 按名字取。</p>
  *
  * <p><b>接口通用规则</b>：命名与空白校验、TTL 范围、返回值与名称集合语义为本接口与 {@link Cache}
  * 共用，统一写在 README 的「接口通用规则」一节；本接口没有 {@code cacheNull} 配置，也没有带

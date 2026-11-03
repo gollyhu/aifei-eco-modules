@@ -80,10 +80,10 @@ public class MultiInstanceTest {
     public void shouldIsolateInstancesWithDistinctNamespaces() {
         startTwoInstances(MEM);
 
-        Cache main = CacheUtil.use();
-        Cache mem = CacheUtil.use("mem");
-        Counter mainCounter = CounterUtil.use();
-        Counter memCounter = CounterUtil.use("mem");
+        Cache main = CacheKit.use();
+        Cache mem = CacheKit.use("mem");
+        Counter mainCounter = CounterKit.use();
+        Counter memCounter = CounterKit.use("mem");
 
         assertNotSame(main, mem);
         assertEquals(MAIN, main.namespace());
@@ -107,18 +107,18 @@ public class MultiInstanceTest {
     public void shouldScopeStaticFacadeMethodsToMainInstance() {
         startTwoInstances(MEM);
 
-        CacheUtil.put("user", "1", "main-only", Duration.ofSeconds(30));
-        assertEquals("main-only", CacheUtil.get("user", "1"));
+        CacheKit.put("user", "1", "main-only", Duration.ofSeconds(30));
+        assertEquals("main-only", CacheKit.get("user", "1"));
         assertNull("静态方法写入的条目不得被扩展实例读到",
-                CacheUtil.use("mem").get("user", "1"));
+                CacheKit.use("mem").get("user", "1"));
 
-        CacheUtil.use("mem").put("user", "1", "mem-only", Duration.ofSeconds(30));
-        assertEquals("main-only", CacheUtil.get("user", "1"));
-        assertEquals("mem-only", CacheUtil.use("mem").get("user", "1"));
+        CacheKit.use("mem").put("user", "1", "mem-only", Duration.ofSeconds(30));
+        assertEquals("main-only", CacheKit.get("user", "1"));
+        assertEquals("mem-only", CacheKit.use("mem").get("user", "1"));
 
-        CounterUtil.increase("visits", "u1", 7L, Duration.ofSeconds(30));
-        assertEquals(Long.valueOf(7L), CounterUtil.get("visits", "u1"));
-        assertNull(CounterUtil.use("mem").get("visits", "u1"));
+        CounterKit.increase("visits", "u1", 7L, Duration.ofSeconds(30));
+        assertEquals(Long.valueOf(7L), CounterKit.get("visits", "u1"));
+        assertNull(CounterKit.use("mem").get("visits", "u1"));
     }
 
     /**
@@ -128,8 +128,8 @@ public class MultiInstanceTest {
     public void shouldClearCacheNamePerInstance() {
         startTwoInstances(MEM);
 
-        Cache main = CacheUtil.use();
-        Cache mem = CacheUtil.use("mem");
+        Cache main = CacheKit.use();
+        Cache mem = CacheKit.use("mem");
         main.put("user", "1", "a", Duration.ofSeconds(30));
         main.put("user", "2", "b", Duration.ofSeconds(30));
         main.put("order", "1", "c", Duration.ofSeconds(30));
@@ -149,37 +149,37 @@ public class MultiInstanceTest {
     @Test
     public void shouldReportLookupFailures() {
         // 1) 插件未初始化
-        assertThrows(IllegalStateException.class, CacheUtil::use);
-        assertThrows(IllegalStateException.class, () -> CacheUtil.use("mem"));
-        assertThrows(IllegalStateException.class, CounterUtil::use);
-        assertThrows(IllegalStateException.class, () -> CounterUtil.use("mem"));
+        assertThrows(IllegalStateException.class, CacheKit::use);
+        assertThrows(IllegalStateException.class, () -> CacheKit.use("mem"));
+        assertThrows(IllegalStateException.class, CounterKit::use);
+        assertThrows(IllegalStateException.class, () -> CounterKit.use("mem"));
 
         // 「先生命周期、后参数」：未初始化 + 非法实例名，仍报生命周期异常
         IllegalStateException lifecycleFirst =
-                assertThrows(IllegalStateException.class, () -> CacheUtil.use(null));
+                assertThrows(IllegalStateException.class, () -> CacheKit.use(null));
         assertTrue(lifecycleFirst.getMessage().contains("has not been initialized"));
-        assertThrows(IllegalStateException.class, () -> CacheUtil.use("  "));
+        assertThrows(IllegalStateException.class, () -> CacheKit.use("  "));
 
         startTwoInstances(MEM);
 
         // 2) 未知实例名
         IllegalArgumentException unknown =
-                assertThrows(IllegalArgumentException.class, () -> CacheUtil.use("ghost"));
+                assertThrows(IllegalArgumentException.class, () -> CacheKit.use("ghost"));
         assertTrue(unknown.getMessage().contains("unknown cache instance: ghost"));
-        assertThrows(IllegalArgumentException.class, () -> CounterUtil.use("ghost"));
+        assertThrows(IllegalArgumentException.class, () -> CounterKit.use("ghost"));
 
         // 3) null 实例名
-        assertThrows(IllegalArgumentException.class, () -> CacheUtil.use(null));
+        assertThrows(IllegalArgumentException.class, () -> CacheKit.use(null));
         // 4) 空白实例名
-        assertThrows(IllegalArgumentException.class, () -> CacheUtil.use(" "));
-        assertThrows(IllegalArgumentException.class, () -> CounterUtil.use("\t"));
+        assertThrows(IllegalArgumentException.class, () -> CacheKit.use(" "));
+        assertThrows(IllegalArgumentException.class, () -> CounterKit.use("\t"));
 
         // 5) 已停止
         plugin.stop();
         IllegalStateException stopped =
-                assertThrows(IllegalStateException.class, CacheUtil::use);
+                assertThrows(IllegalStateException.class, CacheKit::use);
         assertTrue(stopped.getMessage().contains("has not been initialized"));
-        assertThrows(IllegalStateException.class, () -> CacheUtil.use("mem"));
+        assertThrows(IllegalStateException.class, () -> CacheKit.use("mem"));
     }
 
     /**
@@ -188,9 +188,9 @@ public class MultiInstanceTest {
     @Test
     public void shouldReturnStableReferences() {
         startTwoInstances(MEM);
-        assertSame(CacheUtil.use("mem"), CacheUtil.use("mem"));
-        assertSame(CounterUtil.use("mem"), CounterUtil.use("mem"));
-        assertSame(Aop_cacheSingleton(), CacheUtil.use());
+        assertSame(CacheKit.use("mem"), CacheKit.use("mem"));
+        assertSame(CounterKit.use("mem"), CounterKit.use("mem"));
+        assertSame(Aop_cacheSingleton(), CacheKit.use());
     }
 
     private static Cache Aop_cacheSingleton() {

@@ -6,7 +6,7 @@
  * 授权：aifei vip 订阅用户。尊重版权，民富国强！
  */
 
-package cn.aifei.weixin.core.kit;
+package cn.aifei.weixin.core.util;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -31,7 +31,7 @@ import org.w3c.dom.NodeList;
  *  3: 禁止加载外部 DTD，禁止 XInclude，禁止实体展开
  * </pre>
  */
-public class XmlKit {
+public class XmlUtil {
 
     /**
      * 解析微信 XML 报文，返回根节点下「直接子节点名 → 文本」的有序映射。
@@ -92,6 +92,6 @@ public class XmlKit {
         return factory;
     }
 
-    private XmlKit() {
+    private XmlUtil() {
     }
 }

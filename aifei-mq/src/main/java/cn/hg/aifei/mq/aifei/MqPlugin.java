@@ -89,7 +89,7 @@ public class MqPlugin implements Plugin {
                 created.add(bus);
                 MqHolder.register(instanceName, bus.producer(), bus.consumer());
             }
-            // @Inject 只对应主实例：AopKit 按类型注册、无按名通道，命名实例只能经 ProducerUtil / ConsumerUtil 取用
+            // @Inject 只对应主实例：AopKit 按类型注册、无按名通道，命名实例只能经 ProducerKit / ConsumerKit 取用
             AopKit.get().addSingletonObject(Producer.class, MqHolder.producer(MqConfig.MAIN_INSTANCE_NAME));
             AopKit.get().addSingletonObject(Consumer.class, MqHolder.consumer(MqConfig.MAIN_INSTANCE_NAME));
             buses.clear();

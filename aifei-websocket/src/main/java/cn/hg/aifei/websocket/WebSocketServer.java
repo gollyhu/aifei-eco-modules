@@ -11,7 +11,7 @@ import java.util.Collection;
 /**
  * 服务端能力接口：绑定监听端口、接收 WebSocket 连接、管理会话与广播。
  *
- * <p>业务代码只依赖本接口，通过 {@code @Inject} 注入装配好的实例，或用 {@link WebSocketKit} 自行创建；
+ * <p>业务代码只依赖本接口，通过 {@code @Inject} 注入装配好的实例，或用 {@link WebSocketUtil} 自行创建；
  * 传输层为内建实现，无可替换后端扩展点。</p>
  *
  * <p>本接口所有方法均可从任意线程调用。但<b>禁止在服务端回调内调用 {@link #stop()}</b>：底层停止会

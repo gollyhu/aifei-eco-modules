@@ -11,7 +11,7 @@ package cn.aifei.weixin.core.api;
 import cn.aifei.weixin.WxApiConfig;
 import cn.aifei.weixin.common.ApiResult;
 import cn.aifei.weixin.core.cache.AccessTokenCache;
-import cn.aifei.weixin.core.encrypt.Sha1Kit;
+import cn.aifei.weixin.core.encrypt.Sha1Util;
 import cn.aifei.weixin.spi.WeixinAccount;
 import com.alibaba.fastjson2.JSONObject;
 import java.util.HashMap;
@@ -63,7 +63,7 @@ public class JsTicketApi {
      * 前端 JS-SDK 签名：sha1("jsapi_ticket=..&noncestr=..&timestamp=..&url=..")，字符串顺序固定不排序
      */
     public static String sign(String jsapiTicket, String nonce, long timestamp, String url) {
-        return Sha1Kit.sha1("jsapi_ticket=" + jsapiTicket
+        return Sha1Util.sha1("jsapi_ticket=" + jsapiTicket
                 + "&noncestr=" + nonce
                 + "&timestamp=" + timestamp
                 + "&url=" + url);

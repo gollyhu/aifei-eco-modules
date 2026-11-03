@@ -8,7 +8,7 @@
 
 package cn.aifei.weixin.pay.core;
 
-import cn.aifei.weixin.core.encrypt.RandomKit;
+import cn.aifei.weixin.core.encrypt.RandomUtil;
 import cn.aifei.weixin.pay.PayMerchant;
 import com.alibaba.fastjson2.JSON;
 import java.nio.charset.StandardCharsets;
@@ -47,7 +47,7 @@ public class PaySignature {
     public static String buildAuthorization(PayMerchant merchant, String method,
                                             String canonicalUrl, String body) {
         long timestamp = System.currentTimeMillis() / 1000;
-        String nonce = RandomKit.randomStr(32);
+        String nonce = RandomUtil.randomStr(32);
         String message = method + "\n" + canonicalUrl + "\n" + timestamp + "\n" + nonce + "\n"
                 + (body == null ? "" : body) + "\n";
         String signature = sign(merchant.getPrivateKey(), message);
@@ -66,7 +66,7 @@ public class PaySignature {
      */
     public static JsapiPayParams buildJsapiPayParams(String appId, PayMerchant merchant, String prepayId) {
         String timeStamp = String.valueOf(System.currentTimeMillis() / 1000);
-        String nonceStr = RandomKit.randomStr(32);
+        String nonceStr = RandomUtil.randomStr(32);
         String packageValue = "prepay_id=" + prepayId;
         String message = appId + "\n" + timeStamp + "\n" + nonceStr + "\n" + packageValue + "\n";
         return new JsapiPayParams(appId, timeStamp, nonceStr, packageValue,

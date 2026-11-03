@@ -37,7 +37,7 @@ RFC6455 的握手与帧编解码用 JDK 自带的 `Socket` / `SSLSocket` / `Mess
 
 - **只内建一个传输实现**：`cn.hg.aifei.websocket.internal.jdk`，纯 JDK 自实现 RFC6455；
 - **无 provider / 注册表扩展点**（已删除）：`WebSocketProvider` / `AbstractWebSocketProvider` / `WebSocketProviderRegistry` 不再存在，公共面不含任何传输后端抽象；
-- **装配路径直连实现**：`WebSocketKit` 与两个 `Plugin` 直接 `new` JDK 实现，不经任何注册表；
+- **装配路径直连实现**：`WebSocketUtil` 与两个 `Plugin` 直接 `new` JDK 实现，不经任何注册表；
 - **零第三方运行时依赖**：运行时只依赖 `cn.aifei:aifei-all`（`provided`），消费方无需自带传输库，也无需自带日志绑定。
 
 后端标识常量 `"jdk"` 的唯一定义点是 `internal.WebSocketBackend`；`WebSocketClient.backendType()` / `WebSocketServer.backendType()` **保留**，固定返回 `"jdk"`（不读配置）。
@@ -57,7 +57,7 @@ RFC6455 的握手与帧编解码用 JDK 自带的 `Socket` / `SSLSocket` / `Mess
 
 ### 1.5 设计原则六条
 
-1. **接口极简、实现无关**：使用者只依赖根包接口与 `WebSocketKit` 工厂；通过 `@Inject` 取装配好的实例。
+1. **接口极简、实现无关**：使用者只依赖根包接口与 `WebSocketUtil` 工厂；通过 `@Inject` 取装配好的实例。
 2. **内建传输、零依赖**：传输实现唯一且内建（`internal.jdk`，自实现 RFC6455），**无 SPI 扩展点、无 `type` 配置**；使用者只面对根包接口，换实现不是使用场景。
 3. **双向解耦**：client 与 server 各自独立装配、独立生命周期，只装其中一个不需要另一个。
 4. **行为契约可测**：状态机、退避、重连联动、空闲回收等全部精确到「可写断言」的程度。
@@ -117,7 +117,7 @@ cn.hg.aifei.websocket.aifei              接入包：aifei 装配入口（★ �
 | `WebSocketException` | class | 运行态故障**基类**（非用户错误） |
 | `WebSocketConnectionException` | class | 建连、传输、收发失败（运行态故障） |
 | `WebSocketCodecException` | class | 编解码失败（运行态故障） |
-| `WebSocketKit` | final class | 程序化工厂：由 `ClientConfig` / `ServerConfig` 创建客户端 / 服务端（免 Prop、免框架） |
+| `WebSocketUtil` | final class | 程序化工厂：由 `ClientConfig` / `ServerConfig` 创建客户端 / 服务端（免 Prop、免框架） |
 | `MessageCodec` | interface | 业务对象 ↔ `Message` 的编解码契约，由消费方实现并注入（**已从 `spi` 包移入根包**；`spi` 包已删除） |
 
 ### 3.2 `internal` 包（非承诺 API，8 个）
@@ -429,7 +429,7 @@ public abstract class WebSocketConfig {
 ```
 
 - **无 `type` 字段**（已删除）：传输实现唯一且内建，`WebSocketConfig` 不再持有后端类型，`setType` / `type()` 一并删除；`WebSocketConfigLoader` 不再读 `websocket.client.type` / `websocket.server.type` 两个键。基类仍为 `abstract class`，不可直接实例化。
-- `codec`：编解码器，可为 `null`（表示不使用对象编解码）。**两条注入路径**：程序化（`WebSocketKit`）经 `setCodec` 注入；aifei 装配路径经 §4.12 的 **3 参构造器**注入（`WebSocketConfigLoader` 不解析 codec）。
+- `codec`：编解码器，可为 `null`（表示不使用对象编解码）。**两条注入路径**：程序化（`WebSocketUtil`）经 `setCodec` 注入；aifei 装配路径经 §4.12 的 **3 参构造器**注入（`WebSocketConfigLoader` 不解析 codec）。
 - `heartbeatSeconds`：心跳间隔（秒），`0` 表示禁用。取值范围 `[0, 2147483]`（上限保证 `heartbeatSeconds × 1000` 换算毫秒后不溢出 `int`；超限抛 `IllegalArgumentException`）。
 
 ```java
@@ -491,16 +491,16 @@ public final class ServerConfig extends WebSocketConfig {
 - 字段级校验在 setter 内完成（`WebSocketValidator` 是唯一定义点）；跨字段校验（如 `maxRetryDelayMillis ≥ initialRetryDelayMillis`、`uri` 协议合法）在**构建时**完成。
 - **`ServerConfig.port` 的「必填」语义下沉到接入层**：API 层 `port` 默认 `0`（= 由系统分配随机端口），setter 仅校验 `[0, 65535]`，**不做必填判定**；配置键 `websocket.server.port` 缺失时由 `WebSocketConfigLoader` 抛错，表现为**应用启动失败**（见 §4.12）。
 
-### 4.10 工厂：`WebSocketKit`
+### 4.10 工厂：`WebSocketUtil`
 
 ```java
-public final class WebSocketKit {
+public final class WebSocketUtil {
 
     public static WebSocketClient createClient(ClientConfig config, ClientListener listener);
 
     public static WebSocketServer createServer(ServerConfig config, ServerListener listener);
 
-    private WebSocketKit() {
+    private WebSocketUtil() {
     }
 }
 ```
@@ -573,7 +573,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 - `start()` 内：解析配置 → **若 `codec != null` 则先 `setCodec` 进配置对象** → 构建 JDK 实现 → **建连（客户端）/ 启动（服务端）** → 写入 `AopKit` 单例（使 `@Inject WebSocketClient` / `@Inject WebSocketServer` 生效）。
 - `start()` / `stop()` **幂等**；`stop()` 关闭对应实例。
 - 客户端监听器 / 服务端监听器分别为**构造参数**（配置里表达不了对象引用）；这是本模块相对 aifei-cache 的唯一形态差异。
-- **单实例已定档**：aifei 装配路径每类注册**一个**单例（`@Inject WebSocketClient` / `@Inject WebSocketServer` 各一个），**不引入实例名与 `use(name)` 门面**；多连接 / 多实例场景走 `WebSocketKit` 程序化路径（见 §11，尚未发布；发布后冻结）。
+- **单实例已定档**：aifei 装配路径每类注册**一个**单例（`@Inject WebSocketClient` / `@Inject WebSocketServer` 各一个），**不引入实例名与 `use(name)` 门面**；多连接 / 多实例场景走 `WebSocketUtil` 程序化路径（见 §11，尚未发布；发布后冻结）。
 - **`MessageCodec` 同属对象引用，走同一条路**：两个 `Plugin` 各提供 **2 参 / 3 参两个构造器**：
   - `(Prop prop, XxxListener listener)`：**语义等价于 `codec = null`**（不使用对象编解码）；此路径下 `send(Object)` / `broadcast(Object)` 会因未配置编解码器而抛 `IllegalStateException`。
   - `(Prop prop, XxxListener listener, MessageCodec codec)`：用于注入 `MessageCodec`。**若在 aifei 装配路径需要对象编解码，必须使用 3 参构造器**。
@@ -589,7 +589,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 
 - 传输实现**唯一且内建**：`cn.hg.aifei.websocket.internal.jdk`，基于 `java.net.Socket` / `javax.net.ssl.SSLSocket` 自实现 RFC6455，**零第三方依赖**。
 - **无扩展点**：不存在 provider 接口、抽象基类与注册表；公共面不含任何传输后端抽象。
-- **装配路径直连实现**：`WebSocketKit` 与 `WebSocketClientPlugin` / `WebSocketServerPlugin` 直接 `new` JDK 实现（`JdkWebSocketClient` / `JdkWebSocketServer`），不经任何注册表。
+- **装配路径直连实现**：`WebSocketUtil` 与 `WebSocketClientPlugin` / `WebSocketServerPlugin` 直接 `new` JDK 实现（`JdkWebSocketClient` / `JdkWebSocketServer`），不经任何注册表。
 - **内部实现声明**：`internal.jdk` 不计入公共 API、不受兼容性承诺；其中实现类因装配需要可声明为 `public`，但**明确不是公共 API**，消费方不得引用。原 `internal.WebSocketProviderRegistry`（组合根）已删除。
 
 ### 5.2 HTTP Upgrade 握手
@@ -999,7 +999,7 @@ aifei-websocket/
     │   ├── WebSocketException.java              # 运行态故障基类
     │   ├── WebSocketConnectionException.java    # 建连/传输/收发失败
     │   ├── WebSocketCodecException.java         # 编解码失败
-    │   ├── WebSocketKit.java                    # 程序化工厂（直接构建 JDK 实现）
+    │   ├── WebSocketUtil.java                    # 程序化工厂（直接构建 JDK 实现）
     │   ├── internal/
     │   │   ├── AbstractWebSocketClient.java     # 共享客户端骨架（状态机/发送校验/重连编排）
     │   │   ├── AbstractWebSocketServer.java     # 共享服务端骨架（会话登记/广播/空闲回收）
@@ -1049,7 +1049,7 @@ aifei-websocket/
 sequenceDiagram
     autonumber
     participant App as 应用
-    participant Kit as WebSocketKit
+    participant Kit as WebSocketUtil
     participant C as JdkWebSocketClient
     participant H as Rfc6455Handshake
     participant T as JdkWebSocketConnection
@@ -1127,7 +1127,7 @@ sequenceDiagram
 
     App->>S: plugins.add(new WebSocketServerPlugin(prop, listener))
     App->>S: start()
-    S->>Srv: WebSocketKit.createServer(config, listener)
+    S->>Srv: WebSocketUtil.createServer(config, listener)
     Srv->>T: doStart()：ServerSocket 绑定并开始接受连接
     T-->>A: handleStart()
     A->>L: onStart()
@@ -1252,7 +1252,7 @@ classDiagram
     class WebSocketException
     class WebSocketConnectionException
     class WebSocketCodecException
-    class WebSocketKit {
+    class WebSocketUtil {
         +createClient(ClientConfig, ClientListener) WebSocketClient
         +createServer(ServerConfig, ServerListener) WebSocketServer
     }
@@ -1296,8 +1296,8 @@ classDiagram
     ClientListener ..> Message
     ServerListener ..> Message
     WebSocketConfig ..> MessageCodec
-    WebSocketKit ..> JdkWebSocketClient
-    WebSocketKit ..> JdkWebSocketServer
+    WebSocketUtil ..> JdkWebSocketClient
+    WebSocketUtil ..> JdkWebSocketServer
     JdkWebSocketClient ..> WebSocketBackend
     JdkWebSocketServer ..> WebSocketBackend
 ```
@@ -1310,11 +1310,11 @@ classDiagram
 
 ## 10. 有序任务列表（含依赖）
 
-供实现层分批落盘。批次之间为单向依赖。**B1 不是可编译的最小闭环**：其公开面契约的字段级校验委托 `internal.WebSocketValidator`（B2，见 §4.9 与下方 B2 说明），`WebSocketKit` 又直接构建 `internal.jdk` 的实现（B3）；因此 **B1 单独无法 `mvn compile`**，`mvn -DskipTests compile` 的首次可编译点是 **B3 完成后**，B2 及之后各批完成后可编译。
+供实现层分批落盘。批次之间为单向依赖。**B1 不是可编译的最小闭环**：其公开面契约的字段级校验委托 `internal.WebSocketValidator`（B2，见 §4.9 与下方 B2 说明），`WebSocketUtil` 又直接构建 `internal.jdk` 的实现（B3）；因此 **B1 单独无法 `mvn compile`**，`mvn -DskipTests compile` 的首次可编译点是 **B3 完成后**，B2 及之后各批完成后可编译。
 
 | 批 | 名称 | 依赖 | 源文件（相对 `aifei-websocket/`） | 文件数 | 建议执行者 |
 | --- | --- | --- | --- | --- | --- |
-| **B1** | 构建骨架 + 公开面 | 无 | `pom.xml`（仅 `aifei-all` provided + `junit` test）；根包 15 个类型（`WebSocketClient` / `ClientListener` / `WebSocketServer` / `ServerListener` / `WebSocketSession` / `ConnectionState` / `Message` / `WebSocketConfig` / `ClientConfig` / `ServerConfig` / `MessageCodec` / `WebSocketException` / `WebSocketConnectionException` / `WebSocketCodecException` / `WebSocketKit`） | **16** | `aifei-core-engineer` |
+| **B1** | 构建骨架 + 公开面 | 无 | `pom.xml`（仅 `aifei-all` provided + `junit` test）；根包 15 个类型（`WebSocketClient` / `ClientListener` / `WebSocketServer` / `ServerListener` / `WebSocketSession` / `ConnectionState` / `Message` / `WebSocketConfig` / `ClientConfig` / `ServerConfig` / `MessageCodec` / `WebSocketException` / `WebSocketConnectionException` / `WebSocketCodecException` / `WebSocketUtil`） | **16** | `aifei-core-engineer` |
 | **B2** | 内部共享骨架与工具 | B1 | `internal/AbstractWebSocketClient`、`internal/AbstractWebSocketServer`、`internal/Backoff`、`internal/ListenerGuard`、`internal/SessionIds`、`internal/WebSocketValidator` | **6** | `aifei-core-engineer` |
 | **B3** | 后端标识 + 编解码入口 + JDK 传输实现 | B2 | `internal/WebSocketBackend`、`internal/MessageCodecs`；`internal/jdk/Rfc6455Handshake`、`Rfc6455FrameCodec`、`JdkSocketSupport`、`JdkWebSocketConnection`、`JdkWebSocketClient`、`JdkWebSocketServer`、`JdkWebSocketSession` | **9** | `aifei-core-engineer` |
 | **B4** | aifei 接入层 | B3 | `aifei/WebSocketClientPlugin`、`aifei/WebSocketServerPlugin`、`aifei/WebSocketConfigLoader` | **3** | `aifei-service-engineer` |
@@ -1323,7 +1323,7 @@ classDiagram
 
 **批次说明**
 
-- **B1 是「公开面契约」批次**：落盘 `pom.xml` + 根包 15 类型（共 16 文件），确定公共 API 字形。**`MessageCodec` 在根包**（`spi` 包已删除），`WebSocketConfig` **无 `type` 字段**。因其配置类 setter 的字段级校验委托 `internal.WebSocketValidator`（B2，见 §4.9）、`WebSocketKit` 又直接构建 `internal.jdk` 实现（B3），**B1 单独无法 `mvn compile`**：公开面骨架需 **B2（校验器）+ B3（传输实现）齐备**后才编译通过，即 `mvn -DskipTests compile` 的首次可编译点是 **B3 完成后**。
+- **B1 是「公开面契约」批次**：落盘 `pom.xml` + 根包 15 类型（共 16 文件），确定公共 API 字形。**`MessageCodec` 在根包**（`spi` 包已删除），`WebSocketConfig` **无 `type` 字段**。因其配置类 setter 的字段级校验委托 `internal.WebSocketValidator`（B2，见 §4.9）、`WebSocketUtil` 又直接构建 `internal.jdk` 实现（B3），**B1 单独无法 `mvn compile`**：公开面骨架需 **B2（校验器）+ B3（传输实现）齐备**后才编译通过，即 `mvn -DskipTests compile` 的首次可编译点是 **B3 完成后**。
 - **B2 是「共享逻辑」的唯一落点**：状态机、发送校验、回调保护、退避、校验规则只在这里实现一次（对应 §1.4 纪律 6）。
 - **B2 必须提供 `WebSocketValidator` 的完整方法清单**（§4.9 唯一定义点）：
   - **字段级（11 个，返回校验后的值，越界抛 `IllegalArgumentException`）**：`requireHeartbeatSeconds` / `requireUri` / `requireConnectTimeoutMillis` / `requireMaxRetries` / `requireInitialRetryDelayMillis` / `requireRetryJitterRatio` / `requireHeaders` / `requireHost` / `requirePort` / `requireSessionIdleTimeoutSeconds` / `requireMaxPendingConnections`（**`requireType` 已随 `type` 配置删除**）。
@@ -1332,7 +1332,7 @@ classDiagram
 - **B3 是「传输实现」的唯一落点**：RFC6455 握手与帧编解码、Socket / TLS、客户端 / 服务端 / 会话实现全部在此批；**全模块禁止 `org.java_websocket`**，只允许 JDK API。**B3 完成后 `mvn -DskipTests compile` 首次通过**（本模块首个可编译点）。
 - **B4 的两个 `Plugin` 各含 2 参 / 3 参两个构造器**：2 参 = 不使用对象编解码（语义等价 `codec = null`）；3 参用于注入 `MessageCodec`（aifei 装配路径需要对象编解码时用，见 §4.12）。文件数不变（仍 3 个）。
 - **B5 的契约测试基类**（`ClientContractTest` / `ServerContractTest`）在 B2/B3 之后即可写，由唯一实现 `JdkWebSocketClientTest` / `JdkWebSocketServerTest` 继承运行（契约与实现分离，便于断言全部契约条目）。`LoopbackTest` 依赖 B4 的装配链路，须覆盖握手、收发、分片、心跳 pong 活跃与断线重连。
-- **B6 是模块文档四件套的补齐批**：`README.md`（面向使用者：安装、消费方需自带的依赖、`@Inject` 用法、程序化 `WebSocketKit` 用法、完整 `app-config.txt` 配置项表含默认值、客户端 / 服务端使用示例、自动重连与心跳说明、常见问题）、`AGENTS.md`（面向开发代理：模块硬约束、门禁断言、唯一定义点清单、验证命令、文档同步要求）与 `docs/testing.md`（面向测试维护者：测试分层、契约机制、门禁与基线、新增约定）。文档分工见仓库根 `AGENTS.md`「适用范围与文档分工」。
+- **B6 是模块文档四件套的补齐批**：`README.md`（面向使用者：安装、消费方需自带的依赖、`@Inject` 用法、程序化 `WebSocketUtil` 用法、完整 `app-config.txt` 配置项表含默认值、客户端 / 服务端使用示例、自动重连与心跳说明、常见问题）、`AGENTS.md`（面向开发代理：模块硬约束、门禁断言、唯一定义点清单、验证命令、文档同步要求）与 `docs/testing.md`（面向测试维护者：测试分层、契约机制、门禁与基线、新增约定）。文档分工见仓库根 `AGENTS.md`「适用范围与文档分工」。
 - **demo 模块（`aifei-websocket-demo`）** 属独立交付批次，不在本模块文件清单内；其依赖与组织见 §7.2（建议在 B4 之后另起一批，文件数约 6～10）。
 
 **验证命令（模块目录内执行）**
@@ -1371,7 +1371,7 @@ mvn test -Dtest=BackoffTest#bounds       # 单用例：类名#方法名
 ### 11.4 多连接 / 多实例
 
 - **原待确认项**：多连接 / 多实例
-- **定档结论**：定档 **本期为单客户端 + 单服务端**（各 `@Inject` 一个）；多连接 / 多实例场景走 `WebSocketKit` 程序化路径（可自行创建任意多个实例），**不引入实例名与 `use(name)` 门面**。
+- **定档结论**：定档 **本期为单客户端 + 单服务端**（各 `@Inject` 一个）；多连接 / 多实例场景走 `WebSocketUtil` 程序化路径（可自行创建任意多个实例），**不引入实例名与 `use(name)` 门面**。
 - **定档日期**：2026-10-14
 
 ### 11.5 日志绑定（已删除 / 旧版）

@@ -87,16 +87,16 @@ public class MqPluginTest {
         plugin.start();
 
         List<String> received = new ArrayList<>();
-        ConsumerUtil.subscribe("orders", message -> received.add(text(message)));
-        SendResult result = ProducerUtil.send("orders", "A1001");
+        ConsumerKit.subscribe("orders", message -> received.add(text(message)));
+        SendResult result = ProducerKit.send("orders", "A1001");
 
         assertEquals("orders", result.topic());
         assertEquals(1, received.size());
         assertEquals("A1001", received.get(0));
-        assertSame(ProducerUtil.use(), ProducerUtil.use());
-        assertSame(ConsumerUtil.use(), ConsumerUtil.use());
-        assertSame(Aop.get(Producer.class), ProducerUtil.use());
-        assertSame(Aop.get(Consumer.class), ConsumerUtil.use());
+        assertSame(ProducerKit.use(), ProducerKit.use());
+        assertSame(ConsumerKit.use(), ConsumerKit.use());
+        assertSame(Aop.get(Producer.class), ProducerKit.use());
+        assertSame(Aop.get(Consumer.class), ConsumerKit.use());
     }
 
     /**
@@ -107,7 +107,7 @@ public class MqPluginTest {
         plugin = new MqPlugin(prop());
         plugin.start();
 
-        SendResult result = ProducerUtil.send("t", "x");
+        SendResult result = ProducerKit.send("t", "x");
 
         assertEquals("t", result.topic());
     }
@@ -119,13 +119,13 @@ public class MqPluginTest {
     public void shouldBeIdempotentOnStart() {
         plugin = new MqPlugin(prop("mq.names", ORDERS));
         plugin.start();
-        Producer main = ProducerUtil.use();
-        Producer orders = ProducerUtil.use(ORDERS);
+        Producer main = ProducerKit.use();
+        Producer orders = ProducerKit.use(ORDERS);
 
         plugin.start();
 
-        assertSame(main, ProducerUtil.use());
-        assertSame(orders, ProducerUtil.use(ORDERS));
+        assertSame(main, ProducerKit.use());
+        assertSame(orders, ProducerKit.use(ORDERS));
     }
 
     /**
@@ -138,10 +138,10 @@ public class MqPluginTest {
 
         plugin.stop();
 
-        assertThrows(IllegalStateException.class, ProducerUtil::use);
-        assertThrows(IllegalStateException.class, ConsumerUtil::use);
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use(ORDERS));
-        assertThrows(IllegalStateException.class, () -> ConsumerUtil.use(ORDERS));
+        assertThrows(IllegalStateException.class, ProducerKit::use);
+        assertThrows(IllegalStateException.class, ConsumerKit::use);
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use(ORDERS));
+        assertThrows(IllegalStateException.class, () -> ConsumerKit.use(ORDERS));
         plugin.stop();
     }
 
@@ -154,7 +154,7 @@ public class MqPluginTest {
 
         plugin.stop();
 
-        assertThrows(IllegalStateException.class, ProducerUtil::use);
+        assertThrows(IllegalStateException.class, ProducerKit::use);
     }
 
     /**
@@ -166,8 +166,8 @@ public class MqPluginTest {
 
         assertThrows(IllegalArgumentException.class, plugin::start);
 
-        assertThrows(IllegalStateException.class, ProducerUtil::use);
-        assertThrows(IllegalStateException.class, ConsumerUtil::use);
+        assertThrows(IllegalStateException.class, ProducerKit::use);
+        assertThrows(IllegalStateException.class, ConsumerKit::use);
     }
 
     /**
@@ -178,23 +178,23 @@ public class MqPluginTest {
         plugin = new MqPlugin(prop("mq.names", ORDERS + ",payments"));
         plugin.start();
 
-        Producer orders = ProducerUtil.use(ORDERS);
-        assertNotSame(ProducerUtil.use(), orders);
-        assertNotSame(orders, ProducerUtil.use("payments"));
-        assertSame(orders, ProducerUtil.use(ORDERS));
+        Producer orders = ProducerKit.use(ORDERS);
+        assertNotSame(ProducerKit.use(), orders);
+        assertNotSame(orders, ProducerKit.use("payments"));
+        assertSame(orders, ProducerKit.use(ORDERS));
 
         List<String> mainReceived = new ArrayList<>();
         List<String> ordersReceived = new ArrayList<>();
-        ConsumerUtil.subscribe("t", message -> mainReceived.add(text(message)));
-        ConsumerUtil.use(ORDERS).subscribe("t", message -> ordersReceived.add(text(message)));
+        ConsumerKit.subscribe("t", message -> mainReceived.add(text(message)));
+        ConsumerKit.use(ORDERS).subscribe("t", message -> ordersReceived.add(text(message)));
 
-        ProducerUtil.use(ORDERS).send("t", "for-orders");
+        ProducerKit.use(ORDERS).send("t", "for-orders");
 
         assertEquals(1, ordersReceived.size());
         assertEquals("for-orders", ordersReceived.get(0));
         assertTrue("命名实例的消息不得投递给主实例的订阅者", mainReceived.isEmpty());
 
-        ProducerUtil.send("t", "for-main");
+        ProducerKit.send("t", "for-main");
 
         assertEquals(1, mainReceived.size());
         assertEquals("for-main", mainReceived.get(0));
@@ -210,8 +210,8 @@ public class MqPluginTest {
 
         assertThrows(IllegalArgumentException.class, plugin::start);
 
-        assertThrows(IllegalStateException.class, ProducerUtil::use);
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use(ORDERS));
+        assertThrows(IllegalStateException.class, ProducerKit::use);
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use(ORDERS));
     }
 
     /**
@@ -223,8 +223,8 @@ public class MqPluginTest {
 
         assertThrows(IllegalArgumentException.class, plugin::start);
 
-        assertThrows(IllegalStateException.class, ProducerUtil::use);
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use(ORDERS));
+        assertThrows(IllegalStateException.class, ProducerKit::use);
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use(ORDERS));
     }
 
     /**
@@ -264,8 +264,8 @@ public class MqPluginTest {
 
         assertThrows(RuntimeException.class, plugin::start);
 
-        assertThrows(IllegalStateException.class, ProducerUtil::use);
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use(ORDERS));
+        assertThrows(IllegalStateException.class, ProducerKit::use);
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use(ORDERS));
     }
 
     /**
@@ -385,7 +385,7 @@ public class MqPluginTest {
         @Override
         public synchronized String getProperty(String key) {
             if (assembledProducer == null && triggerKey.equals(key)) {
-                assembledProducer = ProducerUtil.use();
+                assembledProducer = ProducerKit.use();
             }
             return super.getProperty(key);
         }

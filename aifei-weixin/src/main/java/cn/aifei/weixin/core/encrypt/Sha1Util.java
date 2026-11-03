@@ -16,7 +16,7 @@ import java.util.Arrays;
 /**
  * SHA-1 摘要工具（零依赖，Java 内置 MessageDigest）。
  */
-public class Sha1Kit {
+public class Sha1Util {
 
     /**
      * 微信签名：参数按字典序排序后直接拼接，取 40 位小写十六进制。
@@ -53,6 +53,6 @@ public class Sha1Kit {
         }
     }
 
-    private Sha1Kit() {
+    private Sha1Util() {
     }
 }

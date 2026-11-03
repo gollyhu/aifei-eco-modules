@@ -21,10 +21,10 @@
 | --- | --- |
 | 协议内核 | AES-256-CBC 加解密、SHA-1 签名、安全 XML 解析（禁 DOCTYPE / 外部实体）、XML 构建与转义 |
 | 消息模型 | 接收消息 8 类、事件 10 类（9 个事件钩子）、被动回复 6 类，含解析器与渲染器 |
-| 分发 | `MsgKit`（传输无关双入口：`verify` 首验 / `handle` 消息）、`MsgHandler`（模板方法，17 个钩子） |
+| 分发 | `MsgUtil`（传输无关双入口：`verify` 首验 / `handle` 消息）、`MsgHandler`（模板方法，17 个钩子） |
 | Api 客户端 | `ApiCaller` + `MenuApi` / `UserApi` / `MediaApi` / `TemplateMsgApi` / `OAuth2Api` / `QrcodeApi` / `JsTicketApi` |
 | 小程序 | `MiniAppApi`：code2Session 登录 / 订阅消息 / 手机号 / 小程序码（复用公众号 token 链路） |
-| 微信支付 V3 | `PayApi`（JSAPI 下单 / 查单 / 关单 / 退款）+ `PayNotifyKit`（回调验签 + AES-256-GCM 解密）+ `PlatformCertManager`（平台证书惰性刷新）；RSA / GCM / mTLS 纯 JDK 实现 |
+| 微信支付 V3 | `PayApi`（JSAPI 下单 / 查单 / 关单 / 退款）+ `PayNotifyUtil`（回调验签 + AES-256-GCM 解密）+ `PlatformCertManager`（平台证书惰性刷新）；RSA / GCM / mTLS 纯 JDK 实现 |
 | 接入层 | `WeixinIo`（传输 SPI）、`WeixinHandler`（aifei `Handler` 实现，唯一 import 内核的类） |
 
 ## 快速开始
@@ -49,7 +49,7 @@ settings.addHandler(new WeixinHandler<>(
         }));
 
 // 使用 Api 前装配一次，tokenCache 须复用同一实例
-WxApiConfig.set(new JdkHttpKit(), new MemoryAccessTokenCache());
+WxApiConfig.set(new JdkHttpClient(), new MemoryAccessTokenCache());
 ```
 
 回调地址：`https://域名/weixin/{appId}/msg`。完整接入步骤（含后台配置与上线检查清单）见 `docs/开发规范/微信接入规范.md`；构建：`cd aifei-weixin && mvn clean install`（需先于依赖它的应用模块）。

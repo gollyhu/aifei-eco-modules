@@ -13,7 +13,7 @@ import cn.aifei.core.Input;
 import cn.aifei.core.Output;
 import cn.aifei.log.Log;
 import cn.aifei.weixin.MsgHandler;
-import cn.aifei.weixin.MsgKit;
+import cn.aifei.weixin.MsgUtil;
 import cn.aifei.weixin.WxConsts;
 import cn.aifei.weixin.spi.WeixinAccount;
 import cn.aifei.weixin.spi.WeixinAccountProvider;
@@ -70,15 +70,15 @@ public class WeixinHandler<I extends Input, O extends Output> extends Handler<I,
         String appId = accountId(in, path);
         WeixinAccount account = appId == null ? null : accountProvider.get(appId);
         if (account == null) {
-            // 未知 appId 直接回 fail，不进 MsgKit
+            // 未知 appId 直接回 fail，不进 MsgUtil
             log.warn("微信回调未知 appId={} path={}", appId, path);
             io.replyXml(in, WxConsts.RESP_FAIL);
             return;
         }
 
         String response = io.isGet(in)
-                ? MsgKit.verify(io, in, account)
-                : MsgKit.handle(io, in, account, msgHandler);
+                ? MsgUtil.verify(io, in, account)
+                : MsgUtil.handle(io, in, account, msgHandler);
         io.replyXml(in, response);
     }
 

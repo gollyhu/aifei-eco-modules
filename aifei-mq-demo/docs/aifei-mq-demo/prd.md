@@ -142,7 +142,7 @@
 | `mq.names` 逗号分隔，逐项去空白；空项/非法字符/保留名（`type`、`names`）/重名即**启动失败** | `MqConfig.parseInstanceNames` | `demoA,demoB` 合法；配置错则应用起不来，页面无「部分实例」状态 |
 | 命名实例前缀为 `mq.<name>`，类型键 `mq.<name>.type`，未配置时默认为 `memory` | `MqConfig.parse` / `prefixOf` | 3 个实例都是 `memory`；`mq.demoA.type` 可省略，建议显式写出便于演示 |
 | `MqPlugin` 的实例名清单方法 `instanceNames()` 是 **private**，`MqHolder` **不提供枚举 API** | `MqPlugin` / `MqHolder` | demo 侧要列实例，只能**自己重解析 `mq.names`**（`MqConfig.parseInstanceNames(p.getProperties(), MqConfig.NAMES_KEY)`）再拼 `__MAIN__` |
-| `ConsumerUtil.use(name)` 按名取实例，未注册抛 `IllegalArgumentException`，未初始化抛 `IllegalStateException` | `ConsumerUtil` / `MqHolder.lookup` | `ready` 判定可直接以「能否取到 producer/consumer」为依据 |
+| `ConsumerKit.use(name)` 按名取实例，未注册抛 `IllegalArgumentException`，未初始化抛 `IllegalStateException` | `ConsumerKit` / `MqHolder.lookup` | `ready` 判定可直接以「能否取到 producer/consumer」为依据 |
 | 每实例独立 `MemoryMessageBus`（各自的 `subscriptions` 与 `messageId` 自增） | `MemoryMessageBus` / `MqPlugin.start` | 「按实例隔离」**在库层**成立（`start()` 内逐实例 `createBus`）；但 demo 侧 `DemoMessageLog` 现状是**全静态单份**（见 §4 与 §7 第 13 条），记录/计数/订阅登记**必须重构为按实例分片**——这是本需求要新增的改造点，方案由架构师决定 |
 | `MessageBus` 只有 `producer()` / `consumer()` / `close()`，**无法枚举主题或订阅者** | `MessageBus` | 页面的「已订阅主题 chip 列表」**只能由 demo 侧自维护**（含装配期订阅），不能从库查 |
 | `Consumer.unsubscribe(topic, listener)` 需传 listener **实例身份**；重复取消/取消未登记订阅为静默 no-op | `Consumer` | 取消订阅端点必须能取回登记时的 listener 实例 |

@@ -10,7 +10,7 @@ import cn.hg.aifei.mq.internal.MqConfig;
 import cn.hg.aifei.mq.internal.MqHolder;
 
 /**
- * {@link Producer} 的静态工具类：不注入也能取到生产者实例，或用静态方法直接向主实例发送。
+ * {@link Producer} 的静态门面：不注入也能取到生产者实例，或用静态方法直接向主实例发送。
  *
  * <p>「主实例」指配置里 {@code mq.*} 那一套，应用启动后就存在，也正是 {@code @Inject Producer} 注入的对象。
  * 配置了扩展实例时，用 {@link #use(String)} 按实例名取；实例名在配置项 {@code mq.names} 里声明，取到的是
@@ -20,12 +20,12 @@ import cn.hg.aifei.mq.internal.MqHolder;
  * 它们都要先取实例，因此与 {@link #use()} 一样，可能在应用尚未启动或已经停止时抛
  * {@link IllegalStateException}。</p>
  */
-public final class ProducerUtil {
+public final class ProducerKit {
 
     /**
      * 禁止创建工具类实例。
      */
-    private ProducerUtil() {
+    private ProducerKit() {
     }
 
     /**

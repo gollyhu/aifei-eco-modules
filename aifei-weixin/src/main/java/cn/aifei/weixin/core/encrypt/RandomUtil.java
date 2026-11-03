@@ -13,7 +13,7 @@ import java.security.SecureRandom;
 /**
  * 随机字符串工具（AES 报文的 16 字节随机头、安全模式回复的 nonce）
  */
-public class RandomKit {
+public class RandomUtil {
 
     private static final char[] CHARS =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
@@ -35,6 +35,6 @@ public class RandomKit {
         return ret.toString();
     }
 
-    private RandomKit() {
+    private RandomUtil() {
     }
 }

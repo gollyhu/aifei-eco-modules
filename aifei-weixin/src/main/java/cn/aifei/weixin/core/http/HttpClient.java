@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * HTTP 客户端抽象（接口化便于单测注入伪实现，全程不联网）。
  */
-public interface HttpKit {
+public interface HttpClient {
 
     String get(String url);
 
@@ -29,6 +29,6 @@ public interface HttpKit {
      * 默认不支持，需要该能力的实现自行覆写。
      */
     default byte[] postDownload(String url, String jsonBody) {
-        throw new UnsupportedOperationException("该 HttpKit 实现不支持 postDownload");
+        throw new UnsupportedOperationException("该 HttpClient 实现不支持 postDownload");
     }
 }

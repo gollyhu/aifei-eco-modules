@@ -60,7 +60,7 @@ public class WxCrypt {
         byte[] appIdBytes = appId.getBytes(StandardCharsets.UTF_8);
 
         ByteArrayOutputStream body = new ByteArrayOutputStream(plainBytes.length + appIdBytes.length + 32);
-        byte[] randomBytes = RandomKit.randomStr().getBytes(StandardCharsets.UTF_8);
+        byte[] randomBytes = RandomUtil.randomStr().getBytes(StandardCharsets.UTF_8);
         body.write(randomBytes, 0, randomBytes.length);
         body.write((plainBytes.length >> 24) & 0xFF);
         body.write((plainBytes.length >> 16) & 0xFF);

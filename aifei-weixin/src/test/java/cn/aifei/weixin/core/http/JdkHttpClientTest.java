@@ -26,12 +26,12 @@ import org.junit.Test;
 /**
  * JDK HTTP 实现（S3 验证标准 ⑥⑦）：multipart 拼装 + 传输失败转异常。不访问外网。
  */
-public class JdkHttpKitTest {
+public class JdkHttpClientTest {
 
     @Test
     public void networkFailureThrowsWxApiException() {
         // 127.0.0.1:1 必然拒绝连接，模拟网络不可达（不依赖外网）
-        JdkHttpKit http = new JdkHttpKit(200, 200);
+        JdkHttpClient http = new JdkHttpClient(200, 200);
         try {
             http.get("http://127.0.0.1:1/cgi-bin/token");
             fail("网络不可达必须抛 WxApiException");
@@ -54,7 +54,7 @@ public class JdkHttpKitTest {
             serverThread.setDaemon(true);
             serverThread.start();
 
-            JdkHttpKit http = new JdkHttpKit(500, 300);
+            JdkHttpClient http = new JdkHttpClient(500, 300);
             long start = System.currentTimeMillis();
             try {
                 http.download("http://127.0.0.1:" + server.getLocalPort() + "/cgi-bin/media/get");
@@ -76,7 +76,7 @@ public class JdkHttpKitTest {
         Map<String, File> files = Collections.singletonMap("media", file);
 
         String boundary = "----test-boundary";
-        String body = new String(JdkHttpKit.buildMultipartBody(boundary, fields, files), StandardCharsets.UTF_8);
+        String body = new String(JdkHttpClient.buildMultipartBody(boundary, fields, files), StandardCharsets.UTF_8);
 
         assertTrue(body.contains("--" + boundary + "\r\n"));
         assertTrue(body.contains("Content-Disposition: form-data; name=\"type\"\r\n\r\nimage\r\n"));
@@ -87,7 +87,7 @@ public class JdkHttpKitTest {
 
     @Test
     public void multipartBodyWithoutBoundaryOverflowOfFields() {
-        String body = new String(JdkHttpKit.buildMultipartBody("b", null, null), StandardCharsets.UTF_8);
+        String body = new String(JdkHttpClient.buildMultipartBody("b", null, null), StandardCharsets.UTF_8);
         assertEquals("--b--\r\n", body);
     }
 }

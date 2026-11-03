@@ -22,7 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 门面完整性 —— {@link CacheUtil} / {@link CounterUtil} 的方法集合必须与
+ * 门面完整性 —— {@link CacheKit} / {@link CounterKit} 的方法集合必须与
  * {@link Cache} / {@link Counter} 的业务方法逐一对应（含 {@link java.time.Duration} 与
  * {@code int ttlSeconds} 双重重载）；写路径的省略 TTL 重载仅限显式白名单列出的签名。
  *
@@ -36,39 +36,39 @@ public class FacadeMirrorTest {
      * <b>刻意不镜像到门面的契约方法</b>：它是配置自述，业务代码不需要经门面访问。
      *
      * <p>静态门面一律作用于主缓存，因此不镜像不影响可用性 —— 需要时用
-     * {@code CacheUtil.use().namespace()}（或 {@code CounterUtil.use()}）取实例上的值。</p>
+     * {@code CacheKit.use().namespace()}（或 {@code CounterKit.use()}）取实例上的值。</p>
      */
     private static final Set<String> CONTRACT_ONLY = new HashSet<>(
             Arrays.asList("namespace()"));
 
     /**
-     * {@code Cache} 的每个实例方法都能在 {@code CacheUtil} 找到同签名的静态方法
+     * {@code Cache} 的每个实例方法都能在 {@code CacheKit} 找到同签名的静态方法
      * （{@link #CONTRACT_ONLY} 中的方法除外）。
      */
     @Test
-    public void shouldMirrorCacheInterfaceInCacheUtil() {
-        assertMirrors(Cache.class, CacheUtil.class, CONTRACT_ONLY);
+    public void shouldMirrorCacheInterfaceInCacheKit() {
+        assertMirrors(Cache.class, CacheKit.class, CONTRACT_ONLY);
 
         Set<String> facadeOnly = new HashSet<>();
         facadeOnly.add("use()");
         facadeOnly.add("use(String)");
-        assertTrue("门面新增方法必须同步到接口: " + extraMethods(CacheUtil.class, Cache.class, facadeOnly),
-                extraMethods(CacheUtil.class, Cache.class, facadeOnly).isEmpty());
+        assertTrue("门面新增方法必须同步到接口: " + extraMethods(CacheKit.class, Cache.class, facadeOnly),
+                extraMethods(CacheKit.class, Cache.class, facadeOnly).isEmpty());
     }
 
     /**
-     * {@code Counter} 的每个实例方法都能在 {@code CounterUtil} 找到同签名的静态方法
+     * {@code Counter} 的每个实例方法都能在 {@code CounterKit} 找到同签名的静态方法
      * （{@link #CONTRACT_ONLY} 中的方法除外）。
      */
     @Test
-    public void shouldMirrorCounterInterfaceInCounterUtil() {
-        assertMirrors(Counter.class, CounterUtil.class, CONTRACT_ONLY);
+    public void shouldMirrorCounterInterfaceInCounterKit() {
+        assertMirrors(Counter.class, CounterKit.class, CONTRACT_ONLY);
 
         Set<String> facadeOnly = new HashSet<>();
         facadeOnly.add("use()");
         facadeOnly.add("use(String)");
-        assertTrue("门面新增方法必须同步到接口: " + extraMethods(CounterUtil.class, Counter.class, facadeOnly),
-                extraMethods(CounterUtil.class, Counter.class, facadeOnly).isEmpty());
+        assertTrue("门面新增方法必须同步到接口: " + extraMethods(CounterKit.class, Counter.class, facadeOnly),
+                extraMethods(CounterKit.class, Counter.class, facadeOnly).isEmpty());
     }
 
     /**
@@ -77,10 +77,10 @@ public class FacadeMirrorTest {
     @Test
     public void shouldNotMirrorContractOnlyMethods() {
         for (String signature : CONTRACT_ONLY) {
-            assertFalse("门面不应提供 " + signature + " 的静态镜像: " + CacheUtil.class.getSimpleName(),
-                    facadeSignatures(CacheUtil.class).contains(signature));
-            assertFalse("门面不应提供 " + signature + " 的静态镜像: " + CounterUtil.class.getSimpleName(),
-                    facadeSignatures(CounterUtil.class).contains(signature));
+            assertFalse("门面不应提供 " + signature + " 的静态镜像: " + CacheKit.class.getSimpleName(),
+                    facadeSignatures(CacheKit.class).contains(signature));
+            assertFalse("门面不应提供 " + signature + " 的静态镜像: " + CounterKit.class.getSimpleName(),
+                    facadeSignatures(CounterKit.class).contains(signature));
         }
     }
 
@@ -177,7 +177,7 @@ public class FacadeMirrorTest {
      */
     @Test
     public void shouldBeFinalUtilityClasses() {
-        for (Class<?> type : new Class<?>[]{CacheUtil.class, CounterUtil.class}) {
+        for (Class<?> type : new Class<?>[]{CacheKit.class, CounterKit.class}) {
             assertTrue(type + " 必须是 final", Modifier.isFinal(type.getModifiers()));
             assertEquals(type + " 只能有一个私有构造", 1, type.getDeclaredConstructors().length);
             assertTrue(type + " 的构造必须是 private",
@@ -186,8 +186,8 @@ public class FacadeMirrorTest {
     }
 
     /**
-     * 根包对外只暴露 6 个公共类型：{@link Cache} / {@link Counter} / {@link CacheUtil} /
-     * {@link CounterUtil} / {@link CachePlugin} / {@link CacheKeyMatchType}。
+     * 根包对外只暴露 6 个公共类型：{@link Cache} / {@link Counter} / {@link CacheKit} /
+     * {@link CounterKit} / {@link CachePlugin} / {@link CacheKeyMatchType}。
      *
      * <p>包内还有一个包私有的哨兵类型，不构成公共面；公共类型集合是对外承诺的一部分，在此钉死。</p>
      *
@@ -217,7 +217,7 @@ public class FacadeMirrorTest {
         }
 
         assertEquals(new TreeSet<>(Arrays.asList(
-                "Cache", "CacheKeyMatchType", "CacheUtil", "CachePlugin", "Counter", "CounterUtil")),
+                "Cache", "CacheKeyMatchType", "CacheKit", "CachePlugin", "Counter", "CounterKit")),
                 publicTypes);
     }
 

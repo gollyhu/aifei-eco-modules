@@ -174,7 +174,7 @@ sequenceDiagram
 
 ### 8.1 R1：装配期按**每实例**订阅 E2 域 topic（有意偏差）
 - **偏差声明 + 反证（R2 采纳）**：`onStart()` 现有 javadoc 写「装配期订阅刻意只覆盖主实例，命名实例的订阅留给页面端点」。本轮**有意偏差，但仅限 E2 域 topic**：`aifei.mq.demo.topic` 的装配期订阅**仍只覆盖 `__MAIN__`**（否则 `demoA` 消息流被自由 topic 演示污染，两套对照失效）。若 E2 域 topic 也只订阅主实例，`demoA` 上 `/event/send` 必然 `delivered=0`、命中表恒 0 —— 命名实例上演示不成立；故「每实例装配期订阅」是**需求**，不是过度设计。
-- **实现口径**：遍历 `MqInstanceCatalog.list()`（不是 `names()`，`list()` 内建 `ready` 判定）；`if (!it.ready()) { 打印一行原因; continue; }`；对每个就绪实例用 `it.consumer()`（**不可**用 `ConsumerUtil.use()` 无参，那恒指主实例）逐 `E2Topics.all()` 域 topic 调 `subscribe(topic, new E2EventListener(name))`，随后 `DemoSubscriptions.registerStartup(name, topic, E2EventListener.NAME)`。订阅异常**不吞**（沿用「启动期明确失败优于静默无订阅」）。
+- **实现口径**：遍历 `MqInstanceCatalog.list()`（不是 `names()`，`list()` 内建 `ready` 判定）；`if (!it.ready()) { 打印一行原因; continue; }`；对每个就绪实例用 `it.consumer()`（**不可**用 `ConsumerKit.use()` 无参，那恒指主实例）逐 `E2Topics.all()` 域 topic 调 `subscribe(topic, new E2EventListener(name))`，随后 `DemoSubscriptions.registerStartup(name, topic, E2EventListener.NAME)`。订阅异常**不吞**（沿用「启动期明确失败优于静默无订阅」）。
 - **对既有 chip 的影响（QA 必验）**：`demoA`/`demoB` 的「已订阅主题」**0 → 2**，两个 chip 为 `startup` 来源（无 `×`、`title` 沿用既有不可取消文案）；对其调 `unsubscribe` 返回 `10001 未登记该主题的页面订阅`。入口页 `subscribedTopicCount` 同步 0 → 2（页面逻辑不变）。
 - **javadoc 改法**：原「装配期订阅刻意只覆盖主实例——…」整段替换为：「装配期订阅分两类：**自由 demo 主题仅主实例**（保住 `demoA`/`demoB` 消息流从 0 起算）；**E2 域 topic 覆盖每个已就绪实例**（否则命名实例无法演示 E2 分发，见 `docs/aifei-mq-demo/design-e2.md` §8.1）。二者均登记为 `startup` 槽，页面一律不可取消。」
 

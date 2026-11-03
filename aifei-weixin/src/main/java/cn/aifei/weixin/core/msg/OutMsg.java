@@ -11,7 +11,7 @@ package cn.aifei.weixin.core.msg;
 /**
  * 被动回复基类。
  *
- * <p>toUserName / fromUserName / createTime 由 MsgKit 统一填充（反转入参 + 当前秒级时间戳），
+ * <p>toUserName / fromUserName / createTime 由 MsgUtil 统一填充（反转入参 + 当前秒级时间戳），
  * 业务侧只需关注内容字段。
  */
 public class OutMsg {

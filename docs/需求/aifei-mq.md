@@ -36,7 +36,7 @@
 - **内存实现**：进程内消息总线，发布-订阅语义；投递的并发/有序模型由架构师定档（见第九节）。
 - **配置**：`mq.type` 选择后端 + `mq.<type>.*` 后端配置；构造函数只持 `Prop` 引用，
   解析与校验全部在 `start()` 内完成，配置有误即启动失败、不留半装配状态。
-- **门面**：`MqKit`（镜像 `CacheUtil` / `WebSocketKit` 的便捷入口范式）。
+- **门面**：`MqKit`（镜像 `CacheKit` / `WebSocketUtil` 的便捷入口范式）。
 - **异常**：`MqException`（层次是否细分连接异常，交架构师定档）。
 
 **不在本次范围（P1/P2）**：顺序 / 延迟 / 事务消息；真实 MQ 后端 provider；消费组与竞争消费；
@@ -76,7 +76,7 @@
 - **Plugin 装配范式**：`aifei-websocket/src/main/java/cn/hg/aifei/websocket/aifei/WebSocketClientPlugin.java`
 - **provider 扩展点范式**：`aifei-cache/src/main/java/cn/hg/aifei/cache/internal/`
   （`CacheProvider` + `CacheProviderRegistry` + `AbstractCacheProvider`）
-- **门面范式**：`aifei-cache/.../CacheUtil.java`、`aifei-websocket/.../WebSocketKit.java`
+- **门面范式**：`aifei-cache/.../CacheKit.java`、`aifei-websocket/.../WebSocketUtil.java`
 - **全体底线**：仓库根 `AGENTS.md`；模块约束范例：`aifei-websocket/AGENTS.md`、`aifei-cache/AGENTS.md`
 - **模块总览**：`CODEBUDDY.md`
 - **注意**：`aifei-websocket` 已删除 provider/SPI/type 配置（纯 JDK 自实现路线），

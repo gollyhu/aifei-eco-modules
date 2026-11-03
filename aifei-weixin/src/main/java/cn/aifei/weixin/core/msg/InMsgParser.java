@@ -9,7 +9,7 @@
 package cn.aifei.weixin.core.msg;
 
 import cn.aifei.weixin.WxConsts;
-import cn.aifei.weixin.core.kit.XmlKit;
+import cn.aifei.weixin.core.util.XmlUtil;
 import java.util.Map;
 
 /**
@@ -20,11 +20,11 @@ import java.util.Map;
 public class InMsgParser {
 
     /**
-     * 解析明文 XML。未知 MsgType 返回 null（由 MsgKit 响应 success），
+     * 解析明文 XML。未知 MsgType 返回 null（由 MsgUtil 响应 success），
      * XML 非法时抛 IllegalArgumentException。
      */
     public static InMsg parse(String xml) {
-        Map<String, String> data = XmlKit.parse(xml);
+        Map<String, String> data = XmlUtil.parse(xml);
         String msgType = data.get("MsgType");
         if (msgType == null) {
             return null;

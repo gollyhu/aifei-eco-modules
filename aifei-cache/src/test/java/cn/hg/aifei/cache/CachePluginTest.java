@@ -94,9 +94,9 @@ public class CachePluginTest {
         Cache main = CacheManager.getCache(Config.MAIN_INSTANCE_NAME);
         assertSame(main, Aop.get(Cache.class));
         assertSame(CacheManager.getCounter(Config.MAIN_INSTANCE_NAME), Aop.get(Counter.class));
-        assertSame(main, CacheUtil.use());
+        assertSame(main, CacheKit.use());
 
-        CacheUtil.put("user", "1", "tom", Duration.ofSeconds(10));
+        CacheKit.put("user", "1", "tom", Duration.ofSeconds(10));
         assertEquals("tom", Aop.<Cache>get(Cache.class).get("user", "1"));
     }
 
@@ -127,15 +127,15 @@ public class CachePluginTest {
     public void shouldBeIdempotentOnStartAndStop() {
         plugin = new CachePlugin(caffeineConfig("ns"));
         plugin.start();
-        Cache first = CacheUtil.use();
+        Cache first = CacheKit.use();
         plugin.start();
-        assertSame(first, CacheUtil.use());
+        assertSame(first, CacheKit.use());
 
         plugin.stop();
         plugin.stop();
 
         IllegalStateException exception =
-                assertThrows(IllegalStateException.class, CacheUtil::use);
+                assertThrows(IllegalStateException.class, CacheKit::use);
         assertTrue(exception.getMessage().contains("has not been initialized"));
     }
 
@@ -154,17 +154,17 @@ public class CachePluginTest {
         ));
         plugin.start();
 
-        Cache mem = CacheUtil.use("mem");
+        Cache mem = CacheKit.use("mem");
         assertEquals("mem-ns", mem.namespace());
         assertEquals(Duration.ofMillis(1_000L), mem.ttl());
 
         mem.put("user", "1", "mem-value", Duration.ofSeconds(10));
-        CacheUtil.put("user", "1", "main-value", Duration.ofSeconds(10));
+        CacheKit.put("user", "1", "main-value", Duration.ofSeconds(10));
         assertEquals("mem-value", mem.get("user", "1"));
-        assertEquals("main-value", CacheUtil.use().get("user", "1"));
+        assertEquals("main-value", CacheKit.use().get("user", "1"));
 
         assertSame(mem, CacheManager.getCache("mem"));
-        assertSame(CacheManager.getCounter("mem"), CounterUtil.use("mem"));
+        assertSame(CacheManager.getCounter("mem"), CounterKit.use("mem"));
     }
 
     /**
@@ -182,7 +182,7 @@ public class CachePluginTest {
         ));
         plugin.start();
 
-        Cache mem = CacheUtil.use("mem");
+        Cache mem = CacheKit.use("mem");
         assertEquals(Duration.ofMillis(1_234L), mem.ttl());
         assertTrue(mem.cacheNull());
         assertEquals(Config.DEFAULT_NAMESPACE, mem.namespace());
@@ -253,7 +253,7 @@ public class CachePluginTest {
                 "cache.namespace", "a-b_c.d"
         ));
         plugin.start();
-        assertEquals("a-b_c.d", CacheUtil.use().namespace());
+        assertEquals("a-b_c.d", CacheKit.use().namespace());
     }
 
     /**
@@ -266,7 +266,7 @@ public class CachePluginTest {
     public void shouldIgnoreLegacyTtlKey() {
         plugin = new CachePlugin(prop("cache.type", "caffeine", "cache.ttl", "60_000"));
         plugin.start();
-        assertEquals(Duration.ofMillis(Config.DEFAULT_TTL), CacheUtil.ttl());
+        assertEquals(Duration.ofMillis(Config.DEFAULT_TTL), CacheKit.ttl());
     }
 
     /**
@@ -283,26 +283,26 @@ public class CachePluginTest {
                 "cache.mem.ttl", "60_000"                     // 旧写法：应被忽略
         ));
         plugin.start();
-        assertEquals(Duration.ofMillis(5_000L), CacheUtil.use("mem").ttl());
+        assertEquals(Duration.ofMillis(5_000L), CacheKit.use("mem").ttl());
     }
 
     @Test
-    public void shouldMirrorCounterMembersInCounterUtil() {
+    public void shouldMirrorCounterMembersInCounterKit() {
         plugin = new CachePlugin(prop("cache.type", "caffeine", "cache.ttlMillis", "1500"));
         plugin.start();
 
-        assertEquals(Duration.ofMillis(1_500L), CounterUtil.ttl());
-        assertTrue(CounterUtil.counterNames().isEmpty());
+        assertEquals(Duration.ofMillis(1_500L), CounterKit.ttl());
+        assertTrue(CounterKit.counterNames().isEmpty());
 
-        assertEquals(1L, CounterUtil.increase("visits", "u1", 1L));
-        assertEquals(2L, CounterUtil.increaseAndRefreshTtl("visits", "u1", 1L));
-        assertEquals(1L, CounterUtil.decrease("visits", "u1", 1L));
-        assertEquals(0L, CounterUtil.decreaseAndRefreshTtl("visits", "u1", 1L));
-        assertEquals(Collections.singleton("visits"), CounterUtil.counterNames());
+        assertEquals(1L, CounterKit.increase("visits", "u1", 1L));
+        assertEquals(2L, CounterKit.increaseAndRefreshTtl("visits", "u1", 1L));
+        assertEquals(1L, CounterKit.decrease("visits", "u1", 1L));
+        assertEquals(0L, CounterKit.decreaseAndRefreshTtl("visits", "u1", 1L));
+        assertEquals(Collections.singleton("visits"), CounterKit.counterNames());
 
-        CounterUtil.clear("visits");
-        assertNull(CounterUtil.get("visits", "u1"));
-        assertTrue("clear 后该计数名称必须移除", CounterUtil.counterNames().isEmpty());
+        CounterKit.clear("visits");
+        assertNull(CounterKit.get("visits", "u1"));
+        assertTrue("clear 后该计数名称必须移除", CounterKit.counterNames().isEmpty());
     }
 
     /**
@@ -331,9 +331,9 @@ public class CachePluginTest {
     public void shouldUseDefaultTtlEqualInterfaceConstant() {
         plugin = new CachePlugin(prop("cache.type", "caffeine"));
         plugin.start();
-        assertEquals(Duration.ofMillis(Config.DEFAULT_TTL), CacheUtil.ttl());
-        assertEquals(Config.DEFAULT_NAMESPACE, CacheUtil.use().namespace());
-        assertFalse(CacheUtil.cacheNull());
+        assertEquals(Duration.ofMillis(Config.DEFAULT_TTL), CacheKit.ttl());
+        assertEquals(Config.DEFAULT_NAMESPACE, CacheKit.use().namespace());
+        assertFalse(CacheKit.cacheNull());
     }
 
     /**
@@ -363,9 +363,9 @@ public class CachePluginTest {
 
         plugin.start();
 
-        assertEquals("aifei", CacheUtil.use().namespace());
-        assertEquals(Duration.ofMillis(3_600_000L), CacheUtil.ttl());
-        assertEquals("mem", CacheUtil.use("mem").namespace());
+        assertEquals("aifei", CacheKit.use().namespace());
+        assertEquals(Duration.ofMillis(3_600_000L), CacheKit.ttl());
+        assertEquals("mem", CacheKit.use("mem").namespace());
     }
 
     /**
@@ -382,9 +382,9 @@ public class CachePluginTest {
         ));
         plugin.start();
 
-        assertEquals(Config.DEFAULT_TTL, CacheUtil.ttl().toMillis());
-        assertEquals(Config.DEFAULT_NAMESPACE, CacheUtil.use().namespace());
-        assertFalse(CacheUtil.cacheNull());
+        assertEquals(Config.DEFAULT_TTL, CacheKit.ttl().toMillis());
+        assertEquals(Config.DEFAULT_NAMESPACE, CacheKit.use().namespace());
+        assertFalse(CacheKit.cacheNull());
 
         // 必填键即使只含空白也必须失败
         rejectOnStart(() -> new CachePlugin(prop("cache.type", "   ")));
@@ -402,7 +402,7 @@ public class CachePluginTest {
                 "cache.jedis.port", "6379"
         ));
         plugin.start();
-        assertEquals(Config.DEFAULT_NAMESPACE, CacheUtil.use().namespace());
+        assertEquals(Config.DEFAULT_NAMESPACE, CacheKit.use().namespace());
     }
 
     /**
@@ -468,7 +468,7 @@ public class CachePluginTest {
                 "cache.namespace", "only-segment"
         ));
         plugin.start();
-        assertEquals("only-segment", CacheUtil.use().namespace());
+        assertEquals("only-segment", CacheKit.use().namespace());
     }
 
     /**
@@ -526,9 +526,9 @@ public class CachePluginTest {
         assertThrows(IllegalStateException.class, plugin::start);
 
         IllegalStateException exception =
-                assertThrows(IllegalStateException.class, CacheUtil::use);
+                assertThrows(IllegalStateException.class, CacheKit::use);
         assertTrue(exception.getMessage().contains("has not been initialized"));
-        assertThrows(IllegalStateException.class, () -> CacheUtil.use("mem"));
+        assertThrows(IllegalStateException.class, () -> CacheKit.use("mem"));
     }
 
     /**
@@ -545,7 +545,7 @@ public class CachePluginTest {
         plugin.start();
 
         IllegalArgumentException exception =
-                assertThrows(IllegalArgumentException.class, () -> CacheUtil.use("ghost"));
+                assertThrows(IllegalArgumentException.class, () -> CacheKit.use("ghost"));
         assertTrue(exception.getMessage().contains("unknown cache instance: ghost"));
     }
 
@@ -599,7 +599,7 @@ public class CachePluginTest {
         assertTrue(exception.getMessage().contains("127.0.0.1:6379/0"));
 
         IllegalStateException notInitialized =
-                assertThrows(IllegalStateException.class, CacheUtil::use);
+                assertThrows(IllegalStateException.class, CacheKit::use);
         assertTrue(notInitialized.getMessage().contains("has not been initialized"));
     }
 
@@ -621,8 +621,8 @@ public class CachePluginTest {
         ));
         plugin.start();
 
-        assertEquals("main-ns", CacheUtil.use().namespace());
-        assertEquals("mem-ns", CacheUtil.use("mem").namespace());
+        assertEquals("main-ns", CacheKit.use().namespace());
+        assertEquals("mem-ns", CacheKit.use("mem").namespace());
     }
 
     /**
@@ -641,8 +641,8 @@ public class CachePluginTest {
         ));
         plugin.start();
 
-        assertEquals(Config.DEFAULT_NAMESPACE, CacheUtil.use().namespace());
-        assertEquals(Config.DEFAULT_NAMESPACE, CacheUtil.use("mem").namespace());
+        assertEquals(Config.DEFAULT_NAMESPACE, CacheKit.use().namespace());
+        assertEquals(Config.DEFAULT_NAMESPACE, CacheKit.use("mem").namespace());
     }
 
     /**
@@ -675,7 +675,7 @@ public class CachePluginTest {
         assertThrows(RuntimeException.class, plugin::start);
 
         IllegalStateException exception =
-                assertThrows(IllegalStateException.class, CacheUtil::use);
+                assertThrows(IllegalStateException.class, CacheKit::use);
         assertTrue(exception.getMessage().contains("has not been initialized"));
     }
 }

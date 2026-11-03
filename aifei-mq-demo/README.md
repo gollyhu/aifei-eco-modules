@@ -9,7 +9,7 @@
   HIO 逐字同步自官方 `jfinal/aifei-eco`（保留官方包名 `cn.aifei.demo.common.arch` 与版权块）+
   两个 Just Service（`service` 包）。
 - 生产者 / 消费者由装配入口 `MqPlugin` 注册为 `@Inject` 单例，Service 里 `@Inject Producer` / `@Inject Consumer`
-  取用；订阅则用静态工具类 `ConsumerUtil.use().subscribe(...)`，同一 demo 里两种取用方式都被演示。
+  取用；订阅则用静态门面 `ConsumerKit.use().subscribe(...)`，同一 demo 里两种取用方式都被演示。
 - 页面为 Aifei 静态层（`src/main/webapp/`，原生 HTML/CSS/JS + 本地全局 Vue，无构建工具）：
   实例入口页按 `mq.type` / `mq.names` 列出全部实例，点击进入该实例的演示页（订阅 / 发布 / 消息流）。
 

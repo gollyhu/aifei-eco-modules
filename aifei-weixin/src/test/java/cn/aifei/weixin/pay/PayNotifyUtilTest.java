@@ -26,7 +26,7 @@ import org.junit.Test;
 /**
  * P2：支付回调验签 + 解密（官方报文结构 + 测试向量自洽）
  */
-public class PayNotifyKitTest {
+public class PayNotifyUtilTest {
 
     private static final String SERIAL = "PLAT-SERIAL-1";
     private static final String TIMESTAMP = "1759600000";
@@ -40,7 +40,7 @@ public class PayNotifyKitTest {
     public void verifyAcceptsValidSignature() {
         String body = "{\"id\":\"evt-1\",\"resource\":{\"ciphertext\":\"x\"}}";
 
-        boolean ok = PayNotifyKit.verify(serial -> SERIAL.equals(serial) ? pair.getPublic() : null,
+        boolean ok = PayNotifyUtil.verify(serial -> SERIAL.equals(serial) ? pair.getPublic() : null,
                 headers(TIMESTAMP, NONCE, sign(TIMESTAMP, NONCE, body), SERIAL), body);
 
         assertTrue(ok);
@@ -51,12 +51,12 @@ public class PayNotifyKitTest {
         String body = "{\"id\":\"evt-1\"}";
         Map<String, String> headers = headers(TIMESTAMP, NONCE, sign(TIMESTAMP, NONCE, body), SERIAL);
 
-        assertFalse(PayNotifyKit.verify(serial -> SERIAL.equals(serial) ? pair.getPublic() : null,
+        assertFalse(PayNotifyUtil.verify(serial -> SERIAL.equals(serial) ? pair.getPublic() : null,
                 headers, "{\"id\":\"evt-2\"}"));
         assertFalse("未知序列号应验签失败",
-                PayNotifyKit.verify(serial -> null, headers, body));
+                PayNotifyUtil.verify(serial -> null, headers, body));
         assertFalse("缺签名头应验签失败",
-                PayNotifyKit.verify(serial -> pair.getPublic(), new HashMap<String, String>(), body));
+                PayNotifyUtil.verify(serial -> pair.getPublic(), new HashMap<String, String>(), body));
     }
 
     @Test
@@ -68,7 +68,7 @@ public class PayNotifyKitTest {
         headers.put("Wechatpay-Signature", sign(TIMESTAMP, NONCE, body));
         headers.put("wechatpay-serial", SERIAL);
 
-        assertTrue(PayNotifyKit.verify(serial -> SERIAL.equals(serial) ? pair.getPublic() : null, headers, body));
+        assertTrue(PayNotifyUtil.verify(serial -> SERIAL.equals(serial) ? pair.getPublic() : null, headers, body));
     }
 
     @Test
@@ -77,7 +77,7 @@ public class PayNotifyKitTest {
                 + "\"trade_state\":\"SUCCESS\",\"amount\":{\"payer_total\":100,\"total\":100}}";
         String body = notifyBody(transaction);
 
-        Map<String, Object> decrypted = PayNotifyKit.decryptResource(merchant, body);
+        Map<String, Object> decrypted = PayNotifyUtil.decryptResource(merchant, body);
 
         assertEquals("ORDER-1", decrypted.get("out_trade_no"));
         assertEquals("SUCCESS", decrypted.get("trade_state"));
@@ -88,7 +88,7 @@ public class PayNotifyKitTest {
         String body = notifyBody("{}");
 
         try {
-            PayNotifyKit.verifyAndDecrypt(serial -> SERIAL.equals(serial) ? pair.getPublic() : null,
+            PayNotifyUtil.verifyAndDecrypt(serial -> SERIAL.equals(serial) ? pair.getPublic() : null,
                     merchant, headers(TIMESTAMP, NONCE, "bad-signature", SERIAL), body);
             fail();
         } catch (WxApiException e) {
@@ -99,7 +99,7 @@ public class PayNotifyKitTest {
     @Test
     public void missingResourceThrows() {
         try {
-            PayNotifyKit.decryptResource(merchant, "{\"id\":\"evt-1\"}");
+            PayNotifyUtil.decryptResource(merchant, "{\"id\":\"evt-1\"}");
             fail();
         } catch (WxApiException e) {
             assertTrue(e.getMessage().contains("resource"));
@@ -108,10 +108,10 @@ public class PayNotifyKitTest {
 
     private Map<String, String> headers(String timestamp, String nonce, String signature, String serial) {
         Map<String, String> headers = new HashMap<>();
-        headers.put(PayNotifyKit.HEADER_TIMESTAMP, timestamp);
-        headers.put(PayNotifyKit.HEADER_NONCE, nonce);
-        headers.put(PayNotifyKit.HEADER_SIGNATURE, signature);
-        headers.put(PayNotifyKit.HEADER_SERIAL, serial);
+        headers.put(PayNotifyUtil.HEADER_TIMESTAMP, timestamp);
+        headers.put(PayNotifyUtil.HEADER_NONCE, nonce);
+        headers.put(PayNotifyUtil.HEADER_SIGNATURE, signature);
+        headers.put(PayNotifyUtil.HEADER_SERIAL, serial);
         return headers;
     }
 

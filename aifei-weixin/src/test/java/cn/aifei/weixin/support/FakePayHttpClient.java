@@ -8,7 +8,7 @@
 
 package cn.aifei.weixin.support;
 
-import cn.aifei.weixin.pay.PayHttpKit;
+import cn.aifei.weixin.pay.PayHttpClient;
 import cn.aifei.weixin.pay.core.PayHttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,7 +18,7 @@ import java.util.Map;
 /**
  * 单测用伪支付 HTTP 客户端：记录请求、按需返回，全程不联网
  */
-public class FakePayHttpKit implements PayHttpKit {
+public class FakePayHttpClient implements PayHttpClient {
 
     public final List<String> getUrls = new ArrayList<>();
     public final List<String> postUrls = new ArrayList<>();

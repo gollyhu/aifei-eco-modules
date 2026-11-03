@@ -43,10 +43,10 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 微信开发包：公众号协议内核 + 开放接口客户端 + 小程序 + 微信支付 V3 + aifei 接入层。
 
 - 协议内核：AES-256-CBC 加解密、SHA-1 签名、安全 XML 解析
-- 消息模型：接收消息 8 类、事件 10 类、被动回复 6 类，`MsgKit` 双入口分发
+- 消息模型：接收消息 8 类、事件 10 类、被动回复 6 类，`MsgUtil` 双入口分发
 - Api 客户端：`ApiCaller` 及菜单 / 用户 / 素材 / 模板消息 / OAuth2 / 二维码 / JsTicket
 - 小程序：`MiniAppApi`（code2Session / 订阅消息 / 手机号 / 小程序码）
-- 微信支付 V3：`PayApi` 下单查单退款 + `PayNotifyKit` 回调验签解密，RSA / GCM / mTLS 纯 JDK 实现
+- 微信支付 V3：`PayApi` 下单查单退款 + `PayNotifyUtil` 回调验签解密，RSA / GCM / mTLS 纯 JDK 实现
 - 接入前必读 [docs/design.md](aifei-weixin/docs/design.md)
 
 ### aifei-sa-token
@@ -75,10 +75,10 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 
 为 aifei 应用补齐框架未覆盖的异步消息能力（解耦、削峰）。业务代码只依赖公共接口，换 MQ 中间件只改配置、不改代码。
 
-- 公共面固定 8 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`
+- 公共面固定 8 个类型：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerKit` / `ConsumerKit`
 - 同步投递、单主题 FIFO、多订阅者按登记顺序回调；无订阅者视为成功，监听器运行时异常就地隔离
 - 内置**内存后端**（零第三方运行依赖）与 **RocketMQ 真实后端**（`mq.type=rocketmq`，客户端 `optional` 由消费方自带）；其它后端以 provider 扩展点追加
-- 取用二选一：`@Inject Producer` / `@Inject Consumer`，或静态工具类 `ProducerUtil` / `ConsumerUtil`（`use(name)` 取命名实例）
+- 取用二选一：`@Inject Producer` / `@Inject Consumer`，或静态门面 `ProducerKit` / `ConsumerKit`（`use(name)` 取命名实例）
 - 详细用法见 [aifei-mq/README.md](aifei-mq/README.md)，设计文档见 [docs/design.md](aifei-mq/docs/design.md)
 
 ### aifei-oss

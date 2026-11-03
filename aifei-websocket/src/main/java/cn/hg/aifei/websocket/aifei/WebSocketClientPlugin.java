@@ -13,7 +13,7 @@ import cn.hg.aifei.websocket.ClientConfig;
 import cn.hg.aifei.websocket.ClientListener;
 import cn.hg.aifei.websocket.MessageCodec;
 import cn.hg.aifei.websocket.WebSocketClient;
-import cn.hg.aifei.websocket.WebSocketKit;
+import cn.hg.aifei.websocket.WebSocketUtil;
 
 /**
  * 客户端装配入口：应用启动时按 {@code websocket.client.*} 配置构建客户端、发起建连，并把它注册为
@@ -101,7 +101,7 @@ public class WebSocketClientPlugin implements Plugin {
         if (codec != null) {
             config.setCodec(codec);
         }
-        WebSocketClient created = WebSocketKit.createClient(config, listener);
+        WebSocketClient created = WebSocketUtil.createClient(config, listener);
         created.connect();
         AopKit.get().addSingletonObject(WebSocketClient.class, created);
         this.client = created;

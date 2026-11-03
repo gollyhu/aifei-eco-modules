@@ -19,7 +19,7 @@ import cn.aifei.weixin.WxApiConfig;
 import cn.aifei.weixin.common.WxApiException;
 import cn.aifei.weixin.core.api.ApiCaller;
 import cn.aifei.weixin.core.cache.MemoryAccessTokenCache;
-import cn.aifei.weixin.core.http.FakeHttpKit;
+import cn.aifei.weixin.core.http.FakeHttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,13 +36,13 @@ public class MiniAppApiTest {
     private static final String APP_ID = "wxminiapp123456";
 
     private MiniAppAccount account;
-    private FakeHttpKit http;
+    private FakeHttpClient http;
     private MemoryAccessTokenCache cache;
 
     @Before
     public void setUp() {
         account = MiniAppAccount.of(APP_ID, "mini-secret");
-        http = new FakeHttpKit();
+        http = new FakeHttpClient();
         cache = new MemoryAccessTokenCache();
         WxApiConfig.set(http, cache);
     }

@@ -11,9 +11,9 @@ package cn.aifei.weixin;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import cn.aifei.weixin.core.encrypt.Sha1Kit;
+import cn.aifei.weixin.core.encrypt.Sha1Util;
 import cn.aifei.weixin.core.encrypt.WxCrypt;
-import cn.aifei.weixin.core.kit.XmlKit;
+import cn.aifei.weixin.core.util.XmlUtil;
 import cn.aifei.weixin.core.msg.InTextMsg;
 import cn.aifei.weixin.core.msg.OutMsg;
 import cn.aifei.weixin.core.msg.OutTextMsg;
@@ -26,7 +26,7 @@ import org.junit.Test;
 /**
  * 双入口主流程（S2 验证标准 ④⑥⑧、S4 验证标准 ①）：明文模式与安全模式的 verify / handle
  */
-public class MsgKitTest {
+public class MsgUtilTest {
 
     static {
         TestLogs.install();
@@ -51,9 +51,9 @@ public class MsgKitTest {
         io.params.put("timestamp", TIMESTAMP);
         io.params.put("nonce", NONCE);
         io.params.put("echostr", "hello-echostr");
-        io.params.put("signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE));
+        io.params.put("signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE));
 
-        assertEquals("hello-echostr", MsgKit.verify(io, null, plainAccount));
+        assertEquals("hello-echostr", MsgUtil.verify(io, null, plainAccount));
     }
 
     @Test
@@ -64,15 +64,15 @@ public class MsgKitTest {
         io.params.put("echostr", "hello");
         io.params.put("signature", "deadbeef");
 
-        assertEquals(WxConsts.RESP_FAIL, MsgKit.verify(io, null, plainAccount));
+        assertEquals(WxConsts.RESP_FAIL, MsgUtil.verify(io, null, plainAccount));
     }
 
     @Test
     public void verifyFailsWhenParamsMissing() {
         FakeWeixinIo io = new FakeWeixinIo();
-        io.params.put("signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE));
+        io.params.put("signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE));
 
-        assertEquals(WxConsts.RESP_FAIL, MsgKit.verify(io, null, plainAccount));
+        assertEquals(WxConsts.RESP_FAIL, MsgUtil.verify(io, null, plainAccount));
     }
 
     @Test
@@ -84,8 +84,8 @@ public class MsgKitTest {
         io.params.put("nonce", NONCE);
         io.params.put("echostr", echostrCipher);
         io.params.put("encrypt_type", "aes");
-        io.params.put("signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE));
-        assertEquals("hello-safe", MsgKit.verify(io, null, safeAccount));
+        io.params.put("signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE));
+        assertEquals("hello-safe", MsgUtil.verify(io, null, safeAccount));
 
         // 微信也可能带 msg_signature（含 echostr 密文参与签名）
         FakeWeixinIo io2 = new FakeWeixinIo();
@@ -93,8 +93,8 @@ public class MsgKitTest {
         io2.params.put("nonce", NONCE);
         io2.params.put("echostr", echostrCipher);
         io2.params.put("encrypt_type", "aes");
-        io2.params.put("msg_signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE, echostrCipher));
-        assertEquals("hello-safe", MsgKit.verify(io2, null, safeAccount));
+        io2.params.put("msg_signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE, echostrCipher));
+        assertEquals("hello-safe", MsgUtil.verify(io2, null, safeAccount));
     }
 
     // ---------------- POST 消息 ----------------
@@ -105,11 +105,11 @@ public class MsgKitTest {
         io.body = textXml("你好");
         io.params.put("timestamp", TIMESTAMP);
         io.params.put("nonce", NONCE);
-        io.params.put("signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE));
+        io.params.put("signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE));
 
-        String response = MsgKit.handle(io, null, plainAccount, echoHandler());
+        String response = MsgUtil.handle(io, null, plainAccount, echoHandler());
 
-        Map<String, String> reply = XmlKit.parse(response);
+        Map<String, String> reply = XmlUtil.parse(response);
         assertEquals("openid_user", reply.get("ToUserName"));
         assertEquals("gh_official", reply.get("FromUserName"));
         assertEquals("text", reply.get("MsgType"));
@@ -121,11 +121,11 @@ public class MsgKitTest {
     @Test
     public void handleReturnsSuccessWhenNoReplyOrUnknownType() {
         FakeWeixinIo noReply = signedIo(textXml("hi"));
-        assertEquals(WxConsts.RESP_SUCCESS, MsgKit.handle(noReply, null, plainAccount, new MsgHandler() {
+        assertEquals(WxConsts.RESP_SUCCESS, MsgUtil.handle(noReply, null, plainAccount, new MsgHandler() {
         }));
 
         FakeWeixinIo unknown = signedIo("<xml><ToUserName>gh</ToUserName><MsgType><![CDATA[unknown]]></MsgType></xml>");
-        assertEquals(WxConsts.RESP_SUCCESS, MsgKit.handle(unknown, null, plainAccount, echoHandler()));
+        assertEquals(WxConsts.RESP_SUCCESS, MsgUtil.handle(unknown, null, plainAccount, echoHandler()));
     }
 
     @Test
@@ -138,7 +138,7 @@ public class MsgKitTest {
             }
         };
 
-        String response = MsgKit.handle(io, null, plainAccount, handler);
+        String response = MsgUtil.handle(io, null, plainAccount, handler);
         assertTrue(response.contains("a &amp; b &lt;c&gt; ]]&gt;"));
     }
 
@@ -149,10 +149,10 @@ public class MsgKitTest {
         badSignature.params.put("timestamp", TIMESTAMP);
         badSignature.params.put("nonce", NONCE);
         badSignature.params.put("signature", "bad");
-        assertEquals(WxConsts.RESP_FAIL, MsgKit.handle(badSignature, null, plainAccount, echoHandler()));
+        assertEquals(WxConsts.RESP_FAIL, MsgUtil.handle(badSignature, null, plainAccount, echoHandler()));
 
         FakeWeixinIo malformed = signedIo("<xml><a></xml>");
-        assertEquals(WxConsts.RESP_SUCCESS, MsgKit.handle(malformed, null, plainAccount, echoHandler()));
+        assertEquals(WxConsts.RESP_SUCCESS, MsgUtil.handle(malformed, null, plainAccount, echoHandler()));
     }
 
     @Test
@@ -165,17 +165,17 @@ public class MsgKitTest {
         io.params.put("timestamp", TIMESTAMP);
         io.params.put("nonce", NONCE);
         io.params.put("encrypt_type", "aes");
-        io.params.put("msg_signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE, encrypt));
+        io.params.put("msg_signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE, encrypt));
 
-        String response = MsgKit.handle(io, null, safeAccount, echoHandler());
+        String response = MsgUtil.handle(io, null, safeAccount, echoHandler());
 
-        Map<String, String> envelope = XmlKit.parse(response);
+        Map<String, String> envelope = XmlUtil.parse(response);
         String replyEncrypt = envelope.get("Encrypt");
         String replyNonce = envelope.get("Nonce");
         String replyTimestamp = envelope.get("TimeStamp");
-        assertEquals(Sha1Kit.sortedSign(TOKEN, replyTimestamp, replyNonce, replyEncrypt), envelope.get("MsgSignature"));
+        assertEquals(Sha1Util.sortedSign(TOKEN, replyTimestamp, replyNonce, replyEncrypt), envelope.get("MsgSignature"));
 
-        Map<String, String> reply = XmlKit.parse(WxCrypt.decrypt(AES_KEY, APP_ID, replyEncrypt));
+        Map<String, String> reply = XmlUtil.parse(WxCrypt.decrypt(AES_KEY, APP_ID, replyEncrypt));
         assertEquals("openid_user", reply.get("ToUserName"));
         assertEquals("echo:安全模式", reply.get("Content"));
     }
@@ -189,9 +189,9 @@ public class MsgKitTest {
         io.params.put("timestamp", TIMESTAMP);
         io.params.put("nonce", NONCE);
         io.params.put("encrypt_type", "aes");
-        io.params.put("msg_signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE, encrypt));
+        io.params.put("msg_signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE, encrypt));
 
-        assertEquals(WxConsts.RESP_FAIL, MsgKit.handle(io, null,
+        assertEquals(WxConsts.RESP_FAIL, MsgUtil.handle(io, null,
                 WeixinAccount.of(APP_ID, "secret", "another-token", AES_KEY), echoHandler()));
     }
 
@@ -199,7 +199,7 @@ public class MsgKitTest {
     public void handleSafeModeAccountEncryptsReplyEvenForPlainRequest() {
         // 兼容模式：请求明文但账号配置了 aesKey，回复仍为加密报文（微信两种模式均接受）
         FakeWeixinIo io = signedIo(textXml("hi"));
-        String response = MsgKit.handle(io, null, safeAccount, echoHandler());
+        String response = MsgUtil.handle(io, null, safeAccount, echoHandler());
         assertTrue(response.contains("<Encrypt><![CDATA["));
     }
 
@@ -208,7 +208,7 @@ public class MsgKitTest {
         io.body = body;
         io.params.put("timestamp", TIMESTAMP);
         io.params.put("nonce", NONCE);
-        io.params.put("signature", Sha1Kit.sortedSign(TOKEN, TIMESTAMP, NONCE));
+        io.params.put("signature", Sha1Util.sortedSign(TOKEN, TIMESTAMP, NONCE));
         return io;
     }
 

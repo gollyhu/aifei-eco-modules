@@ -9,11 +9,11 @@
 package cn.aifei.weixin;
 
 import cn.aifei.log.Log;
-import cn.aifei.weixin.core.encrypt.RandomKit;
-import cn.aifei.weixin.core.encrypt.Sha1Kit;
+import cn.aifei.weixin.core.encrypt.RandomUtil;
+import cn.aifei.weixin.core.encrypt.Sha1Util;
 import cn.aifei.weixin.core.encrypt.WxCrypt;
-import cn.aifei.weixin.core.kit.XmlBuilder;
-import cn.aifei.weixin.core.kit.XmlKit;
+import cn.aifei.weixin.core.util.XmlBuilder;
+import cn.aifei.weixin.core.util.XmlUtil;
 import cn.aifei.weixin.core.msg.InMsg;
 import cn.aifei.weixin.core.msg.InMsgParser;
 import cn.aifei.weixin.core.msg.OutMsg;
@@ -32,9 +32,9 @@ import java.util.Map;
  *  3: 验签失败回 "fail"；消息解析 / 业务处理异常回 "success"（避免微信无谓重试）
  * </pre>
  */
-public class MsgKit {
+public class MsgUtil {
 
-    static final Log log = Log.get(MsgKit.class);
+    static final Log log = Log.get(MsgUtil.class);
 
     /**
      * GET：URL 首验。返回 echostr（明文模式原文 / 安全模式解密后明文），失败返回 "fail"
@@ -88,7 +88,7 @@ public class MsgKit {
         String body = io.body(in);
         String encrypt;
         try {
-            Map<String, String> root = XmlKit.parse(body);
+            Map<String, String> root = XmlUtil.parse(body);
             encrypt = root.get("Encrypt");
         } catch (RuntimeException e) {
             log.error("解析微信回调 XML 失败 appId=" + account.getAppId(), e);
@@ -153,9 +153,9 @@ public class MsgKit {
         }
         String expect;
         if (encrypt == null || encrypt.length == 0 || encrypt[0] == null) {
-            expect = Sha1Kit.sortedSign(token, timestamp, nonce);
+            expect = Sha1Util.sortedSign(token, timestamp, nonce);
         } else {
-            expect = Sha1Kit.sortedSign(token, timestamp, nonce, encrypt[0]);
+            expect = Sha1Util.sortedSign(token, timestamp, nonce, encrypt[0]);
         }
         return expect.equals(signature.toLowerCase());
     }
@@ -174,8 +174,8 @@ public class MsgKit {
     private static String encryptReply(WeixinAccount account, String replyXml) {
         String encrypt = WxCrypt.encrypt(account.getAesKey(), account.getAppId(), replyXml);
         String replyTimestamp = String.valueOf(System.currentTimeMillis() / 1000);
-        String replyNonce = RandomKit.randomStr();
-        String msgSignature = Sha1Kit.sortedSign(account.getToken(), replyTimestamp, replyNonce, encrypt);
+        String replyNonce = RandomUtil.randomStr();
+        String msgSignature = Sha1Util.sortedSign(account.getToken(), replyTimestamp, replyNonce, encrypt);
 
         return new XmlBuilder()
                 .cdata("Encrypt", encrypt)
@@ -189,6 +189,6 @@ public class MsgKit {
         return WxConsts.EncryptType.AES.equals(io.query(in, "encrypt_type")) || account.isSafeMode();
     }
 
-    private MsgKit() {
+    private MsgUtil() {
     }
 }

@@ -26,7 +26,7 @@
 ### 公共面收敛（不得放宽）
 
 - **公共 API 零第三方类型、零框架类型**。
-- 根包公共类型固定为 **8 个**：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerUtil` / `ConsumerUtil`。新增公共类型必须先过设计决策。（`MqKit` 已删除、拆为 `ProducerUtil` + `ConsumerUtil`，见 `docs/design.md` §3.7 / §13 第 25 条。）
+- 根包公共类型固定为 **8 个**：`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerKit` / `ConsumerKit`。新增公共类型必须先过设计决策。（`MqKit` 已删除、拆为 `ProducerKit` + `ConsumerKit`，见 `docs/design.md` §3.7 / §13 第 25 条。）
 - `internal` / `memory` / `aifei` 均属**非承诺 API**，消费方不得引用。
 - 公共面（根包）不得出现 `internal` 包行话（唯一定义点、注册表、总线、视图等）。
 

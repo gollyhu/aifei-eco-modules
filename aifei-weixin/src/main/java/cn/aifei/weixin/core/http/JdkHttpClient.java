@@ -9,7 +9,7 @@
 package cn.aifei.weixin.core.http;
 
 import cn.aifei.weixin.common.WxApiException;
-import cn.aifei.weixin.core.encrypt.RandomKit;
+import cn.aifei.weixin.core.encrypt.RandomUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -27,16 +27,16 @@ import java.util.Map;
  * <p>传输层失败（网络不可达 / 超时 / HTTP 状态码非 200 / 读取异常）统一抛
  * {@link WxApiException}。
  */
-public class JdkHttpKit implements HttpKit {
+public class JdkHttpClient implements HttpClient {
 
     private final int connectTimeout;
     private final int readTimeout;
 
-    public JdkHttpKit() {
+    public JdkHttpClient() {
         this(5000, 10000);
     }
 
-    public JdkHttpKit(int connectTimeout, int readTimeout) {
+    public JdkHttpClient(int connectTimeout, int readTimeout) {
         this.connectTimeout = connectTimeout;
         this.readTimeout = readTimeout;
     }
@@ -54,7 +54,7 @@ public class JdkHttpKit implements HttpKit {
 
     @Override
     public String postMultipart(String url, Map<String, String> fields, Map<String, File> files) {
-        String boundary = "----aifei-weixin-" + RandomKit.randomStr(16);
+        String boundary = "----aifei-weixin-" + RandomUtil.randomStr(16);
         byte[] body = buildMultipartBody(boundary, fields, files);
         return request("POST", url, body, "multipart/form-data; boundary=" + boundary);
     }

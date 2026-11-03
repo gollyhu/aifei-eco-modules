@@ -17,11 +17,11 @@
 
 ### 结构
 
-- 公共 API 面固定为 6 个类型：`Cache` / `Counter` / `CacheUtil` / `CounterUtil` / `CachePlugin` / `CacheKeyMatchType`；新增公共类型必须先过设计决策。
+- 公共 API 面固定为 6 个类型：`Cache` / `Counter` / `CacheKit` / `CounterKit` / `CachePlugin` / `CacheKeyMatchType`；新增公共类型必须先过设计决策。
 - 其余代码落在 `internal`（非承诺 API）、`caffeine`、`redis` 三个子包。
 - `Cache` 实现类共用无行为元数据基类 `internal.AbstractCache`，`Counter` 实现类共用 `internal.AbstractCounter`。两类都不得再引入其它跨实现基类或抽象父类，不得暴露 Caffeine、Jedis、Fury 等实现类型。
 - 装配侧允许有一个抽象父类 `internal.AbstractCacheProvider`：它只承载通用配置装配，必须无状态，且不得被 `Cache` / `Counter` 的实现类继承。
-- `CacheUtil` / `CounterUtil` 镜像 `Cache` / `Counter` 的**全部业务方法**（`namespace()` 除外）：`Duration` 与 `int ttlSeconds` 双重重载、省略 TTL 的写重载，以及 `exists` / `remove` / `getTtl` / `cacheNames()` / `counterNames()` / `ttl()` / `cacheNull()` / `clear()`；`namespace()` 刻意不镜像，门面完整性（含「不得补齐」的反向用例）由 `FacadeMirrorTest` 钉住。
+- `CacheKit` / `CounterKit` 镜像 `Cache` / `Counter` 的**全部业务方法**（`namespace()` 除外）：`Duration` 与 `int ttlSeconds` 双重重载、省略 TTL 的写重载，以及 `exists` / `remove` / `getTtl` / `cacheNames()` / `counterNames()` / `ttl()` / `cacheNull()` / `clear()`；`namespace()` 刻意不镜像，门面完整性（含「不得补齐」的反向用例）由 `FacadeMirrorTest` 钉住。
 
 ### 契约
 

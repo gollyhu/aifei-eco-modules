@@ -13,7 +13,7 @@
 | 目标 | 落地方式 |
 | --- | --- |
 | 依赖隔离 | 唯一编译依赖 `cn.aifei:aifei-all`（`provided`，由消费方自带）；不引入第三方 HTTP / JSON / 密码学库 |
-| 传输无关 | 协议内核不感知 HTTP：回调链路经 `WeixinIo` SPI 适配，Api 链路经 `HttpKit` / `PayHttpKit` SPI 适配 |
+| 传输无关 | 协议内核不感知 HTTP：回调链路经 `WeixinIo` SPI 适配，Api 链路经 `HttpClient` / `PayHttpClient` SPI 适配 |
 | 业务零协议细节 | 业务只实现 `MsgHandler` 钩子（返回 `OutMsg`）与账号 / 缓存 SPI，不接触 XML、签名与加解密 |
 | 纯 JDK 实现 | 加解密、签名、GCM、mTLS 全部使用 JDK 自带 API，且限定 Java 8 可用范围 |
 
@@ -23,9 +23,9 @@
 | --- | --- | --- |
 | 协议内核 | 自研极简内核（XML / 签名 / 加解密 / 消息模型），不引入外部微信 SDK | 微信报文结构极简，自研可将依赖收敛到零；`XmlBuilder` 注释明确「不引入 XML 库」 |
 | 业务扩展形态 | 钩子返回 `OutMsg` 而非直接 render | `MsgHandler` 注释：业务代码感知不到 HTTP，返回 `null` 表示不回复 |
-| XXE 防护 | `XmlKit` 禁 DOCTYPE、禁外部实体、禁外部 DTD、禁 XInclude、禁实体展开 | 该类注释记录了 XXE 是同类实现的已知历史问题 |
-| HTTP 实现 | `JdkHttpKit` 基于 `HttpURLConnection`，并抽 `HttpKit` 接口 | 接口注释：便于单测注入伪实现；线上零第三方依赖 |
-| 支付 HTTP 与公众号 HTTP 分离 | 支付单独定义 `PayHttpKit` + `PayHttpResponse`，不复用 `HttpKit` | 支付需按状态码与响应体判别业务错误（非 2xx 不在传输层抛异常），且需注入 `SSLContext` 做 mTLS |
+| XXE 防护 | `XmlUtil` 禁 DOCTYPE、禁外部实体、禁外部 DTD、禁 XInclude、禁实体展开 | 该类注释记录了 XXE 是同类实现的已知历史问题 |
+| HTTP 实现 | `JdkHttpClient` 基于 `HttpURLConnection`，并抽 `HttpClient` 接口 | 接口注释：便于单测注入伪实现；线上零第三方依赖 |
+| 支付 HTTP 与公众号 HTTP 分离 | 支付单独定义 `PayHttpClient` + `PayHttpResponse`，不复用 `HttpClient` | 支付需按状态码与响应体判别业务错误（非 2xx 不在传输层抛异常），且需注入 `SSLContext` 做 mTLS |
 | 小程序 token | 复用公众号 `ApiCaller` 的 token 链路与缓存实例 | `MiniAppApi` 直接委托 `ApiCaller` 的 `appId`/`secret` 重载 |
 | Api 层装配 | 静态门面 `WxApiConfig` / `WxPayConfig`，不使用 aifei `Prop` | `core.*` 与 `pay.*` 不依赖 aifei 内核，无法使用 `PropKit`；这两层需能在非 aifei 环境独立使用 |
 | 回调接入方式 | 实现 aifei `Handler` 旁路（`WeixinHandler`），不注册拦截器 | 首验为 GET、消息为 POST，且需自行读 body、写 `text/xml`、结束交换 |
@@ -39,19 +39,19 @@
 接入层  cn.aifei.weixin.aifei   WeixinHandler            ← 唯一 import cn.aifei.core.* 的类
         │  ▲ WeixinIo（传输 SPI）  ▲ WeixinAccountProvider（账号 SPI）
         ▼
-协议内核  cn.aifei.weixin   MsgKit / MsgHandler / WxConsts
-        ├── core.encrypt   WxCrypt / Sha1Kit / RandomKit
-        ├── core.kit       XmlKit / XmlBuilder
+协议内核  cn.aifei.weixin   MsgUtil / MsgHandler / WxConsts
+        ├── core.encrypt   WxCrypt / Sha1Util / RandomUtil
+        ├── core.util       XmlUtil / XmlBuilder
         └── core.msg       InMsg* / OutMsg* / InMsgParser / OutMsgXmlBuilder
 
 客户端层（与接入层无依赖关系，可单独使用）
-        ├── core.api / core.http / core.cache    ApiCaller + 各 XxxApi + HttpKit + AccessTokenCache
+        ├── core.api / core.http / core.cache    ApiCaller + 各 XxxApi + HttpClient + AccessTokenCache
         ├── miniapp                              MiniAppApi（复用 core.api）
-        └── pay / pay.core                       PayApi / PayNotifyKit / PaySignature / PlatformCertManager
+        └── pay / pay.core                       PayApi / PayNotifyUtil / PaySignature / PlatformCertManager
 ```
 
 - 包依赖方向单向：`aifei` 接入层 → 协议内核 / SPI；客户端层不反向依赖接入层。
-- 根包 4 个类型：`MsgKit`（双入口）、`MsgHandler`（业务钩子）、`WxApiConfig`（Api 装配）、`WxConsts`（协议常量）。
+- 根包 4 个类型：`MsgUtil`（双入口）、`MsgHandler`（业务钩子）、`WxApiConfig`（Api 装配）、`WxConsts`（协议常量）。
 - 公共支撑类型在 `common`：`ApiResult`（统一返回）、`WxApiException`（传输失败与未装配）。
 
 ### 3.1 架构约束（由门禁测试强制）
@@ -89,7 +89,7 @@
 
 该布局由官方的微信服务端实现细节决定，属**冻结数据格式**：任何改动都会导致与微信报文不互通，由 `WxCryptTest` 中的密文向量与官方布局互通用例钉住。
 
-### 4.2 签名 `Sha1Kit`
+### 4.2 签名 `Sha1Util`
 
 - `sortedSign(String... parts)`：参数按**字典序排序后直接拼接**取 SHA-1，输出 40 位小写十六进制。
 - `sha1(String)`：不排序的原始摘要，用于 JS-SDK 等定序拼接场景。
@@ -97,7 +97,7 @@
 
 ### 4.3 安全 XML
 
-`XmlKit.parse(String)`：返回根节点下「直接子节点名 → 文本」的**有序**映射（`LinkedHashMap`，同名节点保留首个），XML 为空或非法时抛 `IllegalArgumentException`。解析器固定启用：
+`XmlUtil.parse(String)`：返回根节点下「直接子节点名 → 文本」的**有序**映射（`LinkedHashMap`，同名节点保留首个），XML 为空或非法时抛 `IllegalArgumentException`。解析器固定启用：
 
 - `disallow-doctype-decl=true`（命中 DOCTYPE 即失败）
 - 外部普通实体 / 外部参数实体 / 外部 DTD 全部禁用
@@ -119,7 +119,7 @@
 - `InMsgParser.parse`：`MsgType` 缺失或未知类型返回 `null`（由调用方响应 `success`）；CLICK 与 VIEW 归并到 `InMenuEvent`；客服会话与资质认证由 `WxConsts.isCustomEvent` / `isVerifyEvent` 判定；`CreateTime` / `MsgId` / 计数字段解析失败按 `0` 处理。
 - `OutMsgXmlBuilder.build`：按类型渲染明文 XML；图文的 `ArticleCount` 由 `articles.size()` 决定。
 
-### 4.5 双入口 `MsgKit`（传输无关）
+### 4.5 双入口 `MsgUtil`（传输无关）
 
 | 入口 | 语义 |
 | --- | --- |
@@ -131,8 +131,8 @@
 - **安全模式判定**：请求携带 `encrypt_type=aes` 或账号配置了 `aesKey` 即为安全模式。
 - **首验签名兼容**：安全模式依次尝试 `msg_signature(含 echostr)`、`signature(不含 echostr)`、`signature(含 echostr)` 三种组合，兼容微信不同版本的探测行为。
 - **响应体**：验签失败与解密失败返回 `fail`；消息解析失败、未知消息类型、业务处理异常、业务返回 `null` 一律返回 `success`。空响应会让微信判定超时并重试 3 次，因此「不回复」必须显式回 `success`。
-- **被动回复反转**：`ToUserName` / `FromUserName` 取反、`CreateTime` 填充当前秒级时间戳，均由 `MsgKit` 统一承担，业务不感知。
-- **安全模式回复**：输出 `Encrypt` + `MsgSignature` + `TimeStamp` + `Nonce`、`Nonce` 出自 `RandomKit`；账号配置了 `aesKey` 时，即使请求为明文，回复同样加密。
+- **被动回复反转**：`ToUserName` / `FromUserName` 取反、`CreateTime` 填充当前秒级时间戳，均由 `MsgUtil` 统一承担，业务不感知。
+- **安全模式回复**：输出 `Encrypt` + `MsgSignature` + `TimeStamp` + `Nonce`、`Nonce` 出自 `RandomUtil`；账号配置了 `aesKey` 时，即使请求为明文，回复同样加密。
 - HTTP 状态码恒 200，语义由响应体（`success` / `fail`）承载。
 
 ### 4.6 业务扩展点 `MsgHandler`
@@ -168,8 +168,8 @@
 | 前缀 | 默认 `/weixin`，可自定义；构造时归一化（trim、去尾斜杠、无前导 `/` 补上），空值抛异常 |
 | 路由 | 路径不满足 `prefix + "/"` 前缀时交给 `next.handle(...)` 后返回 |
 | appId 解析 | 取前缀后的第一段（`/{prefix}/{appId}/...`）；`accountId` 为 `protected`，可按子域 / 租户覆写 |
-| 未知 appId | 记 warn 日志并回 `fail`，不进入 `MsgKit` |
-| 分流 | `io.isGet(in)` 决定走 `MsgKit.verify` 还是 `MsgKit.handle` |
+| 未知 appId | 记 warn 日志并回 `fail`，不进入 `MsgUtil` |
+| 分流 | `io.isGet(in)` 决定走 `MsgUtil.verify` 还是 `MsgUtil.handle` |
 | 闭环 | 匹配到微信路径即自行读 body、写 `text/xml`、结束交换，**不再调用 `next`** |
 | 构造校验 | `io` / `accountProvider` / `msgHandler` 均要求非 `null` |
 
@@ -207,8 +207,8 @@
 
 | 类型 | 契约 |
 | --- | --- |
-| `HttpKit` | `get` / `post` / `postMultipart` / `download` / `postDownload`（默认抛 `UnsupportedOperationException`） |
-| `JdkHttpKit` | 默认连接 / 读取超时 5000 / 10000 ms；关闭重定向；POST 使用 `application/json; charset=utf-8`；multipart 手拼边界；非 2xx 读取 `errorStream` 并抛 `WxApiException`；所有传输异常统一包装为 `WxApiException` |
+| `HttpClient` | `get` / `post` / `postMultipart` / `download` / `postDownload`（默认抛 `UnsupportedOperationException`） |
+| `JdkHttpClient` | 默认连接 / 读取超时 5000 / 10000 ms；关闭重定向；POST 使用 `application/json; charset=utf-8`；multipart 手拼边界；非 2xx 读取 `errorStream` 并抛 `WxApiException`；所有传输异常统一包装为 `WxApiException` |
 
 ### 6.4 Api 类清单
 
@@ -225,7 +225,7 @@
 ### 6.5 装配 `WxApiConfig`
 
 ```java
-WxApiConfig.set(new JdkHttpKit(), new MemoryAccessTokenCache());   // 使用 Api 前装配一次
+WxApiConfig.set(new JdkHttpClient(), new MemoryAccessTokenCache());   // 使用 Api 前装配一次
 ```
 
 - 静态 volatile 字段，`set` 可重复调用（以最后一次为准，主要供测试隔离），未装配即取用抛 `WxApiException`（避免隐式 NPE）。
@@ -268,9 +268,9 @@ WxApiConfig.set(new JdkHttpKit(), new MemoryAccessTokenCache());   // 使用 Api
 | 验签失败 | `PayVerifier.verify` 返回 `false`（参数缺失、序列号未知、异常均归为 `false`） |
 | JSAPI 二次签名串 | `appId\ntimeStamp\nnonceStr\nprepay_id={prepayId}\n` |
 
-上述签名串格式由微信支付 V3 协议决定，属**冻结契约**，由 `PaySignatureTest` / `PayNotifyKitTest` 的官方 message 与互验用例钉住。
+上述签名串格式由微信支付 V3 协议决定，属**冻结契约**，由 `PaySignatureTest` / `PayNotifyUtilTest` 的官方 message 与互验用例钉住。
 
-### 8.3 回调 `PayNotifyKit`
+### 8.3 回调 `PayNotifyUtil`
 
 1. `verify(headers, body)`：从头中取 `Wechatpay-Timestamp` / `Wechatpay-Nonce` / `Wechatpay-Signature` / `Wechatpay-Serial`（头名大小写不敏感），缺任一项返回 `false`。
 2. `decryptResource(merchant, body)`：校验报文为 JSON 且含 `resource.ciphertext`，用 `apiV3Key` 做 AES-256-GCM 解密后解析为 `JSONObject`。
@@ -296,8 +296,8 @@ SDK **不做幂等去重、不感知租户**：微信会重复投递，业务须
 ### 8.5 商户凭据与 HTTP
 
 - `PayMerchant.of(mchId, privateKey, serialNo, apiV3Key)`：`apiV3Key` 必须为 32 字符，`privateKey` 非空；`ofPem` 支持带 / 不带 PEM 头的 PKCS#8 私钥；`toString` 不输出私钥与 `apiV3Key`。
-- `JdkPayHttpKit`：默认 5000 / 10000 ms，关闭重定向；可注入 `SSLContext` 实现 mTLS（客户端证书由调用方构造）；非 2xx 不抛异常，交由调用方按 `PayHttpResponse` 的状态码与响应体处理。
-- 装配：`WxPayConfig.set(new JdkPayHttpKit(sslContext), new PlatformCertManager(merchant))`，未装配即取用抛 `WxApiException`。
+- `JdkPayHttpClient`：默认 5000 / 10000 ms，关闭重定向；可注入 `SSLContext` 实现 mTLS（客户端证书由调用方构造）；非 2xx 不抛异常，交由调用方按 `PayHttpResponse` 的状态码与响应体处理。
+- 装配：`WxPayConfig.set(new JdkPayHttpClient(sslContext), new PlatformCertManager(merchant))`，未装配即取用抛 `WxApiException`。
 
 ## 9. 协议常量
 
@@ -316,11 +316,11 @@ SDK **不做幂等去重、不感知租户**：微信会重复投递，业务须
 
 | 风险 | 规避 |
 | --- | --- |
-| 无被动回复回空串 → 微信判定超时并重试 3 次 | 一律回 `success`；`MsgKit` 对所有异常分支兜底 `success` |
+| 无被动回复回空串 → 微信判定超时并重试 3 次 | 一律回 `success`；`MsgUtil` 对所有异常分支兜底 `success` |
 | 回调链路耗时超过微信的 5 秒限制 | 回调链路禁止同步调用 Api；耗时业务转异步处理 |
 | 多实例 token 相互挤掉、配额耗尽 | `AccessTokenCache` 可替换为共享实现；SDK 已按 appId 单飞避免同实例内重复取 token |
 | 重复投递 | 文档明确 SDK 不做幂等，业务按 `MsgId` / `out_trade_no` 自行幂等 |
-| XXE 注入 | `XmlKit` 禁 DOCTYPE、外部实体与外部 DTD |
+| XXE 注入 | `XmlUtil` 禁 DOCTYPE、外部实体与外部 DTD |
 | 业务内容破坏 XML 结构 | 文本节点统一实体转义；CDATA 内的 `]]>` 自动拆分 |
 | 手工处理 PKCS5 填充导致中文消息尾部损坏 | 填充完全交给 JDK，禁止手工补位 / 去填充 |
 | 平台证书轮换期间验签失败 | 未知序列号触发惰性刷新 + 60 秒节流；过期时间提前 5 分钟 |

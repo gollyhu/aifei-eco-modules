@@ -6,7 +6,7 @@
  * 授权：aifei vip 订阅用户。尊重版权，民富国强！
  */
 
-package cn.aifei.weixin.core.kit;
+package cn.aifei.weixin.core.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -18,14 +18,14 @@ import org.junit.Test;
 /**
  * 安全 XML 解析（S1 验证标准 ①）：XXE 回归 + CDATA / 实体 / 空节点
  */
-public class XmlKitTest {
+public class XmlUtilTest {
 
     @Test
     public void parsesCdataEntityAndEmptyNode() {
         String xml = "<xml><ToUserName><![CDATA[gh_1]]></ToUserName>"
                 + "<Content>a &amp; b</Content><Empty></Empty><Nested><A>1</A></Nested></xml>";
 
-        Map<String, String> data = XmlKit.parse(xml);
+        Map<String, String> data = XmlUtil.parse(xml);
         assertEquals("gh_1", data.get("ToUserName"));
         assertEquals("a & b", data.get("Content"));
         assertEquals("", data.get("Empty"));
@@ -38,7 +38,7 @@ public class XmlKitTest {
                 + "<!DOCTYPE x [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>"
                 + "<xml><Content>&xxe;</Content></xml>";
         try {
-            XmlKit.parse(xml);
+            XmlUtil.parse(xml);
             fail("含 DOCTYPE / 外部实体的 XML 必须被拒绝");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("XML 解析失败"));
@@ -48,13 +48,13 @@ public class XmlKitTest {
     @Test
     public void rejectsBlankAndMalformedInput() {
         try {
-            XmlKit.parse("");
+            XmlUtil.parse("");
             fail("空内容必须抛异常");
         } catch (IllegalArgumentException expected) {
             // 预期
         }
         try {
-            XmlKit.parse("<xml><a></xml>");
+            XmlUtil.parse("<xml><a></xml>");
             fail("非法 XML 必须抛异常");
         } catch (IllegalArgumentException expected) {
             // 预期

@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 运行期实例注册表：按实例名登记装配好的生产者与消费者，供 {@code ProducerUtil} / {@code ConsumerUtil} 取用。
+ * 运行期实例注册表：按实例名登记装配好的生产者与消费者，供 {@code ProducerKit} / {@code ConsumerKit} 取用。
  *
  * <p>登记与清除发生在应用装配的启动 / 停止阶段；尚未登记过任何实例（或已清除）时取用抛
  * {@link IllegalStateException}，实例名非法或未登记抛 {@link IllegalArgumentException}——取用期一律

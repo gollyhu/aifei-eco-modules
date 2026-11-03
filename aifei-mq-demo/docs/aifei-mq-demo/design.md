@@ -14,7 +14,7 @@
 | 1 | `GET /` 怎么映射 | **类上 `@Path("/")`，方法名为 `index` 且方法上不加 `@Path`**：`Router.buildRoute` 对 `index`（`entryMethod` 默认 `"index"`）取 `methodPath=""`，`buildActionPath("/", "")` 走 `classPath.equals(SLASH)` 分支返回 `"/"`，故 actionPath 恰为 `"/"`；等价写法是方法上写 `@Path("")`。**不能用 `@Path("")` 标在类上**（类级值必须 `/` 开头，否则 `buildRoute` 抛 `IllegalArgumentException`）。`ws-demo` 的 `DemoPageService` 即同构先例。 |
 | 2 | view 返回值 | 两种写法都成立且互不依赖：`IoHandler.handleEnjoyView` 只在 **view 不以 `/` 开头** 时补前缀；补法是「`targetPath.length()==1` 就补 `/`，否则补 `targetPath + "/"`」。故 `@Path("/")` 下返回 `/mq/index.html` 原样通过（即使写成 `mq/index.html` 也会被补成 `/mq/index.html`）；`@Path("/mq/demo")` 下必须写 `/mq/demo.html`（写 `mq/demo.html` 会变成 `/mq/demo/mq/demo.html`）。模板根 = `webRoot/view`（`IoHandler` 构造入参 `"view"` + `engine.setBaseTemplatePath`），所以都**不带 `view/`**。 |
 | 3 | `DemoMessageLog` 分片 | 改为**「静态工厂 + 每实例分片对象」**：`MAX_ENTRIES=200` 保留为 `public static final`，新增 `DemoMessageLog.of(instanceName)` 按名取分片（`ConcurrentHashMap` 惰性建），原 `record/markSent/snapshot/size/sentCount/receivedCount/clear` 全部由静态方法变为**分片实例方法**（签名只去掉「静态」、`instanceName` 由 `of()` 承载）；`markStartup` **删除**——`mq.type` 归 `MqInstanceCatalog`、订阅快照归 `DemoSubscriptions`，三类状态各只有一处定义点。 |
-| 4 | 实例枚举 | demo 侧 `MqInstanceCatalog` 内用 `MqConfig.parseInstanceNames(p.getProperties(), MqConfig.NAMES_KEY)` 重解析 `mq.names`，前面手工拼 `MqConfig.MAIN_INSTANCE_NAME`；`type/prefix` 用 `MqConfig.parse(props, new MqProviderRegistry().types(), name)` 的公开 `type()` 取得；`ready` = `ProducerUtil.use(name)` 与 `ConsumerUtil.use(name)` 都不抛。`cn.hg.aifei.mq.internal.*` 属**同厂 internal 依赖**，只在 `MqInstanceCatalog` 内出现，不扩散成公共契约、不做二次封装。 |
+| 4 | 实例枚举 | demo 侧 `MqInstanceCatalog` 内用 `MqConfig.parseInstanceNames(p.getProperties(), MqConfig.NAMES_KEY)` 重解析 `mq.names`，前面手工拼 `MqConfig.MAIN_INSTANCE_NAME`；`type/prefix` 用 `MqConfig.parse(props, new MqProviderRegistry().types(), name)` 的公开 `type()` 取得；`ready` = `ProducerKit.use(name)` 与 `ConsumerKit.use(name)` 都不抛。`cn.hg.aifei.mq.internal.*` 属**同厂 internal 依赖**，只在 `MqInstanceCatalog` 内出现，不扩散成公共契约、不做二次封装。 |
 | 5 | 订阅登记表 | 新增 `DemoSubscriptions`（demo 侧唯一订阅事实来源）：`Map<instance, LinkedHashMap<topic, Entry>>`，`Entry{topic, subscriberName, source, listener}`，`source ∈ {STARTUP, PAGE}`；装配期由 `DemoAppConfig.onStart()` 调 `registerStartup(...)` 登记且 **`listener` 存 null**（保住基线「页面无法取回装配期 listener」的语义）；`unsubscribe` 只能对 `source=PAGE` 的槽取回 listener 调 `Consumer.unsubscribe`，无 page 槽一律 `code=10001`；线程安全用**单一类级锁**（demo 规模不值得分段锁），读路径返回副本。 |
 | 6 | `instance` 校验唯一定义点 | 只在 `MqInstanceCatalog.resolve(String raw)` 一处：`null` 视为省略 → `__MAIN__`；空白 / 含 `.` `=` `:` / 含空白字符 / 保留名（`MqConfig.requireInstanceName` 判定）/ 未在清单中 → `code=10001`，`msg = "未知实例: {raw}，可用实例: [__MAIN__, demoA, demoB]"`；已装配性判定（`IllegalStateException`）→ `code=90000`。返回的 `Instance` 自带 `toOut()`，7 个端点每处只写 `if (!it.ok()) return it.toOut();`。 |
 
@@ -192,7 +192,7 @@ classDiagram
     DemoAppConfig ..> MqInstanceCatalog : init(properties)
     DemoAppConfig ..> DemoSubscriptions : registerStartup
     DemoAppConfig ..> DemoMessageListener : new（装配期，仅主实例）
-    DemoAppConfig ..> Consumer : ConsumerUtil.use().subscribe
+    DemoAppConfig ..> Consumer : ConsumerKit.use().subscribe
 
     MqPageService ..> DemoAppConfig : 复用 DEMO_TOPIC 常量（仅注释引用）
 
@@ -245,7 +245,7 @@ sequenceDiagram
     B->>B: 加载 /assets/css/mq-test.css、/assets/lib/vue.global.prod.js、/assets/js/mq-index.js
     J->>MS: GET /mq/demo/instances
     MS->>C: list()
-    C->>C: names() = [__MAIN__] + mq.names<br/>逐项 parse → type/prefix；ProducerUtil.use / ConsumerUtil.use 判 ready
+    C->>C: names() = [__MAIN__] + mq.names<br/>逐项 parse → type/prefix；ProducerKit.use / ConsumerKit.use 判 ready
     C-->>MS: List<Instance>（ready=false 不抛异常）
     MS-->>J: {code:0, data:{count:3, instances:[...]}}
     alt code == 0 且 count > 0
@@ -411,7 +411,7 @@ sequenceDiagram
     PLG->>HLD: register(__MAIN__ / demoA / demoB, producer, consumer)
     PLG->>PLG: AopKit.addSingletonObject(Producer/Consumer)（仅主实例可 @Inject）
     A->>CFG: onStart()
-    CFG->>HLD: ConsumerUtil.use() → 主实例 consumer
+    CFG->>HLD: ConsumerKit.use() → 主实例 consumer
     CFG->>CFG: consumer.subscribe(DEMO_TOPIC, startupListener)
     CFG->>SUB: registerStartup(__MAIN__, DEMO_TOPIC, "DemoMessageListener")（listener 存 null）
     CFG->>LOG: 无写入（markStartup 已删除）
@@ -597,7 +597,7 @@ mq.demoB.type = memory
   - `private static volatile Properties properties;` + `init(Properties)`（`DemoAppConfig.config(Settings)` 调用；幂等，重复调用覆盖）。
   - `names()`：`[MAIN] + MqConfig.parseInstanceNames(properties, MqConfig.NAMES_KEY)`；捕获 `RuntimeException` → 返回仅含 `MAIN` 的清单并记 `configError`（供 `instances` 附加字段）。
   - `list()`：逐名 `describe(name)`，**绝不抛异常**；`ready = producer != null && consumer != null`。
-  - `resolve(String raw)`：`raw == null` → 视为省略（用 MAIN）；`MqConfig.requireInstanceName(raw)` 捕获 `IllegalArgumentException` → `errorCode=10001`；不在 `names()` 内 → `errorCode=10001`；`ProducerUtil.use(raw)` / `ConsumerUtil.use(raw)` 抛 `IllegalStateException` → `errorCode=90000`、抛 `IllegalArgumentException` → `errorCode=10001`。
+  - `resolve(String raw)`：`raw == null` → 视为省略（用 MAIN）；`MqConfig.requireInstanceName(raw)` 捕获 `IllegalArgumentException` → `errorCode=10001`；不在 `names()` 内 → `errorCode=10001`；`ProducerKit.use(raw)` / `ConsumerKit.use(raw)` 抛 `IllegalStateException` → `errorCode=90000`、抛 `IllegalArgumentException` → `errorCode=10001`。
   - 嵌套 `public static final class Instance`：字段见类图；`ok()`；`toOut()`（`10001` → `Out.fail(OutCode.INVALID_PARAM).msg(errorMsg)`；`90000` → `Out.fail(errorMsg)`）。
   - 唯一文案：`未知实例: {raw}，可用实例: [__MAIN__, demoA, demoB]`、`MQ 尚未装配完成，请确认 config(Plugins) 已注册 MqPlugin`。
   - `type` 由 `MqConfig.parse(properties, new MqProviderRegistry().types(), name).type()` 取得（**同厂 internal 依赖，只在本类出现**；`MqProviderRegistry` 只 new 一次并缓存）；`configPrefix` 用本类私有 `prefixOf(name)`（`mq` / `mq.<name>`）——这是 `MqConfig#prefixOf`（private）的镜像，**只允许在本类存在**。
@@ -634,7 +634,7 @@ mq.demoB.type = memory
 - **文件**：`src/main/java/cn/hg/aifei/mq/demo/common/DemoAppConfig.java`（改）
 - **要点**：
   - `config(Settings)`：`PropKit.use(...)` 之后加 `MqInstanceCatalog.init(p.getProperties());`（注解装配阶段即就绪，Service 首次调用即可用）。
-  - `onStart()`：保留 `ConsumerUtil.use().subscribe(DEMO_TOPIC, startupListener)`（**装配期仍只订阅主实例**——基线原型 `demoA`/`demoB` 订阅数为 0，且 §7.14 的「装配期订阅」专指主实例）；随后 `DemoSubscriptions.registerStartup(MqInstanceCatalog.MAIN, DEMO_TOPIC, DemoMessageListener.NAME);`；**删除** `DemoMessageLog.markStartup(...)`；启动日志打印 `mq.names` 与全部实例名（`MqInstanceCatalog.names()`）。
+  - `onStart()`：保留 `ConsumerKit.use().subscribe(DEMO_TOPIC, startupListener)`（**装配期仍只订阅主实例**——基线原型 `demoA`/`demoB` 订阅数为 0，且 §7.14 的「装配期订阅」专指主实例）；随后 `DemoSubscriptions.registerStartup(MqInstanceCatalog.MAIN, DEMO_TOPIC, DemoMessageListener.NAME);`；**删除** `DemoMessageLog.markStartup(...)`；启动日志打印 `mq.names` 与全部实例名（`MqInstanceCatalog.names()`）。
   - 字段 `final MessageListener listener = new DemoMessageListener();` 保留（无参构造即主实例分片）。
   - `onStop()` 不变（总线关闭仍由 `MqPlugin.stop()` 负责）；可选：`DemoSubscriptions.clear(MqInstanceCatalog.MAIN)`（示例工程可留，注释说明重启即清空）。
 - **依赖**：T03、T04（`registerStartup`、`MqInstanceCatalog.init/MAIN/names`）

@@ -17,7 +17,7 @@ import static org.junit.Assert.fail;
 import cn.aifei.weixin.common.WxApiException;
 import cn.aifei.weixin.pay.WxPayConfig;
 import cn.aifei.weixin.pay.core.PlatformCertManager;
-import cn.aifei.weixin.support.FakePayHttpKit;
+import cn.aifei.weixin.support.FakePayHttpClient;
 import cn.aifei.weixin.support.PayTestKeys;
 import com.alibaba.fastjson2.JSONObject;
 import java.security.KeyPair;
@@ -34,7 +34,7 @@ public class PlatformCertManagerTest {
     @Test
     public void downloadsAndDecryptsCertificate() {
         KeyPair pair = PayTestKeys.generateKeyPair();
-        FakePayHttpKit http = new FakePayHttpKit();
+        FakePayHttpClient http = new FakePayHttpClient();
         http.getResponse = new cn.aifei.weixin.pay.core.PayHttpResponse(200, new HashMap<String, String>(),
                 certificatesJson(pair.getPublic()));
         WxPayConfig.set(http, new PlatformCertManager(merchant(pair)));
@@ -52,7 +52,7 @@ public class PlatformCertManagerTest {
     @Test
     public void unknownSerialReturnsNullAfterRefresh() {
         KeyPair pair = PayTestKeys.generateKeyPair();
-        FakePayHttpKit http = new FakePayHttpKit();
+        FakePayHttpClient http = new FakePayHttpClient();
         http.getResponse = new cn.aifei.weixin.pay.core.PayHttpResponse(200, new HashMap<String, String>(),
                 certificatesJson(pair.getPublic()));
         WxPayConfig.set(http, new PlatformCertManager(merchant(pair)));
@@ -67,7 +67,7 @@ public class PlatformCertManagerTest {
 
     @Test
     public void downloadFailureThrows() {
-        FakePayHttpKit http = new FakePayHttpKit();
+        FakePayHttpClient http = new FakePayHttpClient();
         http.getResponse = new cn.aifei.weixin.pay.core.PayHttpResponse(500, new HashMap<String, String>(),
                 "{\"code\":\"SYSTEM_ERROR\",\"message\":\"oops\"}");
         KeyPair pair = PayTestKeys.generateKeyPair();

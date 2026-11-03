@@ -18,9 +18,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * {@link ProducerUtil} 的未启动状态异常、实例名参数校验与对已登记实例的转发。
+ * {@link ProducerKit} 的未启动状态异常、实例名参数校验与对已登记实例的转发。
  */
-public class ProducerUtilTest {
+public class ProducerKitTest {
 
     /**
      * 命名实例名；主实例名用 {@link MqConfig#MAIN_INSTANCE_NAME}。
@@ -48,11 +48,11 @@ public class ProducerUtilTest {
      */
     @Test
     public void shouldFailBeforeStart() {
-        assertThrows(IllegalStateException.class, ProducerUtil::use);
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use(NAMED));
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.send("t", "x"));
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.send("t", new byte[] {1}));
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.send(Message.of("t", new byte[] {1})));
+        assertThrows(IllegalStateException.class, ProducerKit::use);
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use(NAMED));
+        assertThrows(IllegalStateException.class, () -> ProducerKit.send("t", "x"));
+        assertThrows(IllegalStateException.class, () -> ProducerKit.send("t", new byte[] {1}));
+        assertThrows(IllegalStateException.class, () -> ProducerKit.send(Message.of("t", new byte[] {1})));
     }
 
     /**
@@ -60,9 +60,9 @@ public class ProducerUtilTest {
      */
     @Test
     public void shouldJudgeStateBeforeInstanceName() {
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use(""));
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use("a.b"));
-        assertThrows(IllegalStateException.class, () -> ProducerUtil.use("names"));
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use(""));
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use("a.b"));
+        assertThrows(IllegalStateException.class, () -> ProducerKit.use("names"));
     }
 
     /**
@@ -72,11 +72,11 @@ public class ProducerUtilTest {
     public void shouldRejectIllegalOrUnknownInstanceName() {
         MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, new RecordingProducer(), new RecordingConsumer());
 
-        assertThrows(IllegalArgumentException.class, () -> ProducerUtil.use("payments"));
-        assertThrows(IllegalArgumentException.class, () -> ProducerUtil.use(null));
-        assertThrows(IllegalArgumentException.class, () -> ProducerUtil.use(""));
-        assertThrows(IllegalArgumentException.class, () -> ProducerUtil.use("a b"));
-        assertThrows(IllegalArgumentException.class, () -> ProducerUtil.use("names"));
+        assertThrows(IllegalArgumentException.class, () -> ProducerKit.use("payments"));
+        assertThrows(IllegalArgumentException.class, () -> ProducerKit.use(null));
+        assertThrows(IllegalArgumentException.class, () -> ProducerKit.use(""));
+        assertThrows(IllegalArgumentException.class, () -> ProducerKit.use("a b"));
+        assertThrows(IllegalArgumentException.class, () -> ProducerKit.use("names"));
     }
 
     /**
@@ -89,22 +89,22 @@ public class ProducerUtilTest {
         MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, main, new RecordingConsumer());
         MqHolder.register(NAMED, named, new RecordingConsumer());
 
-        SendResult textResult = ProducerUtil.send("t1", "hello");
+        SendResult textResult = ProducerKit.send("t1", "hello");
         assertEquals("t1", main.topic);
         assertEquals("hello", main.text);
         assertEquals("t1", textResult.topic());
         assertEquals(RecordingProducer.MESSAGE_ID, textResult.messageId());
 
-        ProducerUtil.send("t2", new byte[] {1, 2});
+        ProducerKit.send("t2", new byte[] {1, 2});
         assertEquals("t2", main.topic);
         assertArrayEquals(new byte[] {1, 2}, main.payloadBytes);
 
         Message message = Message.of("t3", new byte[] {3});
-        ProducerUtil.send(message);
+        ProducerKit.send(message);
         assertSame(message, main.message);
 
-        assertSame(main, ProducerUtil.use());
-        assertSame(named, ProducerUtil.use(NAMED));
+        assertSame(main, ProducerKit.use());
+        assertSame(named, ProducerKit.use(NAMED));
     }
 
     /**

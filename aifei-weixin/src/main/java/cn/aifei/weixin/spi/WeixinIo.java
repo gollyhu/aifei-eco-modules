@@ -16,7 +16,7 @@ package cn.aifei.weixin.spi;
  *  1: 泛型无上界，本接口（以及整个 spi 包）不依赖 aifei 内核任何类型，
  *     由自动化测试 KernelBindingTest 断言（见 docs/开发规范/微信接入规范.md 架构门禁）。
  *  2: query 必须保留：验签所需的 signature/msg_signature/timestamp/nonce/echostr/encrypt_type
- *     全部来自 query；无上界泛型下 MsgKit 无法调用内核 Input.getStr(...)。
+ *     全部来自 query；无上界泛型下 MsgUtil 无法调用内核 Input.getStr(...)。
  * </pre>
  *
  * @param <I> 具体传输层的请求对象类型

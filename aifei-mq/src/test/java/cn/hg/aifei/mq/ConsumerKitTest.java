@@ -17,9 +17,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * {@link ConsumerUtil} 的未启动状态异常、实例名参数校验与对已登记实例的转发。
+ * {@link ConsumerKit} 的未启动状态异常、实例名参数校验与对已登记实例的转发。
  */
-public class ConsumerUtilTest {
+public class ConsumerKitTest {
 
     /**
      * 命名实例名；主实例名用 {@link MqConfig#MAIN_INSTANCE_NAME}。
@@ -47,11 +47,11 @@ public class ConsumerUtilTest {
      */
     @Test
     public void shouldFailBeforeStart() {
-        assertThrows(IllegalStateException.class, ConsumerUtil::use);
-        assertThrows(IllegalStateException.class, () -> ConsumerUtil.use(NAMED));
-        assertThrows(IllegalStateException.class, () -> ConsumerUtil.subscribe("t", message -> {
+        assertThrows(IllegalStateException.class, ConsumerKit::use);
+        assertThrows(IllegalStateException.class, () -> ConsumerKit.use(NAMED));
+        assertThrows(IllegalStateException.class, () -> ConsumerKit.subscribe("t", message -> {
         }));
-        assertThrows(IllegalStateException.class, () -> ConsumerUtil.unsubscribe("t", message -> {
+        assertThrows(IllegalStateException.class, () -> ConsumerKit.unsubscribe("t", message -> {
         }));
     }
 
@@ -60,9 +60,9 @@ public class ConsumerUtilTest {
      */
     @Test
     public void shouldJudgeStateBeforeInstanceName() {
-        assertThrows(IllegalStateException.class, () -> ConsumerUtil.use(""));
-        assertThrows(IllegalStateException.class, () -> ConsumerUtil.use("a:b"));
-        assertThrows(IllegalStateException.class, () -> ConsumerUtil.use("names"));
+        assertThrows(IllegalStateException.class, () -> ConsumerKit.use(""));
+        assertThrows(IllegalStateException.class, () -> ConsumerKit.use("a:b"));
+        assertThrows(IllegalStateException.class, () -> ConsumerKit.use("names"));
     }
 
     /**
@@ -72,11 +72,11 @@ public class ConsumerUtilTest {
     public void shouldRejectIllegalOrUnknownInstanceName() {
         MqHolder.register(MqConfig.MAIN_INSTANCE_NAME, new StubProducer(), new RecordingConsumer());
 
-        assertThrows(IllegalArgumentException.class, () -> ConsumerUtil.use("payments"));
-        assertThrows(IllegalArgumentException.class, () -> ConsumerUtil.use(null));
-        assertThrows(IllegalArgumentException.class, () -> ConsumerUtil.use(""));
-        assertThrows(IllegalArgumentException.class, () -> ConsumerUtil.use("a b"));
-        assertThrows(IllegalArgumentException.class, () -> ConsumerUtil.use("names"));
+        assertThrows(IllegalArgumentException.class, () -> ConsumerKit.use("payments"));
+        assertThrows(IllegalArgumentException.class, () -> ConsumerKit.use(null));
+        assertThrows(IllegalArgumentException.class, () -> ConsumerKit.use(""));
+        assertThrows(IllegalArgumentException.class, () -> ConsumerKit.use("a b"));
+        assertThrows(IllegalArgumentException.class, () -> ConsumerKit.use("names"));
     }
 
     /**
@@ -91,16 +91,16 @@ public class ConsumerUtilTest {
 
         MessageListener listener = received -> {
         };
-        ConsumerUtil.subscribe("s1", listener);
+        ConsumerKit.subscribe("s1", listener);
         assertEquals("s1", main.subscribedTopic);
         assertSame(listener, main.subscribedListener);
 
-        ConsumerUtil.unsubscribe("s1", listener);
+        ConsumerKit.unsubscribe("s1", listener);
         assertEquals("s1", main.unsubscribedTopic);
         assertSame(listener, main.unsubscribedListener);
 
-        assertSame(main, ConsumerUtil.use());
-        assertSame(named, ConsumerUtil.use(NAMED));
+        assertSame(main, ConsumerKit.use());
+        assertSame(named, ConsumerKit.use(NAMED));
     }
 
     /**
