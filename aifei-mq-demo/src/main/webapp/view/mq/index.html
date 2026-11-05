@@ -14,7 +14,7 @@
     <header class="mq-topbar">
         <div class="mq-topbar-main">
             <h1 class="mq-title">aifei-mq-demo · MQ 演示入口</h1>
-            <p class="mq-sub">配置来源：app-config.txt ｜ mq.type = memory ｜ mq.names = demoA,demoB</p>
+            <p class="mq-sub">配置来源：app-config.txt ｜ __MAIN__ = memory ｜ demoA = mqtt ｜ demoB = redisstream</p>
         </div>
         <div class="topbar-actions">
             <span class="hint" v-if="busy" aria-live="polite">{{ busyHint }}</span>
@@ -32,7 +32,7 @@
     </header>
 
     <!-- ② 固定警示条（语义声明，不可关闭） -->
-    <p class="warn-bar">⚠ 内存后端 · 同步投递 · 无真实 broker —— 消息不过进程边界，重启即清空；无 QoS / retain / 通配符</p>
+    <p class="warn-bar">⚠ 多后端演示 · __MAIN__ 为内存后端（进程内、重启即清空）· demoA 走 MQTT broker · demoB 走 Redis Stream</p>
 
     <!-- 错误态 / 降级态 -->
     <p class="err-bar" v-if="error" role="alert">
@@ -129,7 +129,7 @@
             </section>
             <section class="doc-sec">
                 <h3>为什么页面上没有链路参数</h3>
-                <p>本 demo 的消息后端是内存实现、同步投递：没有外部 broker，消息不跨进程边界，进程重启即清空。因此页面只表达「就绪 / 未装配」，也没有需要填写的链路参数。</p>
+                <p>三个实例各用一种后端：主实例 <code>__MAIN__</code> 是内存实现，<code>demoA</code> 走 MQTT broker、<code>demoB</code> 走 Redis Stream；链路参数一律在 <code>app-config.txt</code> 里按实例配置，页面只表达「就绪 / 未装配」。</p>
             </section>
             <section class="doc-sec">
                 <h3>端点速查</h3>

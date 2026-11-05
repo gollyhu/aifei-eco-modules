@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>aifei-mq-demo</name>
-    <description>内存后端示例：验证 aifei-mq 装配 / 发送 / 订阅消费闭环</description>
+    <description>多后端示例：验证 aifei-mq 装配 / 发送 / 订阅消费闭环</description>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -30,7 +30,42 @@
 
         <dependency>
             <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-mq-core</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-mq-memory</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-mq-mqtt</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-mq-mqtt5</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-mq-rabbitmq</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-mq-kafka</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-mq-redisstream</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-mq-rocketmq</artifactId>
             <version>1.0.0</version>
         </dependency>
 
@@ -44,12 +79,6 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
             <version>${log4j.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.eclipse.paho</groupId>
-            <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
-            <version>1.2.5</version>
         </dependency>
 
     </dependencies>

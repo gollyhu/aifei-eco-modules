@@ -1,6 +1,6 @@
 # aifei-mq-demo
 
-`aifei-mq` 的内存后端演示工程（**示例工程，不发布**）：在**同一个进程内**装配**多个**消息后端实例，用订阅者收消息、
+`aifei-mq` 的多后端演示工程（**示例工程，不发布**）：在**同一个进程内**装配**多个**消息后端实例，用订阅者收消息、
 用 HTTP 端点发消息与查看结果，并提供两个浏览器演示页面（实例入口页 + 单实例演示页），
 用来现场演示 **装配 → 发送 → 订阅消费** 的完整闭环，并按 **E2 定档**（固定 topic + payload 内 `type` 路由键）
 演示「事件类型由消费侧分发」的模式（见下文「E2 事件演示」）。
@@ -19,8 +19,8 @@
 | --- | --- | --- |
 | HTTP（演示端点） | **18100** | `start-demo.bat` 的 `-Dundertow.port=18100` |
 
-内存后端在进程内、不监听任何端口，故本 demo 只占一个 HTTP 端口，与 `aifei-sentinel-demo` 的 18080、
-`aifei-websocket-demo` 的 18090 / 18091 均错开。
+主实例的内存后端在进程内、不监听任何端口；`demoA`（MQTT）与 `demoB`（Redis Stream）连外部服务，但都不额外占用
+本机端口。故本 demo 只占一个 HTTP 端口，与 `aifei-sentinel-demo` 的 18080、`aifei-websocket-demo` 的 18090 / 18091 均错开。
 
 ## 运行
 
@@ -29,8 +29,9 @@ start-demo.bat    :: 启动 demo（HTTP 18100），按 Ctrl+C 或运行 stop-dem
 stop-demo.bat     :: 按端口 18100 找到监听进程并结束
 ```
 
-启动后访问 <http://localhost:18100/> 进入实例入口页（3 张实例卡：`__MAIN__`、`demoA`、`demoB`）；访问
-<http://localhost:18100/mq/demo/state> 看到 `mqType=memory`、`subscribedTopics` 含默认主题即为正常。
+启动后访问 <http://localhost:18100/> 进入实例入口页（3 张实例卡：`__MAIN__` / memory、`demoA` / mqtt、
+`demoB` / redisstream）；访问 <http://localhost:18100/mq/demo/state> 看到 `mqType=memory`、
+`subscribedTopics` 含默认主题即为正常（省略 `instance` 时取主实例）。
 
 ## 演示页面
 
@@ -39,7 +40,7 @@ stop-demo.bat     :: 按端口 18100 找到监听进程并结束
 | 实例入口页 | `GET /` | 按 `mq.names`（+ 主实例）列出实例卡（类型 / 配置前缀 / 就绪状态 / 订阅数 / 记录数），点击进入 |
 | 实例演示页 | `GET /mq/demo/page?instance=<实例名>` | 订阅区（可运行时订阅 / 取消，标注「影响所有浏览器会话」）+ 发布区（文本捷径 / Message 对象两种方式）+ **E2 事件演示区**（业务域 / 事件类型 / 命中表）+ 消息流日志（2 秒轮询） |
 
-页面固定标注「内存后端 · 同步投递 · 无真实 broker」；订阅是进程级全局副作用（影响访问同一实例的所有浏览器会话）；
+页面固定标注三种后端的组合（主实例内存 / `demoA` MQTT / `demoB` Redis Stream）；订阅是进程级全局副作用（影响访问同一实例的所有浏览器会话）；
 装配期订阅的 chip 不可从页面取消；消息记录、发送 / 接收计数均**按实例隔离**。
 
 ## 演示端点
@@ -101,20 +102,31 @@ stop-demo.bat     :: 按端口 18100 找到监听进程并结束
 
 | 键 | 值 | 说明 |
 | --- | --- | --- |
-| `mq.type` | `memory` | 主实例（`__MAIN__`）的消息后端类型；缺省即 `memory`，显式写出便于演示与排查 |
-| `mq.names` | `demoA,demoB` | 命名实例清单（逗号分隔）；主实例 `__MAIN__` 是保留名、走根级 `mq.*`，不得在此声明；实例卡顺序 = 主实例在前 + 本行声明顺序 |
-| `mq.demoA.type` / `mq.demoB.type` | `memory` | 各命名实例的后端类型（前缀 `mq.<实例名>`），未配置时默认 `memory` |
+| `mq.type` | `memory` | 主实例（`__MAIN__`）的后端类型；缺省即 `memory` |
+| `mq.names` | `demoA,demoB` | 命名实例清单；实例卡顺序 = 主实例在前 + 本行声明顺序 |
+| `mq.demoA.type` | `mqtt` | `demoA` 走 MQTT v3.1.1，构造期立即连 `wss://broker.emqx.io:8084` |
+| `mq.demoB.type` | `redisstream` | `demoB` 走 Redis Stream，懒连接，需本机 `127.0.0.1:6379` 可用 |
 | `printAction` | 未配置 | 打开后每个 action 调用会打印到控制台（默认 `false`） |
+
+后端专有键的完整形态是 `mq.<实例名>.<type>.<relativeKey>`（主实例为 `mq.<type>.<relativeKey>`），
+由 `MqConfig.get(relativeKey)` 拼装读取；`memory` 无任何专有键。配置文件里：
+
+- **已放开**：`memory` / `mqtt` / `redisstream`，三者的全部配置项均为可生效行（mqtt 11 项、redisstream 15 项）。
+- **未放开**：`mqtt5` / `rabbitmq` / `kafka` / `rocketmq`，共 44 项以注释形式给出全量模板；启用时改 `type`
+  并把键前缀换成目标实例，再去掉行首 `#`。其中 `mqtt5` / `rabbitmq` 构造期立即建连，`kafka` / `rocketmq` 懒连接。
+
+`pom.xml` 已引入全部 7 个后端子模块，客户端依赖随各模块传递引入，切换 `type` 无需改依赖。
 
 HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=18100` 传入；需要换配置源时用
 `-Ddemo.config=<file>`（与参考 demo 同名键）。
 
 ## 语义说明
 
-- **内存后端是进程内的**：消息不过进程边界，**应用重启即清空**；`messageId` 是**每实例**进程内单调递增的
-  十进制字符串（从 `1` 开始），仅在同一实例、同一进程生命周期内唯一。
-- **同步投递**：`send` 在调用线程内直接回调订阅者后才返回，因此「发送后立刻查询 `messages`」必定能看到刚
-  发的那条；主题上没有订阅者时视为成功，消息被丢弃但仍返回 `messageId`。
+- **主实例的内存后端是进程内的**：消息不过进程边界，**应用重启即清空**；`messageId` 是**每实例**进程内
+  单调递增的十进制字符串（从 `1` 开始）。`demoA` / `demoB` 的 `messageId` 由各自后端生成，格式不同。
+- **同步投递仅适用于内存后端**：主实例的 `send` 在调用线程内直接回调订阅者后才返回，因此「发送后立刻查询
+  `messages`」必定能看到刚发的那条；`demoA` / `demoB` 经外部服务中转，接收是异步的。主题上没有订阅者时
+  视为成功，消息被丢弃但仍返回 `messageId`。
 - **订阅与取消订阅**：`Consumer` 现有 `subscribe` 与 `unsubscribe` 两个方法。`unsubscribe` 按**实例身份**（引用
   相等）从该主题移除监听器实例，`MessageListener` 是函数式接口，lambda / 方法引用的 `equals` 无可靠语义，故
   不按 `equals` 判定；**重复取消**与**取消一个从未登记过的订阅**均为**幂等静默 no-op**（不抛异常），总线停止
@@ -133,7 +145,8 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 | 依赖 | 用途 |
 | --- | --- |
 | `cn.aifei:aifei-all` | 框架内核（`aifei-mq` 内为 `provided`，消费方自带） |
-| `io.github.gollyhu:aifei-mq` | 被演示模块（`MqPlugin` + 8 个公共类型） |
+| `io.github.gollyhu:aifei-mq-core` | 契约与装配层（`MqPlugin` + 8 个公共类型） |
+| `io.github.gollyhu:aifei-mq-{memory,mqtt,mqtt5,rabbitmq,kafka,redisstream,rocketmq}` | 全部 7 个后端子模块，经 `META-INF/services` 注册；各客户端依赖随模块传递引入 |
 | `io.undertow:undertow-core` | HTTP 命令式服务端（不用 Servlet） |
 | `org.apache.logging.log4j:log4j-core` | `Log4jLogFactory` 的运行时实现 |
 

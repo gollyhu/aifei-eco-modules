@@ -53,7 +53,7 @@
     </header>
 
     <!-- 固定警示条（语义声明，不可关闭） -->
-    <p class="warn-bar">⚠ 内存后端 · 同步投递 · 无真实 broker —— 消息不过进程边界，重启即清空；无 QoS / retain / 通配符</p>
+    <p class="warn-bar">⚠ 多后端演示 · __MAIN__ 为内存后端（进程内、重启即清空）· demoA 走 MQTT broker · demoB 走 Redis Stream</p>
 
     <!-- 错误态：读取状态失败 / 未知实例 -->
     <p class="err-bar" v-if="stateErrorText" role="alert">
@@ -343,8 +343,8 @@
                 <p>本页是 <code>{{ view.instance }}</code> 这一条总线的现场观察窗：上方是运行态快照（订阅主题数、发送 / 接收计数、记录条数），左列可以订阅主题与发布消息，右列是接收侧的消息记录（最新在上，上限读接口的 <code>messageLogCapacity</code>）。</p>
             </section>
             <section class="doc-sec">
-                <h3>内存后端 + 同步投递</h3>
-                <p>消息后端是内存实现：没有外部 broker，消息不跨进程边界，进程重启即清空。发送是<strong>同步投递</strong>——发送调用返回前，订阅者的回调已经在同一条调用链里执行完，所以「发送后立刻查记录」必定能看到那条消息。由此 <code>delivered</code> 就是本次发送触发了几次订阅者回调。</p>
+                <h3>按实例选择后端</h3>
+                <p>主实例 <code>__MAIN__</code> 是内存实现（进程内、重启即清空、同步投递）；<code>demoA</code> 走 MQTT broker、<code>demoB</code> 走 Redis Stream，收发经各自后端中转。页面上的快照、订阅与消息流都<strong>按实例隔离</strong>，<code>delivered</code> 表示本次发送在该实例触发了几次订阅者回调。</p>
             </section>
             <section class="doc-sec">
                 <h3>订阅是全局副作用</h3>
