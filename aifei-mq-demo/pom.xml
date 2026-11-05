@@ -30,7 +30,7 @@
 
         <dependency>
             <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq</artifactId>
+            <artifactId>aifei-mq-memory</artifactId>
             <version>1.0.0</version>
         </dependency>
 
