@@ -19,7 +19,7 @@
         <aifei.version>1.1.2</aifei.version>
         <undertow.version>2.2.40.Final</undertow.version>
         <sa-token.version>1.46.0</sa-token.version>
-        <aifei-cache.version>1.0.0</aifei-cache.version>
+        <aifei-cache.version>1.1.0</aifei-cache.version>
         <junit.version>4.13.2</junit.version>
     </properties>
 

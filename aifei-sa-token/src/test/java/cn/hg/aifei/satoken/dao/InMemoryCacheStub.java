@@ -22,6 +22,9 @@ import java.util.Set;
  *
  * <p>只覆盖测试所需能力：不模拟过期淘汰（已写入项一律可见），{@code keys} 复刻
  * aifei-cache 的「筛选 + 字典序排序 + 分页」语义。这样测试不需要 Redis 或 aifei-cache 插件。</p>
+ *
+ * <p>不支持条件操作：{@code supportsCas()} 恒 {@code false}，两个 CAS 方法抛
+ * {@link UnsupportedOperationException}，与 Caffeine 后端的一致。</p>
  */
 final class InMemoryCacheStub implements Cache {
 
@@ -78,6 +81,21 @@ final class InMemoryCacheStub implements Cache {
     @Override
     public Duration getTtl(String cacheName, String key) {
         return values.containsKey(key) ? ttls.get(key) : null;
+    }
+
+    @Override
+    public boolean removeIfEquals(String cacheName, String key, Object expectedValue) {
+        throw new UnsupportedOperationException("in-memory cache stub does not support conditional operations");
+    }
+
+    @Override
+    public boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl) {
+        throw new UnsupportedOperationException("in-memory cache stub does not support conditional operations");
+    }
+
+    @Override
+    public boolean supportsCas() {
+        return false;
     }
 
     @Override
