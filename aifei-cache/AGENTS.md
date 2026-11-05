@@ -13,7 +13,7 @@
 
 - 代码、依赖与 API 必须兼容 Java 8；主 JAR 内全部 class 的 major version 必须为 52。
 - 不得升级 Caffeine 2.9.3（最后一个支持 JDK 8 的版本）；Caffeine / Jedis / Fury 必须保持 `<optional>true</optional>`。
-- 不依赖 `cn.aifei:aifei-cache` 构件：`internal.CacheValidator` 的 12 个校验方法（2 个布尔判定 `isValid*` / `isInvalid*` + 10 个 `require*`）已内联为本项目源码，其判定规则与异常消息属**冻结契约**，改动时须先在测试中更新消息断言。
+- 不依赖 `cn.aifei:aifei-cache` 构件：`internal.CacheValidator` 的校验方法已内联为本项目源码，其判定规则与异常消息属**冻结契约**，改动时须先在测试中更新消息断言。**以源码为准**：当前 13 个（2 个布尔判定 `isValid*` / `isInvalid*` + 11 个 `require*`，含 1.1.0 新增的 `requireExpectedValue`）。
 
 ### 结构
 
@@ -21,7 +21,7 @@
 - 其余代码落在 `internal`（非承诺 API）、`caffeine`、`redis` 三个子包。
 - `Cache` 实现类共用无行为元数据基类 `internal.AbstractCache`，`Counter` 实现类共用 `internal.AbstractCounter`。两类都不得再引入其它跨实现基类或抽象父类，不得暴露 Caffeine、Jedis、Fury 等实现类型。
 - 装配侧允许有一个抽象父类 `internal.AbstractCacheProvider`：它只承载通用配置装配，必须无状态，且不得被 `Cache` / `Counter` 的实现类继承。
-- `CacheKit` / `CounterKit` 镜像 `Cache` / `Counter` 的**全部业务方法**（`namespace()` 除外）：`Duration` 与 `int ttlSeconds` 双重重载、省略 TTL 的写重载，以及 `exists` / `remove` / `getTtl` / `cacheNames()` / `counterNames()` / `ttl()` / `cacheNull()` / `clear()`；`namespace()` 刻意不镜像，门面完整性（含「不得补齐」的反向用例）由 `FacadeMirrorTest` 钉住。
+- `CacheKit` / `CounterKit` 镜像 `Cache` / `Counter` 的**全部业务方法**（`namespace()` / `supportsCas()` 除外）：`Duration` 与 `int ttlSeconds` 双重重载、省略 TTL 的写重载，以及 `exists` / `remove` / `removeIfEquals` / `expireIfEquals` / `getTtl` / `cacheNames()` / `counterNames()` / `ttl()` / `cacheNull()` / `clear()`；`namespace()` / `supportsCas()` 是「实例是什么」的自述，刻意不镜像，门面完整性（含「不得补齐」的反向用例）由 `FacadeMirrorTest` 钉住。
 
 ### 契约
 
@@ -32,6 +32,7 @@
 - 以下都属**数据格式**，发布后不得更改：哨兵类型 `internal.NullValue` 的包名与枚举名、`internal.Config` 的 `COUNTER_KEY_PREFIX` / `CACHE_NAMES_NAME` / `COUNTER_NAMES_NAME`、物理 key 格式、`FuryRedisValueCodec` 的 5 个 builder 参数（含 `requireClassRegistration(false)`）。
 - 不得把 `FuryRedisValueCodec` 的 `requireClassRegistration` 改成 `true` —— 实测会改变写入字节格式，破坏存量数据与滚动升级期的混合读取。
 - 配置解析与校验一律在 `CachePlugin.start()` 内完成：构造函数只保留 `Prop` 引用，不解析、不校验、不创建实例。
+- **条件操作（1.1.0）**：`removeIfEquals` / `expireIfEquals` 必须是「一次原子操作」，jedis 侧为单条 Lua 脚本；比较对象是**存储原始字节**，`expectedValue` 经本实例 codec 序列化后与 `GET` 结果比较，不在比较前解码。`eval` **只能用二进制重载** `eval(byte[], List<byte[]>, List<byte[]>)` —— 脚本、key、期望值全部按字节传递，禁止 `eval(String, List<String>, List<String>)`、禁止任何 `String` 中转（Fury 字节含非 UTF-8 序列与 `\u0000`，字符串往返后比较恒不相等，锁释放会永久失效）。返回值语义：`true` = 动作已执行，`false` = 确定的「未发生」（不存在 / 已过期 / 值不匹配），**绝不表达存储故障**（故障抛运行时异常）；不支持的后端抛 `UnsupportedOperationException`，且**参数校验先于能力检查**。`supportsCas()` 是无 I/O 的纯能力声明（`jedis` 恒 `true`、`caffeine` 恒 `false`），不得探测连通性。
 
 ### 唯一定义点（每类规则只有一处）
 
@@ -45,6 +46,7 @@
 - **后端扩展点**：`internal.CacheProvider` + `internal.CacheProviderRegistry` + `internal.AbstractCacheProvider`。新增后端 = 新增 provider 实现 + 在注册表静态初始化里注册一行，不得回头改 `CachePlugin` 的装配逻辑；类型白名单由 `CacheProviderRegistry#types()` 派生。
 - **回源单飞的登记与「回源 + 回写」**：`internal.SingleFlight`，登记键取自 `AbstractCache.physicalKey`；实现类不得自行维护在途状态或复制该流程。
 - **`keys` 的筛选、排序与分页**：`internal.KeyRanges`（按业务 key 匹配、字典序排序、offset/limit 分页），两后端实现共用，不得各自复制。
+- **条件操作的期望值字节装配**：`RedisCache` 内的包私有装配方法（返回 `byte[]`，两处 CAS 共用）是唯一定义点，不得在方法体内再写一份序列化或经字符串转换。2 条 Lua 脚本常量分别留在 `RedisCache` 内（`private static final String`），不抽公共常量类。
 - **`CacheProvider` 实现必须无状态**：不得声明实例字段保存解析结果，配置在 `buildCache(instanceName, prefix, prop)` 内经 `buildConfig(cfg, prefix, prop)` 现读现用；配置对象是本实例的瞬时对象，不得存进 provider 字段、不得跨阶段传递。装配共用逻辑走 `AbstractCacheProvider#initConfig`；**缓存实例由各子类在自己的 `buildCache` 内创建**，基类不提供实例创建钩子。
 
 ## 注释规范
@@ -76,6 +78,8 @@ mvn clean verify                                                          :: 必
 mvn verify -Dredis.integration=true -Dredis.uri=redis://127.0.0.1:6379/0  :: Redis 集成用例，开启后连不上必须失败
 ```
 
+发布前**必须实际执行第二条**：条件操作的误删防止、误续期防止、字节匹配只在真实 Redis 上验证，默认构建不覆盖。接入 CI 时该 job 必须自行起 Redis 实例；仓库内未配置 CI 时，由本文件的提交前检查清单与发布流程承载。
+
 ## 文档维护
 
 - 术语必须一致：实例名 / 缓存名 / 命名空间 / 物理 key / 主缓存 `__MAIN__` / 扩展实例 / 哨兵值。
@@ -95,9 +99,11 @@ mvn verify -Dredis.integration=true -Dredis.uri=redis://127.0.0.1:6379/0  :: Red
 - [ ] `mvn clean verify` 通过（0 failure / 0 error）。
 - [ ] 涉及公共行为的改动已同步 `docs/design.md` 与 `README.md`；新增/变更行为有测试覆盖。
 - [ ] 校验规则仍只有两个定义点，实现类未复制规则。
+- [ ] 条件操作仍走二进制 `eval`，期望值字节只有一个装配点，未出现 `String` 中转；`supportsCas()` 与两个 CAS 方法行为一致。
 - [ ] 回源单飞的登记与「回源 + 回写」仍只在 `internal.SingleFlight`；实现类未自行维护在途状态、未复制该流程。
 - [ ] 新增后端只动了 provider + 注册一行；provider 仍无实例字段。
 - [ ] `Cache` / `Counter` 实现类仍只共用 `internal.AbstractCache` / `internal.AbstractCounter`，未暴露实现类型，未破坏 Java 8 兼容与 `optional` 隔离。
 - [ ] 新增/改动的注释符合「注释规范」：公共面无 `internal` 行话，转发层未复述接口细节，跨方法共用的说明只在 `README.md`「接口通用规则」一处、成员上未重复。
+- [ ] 发布前已用真实 Redis 跑通 `mvn verify -Dredis.integration=true -Dredis.uri=...`（连不上必须失败，不得跳过）。
 - [ ] `git status` 无「已暂存但工作区已删」（`AD`）的残留。
 - [ ] 当日工作日志已追加到仓库根的协作记忆目录。

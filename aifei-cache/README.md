@@ -24,7 +24,7 @@ aifei-cache 是面向 [aifei](https://aifei.cn) 应用的缓存与计数组件�
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-cache</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -84,6 +84,9 @@ public interface Cache {
     void remove(String cacheName, String key);
     void clear(String cacheName);
     Duration getTtl(String cacheName, String key);
+    boolean removeIfEquals(String cacheName, String key, Object expectedValue);
+    boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl);
+    boolean supportsCas();
     Set<String> cacheNames();
     Duration ttl();
     boolean cacheNull();
@@ -141,6 +144,25 @@ cache.expire("login-session", sessionId, 1800);
 ```
 
 `expire` 只续期**已存在且未过期**的缓存项，不读取、不修改缓存值；不存在或已过期返回 `false`，**不复活过期项**。
+
+### 条件操作：只删 / 只续期自己写入的那一项
+
+`remove` / `expire` 是无条件的 —— 只要键还在就执行，不管值是不是你写的。租约到期后别人接手了同一个键，你的 `remove` 就会删掉别人的数据。`removeIfEquals` / `expireIfEquals` 把「比对当前值」与「删除 / 续期」合并成**一次原子操作**，值不匹配就什么都不做：
+
+```java
+String token = UUID.randomUUID().toString();
+cache.putIfAbsent("lock", "order:42", token, Duration.ofSeconds(30));
+
+boolean released = cache.removeIfEquals("lock", "order:42", token);              // 值仍是自己的 token 才删
+boolean renewed = cache.expireIfEquals("lock", "order:42", token, Duration.ofSeconds(30));
+```
+
+- **`false` 只表示「事情没有发生」**：键不存在、已过期或值不匹配。它**不表示**存储故障 —— 连接失败、超时、序列化失败一律抛运行时异常，不要把异常吞成 `false`。
+- **参数非法抛 `IllegalArgumentException`，且优先于「后端不支持」**：`expectedValue` 不能为 `null`（缓存了 `null` 的条目只能用 `remove` 清理，没有条件操作入口），名称 / 键非法、`ttl` 超限同样抛此异常。
+- **只有共享后端支持**：`jedis` 支持；`caffeine` 不支持，参数合法时调用这两个方法抛 `UnsupportedOperationException`。需要跨实例互斥必须用共享后端 —— 进程内缓存没有跨实例互斥能力。
+- **`supportsCas()` 是能力声明，不是探活**：`jedis` 返回 `true`、`caffeine` 返回 `false`，调用它不发任何存储命令。
+- **`expectedValue` 必须能稳定序列化出相同字节**：比较发生在序列化后的字节上，要求与写入走同一个 codec，且同一进程内同一标量值两次序列化字节相同（`String`、数字、`UUID` 字符串都满足）。带共享子对象或环的对象图不要用于条件操作 —— 字节不保证等价，结果是「安全地永远不匹配」。
+- 两个方法都不改动 `cacheNames()` 登记（与 `remove` 一致），也不提供省略 `ttl` 的重载。
 
 ### 空值缓存（`cacheNull`）
 
@@ -359,10 +381,11 @@ long hits = localCounter.increase("hit", "42", 1, 300);
 
 `use(name)` 返回注册表中的同一个实例对象，调用方可以安全缓存引用。
 
-`CacheKit` / `CounterKit` 同时提供 `Cache` / `Counter` 业务方法的**静态镜像**（参数逐一对应，静态方法一律作用于主缓存；`namespace()` 不提供镜像，需要时用 `CacheKit.use().namespace()` 取实例上的值）：
+`CacheKit` / `CounterKit` 同时提供 `Cache` / `Counter` 业务方法的**静态镜像**（参数逐一对应，静态方法一律作用于主缓存；`namespace()` / `supportsCas()` 不提供镜像 —— 它们描述「这个实例是什么」，需要时先取实例再调实例方法）：
 
 ```java
-CacheKit.put("user", "42", user, 1800);     // 等价于 cache.put(...)
+CacheKit.put("user", "42", user, 1800);           // 等价于 cache.put(...)
+boolean cas = CacheKit.use().supportsCas();       // 能力自述取实例后调用
 CacheKit.use("mem").put("user", "42", user, 300);
 ```
 
@@ -400,6 +423,9 @@ Set<String> names = CacheKit.use("mem").cacheNames();
 | `remove` 参数非法 | 不执行任何操作 |
 | `putIfAbsent` 命中 | `false`，不覆盖原值、不重置原 TTL |
 | `expire` 目标不存在或已过期 | `false`，**不复活过期项** |
+| `removeIfEquals` / `expireIfEquals` 成功 | `true` |
+| `removeIfEquals` / `expireIfEquals` 目标不存在、已过期或值不匹配 | `false`，**不表示存储故障** |
+| `supportsCas()` | `true` = 本实例支持条件操作（`jedis`）；`false` = 不支持（`caffeine`） |
 | `keys` 空缓存、筛选后无条目或 `offset` 越界 | 空列表（**不返回 `null`**） |
 | `Counter` 的增减方法遇到未命中 | 按当前值 `0` 创建新计数项，并使用传入的 TTL |
 
@@ -410,6 +436,9 @@ Set<String> names = CacheKit.use("mem").cacheNames();
 | 写路径参数校验失败：`put` / `putIfAbsent` / `expire` / `clear` / 带 `loader` 的 `get` / `Counter` 四种增减 | `IllegalArgumentException` |
 | `keys` 的 `cacheName` 空白或含 `:`，或 `offset < 0` / `limit <= 0` / `matchType` 为 `null` | `IllegalArgumentException` |
 | 读路径参数非法：`get` / `exists` / `remove` / `getTtl` | **不抛**，走「不可能命中」路径 |
+| 条件操作参数非法：`expectedValue` 为 `null`、名称 / 键非法、`ttl` 超限 | `IllegalArgumentException`（**先于**能力检查：`caffeine` 参数非法时也抛它，而不是 `UnsupportedOperationException`） |
+| 参数合法但后端不支持条件操作（`caffeine`） | `UnsupportedOperationException`，未执行任何操作 |
+| 条件操作遇到存储故障（连接、超时、序列化） | 运行时异常原样传播，**不得返回 `false`** |
 | 计数结果超出 `long` 范围 | `ArithmeticException`，且不改变数值与 TTL |
 | `Counter.get` 读到外部直接写入、无 TTL 或非整数的计数项 | `IllegalStateException`（**仅 jedis 后端**） |
 | `CacheKit.use()` / `CounterKit.use()` 时插件未启动或已停止 | `IllegalStateException` |
@@ -459,6 +488,20 @@ Set<String> names = CacheKit.use("mem").cacheNames();
 - **命名空间重复：** 同一应用内所有实例（含主缓存）的 `namespace` 必须互不相同，否则缓存与计数互相覆盖。**库只在启动期校验 jedis 后端**（它知道自己是哪个存储），并且**双方都参与校验**才会拦截：冲突抛 `IllegalArgumentException`（消息含 `duplicate key space`）。两种情况不会报错，需自行回避：指向不同 Redis 服务器的两个实例，`namespace` 相同不冲突；进程内（caffeine）实例各自独占存储、不参与校验，与它重名也不报错。
 
 该限制不在命名空间隔离与实现可替换的保证范围内，属已接受的设计限制。
+
+## 升级与兼容性
+
+### 1.1.0 变更
+
+- 新增 3 个公共方法：`removeIfEquals` / `expireIfEquals` / `supportsCas`。`CacheKit` 提供前两个的静态镜像，`supportsCas()` 与 `namespace()` 一样只提供实例方法。
+- **公共调用面按 minor 兼容**：只新增方法，既有调用代码不需要改动。
+- **`Cache` 实现面（SPI）不兼容**：`Cache` 的方法都是抽象方法，自定义实现必须补上这 3 个方法，否则**编译失败**（不是运行期 `AbstractMethodError`）。直接继承 `internal.AbstractCache` 的实现同样要补 —— 基类刻意不提供默认实现，「不支持」必须显式声明。项目里存在自定义 `Cache` 实现时，请先补齐再升级。
+- `CaffeineCache` 不支持条件操作：`supportsCas()` 返回 `false`，两个方法抛 `UnsupportedOperationException`。
+- 存储格式不变：哨兵、物理 key、Fury 编码都未改动，1.0.0 写入的数据可直接读取。
+
+### 条件操作的验证门槛
+
+条件操作的核心语义（值不匹配时不误删、不误续期、故障不吞成 `false`）只能在真实 Redis 上验证：`RedisCacheIntegrationTest` 默认跳过，需要 `-Dredis.integration=true -Dredis.uri=...` 显式开启。发布流程须实际跑一次该用例，细节见 `docs/design.md` 的「测试与验收」。
 
 ## 附：三种「失效」不是一回事
 

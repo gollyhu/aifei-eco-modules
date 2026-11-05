@@ -17,6 +17,8 @@ import redis.clients.jedis.resps.ScanResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +34,21 @@ public class RedisCache extends AbstractCache implements AutoCloseable, CounterF
      * 分页提示，不进入存储，故不强制收敛到单一定义点）。
      */
     private static final int SCAN_COUNT = 1_000;
+
+    /**
+     * 值匹配才删除：单次脚本内完成 GET、与 ARGV[1] 的字节比较与 DEL。返回 1 = 命中并已删除，
+     * 0 = 未发生（key 不存在或已过期时 GET 返回 false，比较必然不等）。
+     */
+    private static final String REMOVE_IF_EQUALS_SCRIPT =
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then redis.call('DEL', KEYS[1]) return 1"
+                    + " else return 0 end";
+
+    /**
+     * 值匹配才续期：同一次脚本内完成 GET、字节比较与 PEXPIRE（ARGV[2] 为毫秒数）。
+     */
+    private static final String EXPIRE_IF_EQUALS_SCRIPT =
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then redis.call('PEXPIRE', KEYS[1], ARGV[2]) return 1"
+                    + " else return 0 end";
 
     private final RedisClient client;
 
@@ -218,6 +235,39 @@ public class RedisCache extends AbstractCache implements AutoCloseable, CounterF
     }
 
     /**
+     * 能力声明：本后端支持条件操作，恒返回 {@code true}，不发起任何命令。
+     */
+    @Override
+    public boolean supportsCas() {
+        return true;
+    }
+
+    /**
+     * 当存储中的原始字节与期望值字节一致时删除该项；比较与删除由单条脚本原子完成。
+     */
+    @Override
+    public boolean removeIfEquals(String cacheName, String key, Object expectedValue) {
+        String validCacheName = CacheValidator.requireCacheName(cacheName);
+        String validKey = CacheValidator.requireKey(key);
+        CacheValidator.requireExpectedValue(expectedValue);
+        return evalCas(REMOVE_IF_EQUALS_SCRIPT, validCacheName, validKey,
+                Collections.singletonList(casExpectedBytes(codec, expectedValue)));
+    }
+
+    /**
+     * 当存储中的原始字节与期望值字节一致时重设剩余有效期；比较与续期由单条脚本原子完成。
+     */
+    @Override
+    public boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl) {
+        String validCacheName = CacheValidator.requireCacheName(cacheName);
+        String validKey = CacheValidator.requireKey(key);
+        CacheValidator.requireExpectedValue(expectedValue);
+        long ttlMillis = CacheValidator.requireTtl(ttl);
+        return evalCas(EXPIRE_IF_EQUALS_SCRIPT, validCacheName, validKey,
+                Arrays.asList(casExpectedBytes(codec, expectedValue), bytes(Long.toString(ttlMillis))));
+    }
+
+    /**
      * 返回该缓存名下按 {@code pattern} 筛选并分页后的键，按字典序升序。匹配条件先下推为 SCAN
      * 的 glob 以缩小收集范围，收集后再做精确筛选与分页，语义见 {@link KeyRanges#select}。
      */
@@ -331,6 +381,35 @@ public class RedisCache extends AbstractCache implements AutoCloseable, CounterF
             escaped.append(character);
         }
         return escaped.toString();
+    }
+
+    // ─────────── 条件操作：期望值字节装配与脚本执行的唯一定义点 ───────────
+
+    /**
+     * 条件操作的期望值字节装配点：只经本实例 codec 序列化，不经任何字符串中转。
+     *
+     * <p>返回 {@code byte[]} 使 {@code eval(String, List<String>, List<String>)} 在编译期不可用 ——
+     * Fury 字节可能含非 UTF-8 序列与 {@code \u0000}，字符串往返后比较恒不相等。</p>
+     *
+     * @param codec 本实例的 value 编解码器
+     * @param expectedValue 期望值，不得为 {@code null}
+     * @return 与写入时一致的原始字节
+     */
+    static byte[] casExpectedBytes(RedisValueCodec codec, Object expectedValue) {
+        return codec.serialize(expectedValue);
+    }
+
+    /**
+     * 用二进制重载执行条件操作脚本；脚本、key、ARGV 全部按字节传递，key 列表恒为 1 个元素。
+     *
+     * @return 脚本返回 1（命中并已执行）时 {@code true}
+     */
+    private boolean evalCas(String script, String cacheName, String key, List<byte[]> args) {
+        Object result = client.eval(
+                bytes(script),
+                Collections.singletonList(bytes(physicalKey(namespace, cacheName, key))),
+                args);
+        return result instanceof Number && ((Number) result).longValue() == 1L;
     }
 
     private static byte[] bytes(String value) {

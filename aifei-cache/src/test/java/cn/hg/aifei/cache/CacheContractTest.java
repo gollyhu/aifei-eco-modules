@@ -161,6 +161,38 @@ public class CacheContractTest {
     }
 
     /**
+     * Caffeine 侧的条件操作契约：参数合法抛 {@code UnsupportedOperationException} 且不改动数据；
+     * 参数非法抛 {@code IllegalArgumentException} —— 校验先于能力检查。
+     */
+    @Test
+    public void shouldRejectConditionalOperationsOnCaffeine() {
+        Cache cache = newCache(false);
+        Duration ttl = Duration.ofSeconds(30);
+        cache.put("lock", "1", "token", ttl);
+
+        assertFalse("caffeine 不支持条件操作", cache.supportsCas());
+        assertThrows(UnsupportedOperationException.class, () -> cache.removeIfEquals("lock", "1", "token"));
+        assertThrows(UnsupportedOperationException.class, () -> cache.expireIfEquals("lock", "1", "token", ttl));
+        assertTrue("不支持时不得执行任何操作", cache.exists("lock", "1"));
+        assertEquals("token", cache.get("lock", "1"));
+
+        assertEquals("expectedValue can not be null",
+                assertThrows(IllegalArgumentException.class,
+                        () -> cache.removeIfEquals("lock", "1", null)).getMessage());
+        assertEquals("expectedValue can not be null",
+                assertThrows(IllegalArgumentException.class,
+                        () -> cache.expireIfEquals("lock", "1", null, ttl)).getMessage());
+        assertThrows(IllegalArgumentException.class, () -> cache.removeIfEquals(" ", "1", "token"));
+        assertThrows(IllegalArgumentException.class, () -> cache.removeIfEquals("lock:x", "1", "token"));
+        assertThrows(IllegalArgumentException.class, () -> cache.removeIfEquals("lock", " ", "token"));
+        assertThrows(IllegalArgumentException.class, () -> cache.expireIfEquals("lock", "1", "token", null));
+        assertThrows(IllegalArgumentException.class,
+                () -> cache.expireIfEquals("lock", "1", "token", Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> cache.expireIfEquals(
+                "lock", "1", "token", Duration.ofSeconds(Integer.MAX_VALUE).plusNanos(1L)));
+    }
+
+    /**
      * 秒重载与 {@code Duration} 重载等价。
      */
     @Test

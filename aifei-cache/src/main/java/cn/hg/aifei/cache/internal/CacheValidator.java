@@ -154,6 +154,18 @@ public final class CacheValidator {
     }
 
     /**
+     * 校验条件操作的期望值不为 {@code null}。
+     *
+     * <p>{@code null} 与空值哨兵在存储层是两种形态，而条件操作只比较写入值的字节，
+     * 故不接受 {@code null}。</p>
+     */
+    public static void requireExpectedValue(Object expectedValue) {
+        if (expectedValue == null) {
+            throw new IllegalArgumentException("expectedValue can not be null");
+        }
+    }
+
+    /**
      * 校验计数步长大于零。
      */
     public static long requireCounterStep(long step) {

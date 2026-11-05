@@ -11,7 +11,7 @@
 - 存储与编解码：Caffeine（本地）、Jedis（Redis）；Redis 的 value 序列化固定用 Fury。
 - 依赖注入：aifei；主缓存与主计数器可通过 `@Inject` 注入。
 - **物理 key**：缓存为三段式 `namespace:cacheName:key`，计数为 `namespace:COUNTER:counterName:key`；**不做转义、不做编码**。命名空间与名字（`cacheName` / `counterName`）不得含 `:`，否则该段会被解析成分级；`key` 不受此限。
-- **契约基线与变更纪律**：`internal.CacheValidator` 的 12 个校验方法（含命名空间校验）已内联为本项目源码，其规则与异常消息属**冻结契约**（见「异常模型」）；其余契约语义在本项目内定义，可自主演进。**不依赖 `cn.aifei:aifei-cache` 构件**，唯一保留的 aifei 依赖是框架核心 `cn.aifei:aifei`。
+- **契约基线与变更纪律**：`internal.CacheValidator` 的校验方法已内联为本项目源码，其规则与异常消息属**冻结契约**（见「异常模型」）；其余契约语义在本项目内定义，可自主演进。计数**以源码为准**：13 个（2 个布尔判定 + 11 个 `require*`，含命名空间校验与 1.1.0 新增的期望值校验）。**不依赖 `cn.aifei:aifei-cache` 构件**，唯一保留的 aifei 依赖是框架核心 `cn.aifei:aifei`。
 
 设计原则六条：
 
@@ -78,6 +78,9 @@ public interface Cache {
     void remove(String cacheName, String key);
     void clear(String cacheName);
     Duration getTtl(String cacheName, String key);
+    boolean removeIfEquals(String cacheName, String key, Object expectedValue);
+    boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl);
+    boolean supportsCas();
     List<String> keys(String cacheName, int offset, int limit, String pattern, CacheKeyMatchType matchType);
     Set<String> cacheNames();
     Duration ttl();
@@ -105,9 +108,11 @@ public interface Cache {
 - `exists`：参数非法或不存在返回 `false`；这是**存储级**判定，命中哨兵必须返回 `true`，不得用 `get(...) != null` 实现。
 - `remove`：参数非法时不执行任何操作、不抛异常。`clear` 与其余写路径**参数非法时抛 `IllegalArgumentException`**。
 - `getTtl`：返回剩余有效期；条目不存在、已过期或参数非法返回 `null`；没有过期时间的条目（Redis `PTTL == -1`）返回 `Integer.MAX_VALUE` 秒。
+- `removeIfEquals` / `expireIfEquals`（1.1.0 新增）：值匹配才执行动作，返回 `true`；不存在、已过期或值不匹配返回 `false`；参数非法抛 `IllegalArgumentException`；不支持条件操作的后端抛 `UnsupportedOperationException`。**校验顺序固定为 `cacheName` → `key` → `expectedValue` → `ttl` → 能力检查**，因此「参数非法 + 不支持的后端」抛 `IllegalArgumentException` 而非 `UnsupportedOperationException`。语义细节见「行为契约」的条件操作。
+- `supportsCas`（1.1.0 新增）：能力声明，不是身份标识 —— `jedis` 恒 `true`、`caffeine` 恒 `false`，**不做任何 I/O**（不探测连通性、不发存储命令）。
 - `keys`：返回该缓存名下按 `pattern` 筛选后的键分页，见「行为契约」的键分页与筛选查询。
 - `cacheNames`：见「`cacheNames()` / `counterNames()` 集合的存储」。
-- `ttl` / `cacheNull` / `namespace`：只读配置自述，无运行期 setter。
+- `ttl` / `cacheNull` / `namespace` / `supportsCas`：只读配置或能力自述，无运行期 setter。
 - 带 `loader` 的 `get`：`loader` 为 `null` 或 `cacheName` / `key` / TTL 非法时抛 `IllegalArgumentException` 且**不调用** `loader`；校验顺序为 `loader` → `cacheName` → `key` → TTL。
 - 省略 TTL 的三个写重载（`put` / `putIfAbsent` / `expire`）缺省取实例 `ttl()`。
 
@@ -119,6 +124,7 @@ public interface Cache {
 - **`null` 的判定与转换只有一个定义点**：`internal.AbstractCache.toStoredValue(value, cacheNull)`。非 `null` 值原样返回；`null` 且 `cacheNull = true` 返回哨兵；`null` 且 `cacheNull = false` 返回 `null`，表示不应写入。`fromStoredValue` 负责读取侧的还原。
 - **回源单飞（`loader` 语义）**：带 `loader` 的 `get` 在未命中时按**物理 key** 做同 JVM 回源单飞 —— 同一缓存项的并发未命中收敛为一次 `loader` 调用，其余线程复用其返回结果（含 `null`，不受 `cacheNull` 影响）。边界：只覆盖单个 JVM，多实例部署时每个实例各自装载一次；等待被中断的线程退化为自行回源；`loader` 内不得对**同一缓存实例**的其它 key 再走带 `loader` 的 `get`（交叉等待可能成环）；`loader` 抛出的 `RuntimeException` / `Error` 原样传递给该批跟随者。定义点在 `internal.SingleFlight`，实现类不参与。
 - **清理语义**：`clear(cacheName)` 清空该名称下的全部缓存项并把该名称移出 `cacheNames()`，非原子、尽力清理。名字不得含 `:`，故不存在「下级名称」，数据清理范围与名称移除范围一致。
+- **条件操作（CAS，1.1.0）**：`removeIfEquals` / `expireIfEquals` 在**同一次原子操作**内完成「读当前值 → 字节比较 → `DEL` / `PEXPIRE`」；jedis 侧是单条 Lua 脚本，不得拆成两次往返。比较对象是**存储原始字节**：`expectedValue` 经本实例同一个 value codec 序列化后与 `GET` 结果直接比较，**不在比较前解码**。键与期望值都按 `byte[]` 传递（`eval(byte[], List<byte[]>, List<byte[]>)`），期望值的字节装配收敛在 `RedisCache` 的包私有唯一装配点，**不得经 `String` 中转** —— Fury 字节可能含非 UTF-8 序列与 `\u0000`，字符串往返后比较恒不相等，表现为「释放永不成功、只能等租约过期」。`false` 表达确定的「未发生」（不存在、已过期、值不匹配），**绝不表达存储故障**；存储故障以运行时异常传播（脚本用 `redis.call`，脚本错误与连接异常原样上抛）。脚本返回 `1` 表示比较命中且动作已执行、`0` 表示未发生，**不以 `DEL` / `PEXPIRE` 的返回值参与判定**。两个 CAS 方法不清理 `cacheNames()` 登记（与 `remove` 一致），也不产生新登记。`expectedValue == null` 由 `CacheValidator.requireExpectedValue` 拒绝 —— `null` 与哨兵在字节层是两种形态，故哨兵条目**没有 CAS 路径**（已接受限制，见附 B）。
 - **键分页与筛选查询（`keys`）**：返回该缓存名下按 `pattern` 筛选后的键分页，先按业务 key 字典序升序排序，再跳过 `offset` 条取 `limit` 条 —— 排序是分页可复现的前提。筛选先于排序与分页，匹配基于业务 key 的字符串形态：`pattern` 为 `null` 或空串时不筛选，否则按 `CacheKeyMatchType`（`EQUALS` / `CONTAINS` / `STARTS_WITH` / `ENDS_WITH`）判定。`cacheName` 非法、`offset < 0`、`limit <= 0` 或 `matchType` 为 `null` 抛 `IllegalArgumentException`；`offset` 不小于筛选后条目数或无条目返回空列表（不返回 `null`）。筛选、排序与分页的唯一定义点在 `internal.KeyRanges`；jedis 侧另按 `matchType` 把匹配下推为 `SCAN` 的 glob 以缩小收集范围，但下推是业务 key 匹配的超集，收集后仍须经 `KeyRanges` 精确筛选。结果是弱一致快照：扫描期间并发写入可能使相邻两次分页重叠或遗漏；键枚举只看键存在，哨兵条目的 key 照常返回。
 - **TTL 精度与上下限**：配置与接口取值均为毫秒；合法范围 `[1, 2147483647000]`（1 毫秒 ~ `Integer.MAX_VALUE` 秒）；超限不截断、直接抛 `IllegalArgumentException`；`int ttlSeconds` 重载必须大于 0。
 - **命名责任（调用方约束）**：必须保证各实例 `namespace` 互不相同。名字也不得含 `:`（由参数校验拒绝）；`key` 可以含 `:`、不参与分级，也不因此被拒绝 —— 三段都不携带分段符，拼接因此是单射的。
@@ -191,8 +197,8 @@ public interface Counter {
 
 - 两个类都是 `public final` + 私有构造 + 全静态方法；静态方法一律作用于主缓存，扩展实例必须先 `use(name)`。
 - `use(name)` 返回注册表中的同一个实例对象，调用方可以安全缓存引用。
-- 门面镜像 `Cache` / `Counter` 的**全部业务方法**（`namespace()` 除外）：`Duration` 与 `int ttlSeconds` 双重重载、省略 TTL 的写重载，以及 `exists` / `remove` / `getTtl` / `cacheNames()` / `counterNames()` / `ttl()` / `cacheNull()` / `clear()`。
-- **不镜像** `namespace()`（配置自述，业务不需要经门面访问）；`FacadeMirrorTest` 以白名单放行，并有反向用例钉住「不得补齐」。
+- 门面镜像 `Cache` / `Counter` 的**全部业务方法**（`namespace()` / `supportsCas()` 除外）：`Duration` 与 `int ttlSeconds` 双重重载、省略 TTL 的写重载，以及 `exists` / `remove` / `removeIfEquals` / `expireIfEquals` / `getTtl` / `cacheNames()` / `counterNames()` / `ttl()` / `cacheNull()` / `clear()`。
+- **不镜像** `namespace()` / `supportsCas()`（配置与能力自述，业务不需要经门面访问）：需要能力判断时先 `use(name)` 取实例再调实例方法。`FacadeMirrorTest` 的 `CONTRACT_ONLY` 白名单放行这两项，并有反向用例钉住「不得补齐」。
 - 门面只做转发：不重复校验参数、不转换异常、不吞异常。
 
 ### `cacheNames()` / `counterNames()` 集合的存储
@@ -238,6 +244,7 @@ public interface Counter {
 - 存储：Caffeine `Cache` + `Policy.VarExpiration`；key 为自带的组合键类型，`equals` / `hashCode` 参与三段比较，`belongsTo` 按「命名空间 + 名称」匹配。缓存名集合另存于实例字段（`namesLock` 保护），**不占用缓存容量，也不与业务条目共用 key 空间**。
 - 并发：同 key 的 `get` / `exists` / `put` / `putIfAbsent` / `expire` / `remove` 共用同一套 128 把分段锁；`expire` 的存活检查与 TTL 更新在同一把锁内完成。
 - `exists` 用底层条目存在性判定（命中哨兵也返回 `true`）。
+- `supportsCas()` 恒返回 `false`；`removeIfEquals` / `expireIfEquals` 先按统一顺序完成参数校验，再抛 `UnsupportedOperationException`。**不实现进程内 CAS**：本生态以「支持条件操作」⇔「后端可被多实例共享」，进程内实现会让上层误判其具备跨实例互斥能力。
 - `clear(cacheName)` 先按「命名空间 + 缓存名」收集匹配条目，再逐条 `invalidate`，最后移除名称登记。
 - `keys` 遍历底层 `keySet` 按 `belongsTo` 过滤、取组合键的业务 key，再经 `internal.KeyRanges.select` 做筛选、排序与分页；不持分段锁，弱一致。
 - 不实现 `AutoCloseable`（条目全在进程内、由 GC 回收，不持有需要显式释放的资源），也不实现 `internal.UniqueNameAware`（进程内缓存各自独占存储，不参与启动期排他判定）。
@@ -256,7 +263,8 @@ public interface Counter {
 
 ### RedisCache
 
-- 命令：`SET ... PX` / `SET ... NX PX` / `EXISTS` / `PEXPIRE` / `PTTL` / `DEL` / `SADD` / `SREM` / `SMEMBERS` / `SCAN` + `UNLINK`。
+- 命令：`SET ... PX` / `SET ... NX PX` / `EXISTS` / `PEXPIRE` / `PTTL` / `DEL` / `SADD` / `SREM` / `SMEMBERS` / `SCAN` + `UNLINK` / `EVAL`。
+- **条件操作**：`supportsCas()` 恒返回 `true`；`removeIfEquals` / `expireIfEquals` 各一条私有 `static final String` Lua 脚本，统一经 `eval(byte[] script, List<byte[]> keys, List<byte[]> args)` 执行 —— 脚本、key、期望值全部按字节传递，禁止 `eval(String, List<String>, List<String>)`。期望值的字节装配只有一处（包私有方法，返回 `byte[]`），两个 CAS 方法只能取它的返回值，不得出现 `String.valueOf` / `new String` / `toString().getBytes(...)` 中转。`putIfAbsent` 仍是单条 `SET ... PX ... NX`，其后的 `SADD` 是附加登记，不参与互斥判断（`aifei-lock` 依赖该语义，不得退化）。
 - 读取结果先过 `AbstractCache.fromStoredValue`，写入值先过 `AbstractCache.toStoredValue`；后者返回 `null` 时直接返回、不发任何命令。
 - `exists` 用 `EXISTS`，不得用 `get(...) != null`。
 - `clear` 用 `SCAN MATCH ... COUNT 1000` 逐页 `UNLINK`，不使用 `KEYS`；glob 转义字符集为 `* ? [ ] \`。
@@ -269,6 +277,7 @@ public interface Counter {
 ### RedisCounter
 
 - 计数逻辑用 Lua 脚本执行，保证读改写原子；脚本必须返回 Redis 原始字符串，由 Java 侧解析。
+- 计数脚本仍走 `eval(String, List<String>, List<String>)`：其 ARGV 是十进制数字文本，不存在二进制风险。**不得**因 CAS 引入字节重载而顺手替换 —— 两类脚本各自固定一种重载，互不迁移。
 - 非整数或缺失 TTL 抛 `IllegalStateException`；`WRONGTYPE` 原样传播。
 - TTL 必须在 Java 侧先校验再执行脚本：超限值一旦进入 Redis 会留下「数值被改动、TTL 未刷新」的脏状态。合法 TTL 下，固定窗口命中不执行 TTL 命令。
 - 计数名称集合是本命名空间下的固定 key（`namespace + ":" + Config.COUNTER_NAMES_NAME`），由更新脚本在计数项首次创建时 `SADD` 登记；`counterNames()` 用 `SMEMBERS`，`clear(counterName)` 用 `SCAN MATCH` + `UNLINK` 清计数项（glob 模式只匹配带保留前缀的计数 key，不命中名称集合 key），再直接 `SREM` 移除该名称本身（按成员精确删除）。
@@ -292,6 +301,38 @@ public interface Counter {
 - 缓存实例由各子类在自己的 `buildCache` 内创建；`AbstractCacheProvider` 只提供 `initConfig`，不提供实例创建钩子。
 - `cache.type` 的允许取值由 `CacheProviderRegistry#types()` 派生，不得硬编码。
 
+## 跨实现契约：共同底线与允许差异
+
+两个后端共用同一份公共接口与异常分类，但存储能力不同。**底线**是契约（缺一即实现缺陷），**差异**是实现事实（调用方必须据此写代码，`docs/testing.md` 的差异用例据此登记）。
+
+### 共同底线
+
+| # | 底线 | 承载定义点 |
+| --- | --- | --- |
+| 1 | 公共签名一致：两个实现类只实现同一接口，不新增公共类型、不改签名 | `Cache` / `Counter` |
+| 2 | 参数校验规则与异常类型一致：写路径违反抛 `IllegalArgumentException`，读路径（`get` / `exists` / `getTtl` / `remove`）静默按「不可能命中」处理 | `internal.CacheValidator` |
+| 3 | `null` 语义一致：哨兵编解码两侧同源 | `internal.AbstractCache` |
+| 4 | 物理 key 一致：`namespace:cacheName:key`（计数为 `namespace:COUNTER:counterName:key`） | `internal.AbstractCache` / `internal.AbstractCounter` |
+| 5 | TTL 上下限一致：`[1ms, Integer.MAX_VALUE 秒]`，超限抛 `IllegalArgumentException`，不截断 | `internal.CacheValidator.requireTtl` |
+| 6 | 能力声明与实际行为一致：`supportsCas()` 的返回值与该实例两个 CAS 方法是否抛 `UnsupportedOperationException` 必须吻合 | 各实现类 |
+| 7 | 存储故障一律抛运行时异常：不得吞成 `false` / `null` / 空集合 | 各实现类 |
+
+### 允许差异
+
+| 项 | Caffeine（进程内） | Redis（共享） | 调用方须知道的后果 |
+| --- | --- | --- | --- |
+| 条件操作 CAS | 不支持：`supportsCas()` 返回 `false`，两个方法抛 `UnsupportedOperationException` | 支持：单条 Lua 原子完成比较与动作 | 需跨实例互斥时必须改用共享后端；`UnsupportedOperationException` 不得按「可能已发生」处理 |
+| 多实例可见性 | 各 JVM 独立 | 同一 Redis 实例内共享 | 本地缓存不能用于互斥，也不能用于跨实例计数 |
+| `cacheNames()` / `counterNames()` | 本进程内的实例字段 | 同命名空间下的固定 key，跨实例共享 | 两后端结果可能不同，只能用于运维诊断 |
+| `keys` 一致性 | 弱一致快照（底层弱一致迭代器） | 弱一致快照（`SCAN`） | 分页期间并发写入可能使相邻两页重叠或遗漏 |
+| `clear` 原子性 | 逐条 `invalidate` | `SCAN` + 分批 `UNLINK` | 均非原子、尽力清理 |
+| 名称集合的载体 | 实例字段，与业务条目分离 | 固定 key（`SADD` / `SREM`） | 不随 TTL 与容量淘汰变化；Redis 侧跨实例并发下可能漏报 |
+| 启动期排他 | 不实现 `internal.UniqueNameAware`，不参与 | 按 `host:port/database` + `namespace` 参与 | 同名 `namespace` 落在不同 Redis 主机不冲突 |
+| 生命周期 | 不实现 `AutoCloseable` | 实现 `AutoCloseable`，`close()` 释放连接池 | 只有 Redis 实例需要关闭 |
+| 并发模型 | 128 把分段锁，单进程内串行化同 key | 单条命令 / 单条脚本的原子性 | 不得对「两次命令之间不被插队」做任何假设 |
+
+**判据**：新增后端先满足「共同底线」，再逐行对齐「允许差异」并在 `docs/testing.md` 登记差异用例。底线项**不得**因后端能力不足而放宽 —— 能力不足应通过 `supportsCas()` 之类的能力声明表达，而不是让同一方法在不同后端有不同语义。
+
 ## 异常模型
 
 - 普通 `get`、`getTtl`、`exists`、`remove` 的非法参数（名字为空白或含 `:`、key 为空白）走「不可能命中」路径（返回 `null` / `false` / 不执行），不抛异常。
@@ -300,12 +341,13 @@ public interface Counter {
 - 注册期冲突抛 `IllegalArgumentException`（`duplicate key space`）；同名重复注册抛 `IllegalStateException`。
 - 计数溢出抛 `ArithmeticException`；Redis 端类型不符按 `IllegalStateException` 或原样传播。
 - 底层缓存、连接、序列化或标准库运行时异常按原始类型传播。
-- 参数校验顺序：带 `loader` 的 `get` 为 `loader` → `cacheName` → `key` → TTL，不得改变。
-- `internal.CacheValidator` 的 12 个校验方法（2 个布尔判定 `isValid*` / `isInvalid*` + 10 个 `require*` 校验并抛异常）是参数合法性的唯一定义点，其**判定规则与异常消息文本属冻结契约**，不得变更：命名空间与名字非空白**且不含 `:`**，key 非空白；其中 `requireValue` 当前无调用方，仅为保留的冻结入口 —— 写入 `null` 由 `cacheNull` 规则处理，不经它拒绝；确有变更需求时，必须先更新测试中的消息断言。其余异常消息由本项目自定义。
+- 条件操作（`removeIfEquals` / `expireIfEquals`）：`false` 只表达确定的「未发生」（不存在、已过期、值不匹配），**绝不表达存储故障**；存储故障必须抛运行时异常。不支持条件操作的后端抛 `UnsupportedOperationException`，且它**永远后于**参数校验 —— 参数非法时抛 `IllegalArgumentException`。
+- 参数校验顺序：带 `loader` 的 `get` 为 `loader` → `cacheName` → `key` → TTL；两个 CAS 方法为 `cacheName` → `key` → `expectedValue` → `ttl` → 能力检查；均不得改变。
+- `internal.CacheValidator` 的 13 个校验方法（2 个布尔判定 `isValid*` / `isInvalid*` + 11 个 `require*` 校验并抛异常）是参数合法性的唯一定义点，其**判定规则与异常消息文本属冻结契约**，不得变更：命名空间与名字非空白**且不含 `:`**，key 非空白，`expectedValue` 不得为 `null`（`expectedValue can not be null`）；其中 `requireValue` 当前无调用方，仅为保留的冻结入口 —— 写入 `null` 由 `cacheNull` 规则处理，不经它拒绝；确有变更需求时，必须先更新测试中的消息断言。其余异常消息由本项目自定义。
 
 ## 演进约束
 
-- **接口稳定**：两个接口都只保留通路能力；配置自述与诊断类成员（`Cache` 的 `cacheNames()` / `ttl()` / `cacheNull()` / `namespace()`，`Counter` 的 `counterNames()` / `ttl()` / `namespace()`）不参与数据通路，新增同类能力前必须先过设计决策。
+- **接口稳定**：两个接口都只保留通路能力；配置自述、能力声明与诊断类成员（`Cache` 的 `cacheNames()` / `ttl()` / `cacheNull()` / `namespace()` / `supportsCas()`，`Counter` 的 `counterNames()` / `ttl()` / `namespace()`）不参与数据通路，新增同类能力前必须先过设计决策。
 - **装配后不可变**：实例级配置只读，接口不提供运行期 setter。
 - **边界不越**：接口成员不得引用实现类型（实现类型只出现在实现类与 `internal`）；配置域常量不进接口，统一定义在 `internal.Config`；`Cache` / `Counter` 的实现类只共用各自的 `internal` 基类；公共逻辑限六条承载方式（见「实现约束」）。
 - 任何改变公共行为的设计决策，先更新本文档，再落实到代码与测试。
@@ -325,6 +367,7 @@ public interface Counter {
 
 - **判据**：`mvn clean verify` 必须 0 failure / 0 error；跳过项必须在报告中逐条列举并说明理由。
 - Redis 集成用例默认跳过，用 `-Dredis.integration=true -Dredis.uri=...` 显式开启；开启后连不上必须失败，不得静默跳过；用例使用随机前缀并在结束时按前缀 `SCAN` + `UNLINK` 自清理。
+- **发布前置门禁**：CAS 的误删防护、误续期防护、字节匹配只能说由 Redis 侧证明，默认构建（不连 Redis）覆盖不到。因此发布流水线（CI job 或发布脚本）必须起 Redis 实例并实际执行 `-Dredis.integration=true`，该步骤不得靠人工记忆；仓库内未配置 CI 时，由 `AGENTS.md` 的发布检查清单承载。
 - 回归覆盖必须包含下列各项：
   1. `expire` 的存活检查与 TTL 更新在同一把锁内，已过期条目不被复活。
   2. 读改写共用分段锁，`remove` 不被旧值写回覆盖。
@@ -336,7 +379,11 @@ public interface Counter {
   8. 名称与清理：名字含 `:` 时写路径抛 `IllegalArgumentException`、读路径静默走「不可能命中」；`clear` 清空该名称下的全部数据并精确移除该名称，`remove` 只删条目、完全不改动名称集合；`clear("user")` 不误伤前缀相近的 `users`；清除后再次写入能重新登记；派生计数器继承同源缓存的默认 TTL，省略 TTL 的重载随之生效。
   9. 保留名语义：`__CACHE_NAMES__` / `__COUNTER_NAMES__` 作为业务名与普通名称同等对待（可写入、可读、登记进名称集合、`clear` 真正生效）；Caffeine 侧的名称集合存于实例字段，容量远小于写入量时名称仍完整。
   10. `keys` 的分页与筛选语义：`offset` / `limit` 分页、越界截断、空列表不返回 `null`；字典序排序；`pattern` 为 `null` / 空串不筛选，`EQUALS` / `CONTAINS` / `STARTS_WITH` / `ENDS_WITH` 四种匹配基于业务 key；`cacheName` 非法、`offset < 0`、`limit <= 0`、`matchType` 为 `null` 抛 `IllegalArgumentException`；glob 字符缓存名经转义后精确匹配、不误伤前缀相近名称；Redis 侧下推 glob 但以业务 key 精确筛选（`pattern` 只命中物理 key 前缀时不误报）；`clear` 后为空；哨兵条目的 key 照常返回。
-- **门面完整性**：反射比对 `CacheKit` / `CounterKit` 与 `Cache` / `Counter` 的方法集合（`namespace()` 白名单放行，含反向用例）；并钉住 `Cache` / `Counter` 既不声明 `static` 方法也不声明常量；根包公共类型恒为 6 个。
+  11. 条件操作：值匹配时 `removeIfEquals` 返回 `true` 且条目消失、`expireIfEquals` 返回 `true` 且 TTL 重设为传入值；值不匹配时均返回 `false` 且条目与 TTL 均未被改动；不存在 / 已过期返回 `false`；`expectedValue == null`、名称 / 键非法、`ttl` 非法抛 `IllegalArgumentException` 且无副作用；Caffeine 侧参数合法抛 `UnsupportedOperationException`、参数非法抛 `IllegalArgumentException`（校验先于能力检查）。
+  12. 二进制安全与单命令原子性：两条 Lua 常量文本含 `GET` + 字节比较 + `DEL` / `PEXPIRE`；期望值字节的装配点输出等于 codec 序列化字节，且不等同于 `String#getBytes(UTF_8)`（用含非 ASCII 与 `\u0000` 的取值）；Redis 侧以 `INFO commandstats` 的 `cmdstat_eval:calls` 差值佐证单次调用只发一条 `EVAL`；`putIfAbsent` 仍为单条 `SET ... PX ... NX`。
+  13. 字节确定性与故障分类：同一 `String` 实例两次、不同实例同值、UUID 字符串两次 `serialize` 字节相等；不可达 `host:port` 上调用两个 CAS 方法抛运行时异常而非 `false`。
+  14. 能力声明：`supportsCas()` 与两个 CAS 方法的行为一致，且调用它不产生任何存储命令（`cmdstat_*` 无增量）。
+- **门面完整性**：反射比对 `CacheKit` / `CounterKit` 与 `Cache` / `Counter` 的方法集合（`namespace()` / `supportsCas()` 白名单放行，含反向用例）；并钉住 `Cache` / `Counter` 既不声明 `static` 方法也不声明常量；根包公共类型恒为 6 个。
 - **字节码约束**：主 JAR 内全部 class 的 major version 必须为 52。
 
 ## 附 A：依赖与构建约束
@@ -375,3 +422,7 @@ public interface Counter {
 | 行为限制 | 单飞等待被中断即降级为自行回源 | 保证是**有界**的而非无条件：中断不是错误路径，不阻止该线程回源，只是不再复用胜者结果 |
 | 行为限制 | `loader` 内不得嵌套同实例的带 `loader` 的 `get` | 登记与装载之间没有全局顺序，交叉等待会成环；单层 `loader` 是既定使用形态，不为此引入防环检测 |
 | 兼容性 | Redis 计数名称登记写在更新脚本内 | 与数值创建同处一次 `eval`，不额外增加往返；代价是更新脚本成为双 key 脚本，与 Redis Cluster 不兼容（本库只用单机 `RedisClient`，无影响） |
+| 兼容性 | 1.1.0 新增 3 个抽象方法：公共调用面 minor 兼容，`Cache` **SPI 实现面 breaking** | 既有调用方无需改动；自定义 `Cache` 实现必须补 `removeIfEquals` / `expireIfEquals` / `supportsCas`，否则编译失败（编译期而非运行期 `AbstractMethodError`）。`internal.AbstractCache` 不代为实现（否则「显式不支持」会被默认掉）。自定义实现只能经非承诺 API 扩展，故按 minor 发布可接受；若确认生态内已有外部实现，则须改按 major 发布 |
+| 数据格式 | CAS 比较的是存储字节，不做解码 | `expectedValue` 必须与写入走同一个 codec；字节确定性只保证「同一进程内同一标量值两次 `serialize` 相等」，跨进程 / 跨 Fury 版本不保证等价 |
+| 行为限制 | 哨兵条目没有 CAS 路径 | `expectedValue == null` 被 `CacheValidator.requireExpectedValue` 拒绝，而哨兵是存储侧形态，故 `cacheNull = true` 写入的 `null` 只能用无条件 `remove` 清理。锁与业务 CAS 都不需要该路径 |
+| 行为限制 | `supportsCas()` 不做 I/O | 能力声明而非探活：`jedis` 恒 `true`、`caffeine` 恒 `false`。上层启动校验因此不会因存储不可用失败，故障推迟到首次实际命令 |

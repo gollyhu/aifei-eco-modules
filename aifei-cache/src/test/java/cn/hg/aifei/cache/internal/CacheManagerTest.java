@@ -309,6 +309,21 @@ public class CacheManagerTest {
         }
 
         @Override
+        public boolean removeIfEquals(String cacheName, String key, Object expectedValue) {
+            return false;
+        }
+
+        @Override
+        public boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl) {
+            return false;
+        }
+
+        @Override
+        public boolean supportsCas() {
+            return false;
+        }
+
+        @Override
         public List<String> keys(String cacheName, int offset, int limit, String pattern,
                                  CacheKeyMatchType matchType) {
             return Collections.emptyList();
@@ -375,6 +390,21 @@ public class CacheManagerTest {
         @Override
         public Duration getTtl(String cacheName, String key) {
             return null;
+        }
+
+        @Override
+        public boolean removeIfEquals(String cacheName, String key, Object expectedValue) {
+            return false;
+        }
+
+        @Override
+        public boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl) {
+            return false;
+        }
+
+        @Override
+        public boolean supportsCas() {
+            return false;
         }
 
         @Override

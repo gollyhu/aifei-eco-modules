@@ -189,6 +189,90 @@ public class RedisCacheIntegrationTest {
     }
 
     /**
+     * 条件删除只在值匹配时发生：不匹配既不删除、也不改动条目。
+     */
+    @Test
+    public void shouldRemoveOnlyWhenValueMatches() {
+        cacheA.put("lock", "order:1", "token-a", Duration.ofSeconds(60));
+
+        assertFalse("值不匹配时必须返回 false 且不删除", cacheA.removeIfEquals("lock", "order:1", "token-b"));
+        assertEquals("token-a", cacheA.get("lock", "order:1"));
+        assertNotNull(cacheA.getTtl("lock", "order:1"));
+        assertFalse("不存在时返回 false", cacheA.removeIfEquals("lock", "missing", "token-a"));
+
+        assertTrue("值匹配时删除并返回 true", cacheA.removeIfEquals("lock", "order:1", "token-a"));
+        assertFalse(cacheA.exists("lock", "order:1"));
+    }
+
+    /**
+     * 条件续期只在值匹配时发生：不匹配时既不续期、也不重建条目。
+     */
+    @Test
+    public void shouldRenewOnlyWhenValueMatches() {
+        cacheA.put("lock", "order:1", "token-a", Duration.ofSeconds(60));
+
+        assertFalse("值不匹配时不得续期",
+                cacheA.expireIfEquals("lock", "order:1", "token-b", Duration.ofSeconds(600)));
+        assertTrue("值不匹配时 TTL 不得被延长", cacheA.getTtl("lock", "order:1").toMillis() <= 60_000L);
+
+        assertTrue("值匹配时续期成功",
+                cacheA.expireIfEquals("lock", "order:1", "token-a", Duration.ofSeconds(600)));
+        assertTrue(cacheA.getTtl("lock", "order:1").toMillis() > 60_000L);
+        assertEquals("续期不得改动值", "token-a", cacheA.get("lock", "order:1"));
+
+        assertFalse("不存在时返回 false",
+                cacheA.expireIfEquals("lock", "missing", "token-a", Duration.ofSeconds(600)));
+    }
+
+    /**
+     * 非 ASCII token 的端到端证明：字节路径不经字符串中转，含 {@code \u0000} 也能命中。
+     */
+    @Test
+    public void shouldMatchNonAsciiTokenBytes() {
+        String token = "锁-\u4e2d\u6587-\u0000-\uD83D\uDE00";
+        cacheA.put("lock", "order:9", token, Duration.ofSeconds(60));
+
+        assertTrue("非 ASCII token 必须按原始字节匹配成功", cacheA.removeIfEquals("lock", "order:9", token));
+        assertFalse(cacheA.exists("lock", "order:9"));
+
+        cacheA.put("lock", "order:9", token, Duration.ofSeconds(60));
+        assertTrue(cacheA.expireIfEquals("lock", "order:9", token, Duration.ofSeconds(120)));
+        assertNotNull(cacheA.getTtl("lock", "order:9"));
+    }
+
+    /**
+     * 单条命令原子性：每次条件操作只发一条 {@code EVAL}，由 {@code INFO commandstats} 的
+     * {@code cmdstat_eval:calls} 差值佐证。
+     *
+     * <p>该计数是实例级全局的，断言成立的前提是本批次没有其它并发 {@code EVAL}；本类用例串行执行。</p>
+     */
+    @Test
+    public void shouldSendSingleEvalPerConditionalOperation() {
+        String token = "token-single-eval";
+        Duration ttl = Duration.ofSeconds(60);
+
+        cacheA.put("lock", "order:1", token, ttl);
+        long before = evalCalls();
+        assertTrue(cacheA.removeIfEquals("lock", "order:1", token));
+        assertEquals("删除只发一条 EVAL", 1L, evalCalls() - before);
+
+        cacheA.put("lock", "order:1", token, ttl);
+        before = evalCalls();
+        assertTrue(cacheA.expireIfEquals("lock", "order:1", token, ttl));
+        assertEquals("续期只发一条 EVAL", 1L, evalCalls() - before);
+    }
+
+    /**
+     * 能力声明无 I/O：调用 {@code supportsCas()} 不产生任何命令。
+     */
+    @Test
+    public void shouldNotIssueCommandForCapabilityDeclaration() {
+        String before = commandStats();
+        assertTrue(cacheA.supportsCas());
+        assertEquals("能力声明不得发起任何存储命令", before, commandStats());
+    }
+
+    /**
      * namespace 不同 → 物理 key 与计数 key 互不覆盖。
      */
     @Test
@@ -539,6 +623,37 @@ public class RedisCacheIntegrationTest {
         } finally {
             resp3.close();
         }
+    }
+
+    /**
+     * 读取 {@code cmdstat_eval:calls} 的当前值。
+     */
+    private long evalCalls() {
+        return commandCalls("cmdstat_eval:");
+    }
+
+    private long commandCalls(String prefix) {
+        for (String line : raw.info("commandstats").split("\r?\n")) {
+            if (line.startsWith(prefix)) {
+                int start = line.indexOf("calls=") + "calls=".length();
+                int end = line.indexOf(',', start);
+                return Long.parseLong(line.substring(start, end < 0 ? line.length() : end));
+            }
+        }
+        return 0L;
+    }
+
+    /**
+     * 命令计数快照，排除 {@code INFO} 自身 —— 读取快照这个动作会让 {@code cmdstat_info} 变化。
+     */
+    private String commandStats() {
+        StringBuilder builder = new StringBuilder();
+        for (String line : raw.info("commandstats").split("\r?\n")) {
+            if (line.startsWith("cmdstat_") && !line.startsWith("cmdstat_info:")) {
+                builder.append(line).append('\n');
+            }
+        }
+        return builder.toString();
     }
 
     /**

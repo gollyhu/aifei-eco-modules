@@ -371,6 +371,21 @@ public class SingleFlightTest {
         }
 
         @Override
+        public boolean removeIfEquals(String cacheName, String key, Object expectedValue) {
+            return false;
+        }
+
+        @Override
+        public boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl) {
+            return false;
+        }
+
+        @Override
+        public boolean supportsCas() {
+            return false;
+        }
+
+        @Override
         public Set<String> cacheNames() {
             return Collections.emptySet();
         }

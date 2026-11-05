@@ -15,9 +15,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.fury.exception.InsecureException;
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -58,6 +60,25 @@ public class FuryRedisValueCodecTest {
         Object restored = codec.deserialize(codec.serialize(sentinel));
         assertSame("哨兵往返后仍应是同一个枚举实例", sentinel, restored);
         assertNull("哨兵换算成业务值必须是 null", AbstractCache.fromStoredValue(restored));
+    }
+
+    /**
+     * 字节确定性：条件操作比较的是序列化字节，同一进程内同一标量值两次序列化必须相等。
+     *
+     * <p>只固定标量形态：带共享子对象或环的对象图字节不保证等价，不得用于条件操作
+     * （限制记在 {@code docs/design.md}）。</p>
+     */
+    @Test
+    public void shouldSerializeSameScalarToSameBytes() {
+        String token = "token-\u4e2d\u6587-\u0000";
+        assertArrayEquals("同一实例两次序列化", codec.serialize(token), codec.serialize(token));
+
+        String first = new String("same-value");
+        String second = new String("same-value");
+        assertArrayEquals("不同实例同值序列化", codec.serialize(first), codec.serialize(second));
+
+        String uuid = UUID.randomUUID().toString();
+        assertArrayEquals("UUID 字符串两次序列化", codec.serialize(uuid), codec.serialize(uuid));
     }
 
     /**

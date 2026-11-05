@@ -174,6 +174,22 @@ public final class CacheKit {
     }
 
     /**
+     * 当主缓存中该项的值与 {@code expectedValue} 一致时删除它；规则同
+     * {@link Cache#removeIfEquals(String, String, Object)}。
+     */
+    public static boolean removeIfEquals(String cacheName, String key, Object expectedValue) {
+        return use().removeIfEquals(cacheName, key, expectedValue);
+    }
+
+    /**
+     * 当主缓存中该项的值与 {@code expectedValue} 一致时重设其剩余有效期；规则同
+     * {@link Cache#expireIfEquals(String, String, Object, Duration)}。
+     */
+    public static boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl) {
+        return use().expireIfEquals(cacheName, key, expectedValue, ttl);
+    }
+
+    /**
      * 返回主缓存中该缓存名下按匹配类型筛选并分页后的键集合；规则同
      * {@link Cache#keys(String, int, int, String, CacheKeyMatchType)}。
      */

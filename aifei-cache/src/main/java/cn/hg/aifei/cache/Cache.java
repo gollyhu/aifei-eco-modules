@@ -110,6 +110,47 @@ public interface Cache {
     Duration getTtl(String cacheName, String key);
 
     /**
+     * 当缓存项存在、未过期且当前值与 {@code expectedValue} 一致时删除该项；否则不做任何操作。
+     *
+     * <p>比较与删除是一次原子操作，不会删掉「值已被别人改写」的条目；值不匹配时既不删除、
+     * 也不改动它的有效期。参数校验先于能力检查，因此参数非法时不支持条件操作的后端同样抛
+     * {@link IllegalArgumentException}。</p>
+     *
+     * @param cacheName 缓存名
+     * @param key 缓存键
+     * @param expectedValue 期望值，不得为 {@code null}
+     * @return 值匹配并删除成功时 {@code true}；不存在、已过期或值不匹配时 {@code false}
+     * @throws IllegalArgumentException 参数校验失败
+     * @throws UnsupportedOperationException 该实例的后端不支持条件操作
+     */
+    boolean removeIfEquals(String cacheName, String key, Object expectedValue);
+
+    /**
+     * 当缓存项存在、未过期且当前值与 {@code expectedValue} 一致时重设剩余有效期；否则不做任何操作。
+     *
+     * <p>比较与续期是一次原子操作；值不匹配时既不续期、也不重建条目。参数校验先于能力检查，
+     * 因此参数非法时不支持条件操作的后端同样抛 {@link IllegalArgumentException}。</p>
+     *
+     * @param cacheName 缓存名
+     * @param key 缓存键
+     * @param expectedValue 期望值，不得为 {@code null}
+     * @param ttl 新的剩余有效期
+     * @return 值匹配并续期成功时 {@code true}；不存在、已过期或值不匹配时 {@code false}
+     * @throws IllegalArgumentException 参数校验失败
+     * @throws UnsupportedOperationException 该实例的后端不支持条件操作
+     */
+    boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl);
+
+    /**
+     * 返回该实例的后端是否支持条件操作（{@link #removeIfEquals} 与 {@link #expireIfEquals}）。
+     *
+     * <p>这是无 I/O 的纯能力声明，不是探活：调用它不发起任何存储命令，存储不可用时也不会抛异常。</p>
+     *
+     * @return 支持条件操作时 {@code true}
+     */
+    boolean supportsCas();
+
+    /**
      * 返回该缓存名下按 {@code pattern} 筛选后的键分页，按字典序升序排列；筛选、排序、分页与
      * 一致性规则见「接口通用规则」。
      *

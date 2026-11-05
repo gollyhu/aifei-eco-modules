@@ -33,12 +33,22 @@ import static org.junit.Assert.assertTrue;
 public class FacadeMirrorTest {
 
     /**
-     * <b>刻意不镜像到门面的契约方法</b>：它是配置自述，业务代码不需要经门面访问。
+     * <b>刻意不镜像到 {@link CacheKit} 的 {@link Cache} 方法</b>：配置自述与能力声明，业务代码不需要
+     * 经门面访问。
      *
      * <p>静态门面一律作用于主缓存，因此不镜像不影响可用性 —— 需要时用
-     * {@code CacheKit.use().namespace()}（或 {@code CounterKit.use()}）取实例上的值。</p>
+     * {@code CacheKit.use().namespace()} / {@code CacheKit.use().supportsCas()} 取实例上的值。</p>
      */
-    private static final Set<String> CONTRACT_ONLY = new HashSet<>(
+    private static final Set<String> CACHE_CONTRACT_ONLY = new HashSet<>(
+            Arrays.asList("namespace()", "supportsCas()"));
+
+    /**
+     * <b>刻意不镜像到 {@link CounterKit} 的 {@link Counter} 方法</b>：它是配置自述。
+     *
+     * <p>与 {@link #CACHE_CONTRACT_ONLY} 分开，避免把只属于 {@code Cache} 的方法混进 {@code Counter}
+     * 的反向断言（那会变成恒真断言）。</p>
+     */
+    private static final Set<String> COUNTER_CONTRACT_ONLY = new HashSet<>(
             Arrays.asList("namespace()"));
 
     /**
@@ -47,7 +57,7 @@ public class FacadeMirrorTest {
      */
     @Test
     public void shouldMirrorCacheInterfaceInCacheKit() {
-        assertMirrors(Cache.class, CacheKit.class, CONTRACT_ONLY);
+        assertMirrors(Cache.class, CacheKit.class, CACHE_CONTRACT_ONLY);
 
         Set<String> facadeOnly = new HashSet<>();
         facadeOnly.add("use()");
@@ -62,7 +72,7 @@ public class FacadeMirrorTest {
      */
     @Test
     public void shouldMirrorCounterInterfaceInCounterKit() {
-        assertMirrors(Counter.class, CounterKit.class, CONTRACT_ONLY);
+        assertMirrors(Counter.class, CounterKit.class, COUNTER_CONTRACT_ONLY);
 
         Set<String> facadeOnly = new HashSet<>();
         facadeOnly.add("use()");
@@ -72,15 +82,18 @@ public class FacadeMirrorTest {
     }
 
     /**
-     * {@code namespace()} 必须<b>没有</b>静态镜像 —— 防止有人"顺手补齐"。
+     * {@code namespace()} / {@code supportsCas()} 必须<b>没有</b>静态镜像 —— 防止有人"顺手补齐"。
      */
     @Test
     public void shouldNotMirrorContractOnlyMethods() {
-        for (String signature : CONTRACT_ONLY) {
-            assertFalse("门面不应提供 " + signature + " 的静态镜像: " + CacheKit.class.getSimpleName(),
-                    facadeSignatures(CacheKit.class).contains(signature));
-            assertFalse("门面不应提供 " + signature + " 的静态镜像: " + CounterKit.class.getSimpleName(),
-                    facadeSignatures(CounterKit.class).contains(signature));
+        assertNotMirrored(CacheKit.class, CACHE_CONTRACT_ONLY);
+        assertNotMirrored(CounterKit.class, COUNTER_CONTRACT_ONLY);
+    }
+
+    private static void assertNotMirrored(Class<?> facade, Set<String> contractOnly) {
+        for (String signature : contractOnly) {
+            assertFalse("门面不应提供 " + signature + " 的静态镜像: " + facade.getSimpleName(),
+                    facadeSignatures(facade).contains(signature));
         }
     }
 

@@ -251,6 +251,37 @@ public class CaffeineCache extends AbstractCache implements CounterFactory {
     }
 
     /**
+     * 能力声明：进程内后端不支持条件操作，恒返回 {@code false}。
+     */
+    @Override
+    public boolean supportsCas() {
+        return false;
+    }
+
+    /**
+     * 不支持条件操作：先完成参数校验，参数合法时抛 {@link UnsupportedOperationException}。
+     */
+    @Override
+    public boolean removeIfEquals(String cacheName, String key, Object expectedValue) {
+        CacheValidator.requireCacheName(cacheName);
+        CacheValidator.requireKey(key);
+        CacheValidator.requireExpectedValue(expectedValue);
+        throw new UnsupportedOperationException("caffeine backend does not support conditional operations");
+    }
+
+    /**
+     * 不支持条件操作：先完成参数校验，参数合法时抛 {@link UnsupportedOperationException}。
+     */
+    @Override
+    public boolean expireIfEquals(String cacheName, String key, Object expectedValue, Duration ttl) {
+        CacheValidator.requireCacheName(cacheName);
+        CacheValidator.requireKey(key);
+        CacheValidator.requireExpectedValue(expectedValue);
+        CacheValidator.requireTtl(ttl);
+        throw new UnsupportedOperationException("caffeine backend does not support conditional operations");
+    }
+
+    /**
      * 返回该缓存名下按 {@code pattern} 筛选并分页后的键，按字典序升序；筛选与分页语义见
      * {@link KeyRanges#select}。
      */
