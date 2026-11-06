@@ -7,11 +7,11 @@
 **不适合**：延迟消息 / 定时消息（`send` 一律立即投递，请在业务侧自行调度）；事务消息、消息回溯、死信管理等 broker 高级特性（公共面未覆盖，需直接用对应客户端）。
 
 - 父工程坐标：`io.github.gollyhu:aifei-mq:1.0.0`（`pom`，仅聚合，不发布）
-- 子模块：`io.github.gollyhu:aifei-mq-core:1.0.0`（核心，业务不直接依赖）、`io.github.gollyhu:aifei-mq-memory:1.0.0`、`io.github.gollyhu:aifei-mq-rocketmq:1.0.0`
+- 子模块：`io.github.gollyhu:aifei-mq-core:1.0.0`（核心，业务不直接依赖）、`io.github.gollyhu:aifei-mq-memory:1.0.0`、`io.github.gollyhu:aifei-mq-rocketmq:1.0.0`、`io.github.gollyhu:aifei-mq-rabbitmq:1.0.0`
 - 包名：`cn.hg.aifei.mq`
 - 技术基线：Java 8
-- **稳定后端（1.0.0 承诺）**：`memory` / `rocketmq`
-- **实验性后端（不发布、不承诺语义）**：`mqtt`（MQTT v3.1.1）/ `mqtt5`（MQTT v5.0）/ `rabbitmq` / `kafka` / `redisstream`——代码保留在仓库，待真机验证后随 1.1.0 发布
+- **稳定后端（1.0.0 承诺）**：`memory` / `rocketmq` / `rabbitmq`
+- **实验性后端（不发布、不承诺语义）**：`mqtt`（MQTT v3.1.1）/ `mqtt5`（MQTT v5.0）/ `kafka` / `redisstream`——代码保留在仓库，待真机验证后随 1.1.0 发布
 
 ## 目录
 
@@ -52,7 +52,7 @@
 | `rocketmq` | **稳定** | `namesrv-addr` | 懒连接（**启动成功 ≠ 可达**） | 随 `aifei-mq-rocketmq` 传递 |
 | `mqtt` | 实验性（不发布） | `broker-url` | **建连即校验（fail-fast）** | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` |
 | `mqtt5` | 实验性（不发布） | `broker-url` | **建连即校验（fail-fast）** | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` |
-| `rabbitmq` | 实验性（不发布） | `host` | **建连即校验（fail-fast）** | `com.rabbitmq:amqp-client:5.21.0` |
+| `rabbitmq` | **稳定** | `host` | **建连即校验（fail-fast）** | `com.rabbitmq:amqp-client:5.21.0` |
 | `kafka` | 实验性（不发布） | `bootstrap-servers` | 懒连接（**启动成功 ≠ 可达**） | `org.apache.kafka:kafka-clients:3.9.1`（**必须停 3.x**，4.x 要求 Java 11+） |
 | `redisstream` | 实验性（不发布） | `host` | 懒连接（**启动成功 ≠ 可达**） | `redis.clients:jedis:8.0.1` |
 
@@ -373,7 +373,7 @@ mq.payments.rocketmq.consumer-group = PAY_CONSUMER
 
 **发送与订阅代码保持一致；投递、持久化、顺序和重复语义由后端决定。** 切换后端 = 引入对应后端子模块 + 把 `mq.type` 指向它（业务仍只依赖 `Producer` / `Consumer` 与 `ProducerKit` / `ConsumerKit`）。
 
-> **实验性后端声明**：`mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream` 在 1.0.0 **不发布、不承诺行为语义**；本章节中这 5 个后端的小节（含客户端依赖声明方式）为 1.1.0 启用后的参考，1.0.0 请只使用 `memory` / `rocketmq`。
+> **实验性后端声明**：`mqtt` / `mqtt5` / `kafka` / `redisstream` 在 1.0.0 **不发布、不承诺行为语义**；本章节中这 4 个后端的小节（含客户端依赖声明方式）为 1.1.0 启用后的参考，1.0.0 请使用 `memory` / `rocketmq` / `rabbitmq`。`rabbitmq` 已在 CloudAMQP 真机验证通过，属稳定后端。
 
 ### 使用 RocketMQ（稳定后端）
 
@@ -450,7 +450,7 @@ mq.mqtt5.clean-start = false                 # 可选；配合会话过期保留
 
 **语义差异**：与 `mqtt`（v3.1.1）**同构**——异步投递、订阅侧 `topic` 为**过滤器**、`messageId` 由适配器本地生成（`mqtt5:<client-id>:<序号>`）、启动期 **fail-fast**。**两后端命名空间互不相通**（`mq.mqtt.*` 与 `mq.mqtt5.*`），**无** `mq.mqtt.version` 键。
 
-### 使用 RabbitMQ（实验性 · 1.0.0 不发布）
+### 使用 RabbitMQ（稳定后端）
 
 客户端随子模块传递（`com.rabbitmq:amqp-client:5.21.0`），无需另行声明。
 
@@ -460,7 +460,18 @@ mq.rabbitmq.host = 127.0.0.1        # 必填
 mq.rabbitmq.exchange = aifei.events # 可选；非空才走交换机
 ```
 
-**配置键**（前缀 `mq.rabbitmq.`，命名实例 `mq.<name>.rabbitmq.`）——只列必填与改变可观测行为的键；其余键（`port` / 建连超时 / 恢复间隔等）透传客户端默认值，见源码常量：
+启用 TLS（`port` 不会随 `ssl.enabled` 自动切换，RabbitMQ 的 TLS 端口通常是 `5671`，须显式配置）：
+
+```properties
+mq.rabbitmq.ssl.enabled = true
+mq.rabbitmq.port = 5671
+mq.rabbitmq.ssl.trust-store = certs/truststore.p12   # 校验服务端证书；不配则用 JVM 默认信任库
+mq.rabbitmq.ssl.trust-store-password = changeit
+mq.rabbitmq.ssl.key-store = certs/client.p12         # 双向认证的客户端证书；不配则不提交
+mq.rabbitmq.ssl.key-store-password = changeit
+```
+
+**配置键**（前缀 `mq.rabbitmq.`，命名实例 `mq.<name>.rabbitmq.`）——只列必填与改变可观测行为的键；其余键（`port` / 建连超时 / 恢复间隔等）透传客户端默认值，见源码常量。SSL 参数沿用 TLS 配置惯例的 `ssl.*` 点号分层，其余键为 kebab-case：
 
 | 键 | 必填 | 默认 | 说明 |
 | --- | --- | --- | --- |
@@ -471,8 +482,12 @@ mq.rabbitmq.exchange = aifei.events # 可选；非空才走交换机
 | `mq.rabbitmq.durable` / `prefetch` | 否 | `true` / `0` | 订阅侧队列持久化 / 消费预取上限 |
 | `mq.rabbitmq.publisher-confirms` | 否 | `false` | 发布确认：关闭时 `messageId` 由适配器本地生成，开启时取确认序号 |
 | `mq.rabbitmq.auto-reconnect` / `topology-recovery` | 否 | `true` / `true` | 客户端原生恢复（连接恢复 + 拓扑恢复；`close()` 后不再重连） |
+| `mq.rabbitmq.ssl.enabled` | 否 | `false` | TLS 开关；关闭时其余 `ssl.*` 键**一律不读取** |
+| `mq.rabbitmq.ssl.algorithm` | 否 | `TLSv1.2` | SSL 上下文算法（如 `TLSv1.3`） |
+| `mq.rabbitmq.ssl.trust-store` / `trust-store-type` / `trust-store-password` | 否 | — / `PKCS12` / — | 信任库（校验服务端证书）；不配路径则用 JVM 默认信任库，路径按**文件系统**解析（`classpath:` 不受支持） |
+| `mq.rabbitmq.ssl.key-store` / `key-store-type` / `key-store-password` | 否 | — / `PKCS12` / — | 客户端证书（双向认证）；口令同时作私钥口令，不配路径则不提交客户端证书 |
 
-**语义差异**：① 投递**异步**（未开确认时不等待 broker 回应，返回 `SendResult` ≠ 已被消费）；② `topic` 精确匹配 = **队列名**，通配由 broker 侧绑定承担；③ **at-least-once**（手动确认、派发后确认；未确认即断开则 broker 重投，监听器请幂等）。
+**语义差异**：① 投递**异步**（未开确认时不等待 broker 回应，返回 `SendResult` ≠ 已被消费）；② `topic` 精确匹配 = **队列名**，通配由 broker 侧绑定承担；③ **at-least-once**（手动确认、派发后确认；未确认即断开则 broker 重投，监听器请幂等）；④ `ssl.enabled=true` 时 SSL 上下文在建连**之前**构建——算法非法、证书库不可读或口令不符都表现为**应用启动失败**，不留半装配。
 
 ### 使用 Kafka（实验性 · 1.0.0 不发布）
 

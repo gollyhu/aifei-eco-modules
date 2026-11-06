@@ -11,7 +11,7 @@
 
 ## 交付性质
 
-`aifei-mq` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 起为**父子聚合工程**：`aifei-mq`（父 `pom`，仅聚合、不发布）＋ `aifei-mq-core`（公共 API + `internal` + `MqPlugin`）＋ 后端模块（`aifei-mq-memory` / `aifei-mq-rocketmq` 稳定；5 个实验性模块不发布），见 `docs/design.md` §15。
+`aifei-mq` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 起为**父子聚合工程**：`aifei-mq`（父 `pom`，仅聚合、不发布）＋ `aifei-mq-core`（公共 API + `internal` + `MqPlugin`）＋ 后端模块（`aifei-mq-memory` / `aifei-mq-rocketmq` / `aifei-mq-rabbitmq` 稳定；4 个实验性模块不发布），见 `docs/design.md` §15。
 
 ## 硬性约束
 
@@ -21,7 +21,7 @@
 - 各模块 JAR 内全部 class 的 major version 必须为 **52**。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、配置键名与异常消息）；文件头版权块属归属信息，不得改写。
 - **`cn.aifei:aifei-all` 为 `provided`**：消费方自带，不向下游传递。
-- **第三方依赖分层**：**核心模块零第三方运行依赖**；每个后端子模块在**自身**以 `compile` 声明客户端依赖（如 `aifei-mq-rocketmq` 的 `org.apache.rocketmq:rocketmq-client:4.9.7`），引该子模块即传递获得（M2）；公共面（根包 / `internal` / `aifei`）**不得**出现第三方类型，也**不引入日志绑定**。**5 个实验性后端模块的客户端**（在各子模块内以 `compile` 声明、仅各自实现包使用）：`org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`（`mqtt`）、`org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`（`mqtt5`）、`com.rabbitmq:amqp-client:5.21.0`（`rabbitmq`）、`org.apache.kafka:kafka-clients:3.9.1`（`kafka`，**必须停 3.x**，4.x 要求 Java 11+）、`redis.clients:jedis:8.0.1`（`redisstream`，与 `aifei-cache` 版本对齐、Jedis 直连）；除这 5 个客户端外**不新增任何直接依赖**，也**不得引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j` 等一律禁止；`slf4j-api` 只以**门面**身份随传递依赖出现）。
+- **第三方依赖分层**：**核心模块零第三方运行依赖**；每个后端子模块在**自身**以 `compile` 声明客户端依赖（如 `aifei-mq-rocketmq` 的 `org.apache.rocketmq:rocketmq-client:4.9.7`），引该子模块即传递获得（M2）；公共面（根包 / `internal` / `aifei`）**不得**出现第三方类型，也**不引入日志绑定**。**其余后端模块的客户端**（在各子模块内以 `compile` 声明、仅各自实现包使用；`rabbitmq` 已转稳定，客户端不变）：`org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`（`mqtt`）、`org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`（`mqtt5`）、`com.rabbitmq:amqp-client:5.21.0`（`rabbitmq`）、`org.apache.kafka:kafka-clients:3.9.1`（`kafka`，**必须停 3.x**，4.x 要求 Java 11+）、`redis.clients:jedis:8.0.1`（`redisstream`，与 `aifei-cache` 版本对齐、Jedis 直连）；除这 5 个客户端外**不新增任何直接依赖**，也**不得引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j` 等一律禁止；`slf4j-api` 只以**门面**身份随传递依赖出现）。
 
 ### 公共面收敛（不得放宽）
 
@@ -121,9 +121,9 @@ mvn -pl aifei-mq-redisstream test -Dtest=RedisStreamMessageBusContractTest -Dred
 
 > **集成测试纪律**：上述 5 个集成开关（连同既有 `-Drocketmq.integration`）**默认关闭**（未开启时整类经 `Assume` 跳过）；**一旦开启，连不上必须使测试失败**，**不得**用 `Assume` 掩盖。开关名与连接参数须与 `pom.xml` 的 `systemPropertyVariables` **逐字一致**（见 `docs/testing.md`）。
 >
-> **文件 / 用例计数（P1 拆分后实测值，`cd aifei-mq && mvn clean verify`）**：reactor **9 个模块**（父 `pom` + 8 个子模块）；主源码 **31** 个（各子模块 `src/main/java` 合计）/ 测试文件 **30** 个（core 10 / memory 3 / rocketmq 2 / mqtt 3 / mqtt5 3 / rabbitmq 3 / kafka 3 / redisstream 3）；`mvn clean verify` 实测 **`Tests run: 167 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **107** 项 + 跳过 **60** 项；跳过的 60 项为 6 个真实后端集成类各 10 条，默认关闭）。
+> **文件 / 用例计数（P1 拆分后实测值，`cd aifei-mq && mvn clean verify`）**：reactor **9 个模块**（父 `pom` + 8 个子模块）；主源码 **31** 个（各子模块 `src/main/java` 合计）/ 测试文件 **30** 个（core 10 / memory 3 / rocketmq 2 / mqtt 3 / mqtt5 3 / rabbitmq 3 / kafka 3 / redisstream 3）；`mvn clean verify` 实测 **`Tests run: 171 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **111** 项 + 跳过 **60** 项；跳过的 60 项为 6 个真实后端集成类各 10 条，默认关闭）。
 >
-> **按模块用例分布**（surefire 逐模块合计）：`aifei-mq-core` 49（门禁 6 + 单元 43，零跳过）/ `aifei-mq-memory` 35（契约含内存专有 20 + 装配 12 + 门禁 3）/ `aifei-mq-rocketmq` 13（集成 10 全跳过 + 门禁 3）/ `aifei-mq-mqtt`、`aifei-mq-mqtt5`、`aifei-mq-rabbitmq`、`aifei-mq-kafka`、`aifei-mq-redisstream` 各 14（集成 10 全跳过 + 门禁 3 + 配置校验 1）。
+> **按模块用例分布**（surefire 逐模块合计）：`aifei-mq-core` 49（门禁 6 + 单元 43，零跳过）/ `aifei-mq-memory` 35（契约含内存专有 20 + 装配 12 + 门禁 3）/ `aifei-mq-rocketmq` 13（集成 10 全跳过 + 门禁 3）/ `aifei-mq-mqtt`、`aifei-mq-mqtt5`、`aifei-mq-kafka`、`aifei-mq-redisstream` 各 14（集成 10 全跳过 + 门禁 3 + 配置校验 1）/ `aifei-mq-rabbitmq` 18（集成 10 全跳过 + 门禁 3 + 配置校验 5，含 `ssl.*`）。
 
 ## 文档同步要求
 

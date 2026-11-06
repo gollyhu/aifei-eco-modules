@@ -18,6 +18,11 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.Delivery;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,9 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 /**
- * RabbitMQ 后端总线（实验性，未真机验证）：构造内建立连接与发布通道（eager，<b>启动期暴露连通性故障</b>），
+ * RabbitMQ 后端总线：构造内建立连接与发布通道（eager，<b>启动期暴露连通性故障</b>），
  * 消费侧延迟到首次订阅才声明队列并开始投递。
  *
  * <p>{@code topic} 即<b>队列名</b>（默认交换机下同时是 routing key）；队列名在装配时未知，故延迟到首次
@@ -39,6 +49,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@code rabbitmq:<host>:<port>:<序号>}；开启时改用通道的<b>发布确认序号</b>并同步等待确认。投递以手动确认闭环，
  * 未确认即断开时 broker 会重投（at-least-once，监听器需幂等）。{@code unsubscribe} 只解除本地登记，不发取消投递
  * 指令。共同底线与允许差异见 {@code docs/design.md} §5.6。</p>
+ *
+ * <p>{@code ssl.enabled=true} 时在建连之前按 {@code ssl.*} 构建 SSL 上下文：未配置 {@code ssl.trust-store}
+ * 用 JVM 默认信任库，配置 {@code ssl.key-store} 则随握手提交客户端证书；构建失败与建连失败同为启动期失败。</p>
  */
 public class RabbitMqMessageBus implements MessageBus {
 
@@ -84,6 +97,30 @@ public class RabbitMqMessageBus implements MessageBus {
     /** 恢复后是否自动重建队列 / 绑定等拓扑的配置键。 */
     private static final String KEY_TOPOLOGY_RECOVERY = "topology-recovery";
 
+    /** SSL 开关配置键；关闭时其余 {@code ssl.*} 键一律不读取。 */
+    private static final String KEY_SSL_ENABLED = "ssl.enabled";
+
+    /** SSL 上下文算法配置键。 */
+    private static final String KEY_SSL_ALGORITHM = "ssl.algorithm";
+
+    /** 信任库路径配置键；未配置时用 JVM 默认信任库。 */
+    private static final String KEY_SSL_TRUST_STORE = "ssl.trust-store";
+
+    /** 信任库类型配置键。 */
+    private static final String KEY_SSL_TRUST_STORE_TYPE = "ssl.trust-store-type";
+
+    /** 信任库口令配置键。 */
+    private static final String KEY_SSL_TRUST_STORE_PASSWORD = "ssl.trust-store-password";
+
+    /** 客户端证书库路径配置键；配置后随握手提交客户端证书。 */
+    private static final String KEY_SSL_KEY_STORE = "ssl.key-store";
+
+    /** 客户端证书库类型配置键。 */
+    private static final String KEY_SSL_KEY_STORE_TYPE = "ssl.key-store-type";
+
+    /** 客户端证书库口令配置键，同时作为私钥口令。 */
+    private static final String KEY_SSL_KEY_STORE_PASSWORD = "ssl.key-store-password";
+
     /** 默认交换机：{@code exchange} 未配置时 basicPublish 的交换机名。 */
     private static final String DEFAULT_EXCHANGE = "";
 
@@ -114,6 +151,13 @@ public class RabbitMqMessageBus implements MessageBus {
     private static final int DEFAULT_NETWORK_RECOVERY_INTERVAL_MILLIS = 5000;
 
     private static final boolean DEFAULT_TOPOLOGY_RECOVERY = true;
+
+    private static final boolean DEFAULT_SSL_ENABLED = false;
+
+    private static final String DEFAULT_SSL_ALGORITHM = "TLSv1.2";
+
+    /** Java 8 的 {@code KeyStore} 默认类型是 JKS，现代服务端证书多为 PKCS12。 */
+    private static final String DEFAULT_SSL_STORE_TYPE = "PKCS12";
 
     private final Map<String, List<MessageListener>> subscriptions = new ConcurrentHashMap<>();
 
@@ -158,7 +202,7 @@ public class RabbitMqMessageBus implements MessageBus {
      *
      * @param config 配置对象
      * @throws IllegalArgumentException {@code config} 为 {@code null}，或数值键取值非法
-     * @throws MqException 未配置 broker 主机，或建连 / 创建发布通道失败（broker 不可达）
+     * @throws MqException 未配置 broker 主机，SSL 上下文构建失败，或建连 / 创建发布通道失败（broker 不可达）
      */
     public RabbitMqMessageBus(MqConfig config) {
         if (config == null) {
@@ -188,6 +232,7 @@ public class RabbitMqMessageBus implements MessageBus {
         int networkRecoveryIntervalMillis = intValue(config, KEY_NETWORK_RECOVERY_INTERVAL_MILLIS,
                 DEFAULT_NETWORK_RECOVERY_INTERVAL_MILLIS);
         boolean topologyRecovery = booleanValue(config, KEY_TOPOLOGY_RECOVERY, DEFAULT_TOPOLOGY_RECOVERY);
+        boolean sslEnabled = booleanValue(config, KEY_SSL_ENABLED, DEFAULT_SSL_ENABLED);
         requireNonNegative(KEY_PREFETCH, prefetchValue);
         requireNonNegative(KEY_CONNECTION_TIMEOUT_MILLIS, connectionTimeoutMillis);
         requireNonNegative(KEY_NETWORK_RECOVERY_INTERVAL_MILLIS, networkRecoveryIntervalMillis);
@@ -206,6 +251,9 @@ public class RabbitMqMessageBus implements MessageBus {
         factory.setAutomaticRecoveryEnabled(autoReconnect);
         factory.setTopologyRecoveryEnabled(topologyRecovery);
         factory.setNetworkRecoveryInterval(networkRecoveryIntervalMillis);
+        if (sslEnabled) {
+            factory.useSslProtocol(sslContext(config, host, port));
+        }
 
         Connection createdConnection;
         try {
@@ -476,6 +524,98 @@ public class RabbitMqMessageBus implements MessageBus {
         if (value < 0) {
             throw new IllegalArgumentException("rabbitmq config value must not be negative: " + key + "=" + value);
         }
+    }
+
+    /**
+     * 构建 SSL 上下文：信任库未配置时用 JVM 默认信任库，证书库未配置时不提交客户端证书。
+     *
+     * @param config 配置对象
+     * @param host broker 主机，仅用于异常消息
+     * @param port broker 端口，仅用于异常消息
+     * @return SSL 上下文
+     * @throws MqException 算法非法，或信任库 / 证书库加载失败
+     */
+    private static SSLContext sslContext(MqConfig config, String host, int port) {
+        String algorithm = stringValue(config, KEY_SSL_ALGORITHM, DEFAULT_SSL_ALGORITHM);
+        try {
+            SSLContext context = SSLContext.getInstance(algorithm);
+            context.init(keyManagers(config), trustManagers(config), null);
+            return context;
+        } catch (GeneralSecurityException e) {
+            throw new MqException("failed to initialize rabbitmq ssl context: " + host + ":" + port, e);
+        }
+    }
+
+    /**
+     * 加载客户端证书库并给出密钥管理器。
+     *
+     * @param config 配置对象
+     * @return 密钥管理器；未配置 {@code ssl.key-store} 时 {@code null}
+     * @throws GeneralSecurityException 密钥管理器初始化失败
+     */
+    private static KeyManager[] keyManagers(MqConfig config) throws GeneralSecurityException {
+        KeyStore keyStore = loadKeyStore(config, KEY_SSL_KEY_STORE, KEY_SSL_KEY_STORE_TYPE,
+                KEY_SSL_KEY_STORE_PASSWORD);
+        if (keyStore == null) {
+            return null;
+        }
+        KeyManagerFactory factory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        factory.init(keyStore, passwordChars(config, KEY_SSL_KEY_STORE_PASSWORD));
+        return factory.getKeyManagers();
+    }
+
+    /**
+     * 加载信任库并给出信任管理器。
+     *
+     * @param config 配置对象
+     * @return 信任管理器；未配置 {@code ssl.trust-store} 时 {@code null}（用 JVM 默认信任库）
+     * @throws GeneralSecurityException 信任管理器初始化失败
+     */
+    private static TrustManager[] trustManagers(MqConfig config) throws GeneralSecurityException {
+        KeyStore trustStore = loadKeyStore(config, KEY_SSL_TRUST_STORE, KEY_SSL_TRUST_STORE_TYPE,
+                KEY_SSL_TRUST_STORE_PASSWORD);
+        if (trustStore == null) {
+            return null;
+        }
+        TrustManagerFactory factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        factory.init(trustStore);
+        return factory.getTrustManagers();
+    }
+
+    /**
+     * 按配置加载密钥库；异常消息只带路径键名与路径值，不含口令。
+     *
+     * @param config 配置对象
+     * @param pathKey 路径配置键
+     * @param typeKey 类型配置键
+     * @param passwordKey 口令配置键
+     * @return 密钥库；未配置路径时 {@code null}
+     * @throws MqException 路径不可读，或库格式 / 口令不符
+     */
+    private static KeyStore loadKeyStore(MqConfig config, String pathKey, String typeKey, String passwordKey) {
+        String path = textValue(config, pathKey);
+        if (path == null) {
+            return null;
+        }
+        try (InputStream in = Files.newInputStream(Paths.get(path))) {
+            KeyStore store = KeyStore.getInstance(stringValue(config, typeKey, DEFAULT_SSL_STORE_TYPE));
+            store.load(in, passwordChars(config, passwordKey));
+            return store;
+        } catch (IOException | GeneralSecurityException e) {
+            throw new MqException("failed to load rabbitmq ssl store: " + pathKey + "=" + path, e);
+        }
+    }
+
+    /**
+     * 读取口令为字符数组；未配置时为空数组（空口令的库合法）。
+     *
+     * @param config 配置对象
+     * @param key 口令配置键
+     * @return 口令字符数组
+     */
+    private static char[] passwordChars(MqConfig config, String key) {
+        String value = config.get(key);
+        return (value == null) ? new char[0] : value.toCharArray();
     }
 
     /**

@@ -77,6 +77,7 @@ mq.demoC.mqtt5.reconnect-delay-max-millis = 30000
 
 # --- rabbitmq（14 项，fail-fast）---
 # 必填：host
+# mq.rabbitmq.ssl.enabled = false
 # mq.rabbitmq.host = 127.0.0.1
 # mq.rabbitmq.port = 5672
 # mq.rabbitmq.virtual-host = /

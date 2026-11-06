@@ -16,7 +16,7 @@ mvn -pl aifei-mq-core test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbse
 
 ## 测试结构
 
-测试按子模块分布（每个子模块自成一个 JAR、自跑门禁）：`aifei-mq-core`（公共 API + `internal` + 契约基类 + 核心单元测试）、`aifei-mq-memory`（内存后端契约实现 + 装配测试）、7 个后端模块（集成契约子类 + 各自门禁；其中 5 个实验性后端另有配置校验，`rocketmq` 无独立配置校验类）。
+测试按子模块分布（每个子模块自成一个 JAR、自跑门禁）：`aifei-mq-core`（公共 API + `internal` + 契约基类 + 核心单元测试）、`aifei-mq-memory`（内存后端契约实现 + 装配测试）、7 个后端模块（集成契约子类 + 各自门禁；其中 4 个实验性后端与 `rabbitmq` 另有配置校验，`rocketmq` 无独立配置校验类）。
 
 | 模块 | 测试类 | 类型 | 覆盖 |
 | --- | --- | --- | --- |
@@ -32,12 +32,12 @@ mvn -pl aifei-mq-core test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbse
 | memory | `MqPluginTest` | 单元（装配） | 装配生命周期、多实例装配与实例隔离、幂等、未注册后端 / 非法实例名 / 命名实例失败 / 框架桥失败均不留半装配 |
 | memory | `MemoryBoundaryGateTest` | 架构门禁（3 例） | 内存后端实现包边界、禁 `java.sql`、`META-INF/services` 声明与 `type()` 一致 |
 | rocketmq / mqtt / mqtt5 / rabbitmq / kafka / redisstream | `XxxMessageBusContractTest` | 契约实现（集成） | 各后端继承运行**共同底线**契约；**默认关闭**，对应开关开启时运行（须连上 broker）；后端差异断言**不入契约基类**——6 个集成契约子类**目前只继承共同底线、差异未另写断言**（差异口径见 `docs/design.md` §5.6 (B) / (C)） |
-| mqtt / mqtt5 / rabbitmq / kafka / redisstream | `XxxConfigValidationTest` | 单元（**默认执行**，各 1 例） | 该后端缺必填键时**构造期在建连之前**以 `MqException` 快速失败，且该类型已在 provider 注册表；**不建连、无外部中间件依赖** |
+| mqtt / mqtt5 / rabbitmq / kafka / redisstream | `XxxConfigValidationTest` | 单元（**默认执行**；mqtt / mqtt5 / kafka / redisstream 各 1 例，rabbitmq 5 例） | 该后端缺必填键时**构造期在建连之前**以 `MqException` 快速失败，且该类型已在 provider 注册表；rabbitmq 另覆盖 `ssl.*`：开关非布尔、信任库不可读、算法非法均在**建连之前**失败，可读信任库则成功构建 SSL 上下文；**不建连、无外部中间件依赖** |
 | 7 个后端子模块 | `XxxBoundaryGateTest` | 架构门禁（各 3 例） | 第三方客户端 import 只在实现包、禁 `java.sql`、`META-INF/services` 单行声明且与 `type()` 一致 |
 
 ### 实测用例数（`cd aifei-mq && mvn clean verify`）
 
-reactor 合计 `Tests run: 167 / Failures: 0 / Errors: 0 / Skipped: 60`，即**执行 107 项** + **默认跳过 60 项**（6 个真实后端集成**默认关闭**，每个 10 条）。按模块拆解：core **49**（单元 43 + 门禁 6）/ memory **35**（契约 20 + 装配 12 + 门禁 3）/ rocketmq **13**（集成 10 跳过 + 门禁 3）/ 5 个实验性后端各 **14**（集成 10 跳过 + 门禁 3 + 配置校验 1）。`MessageBusContractTest` 为 abstract 基类、不含独立用例（其共同底线用例经 `MemoryMessageBusContractTest` 运行计入该行 20 项）；**逐类用例数与父工程 surefire 输出一致，明细以 `docs/design.md` §12.3 为准**，本文不重复维护。
+reactor 合计 `Tests run: 171 / Failures: 0 / Errors: 0 / Skipped: 60`，即**执行 111 项** + **默认跳过 60 项**（6 个真实后端集成**默认关闭**，每个 10 条）。按模块拆解：core **49**（单元 43 + 门禁 6）/ memory **35**（契约 20 + 装配 12 + 门禁 3）/ rocketmq **13**（集成 10 跳过 + 门禁 3）/ `mqtt` / `mqtt5` / `kafka` / `redisstream` 各 **14**（集成 10 跳过 + 门禁 3 + 配置校验 1）/ `rabbitmq` **18**（集成 10 跳过 + 门禁 3 + 配置校验 5）。`MessageBusContractTest` 为 abstract 基类、不含独立用例（其共同底线用例经 `MemoryMessageBusContractTest` 运行计入该行 20 项）；**逐类用例数与父工程 surefire 输出一致，明细以 `docs/design.md` §12.3 为准**，本文不重复维护。
 
 ## 架构门禁（`ArchitectureBoundaryTest` + 各后端子模块 `XxxBoundaryGateTest`）
 
@@ -51,7 +51,7 @@ reactor 合计 `Tests run: 167 / Failures: 0 / Errors: 0 / Skipped: 60`，即**�
 
 `MessageBusContractTest` 以抽象工厂 `protected abstract MessageBus newBus();` 承载契约，新增后端只需新增一个子类实现 `newBus()` 即可复用全部用例。**契约基类只断言跨后端的「共同底线」**（`docs/design.md` §5.6 A）；**后端专有行为**（投递模型、线程模型、有序性、投递保证与重复、持久化、无订阅者时的「消息丢弃 / 留存」（B6）、`messageId` 格式、可观测性、消费位点 / 消费组、取消订阅的尽力语义，即 §5.6 B / C）**不得写入契约基类**，须放各后端子类的测试。
 
-**5 个实验性后端同样适用**：`mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream` 的子类**只继承运行共同底线**、**不写任何后端差异断言**（差异逐项见 `docs/design.md` §5.6 (B) / (C) 及其「实现期决策」补记）；其运行期语义**均未经真机 broker 验证**，须在具备环境时开启对应开关执行（见下文「真实后端集成测试」）。
+**4 个实验性后端与 `rabbitmq` 同样适用**：`mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream` 的子类**只继承运行共同底线**、**不写任何后端差异断言**（差异逐项见 `docs/design.md` §5.6 (B) / (C) 及其「实现期决策」补记）；`rabbitmq` 已于 2026-11-06 在 CloudAMQP 真机验证通过，其余 4 个需在具备环境时开启对应开关执行（见下文「真实后端集成测试」）。
 
 **异步后端适配（阶段 2 新增）**：真实后端投递**异步**（§5.6 B1 / B2），故基类提供**轮询等待钩子**（受保护的 `awaitTrue(condition, timeoutMillis)` 一类方法），投递类断言一律「发送后**等待条件成立（带超时）**」而非立即断言；断言使用的收集容器须**线程安全**（如 `CopyOnWriteArrayList`），以免与后端消费线程竞态。同步后端（memory）在同一钩子下**首轮即通过**。
 
@@ -90,7 +90,7 @@ reactor 合计 `Tests run: 167 / Failures: 0 / Errors: 0 / Skipped: 60`，即**�
 
   > 聚合工程下**必须加 `-pl aifei-mq-<module>`**：其它子模块不含该测试类，不加 `-pl` 会因找不到类而失败。
 
-### 5 个实验性后端（`mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream`）
+### 4 个实验性后端与 `rabbitmq`（`mqtt` / `mqtt5` / `rabbitmq` / `kafka` / `redisstream`）
 
 5 个子类（`MqttMessageBusContractTest` / `Mqtt5MessageBusContractTest` / `RabbitMqMessageBusContractTest` / `KafkaMessageBusContractTest` / `RedisStreamMessageBusContractTest`）与 RocketMQ **同范式**：未开启时整类经 `Assume` 跳过；**一旦开启，连不上必须使测试失败**（不得静默跳过）；每个用例新建总线、以随机主题 / 消费组 / 客户端标识隔离，`@After` 兜底关闭。下列命令中的开关名与参数**须与各子模块 `pom.xml` 的 `systemPropertyVariables` 逐字一致**（各 `<backend>.integration` 开关在 `pom.xml` 中默认 `false`）：
 
@@ -106,7 +106,7 @@ reactor 合计 `Tests run: 167 / Failures: 0 / Errors: 0 / Skipped: 60`，即**�
 
 - **`-pl`、开关名与失败位置**：`-pl aifei-mq-<module>` 不可省（聚合后其它模块无该类），开关与连接参数名**逐字**不变、须与各子模块 `pom.xml` 的 `systemPropertyVariables` 一致。失败位置按连通性模型不同：`mqtt` / `mqtt5` / `rabbitmq` **启动期 fail-fast**（`newBus()` 建总线即建连，不可达即抛 `MqException`）；`kafka` / `redisstream` **懒连接**（连接池懒建连），建总线通常不报错、故障延迟到首个收发处——**不得**把「建总线未报错」当作「后端可达」。
 
-> **验证盲区（重要，P6 首轮环境口径）**：本仓库开发机当时**无 Docker、无任何真实 broker（含 Redis）**（`docker` 命令不存在）；RocketMQ 需 **nameserver + broker 两进程**，其余各需对应中间件。故上述集成测试**首轮无法在本机执行**——**6 个后端的运行期语义（连通性、消费组 / 位点、重投与重复、通配匹配等）当时均未经真机 broker 验证**。**后续进展见文末「P6 补验记录」（2026-11-05）**：`rocketmq` 与 `redisstream` 已真机 PASS，`mqtt` / `mqtt5` / `rabbitmq` / `kafka` 仍 BLOCKED。默认的 `mvn clean verify`（集成关闭）**不含**任何真实后端端到端验证（其 `Skipped: 60` 即这 6 类各 10 条）。
+> **验证盲区（重要，P6 首轮环境口径）**：本仓库开发机当时**无 Docker、无任何真实 broker（含 Redis）**（`docker` 命令不存在）；RocketMQ 需 **nameserver + broker 两进程**，其余各需对应中间件。故上述集成测试**首轮无法在本机执行**——**6 个后端的运行期语义（连通性、消费组 / 位点、重投与重复、通配匹配等）当时均未经真机 broker 验证**。**后续进展见文末「P6 补验记录」**：`rocketmq` 与 `redisstream`（2026-11-05）及 `rabbitmq`（2026-11-06，CloudAMQP）已真机 PASS，`mqtt` / `mqtt5` / `kafka` 仍 BLOCKED。默认的 `mvn clean verify`（集成关闭）**不含**任何真实后端端到端验证（其 `Skipped: 60` 即这 6 类各 10 条）。
 
 ## 新增约定
 
@@ -199,14 +199,14 @@ mvn -pl aifei-mq-core test -Dtest=MqProviderRegistryTest
 ### 6）本轮未覆盖 / 后续补验清单
 
 - **RocketMQ 真机端到端**（BLOCKED）：需 nameserver + broker 两进程；具备环境后执行 §「真实后端集成测试 / RocketMQ」命令补验收发、消费组、重投与重复。
-- **其余 5 个后端真机验证**（BLOCKED）：`1883` / `5672` / `9092` 均无监听，`mqtt` / `mqtt5` / `rabbitmq` / `kafka` 无法验证。
+- **其余 5 个后端真机验证**（当时 BLOCKED）：`1883` / `5672` / `9092` 均无监听，`mqtt` / `mqtt5` / `rabbitmq` / `kafka` 当时无法验证（`rabbitmq` 已于 2026-11-06 在 CloudAMQP 补验通过，见文末补验记录）。
 - **Java 8 运行时冒烟**（BLOCKED）：见第 5 项。
 
 ### 发现（意外项，如实上报）
 
 **发现 A（影响单模块测试的跑法，重要）**：首次执行第 1 项命令时，契约类报 `java.lang.AbstractMethodError: Receiver class cn.hg.aifei.mq.rocketmq.RocketMqMessageBus does not define or inherit an implementation of the resolved method 'abstract cn.hg.aifei.mq.Producer producer()' of interface cn.hg.aifei.mq.internal.MessageBus`，使 10 条用例变成 **4 Failures + 6 Errors**。**根因不在源码**：本地仓库 `C:\IDEs\apache-maven-repository\io\github\gollyhu\aifei-mq-core\1.0.0\aifei-mq-core-1.0.0.jar`（当日 17:28 安装）是**模块拆分前**的旧 core（`MessageBus` 仍是 `producer() / consumer() / close()`），而 `-pl` **不带 `-am`** 时该模块从**本地仓库**取 core，造成新旧接口错配。执行 `mvn -DskipTests install` 刷新本地仓库后，同一条命令才得到第 1 项的真实结果。**建议**：跑单模块测试前先 `mvn -DskipTests install`，或加 `-am`；否则可能拿到**与源码无关**的假失败（或假通过）。
 
-**发现 B（可用资源，供调度人决定是否纳入后续轮次）**：本机 `127.0.0.1:6379` **有监听**（存在 `C:\IDEs\Redis` 目录），即 **Redis 可用**；`1883` / `5672` / `9092` 无监听。本轮**未**执行 `redisstream` 集成用例——P6 只要求 RocketMQ 负向验证，且该用例会向用户 Redis 写入随机前缀的 stream 与消费组（有副作用）。若需补验，可另开一轮以 `-Dredisstream.integration=true` 执行 §「真实后端集成测试 / 5 个实验性后端」中的对应命令。
+**发现 B（可用资源，供调度人决定是否纳入后续轮次）**：本机 `127.0.0.1:6379` **有监听**（存在 `C:\IDEs\Redis` 目录），即 **Redis 可用**；`1883` / `5672` / `9092` 无监听。本轮**未**执行 `redisstream` 集成用例——P6 只要求 RocketMQ 负向验证，且该用例会向用户 Redis 写入随机前缀的 stream 与消费组（有副作用）。若需补验，可另开一轮以 `-Dredisstream.integration=true` 执行 §「真实后端集成测试 / 4 个实验性后端与 `rabbitmq`」中的对应命令。
 
 **发现 C（命令写法，影响判定）**：在 PowerShell 下 `-Drocketmq.integration=true` **不加引号**会被拆成 `-Drocketmq` 与 `.integration=true`，Maven 报 `Unknown lifecycle phase ".integration=true"`——同样是 BUILD FAILURE，但**测试根本没跑**，极易被误读为「负向验证通过」。**执行任何 `-D` 形式的 Maven 参数时必须整体加引号**：`"-Drocketmq.integration=true"`。
 
@@ -217,3 +217,4 @@ mvn -pl aifei-mq-core test -Dtest=MqProviderRegistryTest
 - **`rocketmq` 真机集成（PASS，2026-11-05）**：nameserver 与 broker 均由本轮启动（RocketMQ `5.5.1`，`9876` / `10911` 监听；启动日志落在 `C:\IDEs\rocketmq-all-5.5.1-bin-release\namesrv-start.log` 与 `broker-start.log`）；`mvn -pl aifei-mq-rocketmq test "-Drocketmq.integration=true"` → **`Tests run: 13 / Failures: 0 / Errors: 0 / Skipped: 0`**，`BUILD SUCCESS`，契约类 10 项**真实收发通过**（耗时 88.56s）。
   - **过程记录（环境阶梯）**：仅 broker 在跑、nameserver 已退出 → `RemotingConnectException: 9876`；仅 nameserver、无 broker → `No route info of this topic`；两者齐全 → **全部通过**。
   - **版本组合**：客户端 `rocketmq-client:4.9.7` 对 broker `5.5.1` 兼容，本次 10 项契约用例无协议异常。
+- **`rabbitmq` 真机集成（PASS，2026-11-06）**：在 **CloudAMQP** 云端 broker（RabbitMQ `4.3.6` / Erlang `28.5.0.7`）执行 `mvn -pl aifei-mq-rabbitmq test "-Drabbitmq.integration=true"`（连接参数按云端实例配置 `host` / `port` / `virtual-host` / 凭据），契约类 10 项**真实收发通过**（开关开启后不再跳过）。据此 `aifei-mq-rabbitmq` 去掉 `maven.deploy.skip`，由实验性转为**稳定后端**并纳入 1.0.0 发布清单（`docs/design.md` §15.3）。
