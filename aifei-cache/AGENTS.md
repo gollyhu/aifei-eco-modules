@@ -1,6 +1,6 @@
 # aifei-cache 开发约束
 
-四份文档的分工：`README.md` 面向使用者（安装、用法、配置）；`docs/design.md` 面向设计者与实现者（契约、决策、验收，是**事实来源**）；`docs/testing.md` 面向测试维护者（测试分层、运行方式与用例基线）；本文件适用于本模块，面向开发代理与贡献者（改代码前必须遵守什么、怎么验证）；仓库级共同底线见根 `AGENTS.md`，两者冲突时以更严格者为准。
+五份文档的分工：`README.md` 面向使用者（安装、用法、配置）；`CHANGELOG.md` 面向升级者（版本差异、升级动作与兼容性）；`docs/design.md` 面向设计者与实现者（契约、决策、验收，是**事实来源**）；`docs/testing.md` 面向测试维护者（测试分层、运行方式与用例基线）；本文件适用于本模块，面向开发代理与贡献者（改代码前必须遵守什么、怎么验证）；仓库级共同底线见根 `AGENTS.md`，两者冲突时以更严格者为准。
 
 ## 开发前提
 
@@ -66,7 +66,7 @@
 2. **改实现**：满足接口契约与上述定义点，不越出「结构」一节划定的基类边界。
 3. **补测试**：新增或改变公共行为时同步更新测试。
 4. **跑验证**：`mvn clean verify` 必须 0 failure / 0 error；Redis 相关改动额外跑 `-Dredis.integration=true -Dredis.uri=redis://127.0.0.1:6379/0`，开启后连不上必须失败。
-5. **同步文档**：行为变化同步 `README.md`（用法 / 配置）与 `docs/design.md`（契约）。
+5. **同步文档**：行为变化同步 `README.md`（用法 / 配置）与 `docs/design.md`（契约）；对外可见的版本变更在 `CHANGELOG.md` 追加条目。
 
 ## 验证
 
@@ -97,7 +97,7 @@ mvn verify -Dredis.integration=true -Dredis.uri=redis://127.0.0.1:6379/0  :: Red
 ## 提交前检查清单
 
 - [ ] `mvn clean verify` 通过（0 failure / 0 error）。
-- [ ] 涉及公共行为的改动已同步 `docs/design.md` 与 `README.md`；新增/变更行为有测试覆盖。
+- [ ] 涉及公共行为的改动已同步 `docs/design.md` 与 `README.md`，并在 `CHANGELOG.md` 记录版本变更；新增/变更行为有测试覆盖。
 - [ ] 校验规则仍只有两个定义点，实现类未复制规则。
 - [ ] 条件操作仍走二进制 `eval`，期望值字节只有一个装配点，未出现 `String` 中转；`supportsCas()` 与两个 CAS 方法行为一致。
 - [ ] 回源单飞的登记与「回源 + 回写」仍只在 `internal.SingleFlight`；实现类未自行维护在途状态、未复制该流程。

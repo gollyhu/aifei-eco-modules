@@ -493,11 +493,13 @@ Set<String> names = CacheKit.use("mem").cacheNames();
 
 ### 1.1.0 变更
 
-- 新增 3 个公共方法：`removeIfEquals` / `expireIfEquals` / `supportsCas`。`CacheKit` 提供前两个的静态镜像，`supportsCas()` 与 `namespace()` 一样只提供实例方法。
+相对 1.0.0（基线提交 `cf8df94`）新增条件操作 `removeIfEquals` / `expireIfEquals`（`CacheKit` 有静态镜像）与能力声明 `supportsCas()`（仅实例方法）。
+
 - **公共调用面按 minor 兼容**：只新增方法，既有调用代码不需要改动。
 - **`Cache` 实现面（SPI）不兼容**：`Cache` 的方法都是抽象方法，自定义实现必须补上这 3 个方法，否则**编译失败**（不是运行期 `AbstractMethodError`）。直接继承 `internal.AbstractCache` 的实现同样要补 —— 基类刻意不提供默认实现，「不支持」必须显式声明。项目里存在自定义 `Cache` 实现时，请先补齐再升级。
-- `CaffeineCache` 不支持条件操作：`supportsCas()` 返回 `false`，两个方法抛 `UnsupportedOperationException`。
 - 存储格式不变：哨兵、物理 key、Fury 编码都未改动，1.0.0 写入的数据可直接读取。
+
+完整条目与升级动作见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ### 条件操作的验证门槛
 
