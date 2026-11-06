@@ -18,6 +18,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-mq-demo](aifei-mq-demo/README.md) | （示例工程，不发布） | aifei-mq 的完整接入示例：内存后端的发送 / 订阅消费闭环演示 |
 | [aifei-oss](aifei-oss/README.md) | `io.github.gollyhu:aifei-oss:1.0.0` | 多平台对象 / 文件存储能力：基于 X File Storage（覆盖 30+ 平台）二次封装，本模块类型白名单 20 项 |
 | [aifei-oss-demo](aifei-oss-demo/README.md) | （示例工程，不发布） | aifei-oss 的完整接入示例：本地存储的上传 / 下载 / 列举 / 复制 / 删除演示 |
+| [aifei-lock](aifei-lock/README.md) | `io.github.gollyhu:aifei-lock:1.0.0` | 分布式锁：基于共享缓存的原子加锁、CAS 释放与 CAS 续期 |
 
 ### aifei-cache
 
@@ -92,6 +93,17 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 各云厂商 SDK 由消费方按需自带，仅用本地存储时无需任何云 SDK
 - 详细用法见 [aifei-oss/README.md](aifei-oss/README.md)，设计文档见 [docs/design.md](aifei-oss/docs/design.md)
 
+### aifei-lock
+
+为 aifei 应用补齐跨实例互斥能力（只做分布式锁，不做分布式事务）。
+
+- 公共面固定 3 个类型：`Lock`（不可变句柄）/ `LockKit`（门面）/ `LockException`
+- 锁语义只依赖三条原子命令：`SET NX PX` 加锁、Lua CAS 删除释放、Lua CAS 续期；零配置键、不新建连接，锁落在主缓存 `__LOCK__` 保留分区
+- 抢不到锁返回 `null`（DEBUG），存储故障抛 `LockException`（ERROR），两者严格区分；异常只表示「结果未知」，`renew()` 返回 `false` 才是「确认丢失」
+- 启动期只做一次无 I/O 的能力查询：非共享后端（如 `caffeine`）装配即失败，不支持无锁降级
+- 提供的是**互斥**而非**一致性**：租约到期双持有、Redis 主从切换丢锁均不在保证范围
+- 详细用法见 [aifei-lock/README.md](aifei-lock/README.md)，设计文档见 [docs/design.md](aifei-lock/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -104,6 +116,7 @@ cd aifei-sa-token  && mvn clean install
 cd aifei-websocket && mvn clean install
 cd aifei-mq        && mvn clean install
 cd aifei-oss       && mvn clean install
+cd aifei-lock      && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -116,6 +129,7 @@ cd aifei-oss       && mvn clean install
 - `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
 - `aifei-websocket`：`aifei-all` 为 `provided`，**运行时零第三方依赖**（传输层为内建 JDK 自实现，无传输库与日志绑定要求）
 - `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；内存后端零第三方运行依赖，6 个真实后端的客户端（`rocketmq-client` / `mqttv3` / `mqttv5` / `amqp-client` / `kafka-clients` / `jedis`）均为 `optional`，用到哪个后端自带哪个，不向下游传递
+- `aifei-lock`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 为 `optional`（**不向下游传递**，消费方必须显式引入，否则类加载期即 `NoClassDefFoundError`）；不直接依赖 Jedis
 - `aifei-oss`：`aifei-all` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
 
 ## 许可证
