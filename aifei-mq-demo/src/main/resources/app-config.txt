@@ -1,5 +1,6 @@
 # ===== aifei-mq-demo 配置 =====
-# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18100 传入，本文件只放 mq.* 配置。
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18100 传入；本文件放 mq.* 后端配置
+# 与两个非 mq.* 的演示开关（enjoyDevMode / printAction，见文件末尾）。
 # 后端专有键由 MqConfig.get(relativeKey) 拼装读取：命名实例为 mq.<实例名>.<type>.<relativeKey>，
 # 主实例 __MAIN__ 为 mq.<type>.<relativeKey>；不存在 mq.memory.* 这类键。
 # pom 已引入全部 7 个后端子模块，故 mq.type 可直接切到任一已注册类型。
@@ -9,13 +10,14 @@
 mq.type = memory
 # 逗号分隔，逐项去空白；主实例 __MAIN__ 是保留名、走根级 mq.*，不得在此声明。
 # 顺序即入口页卡片顺序（主实例恒在最前，其后按本行声明顺序）。
-mq.names = demoA,demoB
+mq.names = demoA,demoB,demoC
 mq.demoA.type = mqtt
 mq.demoB.type = redisstream
+mq.demoC.type = mqtt5
 
-# ===== 已放开的后端：memory / mqtt / redisstream =====
+# ===== 已放开的后端：memory / mqtt / mqtt5 / redisstream =====
 # memory 无任何专有键。
-# mqtt 构造期立即建连，broker 不可达即启动失败；redisstream 懒连接，故障延迟到首次收发。
+# mqtt 与 mqtt5 构造期立即建连，broker 不可达即启动失败；redisstream 懒连接，故障延迟到首次收发。
 # 可选项均显式写出当前默认值便于对照；凭据类与 maxlen 留空表示不启用。
 
 # --- demoA / mqtt（11 项）---
@@ -50,26 +52,28 @@ mq.demoB.redisstream.maxlen =
 mq.demoB.redisstream.timeout-millis = 2000
 mq.demoB.redisstream.auto-reconnect = true
 
+# --- demoC / mqtt5（13 项）---
+# v5 无 clean-session，会话语义由 clean-start + session-expiry-interval-seconds（秒）表达。
+# 与 demoA 共用同一个公共 broker，故两实例同名 topic 会互相收到；qos 取 1 与 demoA 对齐（v5 默认 0）。
+# 必填：broker-url
+mq.demoC.mqtt5.broker-url = wss://broker.hivemq.com:8884
+mq.demoC.mqtt5.client-id = aifei-mq-demo-mqtt5-client-id
+mq.demoC.mqtt5.clean-start = true
+mq.demoC.mqtt5.session-expiry-interval-seconds = 0
+mq.demoC.mqtt5.qos = 1
+mq.demoC.mqtt5.retain = false
+mq.demoC.mqtt5.username =
+mq.demoC.mqtt5.password =
+mq.demoC.mqtt5.keep-alive-seconds = 60
+mq.demoC.mqtt5.connection-timeout-seconds = 30
+mq.demoC.mqtt5.auto-reconnect = true
+mq.demoC.mqtt5.reconnect-delay-millis = 1000
+mq.demoC.mqtt5.reconnect-delay-max-millis = 30000
+
 # ===== 未放开的后端：以下整段注释，仅作全量配置模板 =====
 # 启用方式：把某个 mq.<实例名>.type（或主实例 mq.type）改成对应 type，再把键前缀换成
 # mq.<实例名>.<type>.（命名实例）或 mq.<type>.（主实例），最后去掉行首 #。
-# mqtt5 / rabbitmq 构造期立即建连；kafka / rocketmq 懒连接。
-
-# --- mqtt5（13 项，fail-fast）---
-# 必填：broker-url
-# mq.mqtt5.broker-url = tcp://127.0.0.1:1883
-# mq.mqtt5.client-id = aifei-mq-demo-mqtt5
-# mq.mqtt5.clean-start = true
-# mq.mqtt5.session-expiry-interval-seconds = 0
-# mq.mqtt5.qos = 0
-# mq.mqtt5.retain = false
-# mq.mqtt5.username =
-# mq.mqtt5.password =
-# mq.mqtt5.keep-alive-seconds = 60
-# mq.mqtt5.connection-timeout-seconds = 30
-# mq.mqtt5.auto-reconnect = true
-# mq.mqtt5.reconnect-delay-millis = 1000
-# mq.mqtt5.reconnect-delay-max-millis = 30000
+# rabbitmq 构造期立即建连；kafka / rocketmq 懒连接。
 
 # --- rabbitmq（14 项，fail-fast）---
 # 必填：host
@@ -111,5 +115,8 @@ mq.demoB.redisstream.auto-reconnect = true
 # mq.rocketmq.producer-group = DEFAULT_PRODUCER
 # mq.rocketmq.consumer-group = DEFAULT_CONSUMER
 
+# ===== 演示开关（非 mq.* 键）=====
+# Enjoy 模板热加载：改 view/*.html 后刷新浏览器即生效，无需重启进程（默认 false 会缓存模板到启动那一刻）
+enjoyDevMode = true
 # 打开后每个 action 调用会打印到控制台（默认 false）；排查 GET / 是否命中 action 时可临时打开
-# printAction = true
+printAction = true

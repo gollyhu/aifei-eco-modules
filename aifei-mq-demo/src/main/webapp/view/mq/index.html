@@ -14,7 +14,7 @@
     <header class="mq-topbar">
         <div class="mq-topbar-main">
             <h1 class="mq-title">aifei-mq-demo · MQ 演示入口</h1>
-            <p class="mq-sub">配置来源：app-config.txt ｜ __MAIN__ = memory ｜ demoA = mqtt ｜ demoB = redisstream</p>
+            <p class="mq-sub">{{ instancesSummary }}</p>
         </div>
         <div class="topbar-actions">
             <span class="hint" v-if="busy" aria-live="polite">{{ busyHint }}</span>
@@ -31,8 +31,8 @@
         </div>
     </header>
 
-    <!-- ② 固定警示条（语义声明，不可关闭） -->
-    <p class="warn-bar">⚠ 多后端演示 · __MAIN__ 为内存后端（进程内、重启即清空）· demoA 走 MQTT broker · demoB 走 Redis Stream</p>
+    <!-- ② 固定警示条（语义声明，不可关闭；文案按主实例类型与命名实例清单生成） -->
+    <p class="warn-bar" v-if="backendNote">{{ backendNote }}</p>
 
     <!-- 错误态 / 降级态 -->
     <p class="err-bar" v-if="error" role="alert">
@@ -58,7 +58,10 @@
 
     <!-- 数据态 -->
     <div class="cards-grid" :class="{ 'is-stale': stale }" v-else-if="instances.length">
-        <div class="inst-card" v-for="inst in instances" :key="inst.instanceName" @click="enter(inst)">
+        <!-- 整卡是原生链接：target 固定为实例专属名字，浏览器复用同名标签、不重复打开，也不受弹窗拦截影响 -->
+        <a class="inst-card" v-for="inst in instances" :key="inst.instanceName"
+           :href="demoUrl(inst)" :target="tabName(inst)" rel="opener"
+           :aria-label="'在新标签页打开实例 ' + inst.instanceName + ' 的演示页'">
             <div class="inst-head">
                 <span class="inst-name">{{ inst.instanceName }}</span>
                 <span class="pill pill-main" v-if="inst.main">主实例</span>
@@ -90,11 +93,9 @@
             </div>
 
             <div class="inst-foot">
-                <button class="btn btn-primary" type="button"
-                        :aria-label="'进入实例 ' + inst.instanceName + ' 的演示页'"
-                        @click.stop="enter(inst)">进入演示页 →</button>
+                <span class="btn btn-primary" aria-hidden="true">进入演示页 ↗</span>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- 空态 -->
@@ -106,7 +107,7 @@
 
     <!-- ④ 页脚 -->
     <footer class="page-foot">
-        <p>提示：每个实例是独立总线，同名 topic 在 demoA / demoB 之间互不可见。</p>
+        <p>提示：每个实例是独立总线，消息记录、发送 / 接收计数与订阅登记都按实例分片。</p>
         <p>数据来源：GET /mq/demo/instances（页面进入时请求一次，可手动刷新）</p>
     </footer>
 
@@ -120,16 +121,16 @@
         </div>
         <div class="drawer-body">
             <section class="doc-sec">
-                <h3>三个实例是什么</h3>
-                <p><code>__MAIN__</code> 是主实例，配置走根级 <code>mq.*</code>；<code>demoA</code> / <code>demoB</code> 是命名实例，配置分别走 <code>mq.demoA.*</code> / <code>mq.demoB.*</code>，由 <code>app-config.txt</code> 的 <code>mq.names</code> 声明。</p>
+                <h3>实例清单从哪来</h3>
+                <p>主实例 <code>__MAIN__</code> 恒在首位，后端类型由根级 <code>mq.type</code> 决定；其余实例由 <code>app-config.txt</code> 的 <code>mq.names</code> 声明，各自类型由 <code>mq.&lt;name&gt;.type</code> 决定，顺序与声明一致。卡片数量随配置变化，页面不写死实例。</p>
             </section>
             <section class="doc-sec">
-                <h3>实例之间互不可见</h3>
-                <p>每个实例是一条独立总线：消息记录、发送 / 接收计数、订阅登记都按实例分片。同名 topic 在 <code>demoA</code> 发出的消息，<code>demoB</code> 上收不到，主实例也收不到。</p>
+                <h3>实例之间如何隔离</h3>
+                <p>每个实例是一条独立总线：消息记录、发送 / 接收计数、订阅登记都按实例分片。但隔离只在总线层面——不同实例若指向同一个 broker，同一个 topic 仍可能同时被两端收到。</p>
             </section>
             <section class="doc-sec">
                 <h3>为什么页面上没有链路参数</h3>
-                <p>三个实例各用一种后端：主实例 <code>__MAIN__</code> 是内存实现，<code>demoA</code> 走 MQTT broker、<code>demoB</code> 走 Redis Stream；链路参数一律在 <code>app-config.txt</code> 里按实例配置，页面只表达「就绪 / 未装配」。</p>
+                <p>各实例可分别使用不同后端（类型见卡片「后端类型」）；链路参数一律在 <code>app-config.txt</code> 里按实例配置，页面只表达「就绪 / 未装配」。</p>
             </section>
             <section class="doc-sec">
                 <h3>端点速查</h3>

@@ -607,7 +607,13 @@
 
             // ================= 订阅 / 取消订阅 =================
             function subscribe() {
-                if (locked.value || subBusy.value || unsubBusy.value) {
+                if (locked.value) {
+                    return;
+                }
+                if (subBusy.value || unsubBusy.value) {
+                    // 不能静默丢弃：否则用户会以为点击无效
+                    subMsgOk.value = false;
+                    subMsg.value = "上一次订阅 / 取消操作尚未完成，请稍候再试";
                     return;
                 }
                 var topic = subTopic.value.trim();
@@ -642,7 +648,12 @@
 
             function unsubscribe(topicName) {
                 var topic = String(topicName === null || topicName === undefined ? "" : topicName).trim();
-                if (!topic || locked.value || unsubBusy.value || subBusy.value) {
+                if (!topic || locked.value) {
+                    return;
+                }
+                if (unsubBusy.value || subBusy.value) {
+                    subMsgOk.value = false;
+                    subMsg.value = "上一次订阅 / 取消操作尚未完成，请稍候再试";
                     return;
                 }
                 unsubBusy.value = true;
@@ -865,7 +876,23 @@
             }
 
             // ================= 跳转 / 抽屉 =================
+            // 由首页 window.open 打开时 opener 存在：返回＝关掉本标签；直接访问则退回导航到首页
+            var openedByIndex = false;
+            try {
+                openedByIndex = window.opener !== null && window.opener.closed === false;
+            } catch (e) {
+                openedByIndex = false;
+            }
+
             function back() {
+                if (openedByIndex) {
+                    window.close();
+                    // close 被浏览器拒绝时兜底回首页（成功关闭则定时器随页面销毁）
+                    window.setTimeout(function () {
+                        window.location.href = "/";
+                    }, 100);
+                    return;
+                }
                 window.location.href = "/";
             }
 
@@ -941,6 +968,18 @@
                 }
                 return "读取消息记录失败：" + msgError.value
                     + (pollSlow.value ? "（已降频至 5 秒重试）" : "（每 2 秒自动重试）");
+            });
+
+            // 警示条：按当前实例的真实后端类型生成，不写死实例名（清单由 mq.type / mq.names 决定）
+            var backendNote = Vue.computed(function () {
+                var type = view.mqType;
+                if (!type || type === "—" || fatal.value) {
+                    return "";
+                }
+                var head = type === "memory"
+                    ? "当前实例 " + view.instance + " 为内存后端（进程内、重启即清空）"
+                    : "当前实例 " + view.instance + " 走 " + type;
+                return "⚠ 多后端演示 · " + head + " · 各实例独立总线";
             });
 
             var subMsgCls = Vue.computed(function () {
@@ -1158,6 +1197,7 @@
                 copyLogs: copyLogs,
                 clearMessages: clearMessages,
                 // 其它
+                backendNote: backendNote,
                 subCard: subCard,
                 drawerOpen: drawerOpen,
                 drawerRef: drawerRef,

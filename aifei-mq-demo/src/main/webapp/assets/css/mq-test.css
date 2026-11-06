@@ -452,6 +452,8 @@ body {
     border: 1px solid var(--c-border);
     border-radius: var(--r-lg);
     cursor: pointer;
+    color: inherit;
+    text-decoration: none;
     transition: border-color .12s ease, box-shadow .12s ease;
 }
 
@@ -842,9 +844,14 @@ body {
     cursor: pointer;
 }
 
-.chip-x:hover {
+.chip-x:hover:not(:disabled) {
     color: #fff;
     background: var(--c-danger);
+}
+
+.chip-x:disabled {
+    opacity: .45;
+    cursor: not-allowed;
 }
 
 /* ---------- ③ 发布卡 ---------- */

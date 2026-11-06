@@ -13,7 +13,7 @@
     <!-- ① 实例信息条 -->
     <header class="demo-topbar">
         <div class="info-row">
-            <a class="back-link" href="/" @click.prevent="back">← 返回实例列表</a>
+            <a class="back-link" href="/" title="由首页打开时关闭本标签页；直接访问时返回实例列表" @click.prevent="back">← 返回实例列表</a>
             <span class="info-item info-instance">
                 <span class="info-k">实例</span>
                 <span class="info-v">{{ view.instance }}</span>
@@ -52,8 +52,8 @@
         </div>
     </header>
 
-    <!-- 固定警示条（语义声明，不可关闭） -->
-    <p class="warn-bar">⚠ 多后端演示 · __MAIN__ 为内存后端（进程内、重启即清空）· demoA 走 MQTT broker · demoB 走 Redis Stream</p>
+    <!-- 固定警示条（语义声明，不可关闭；文案按当前实例的真实后端类型生成） -->
+    <p class="warn-bar" v-if="backendNote">{{ backendNote }}</p>
 
     <!-- 错误态：读取状态失败 / 未知实例 -->
     <p class="err-bar" v-if="stateErrorText" role="alert">
@@ -107,6 +107,7 @@
                             <span class="chip-topic">{{ c.topic }}</span>
                             <span class="chip-src" v-for="s in c.sources" :key="s">{{ sourceLabel(s) }}</span>
                             <button class="chip-x" type="button" v-if="c.canRemove"
+                                    :disabled="subBusy || unsubBusy || locked"
                                     :aria-label="'取消订阅 ' + c.topic" :title="'取消本页对该主题的订阅'"
                                     @click="unsubscribe(c.topic)">×</button>
                         </span>

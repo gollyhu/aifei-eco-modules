@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-rem Multi-backend MQ demo: HTTP on 18100, memory + mqtt + redisstream (see app-config.txt)
+rem Multi-backend MQ demo: HTTP on 18100, memory + mqtt + redisstream + mqtt5 (see app-config.txt)
 echo [1/3] Build demo and classpath...
 call mvn -q -f .\pom.xml compile dependency:build-classpath -Dmdep.outputFile=target\cp.txt
 if errorlevel 1 (

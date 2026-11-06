@@ -24,6 +24,7 @@ import org.eclipse.paho.mqttv5.client.MqttClient;
 import org.eclipse.paho.mqttv5.client.MqttConnectionOptions;
 import org.eclipse.paho.mqttv5.common.MqttException;
 import org.eclipse.paho.mqttv5.common.MqttMessage;
+import org.eclipse.paho.mqttv5.common.MqttSubscription;
 
 /**
  * MQTT v5.0 后端总线（实验性，未真机验证）：生产与消费共用<b>单一客户端</b>（一条连接），构造内即建连。
@@ -265,7 +266,8 @@ public class Mqtt5MessageBus implements MessageBus {
         subscriptions.computeIfAbsent(topic, key -> new CopyOnWriteArrayList<>()).add(listener);
         if (registeredFilters.add(topic)) {
             try {
-                client.subscribe(topic, qos, new Mqtt5DeliveryListener(topic));
+                client.subscribe(new MqttSubscription[] {new MqttSubscription(topic, qos)},
+                        new IMqttMessageListener[] {new Mqtt5DeliveryListener(topic)});
             } catch (MqttException e) {
                 registeredFilters.remove(topic);
                 throw new MqException("failed to subscribe mqtt5 topic: " + topic, e);

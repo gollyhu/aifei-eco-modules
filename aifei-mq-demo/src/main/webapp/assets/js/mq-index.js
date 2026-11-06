@@ -100,12 +100,14 @@
             }
 
             // ---- 跳转（绝对路由） ----
-            function enter(inst) {
+            // 卡片是原生 <a target>：target 固定到实例，重复点击复用同名标签；rel=opener 供演示页"返回即关闭"
+            function demoUrl(inst) {
                 var name = inst && inst.instanceName ? String(inst.instanceName) : "";
-                if (!name) {
-                    return;
-                }
-                window.location.href = DEMO_PAGE + "?instance=" + encodeURIComponent(name);
+                return name ? DEMO_PAGE + "?instance=" + encodeURIComponent(name) : DEMO_PAGE;
+            }
+
+            function tabName(inst) {
+                return "mqDemo:" + (inst && inst.instanceName ? String(inst.instanceName) : "");
             }
 
             // ---- 展示helper ----
@@ -142,6 +144,48 @@
             // 顶栏右侧提示：首次加载「加载实例清单…」，手动刷新「刷新中…」
             var busyHint = Vue.computed(function () {
                 return loading.value ? "加载实例清单…" : "刷新中…";
+            });
+
+            // 顶栏摘要：主实例（mq.type）+ 命名实例（mq.names）逐项列出 name = type
+            var instancesSummary = Vue.computed(function () {
+                var list = instances.value || [];
+                var head = "配置来源：app-config.txt ｜ 实例清单由 mq.type + mq.names 决定";
+                if (!list.length) {
+                    return head;
+                }
+                var parts = [];
+                list.forEach(function (inst) {
+                    parts.push(inst.instanceName + " = " + text(inst.type));
+                });
+                return head + " ｜ " + parts.join(" ｜ ");
+            });
+
+            // 警示条：主实例是否内存后端决定「进程内、重启即清空」这句话是否成立
+            var backendNote = Vue.computed(function () {
+                var list = instances.value || [];
+                var main = null;
+                var named = [];
+                list.forEach(function (inst) {
+                    if (inst.main === true) {
+                        main = inst;
+                    } else {
+                        named.push(inst);
+                    }
+                });
+                if (!main) {
+                    return "";
+                }
+                var note = main.type === "memory"
+                    ? "主实例 " + main.instanceName + " 为内存后端（进程内、重启即清空）"
+                    : "主实例 " + main.instanceName + " 走 " + text(main.type);
+                if (named.length) {
+                    var namedParts = [];
+                    named.forEach(function (inst) {
+                        namedParts.push(inst.instanceName + "（" + text(inst.type) + "）");
+                    });
+                    note += " · 命名实例：" + namedParts.join("、");
+                }
+                return "⚠ 多后端演示 · " + note;
             });
 
             // ---- 抽屉 ----
@@ -188,10 +232,13 @@
                 dataTime: dataTime,
                 configError: configError,
                 busyHint: busyHint,
+                instancesSummary: instancesSummary,
+                backendNote: backendNote,
                 drawerOpen: drawerOpen,
                 drawerRef: drawerRef,
                 reload: reload,
-                enter: enter,
+                demoUrl: demoUrl,
+                tabName: tabName,
                 text: text,
                 num: num,
                 prefixText: prefixText,

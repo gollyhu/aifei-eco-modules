@@ -11,7 +11,8 @@
 - 生产者 / 消费者由装配入口 `MqPlugin` 注册为 `@Inject` 单例，Service 里 `@Inject Producer` / `@Inject Consumer`
   取用；订阅则用静态门面 `ConsumerKit.use().subscribe(...)`，同一 demo 里两种取用方式都被演示。
 - 页面为 Aifei 静态层（`src/main/webapp/`，原生 HTML/CSS/JS + 本地全局 Vue，无构建工具）：
-  实例入口页按 `mq.type` / `mq.names` 列出全部实例，点击进入该实例的演示页（订阅 / 发布 / 消息流）。
+  实例入口页按 `mq.type` / `mq.names` 列出全部实例，点击实例卡在**新标签页**打开该实例的演示页
+  （同一实例复用同一个标签页，不重复打开）。
 
 ## 端口
 
@@ -19,8 +20,9 @@
 | --- | --- | --- |
 | HTTP（演示端点） | **18100** | `start-demo.bat` 的 `-Dundertow.port=18100` |
 
-主实例的内存后端在进程内、不监听任何端口；`demoA`（MQTT）与 `demoB`（Redis Stream）连外部服务，但都不额外占用
-本机端口。故本 demo 只占一个 HTTP 端口，与 `aifei-sentinel-demo` 的 18080、`aifei-websocket-demo` 的 18090 / 18091 均错开。
+主实例的内存后端在进程内、不监听任何端口；`demoA`（MQTT v3.1.1）/ `demoC`（MQTT v5）与 `demoB`（Redis Stream）
+连外部服务，但都不额外占用本机端口。故本 demo 只占一个 HTTP 端口，与 `aifei-sentinel-demo` 的 18080、
+`aifei-websocket-demo` 的 18090 / 18091 均错开。
 
 ## 运行
 
@@ -29,21 +31,32 @@ start-demo.bat    :: 启动 demo（HTTP 18100），按 Ctrl+C 或运行 stop-dem
 stop-demo.bat     :: 按端口 18100 找到监听进程并结束
 ```
 
-启动后访问 <http://localhost:18100/> 进入实例入口页（3 张实例卡：`__MAIN__` / memory、`demoA` / mqtt、
-`demoB` / redisstream）；访问 <http://localhost:18100/mq/demo/state> 看到 `mqType=memory`、
+启动后访问 <http://localhost:18100/> 进入实例入口页（4 张实例卡：`__MAIN__` / memory、`demoA` / mqtt、
+`demoB` / redisstream、`demoC` / mqtt5）；访问 <http://localhost:18100/mq/demo/state> 看到 `mqType=memory`、
 `subscribedTopics` 含默认主题即为正常（省略 `instance` 时取主实例）。
 
 ## 演示页面
 
+浏览器打开 <http://localhost/> 即进入演示页面。
+
+![演示页面](./demo.png)
+
+
+
 | 页面 | 地址 | 内容 |
 | --- | --- | --- |
-| 实例入口页 | `GET /` | 按 `mq.names`（+ 主实例）列出实例卡（类型 / 配置前缀 / 就绪状态 / 订阅数 / 记录数），点击进入 |
-| 实例演示页 | `GET /mq/demo/page?instance=<实例名>` | 订阅区（可运行时订阅 / 取消，标注「影响所有浏览器会话」）+ 发布区（文本捷径 / Message 对象两种方式）+ **E2 事件演示区**（业务域 / 事件类型 / 命中表）+ 消息流日志（2 秒轮询） |
+| 实例入口页 | `GET /` | 按 `mq.names`（+ 主实例）列出实例卡（类型 / 配置前缀 / 就绪状态 / 订阅数 / 记录数），点击在**新标签页**打开该实例演示页（同名实例复用同一标签，不重复打开） |
+| 实例演示页 | `GET /mq/demo/page?instance=<实例名>` | 订阅区（可运行时订阅 / 取消，标注「影响所有浏览器会话」）+ 发布区（文本捷径 / Message 对象两种方式）+ **E2 事件演示区**（业务域 / 事件类型 / 命中表）+ 消息流日志（2 秒轮询）；顶部「返回实例列表」由首页打开时**关闭该标签页**，直接访问时回首页 |
 
-页面固定标注三种后端的组合（主实例内存 / `demoA` MQTT / `demoB` Redis Stream）；订阅是进程级全局副作用（影响访问同一实例的所有浏览器会话）；
-装配期订阅的 chip 不可从页面取消；消息记录、发送 / 接收计数均**按实例隔离**。
+两个页面的固定提示文案都按实例数据生成（类型取自 `/mq/demo/instances` 与 `/mq/demo/state`），**不写死实例名**，
+增删 `mq.names` 无需改页面；订阅是进程级全局副作用（影响访问同一实例的所有浏览器会话）；装配期订阅的 chip
+不可从页面取消；消息记录、发送 / 接收计数均**按实例隔离**。
 
 ## 演示端点
+
+演示页面中点击**选项卡**进入测试页面：
+
+![testing](./testing.png)
 
 所有端点都是 GET，返回 `{"code":0,"msg":...,"data":...}`（HTTP 恒 200，语义由 `code` 承载；`0` 为成功）。
 除 `instances` / `page` 外均支持可选参数 `instance`（省略即主实例 `__MAIN__`，向后兼容；未知实例返回
@@ -103,17 +116,21 @@ stop-demo.bat     :: 按端口 18100 找到监听进程并结束
 | 键 | 值 | 说明 |
 | --- | --- | --- |
 | `mq.type` | `memory` | 主实例（`__MAIN__`）的后端类型；缺省即 `memory` |
-| `mq.names` | `demoA,demoB` | 命名实例清单；实例卡顺序 = 主实例在前 + 本行声明顺序 |
+| `mq.names` | `demoA,demoB,demoC` | 命名实例清单；实例卡顺序 = 主实例在前 + 本行声明顺序 |
 | `mq.demoA.type` | `mqtt` | `demoA` 走 MQTT v3.1.1，构造期立即连 `wss://broker.emqx.io:8084` |
 | `mq.demoB.type` | `redisstream` | `demoB` 走 Redis Stream，懒连接，需本机 `127.0.0.1:6379` 可用 |
+| `mq.demoC.type` | `mqtt5` | `demoC` 走 MQTT v5.0，构造期立即连同一个公共 broker；会话语义由 `clean-start` + `session-expiry-interval-seconds` 表达（v5 无 `clean-session`） |
 | `printAction` | 未配置 | 打开后每个 action 调用会打印到控制台（默认 `false`） |
 
 后端专有键的完整形态是 `mq.<实例名>.<type>.<relativeKey>`（主实例为 `mq.<type>.<relativeKey>`），
 由 `MqConfig.get(relativeKey)` 拼装读取；`memory` 无任何专有键。配置文件里：
 
-- **已放开**：`memory` / `mqtt` / `redisstream`，三者的全部配置项均为可生效行（mqtt 11 项、redisstream 15 项）。
-- **未放开**：`mqtt5` / `rabbitmq` / `kafka` / `rocketmq`，共 44 项以注释形式给出全量模板；启用时改 `type`
-  并把键前缀换成目标实例，再去掉行首 `#`。其中 `mqtt5` / `rabbitmq` 构造期立即建连，`kafka` / `rocketmq` 懒连接。
+- **已放开**：`memory` / `mqtt` / `mqtt5` / `redisstream`，四者的全部配置项均为可生效行（mqtt 11 项、mqtt5 13 项、redisstream 15 项）。
+- **未放开**：`rabbitmq` / `kafka` / `rocketmq`，共 31 项以注释形式给出全量模板；启用时改 `type`
+  并把键前缀换成目标实例，再去掉行首 `#`。其中 `rabbitmq` 构造期立即建连，`kafka` / `rocketmq` 懒连接。
+
+`demoA`（MQTT v3）与 `demoC`（MQTT v5）连的是同一个公共 broker：两者订阅登记互相独立、`mqtt` 与 `mqtt5`
+的键域也互不相通，但**同一个 topic 会被两端都收到**——跨实例隔离只体现在总线层面。
 
 `pom.xml` 已引入全部 7 个后端子模块，客户端依赖随各模块传递引入，切换 `type` 无需改依赖。
 
@@ -123,9 +140,9 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 ## 语义说明
 
 - **主实例的内存后端是进程内的**：消息不过进程边界，**应用重启即清空**；`messageId` 是**每实例**进程内
-  单调递增的十进制字符串（从 `1` 开始）。`demoA` / `demoB` 的 `messageId` 由各自后端生成，格式不同。
+  单调递增的十进制字符串（从 `1` 开始）。命名实例的 `messageId` 由各自后端生成，格式不同（如 `mqtt5:<client-id>:<序号>`）。
 - **同步投递仅适用于内存后端**：主实例的 `send` 在调用线程内直接回调订阅者后才返回，因此「发送后立刻查询
-  `messages`」必定能看到刚发的那条；`demoA` / `demoB` 经外部服务中转，接收是异步的。主题上没有订阅者时
+  `messages`」必定能看到刚发的那条；`demoA` / `demoB` / `demoC` 经外部服务中转，接收是异步的。主题上没有订阅者时
   视为成功，消息被丢弃但仍返回 `messageId`。
 - **订阅与取消订阅**：`Consumer` 现有 `subscribe` 与 `unsubscribe` 两个方法。`unsubscribe` 按**实例身份**（引用
   相等）从该主题移除监听器实例，`MessageListener` 是函数式接口，lambda / 方法引用的 `equals` 无可靠语义，故
@@ -150,7 +167,8 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 | `io.undertow:undertow-core` | HTTP 命令式服务端（不用 Servlet） |
 | `org.apache.logging.log4j:log4j-core` | `Log4jLogFactory` 的运行时实现 |
 
-内存后端零第三方运行依赖；本 demo 不引入任何 MQ 客户端、连接池或数据库驱动。未提供 `log4j2.xml`，
+内存后端零第三方运行依赖；本 demo 未直接声明任何 MQ 客户端、连接池或数据库驱动——Paho v3/v5、Jedis、
+amqp-client、kafka-clients、rocketmq-client 均随对应后端子模块传递引入。未提供 `log4j2.xml`，
 log4j2 以默认配置运行（控制台 ERROR 级），启动时的 "No Log4j2 configuration file found" 属预期提示。
 
 ## 文档
