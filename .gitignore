@@ -3,6 +3,7 @@ target/
 
 # Compiled class file
 *.class
+services/
 
 # Log file
 log
