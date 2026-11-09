@@ -16,6 +16,69 @@
 
 **不做**：分布式事务、单机 / caffeine 后端、可重入、公平排队、读写锁、锁丢失回调、JDBC 后端、多实例、自动续期看门狗。
 
+## 典型业务场景
+
+锁的价值只在**多实例 + 同一份数据被并发改写**时体现。单实例、或冲突天然由 DB 行锁 / 唯一索引收敛的并发，不需要引入本模块。
+
+### 场景 1：库存扣减防超卖
+
+两个实例同时收到同一 SKU 的订单，各自读到 `stock = 1`、各自扣减一次，库存变成 `-1`。锁把「读库存 → 判断 → 写库存」整段串行化，锁名带业务主键，只挡这一条 SKU：
+
+```java
+public Out deduct(Long skuId, int qty) {
+    try (Lock lock = LockKit.tryLock("stock:sku:" + skuId, Duration.ofSeconds(10))) {
+        if (lock == null) {
+            return Out.fail("该商品正在结算，请稍后重试");   // 抢不到锁是正常业务结果
+        }
+        return Db.transaction(tx -> deductStock(tx, skuId, qty));   // 事务提交完成才 close 释放
+    }
+}
+```
+
+- 锁必须覆盖**全部**写库存路径：漏掉后台改库存、批量导入任一条，互斥即失效。
+- 锁不替代约束：兜底仍靠 `stock >= 0` 的 DB 约束或版本号乐观锁，锁只是把冲突挡在业务之前。
+
+### 场景 2：同一用户的并发申请串行化
+
+同一用户连点两次「提现」，两笔请求分别通过余额校验，最终超额。按 `userId` 加锁，让同一用户串行、不同用户互不阻塞：
+
+```java
+public Out withdraw(Long userId, BigDecimal amount) {
+    try (Lock lock = LockKit.tryLock("user:withdraw:" + userId, Duration.ofSeconds(5))) {
+        if (lock == null) {
+            return Out.fail("上一笔申请还在处理中，请稍后再试");
+        }
+        return Db.transaction(tx -> applyWithdraw(tx, userId, amount));
+    }
+}
+```
+
+- **锁粒度就是并发上限**：锁名写成 `user:withdraw`（丢了用户 ID）会让所有用户抢同一把锁，吞吐掉到单实例水平。
+- 锁名要有稳定规则（`资源类型:资源 ID:动作`），跨实例才能对上同一把锁。
+
+### 场景 3：多实例定时任务只跑一份
+
+三个实例都挂了定时任务，同一时刻各自发一遍券。以任务名抢锁，抢不到直接退出，长任务用 `renew()` 保活：
+
+```java
+try (Lock lock = LockKit.tryLock("job:coupon:issue", Duration.ofSeconds(60))) {
+    if (lock == null) {
+        return;                                   // 已有实例在跑，本实例静默退出
+    }
+    for (Coupon coupon : pendingCoupons()) {
+        issue(coupon);
+        if (!lock.renew()) {
+            return;                               // 确认丢失，立即停手
+        }
+    }
+}
+```
+
+- 这是「选主」不是「调度」：本模块不做错峰、重试与补偿，任务必须能被下次运行兜住。
+- **锁不等于幂等**：锁过期、实例重启、任务重跑仍可能重复发券，发放侧要另有唯一键或幂等表。
+
+三个场景的共同点：锁把跨实例的并发冲突变成**一次明确的拒绝**，而拒绝之后重试、排队还是丢弃，始终由业务决定。
+
 ## 安装
 
 ```xml
