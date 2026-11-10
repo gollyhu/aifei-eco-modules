@@ -54,7 +54,7 @@ mq.demoB.redisstream.auto-reconnect = true
 
 # --- demoC / mqtt5（13 项）---
 # v5 无 clean-session，会话语义由 clean-start + session-expiry-interval-seconds（秒）表达。
-# 与 demoA 共用同一个公共 broker，故两实例同名 topic 会互相收到；qos 取 1 与 demoA 对齐（v5 默认 0）。
+# 与 demoA 各连不同公共 broker（hivemq / emqx），同名 topic 互不相通；qos 取 1 与 demoA 对齐（v5 默认 0）。
 # 必填：broker-url
 mq.demoC.mqtt5.broker-url = wss://broker.hivemq.com:8884
 mq.demoC.mqtt5.client-id = aifei-mq-demo-mqtt5-client-id
