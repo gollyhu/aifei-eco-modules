@@ -26,14 +26,20 @@
 
 ## 运行
 
+首次运行前先把当前 `aifei-mq:1.0.0` 装入本地仓库：
+
+```bat
+cd aifei-mq && mvn -B clean install
+```
+
 ```bat
 start-demo.bat    :: 启动 demo（HTTP 18100），按 Ctrl+C 或运行 stop-demo.bat 结束
 stop-demo.bat     :: 按端口 18100 找到监听进程并结束
 ```
 
-启动后访问 <http://localhost:18100/> 进入实例入口页（4 张实例卡：`__MAIN__` / memory、`demoA` / mqtt、
-`demoB` / redisstream、`demoC` / mqtt5）；访问 <http://localhost:18100/mq/demo/state> 看到 `mqType=memory`、
-`subscribedTopics` 含默认主题即为正常（省略 `instance` 时取主实例）。
+启动后访问 <http://localhost:18100/> 进入实例入口页（5 张实例卡：`__MAIN__` / memory、`demoA` / mqtt、
+`demoB` / redisstream、`demoC` / mqtt5、`demoD` / kafka）；访问 <http://localhost:18100/mq/demo/state> 看到
+`mqType=memory`、`subscribedTopics` 含默认主题即为正常（省略 `instance` 时取主实例）。
 
 ## 演示页面
 
@@ -162,14 +168,13 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 | 依赖 | 用途 |
 | --- | --- |
 | `cn.aifei:aifei-all` | 框架内核（`aifei-mq` 内为 `provided`，消费方自带） |
-| `io.github.gollyhu:aifei-mq-core` | 契约与装配层（`MqPlugin` + 8 个公共类型） |
-| `io.github.gollyhu:aifei-mq-{memory,mqtt,mqtt5,rabbitmq,kafka,redisstream,rocketmq}` | 全部 7 个后端子模块，经 `META-INF/services` 注册；各客户端依赖随模块传递引入 |
+| `io.github.gollyhu:aifei-mq` | 消息能力（`MqPlugin` + 8 个公共类型 + 7 个后端实现） |
+| `org.apache.rocketmq:rocketmq-client` · `org.eclipse.paho:client.mqttv3` · `mqttv5.client` · `com.rabbitmq:amqp-client` · `org.apache.kafka:kafka-clients` · `redis.clients:jedis` | 后端客户端：`aifei-mq` 以 `optional` 声明、不向下游传递，由 demo 自行声明以演示多后端切换 |
 | `io.undertow:undertow-core` | HTTP 命令式服务端（不用 Servlet） |
 | `org.apache.logging.log4j:log4j-core` | `Log4jLogFactory` 的运行时实现 |
 
-内存后端零第三方运行依赖；本 demo 未直接声明任何 MQ 客户端、连接池或数据库驱动——Paho v3/v5、Jedis、
-amqp-client、kafka-clients、rocketmq-client 均随对应后端子模块传递引入。未提供 `log4j2.xml`，
-log4j2 以默认配置运行（控制台 ERROR 级），启动时的 "No Log4j2 configuration file found" 属预期提示。
+内存后端零第三方运行依赖。未提供 `log4j2.xml`，log4j2 以默认配置运行（控制台 ERROR 级），
+启动时的 "No Log4j2 configuration file found" 属预期提示。
 
 ## 文档
 

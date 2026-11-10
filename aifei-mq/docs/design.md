@@ -4,9 +4,7 @@
 
 > **交付性质**：`aifei-mq` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。因此**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator；只有「公共 API + 内部实现 + 一个装配用 `MqPlugin`」。
 >
-> **文档状态与实测**：1.0.0 已按本文实现（7 个后端：稳定 `memory` / `rocketmq` / `rabbitmq` ＋ 实验性 `mqtt` / `mqtt5` / `kafka` / `redisstream`），**尚未对外发布**。`cd aifei-mq && mvn clean verify` → **`Tests run: 171 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **111** + 跳过 **60**）；**9 个 reactor 模块**；主源码 **31** 个（core **17** + 7 个后端各 **2**）/ 测试文件 **30** 个（见 §8）。§3 公共面与 §5 的三项裁决（投递语义 / provider 抽象粒度 / 关闭语义）属**已定档契约**，变更前**必须先更新本文**；4 个实验性后端的**运行期语义未经真机 broker 验证**（§13 第 28 条）。
->
-> **1.0.0 封版简化（已拍板并落地）**：公共 API 面与主流程不变；**稳定支持矩阵 = `memory` + `rocketmq` + `rabbitmq`**；工程结构为「父工程聚合 ＋ 8 个子模块」，provider 发现改用 JDK `ServiceLoader`。目标态、14 项拍板结果与发布清单见 §15。
+> **文档状态与实测**：1.0.0 已按本文实现，**尚未对外发布**。工程结构为**单模块** `io.github.gollyhu:aifei-mq:1.0.0`（`packaging=jar`），内含 7 个后端。`cd aifei-mq && mvn clean verify` → **`Tests run: 150 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **90** + 跳过 **60**）；主源码 **31** 个 / 测试文件 **23** 个（见 §8）。§3 公共面与 §5 的三项裁决（投递语义 / provider 抽象粒度 / 关闭语义）属**已定档契约**，变更前**必须先更新本文**；`mqtt` / `mqtt5` / `kafka` 的**运行期语义未经真机 broker 验证**（§15）。
 
 ---
 
@@ -16,31 +14,27 @@
 
 `aifei-mq` 为 aifei 应用补齐框架未覆盖的**异步消息能力**（解耦、削峰）。业务只依赖根包 8 个公共类型与 `ProducerKit` / `ConsumerKit`：**发送与订阅代码保持一致；投递、持久化、顺序和重复语义由后端决定**（不承诺「换后端只改配置即行为等价」，B2 定档）。
 
-- 父工程坐标：`io.github.gollyhu:aifei-mq:1.0.0`（`packaging=pom`，仅聚合，不发布）
-- 子模块坐标：`io.github.gollyhu:aifei-mq-core:1.0.0`（核心）、`io.github.gollyhu:aifei-mq-memory:1.0.0`、`io.github.gollyhu:aifei-mq-rocketmq:1.0.0`、`io.github.gollyhu:aifei-mq-rabbitmq:1.0.0`（稳定后端）；4 个实验性后端模块见 §15
-- 包名：`cn.hg.aifei.mq`（核心模块）
+- 坐标：`io.github.gollyhu:aifei-mq:1.0.0`（`packaging=jar`）
+- 包名：`cn.hg.aifei.mq`
 - 技术基线：**Java 8**（语法与 API 双约束，主 JAR class major version = 52）
 
 ### 1.2 为什么是「库/SDK」而非应用工程
 
 本模块提供的是**可被别的应用依赖的能力**，自身不承载任何应用装配。aifei 应用工程要素**一律不提供**：`AppConfig implements AifeiConfig`（装配由**使用方应用**完成，本模块只提供 `MqPlugin` 供 `plugins.add(...)`）、`Launcher` / `Aifei.start`（入口属应用）、`service/` 包（Just Service，本模块是基础设施 SDK 不是业务）、HIO / 路由 / `webapp/`（无 HTTP 面）、表结构 / Db+Row / Generator（无持久化，消息不落库）。
 
-父工程 `aifei-mq/` 内 `mvn clean verify` 必须 **0 failure / 0 error**（reactor 逐模块执行，含架构门禁测试）。
+`aifei-mq/` 内 `mvn clean verify` 必须 **0 failure / 0 error**（含架构门禁测试）。
 
-### 1.3 「纯核心 + 显式选后端 + provider 扩展点」
+### 1.3 「单模块 + 显式引客户端 + provider 扩展点」
 
-`aifei-mq-core` 只承载**公共 API 8 类型 + `internal` + `aifei.MqPlugin`**，**不内置任何后端实现**；业务按 M2 决策**显式引入一个后端子模块**（如 `io.github.gollyhu:aifei-mq-memory:1.0.0`），即传递获得核心与该后端。
+`aifei-mq` 一个 JAR 承载**公共 API 8 类型 + `internal` + `aifei.MqPlugin` + 7 个后端实现包**。只引本依赖即可用默认 `memory`（零第三方运行依赖）；使用真实后端须**自行引入对应客户端**。
 
-- **开箱即用口径（M2 定档）**：原「默认内存后端随核心自带」改为「**引入 `io.github.gollyhu:aifei-mq-memory:1.0.0` 一个依赖即可用、零第三方运行依赖**」；只引核心时 `MqPlugin.start()` **明确失败**并提示缺少对应后端模块，不留半装配。
-- **稳定支持矩阵（A1 定档）**：1.0.0 承诺 `memory`、`rocketmq` 与 `rabbitmq`（后者于 2026-11-06 在 CloudAMQP 真机验证通过后由实验性转为稳定）；`mqtt` / `mqtt5` / `kafka` / `redisstream` 以**实验性子模块**保留在仓库，**不发布、不承诺行为语义**（M4 定档，见 §15）。
-- **provider 发现（M3 定档）**：核心不 import 任何后端实现，改为 JDK `ServiceLoader` 从各后端子模块的 `META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 发现；provider 必须 `public`、**无参构造**、**无状态**。
-- **新增后端 = 新增一个后端子模块**：`XxxMqProvider implements MqProvider`（`TYPE` 常量 + `type()` + `createBus(MqConfig)`）+ `XxxMessageBus implements MessageBus` + 一份 `META-INF/services` 声明；**不回头改 `MqPlugin` 与核心装配逻辑**。
-- 后端配置沿用 `mq.<type>.*`；**内存后端无额外键**（**不引入** `mq.memory.*`）；RocketMQ 后端键见 §4.3 / §5.5；
-- provider 扩展点已由需求文档明文要求，属**需求内**；除此之外**不自增**扩展点或抽象层。
-- **4 个非稳定后端（实验性，不发布）**：`mqtt`（MQTT v3.1.1）/ `mqtt5`（MQTT v5.0）/ `kafka` / `redisstream`，实现分别落 `cn.hg.aifei.mq.mqtt` / `.mqtt5` / `.kafka` / `.redisstream`，后端标识字面量与包名同名（`"mqtt"` / `"mqtt5"` / `"kafka"` / `"redisstream"`）；客户端版本见 §9；各后端**子模块**以 `compile` 声明客户端依赖（引该子模块即传递获得，见 §9 / §15）。**MQTT 拆为两个独立后端**（v3 与 v5 各有自己的 provider / 总线 / 配置命名空间 `mq.mqtt.*` 与 `mq.mqtt5.*`，**不引入** `mq.mqtt.version` 键）。各后端实现表见 §4.6–§4.10，差异落点见 §5.6 (C)，依赖见 §9；**运行期语义零真机验证、不承诺行为**（§15）。
-- **`rabbitmq`（稳定，1.0.0 发布）**：实现落 `cn.hg.aifei.mq.rabbitmq`，标识字面量 `"rabbitmq"`，客户端 `com.rabbitmq:amqp-client:5.21.0`（`compile`，随子模块传递）；已于 2026-11-06 在 CloudAMQP（RabbitMQ 4.3.6）完成真机验证（§15.6）。
-
-> provider 路线与 `aifei-cache` 的「静态注册表 + 装配骨架」**不再同构**（改为 `ServiceLoader`），原因：后端实现与发现必须分模块、核心不得反向依赖后端；`aifei-websocket` 已删除 provider/SPI 的纯 JDK 自实现路线仍**不可照搬**（本模块确有多种后端）。
+- **稳定支持矩阵**：`memory` / `rocketmq` / `rabbitmq`；`mqtt` / `mqtt5` / `kafka` / `redisstream` **随包提供但不承诺运行期语义**（未经真机验证）。
+- **provider 发现**：JDK `ServiceLoader` 读取单一 `META-INF/services/cn.hg.aifei.mq.internal.MqProvider`（7 行），按 `type()` 建索引；provider 必须 `public`、**无参构造**、**无状态**。
+- **新增后端 = 在本 JAR 内新增实现包**：`XxxProvider implements MqProvider`（`TYPE` 常量 + `type()` + `createBus(MqConfig)`）+ `XxxMessageBus implements MessageBus` + services 文件追加一行；装配逻辑与 `MqPlugin` 无需改动。
+- **客户端依赖一律 `optional`**：6 个中间件客户端在本模块编译与测试期可见，但**不向下游传递**；消费方按 `mq.type` 自行引入（版本见 §9）。未引入客户端而配置该 `type` 属配置错误，`MqPlugin.start()` 回滚后抛 `NoClassDefFoundError`。
+- 后端配置沿用 `mq.<type>.*`；**内存后端无额外键**（**不引入** `mq.memory.*`）；RocketMQ 后端键见 §4.3 / §5.5。
+- **MQTT 是两个独立后端**：v3.1.1（`mqtt`）与 v5.0（`mqtt5`）各有自己的 provider / 总线 / 配置命名空间 `mq.mqtt.*` 与 `mq.mqtt5.*`，**不引入** `mq.mqtt.version` 键。
+- 各后端实现表见 §4.6–§4.10，差异落点见 §5.6 (C)，依赖见 §9。
 
 ### 1.4 公共面收敛纪律（硬约束）
 
@@ -49,16 +43,16 @@
 | 1 | **公共 API 零第三方类型**：根包 8 个公共类型**不含**任何第三方类型 |
 | 2 | **公共 API 零框架类型**：`cn.aifei.*` 只允许出现在 `cn.hg.aifei.mq.aifei` 接入包（即只允许 `MqPlugin` 一个类引用框架） |
 | 3 | 根包公共类型**逐个列出并说明职责**（§3），**精确 8 个**；新增公共类型必须先过设计决策 |
-| 4 | **第三方依赖分层隔离**：**核心模块零第三方运行依赖**；每个后端子模块在**自身**以 `compile` 声明其客户端依赖（引该子模块即传递获得，见 §9 / §15）；**公共面（根包）零第三方类型**。框架内核 `cn.aifei:aifei-all:1.1.2` 为 `provided`，测试依赖 `junit` 为 `test` |
+| 4 | **第三方依赖分层隔离**：契约层（根包 / `internal` / `aifei`）**零第三方类型**；6 个客户端以 `optional` 声明、只被实现包使用且**不向下游传递**（见 §9）；框架内核 `cn.aifei:aifei-all:1.1.2` 为 `provided`，测试依赖 `junit` 为 `test` |
 | 5 | Java 8 语法与 API；主 JAR class major version = 52 |
 | 6 | 每类规则只有一个定义点（校验 / 配置域常量 / 编解码 / 注册表 / 总线投递 / 单例持有） |
 
-> 第 1、2 条由**架构门禁测试** `ArchitectureBoundaryTest` 强制（§12），不得放宽或绕过；拆模块后门禁**按模块分布**（核心 5 项断言 ＋ 各后端子模块精简断言），见 §12.6。
+> 第 1、2 条由**架构门禁测试** `ArchitectureBoundaryTest` 强制（§12，共 6 例），不得放宽或绕过。
 
 ### 1.5 设计原则
 
-1. **接口极简、实现无关**：业务只依赖根包 8 类型与 `ProducerKit` / `ConsumerKit`；实现经 `@Inject Producer` / `@Inject Consumer` 或 `ProducerKit` / `ConsumerKit` 取用；**业务显式引入一个后端子模块**（§1.3）。
-2. **零依赖优先**：核心模块与内存后端子模块均零第三方运行依赖；`aifei-all` 为 `provided`。
+1. **接口极简、实现无关**：业务只依赖根包 8 类型与 `ProducerKit` / `ConsumerKit`；实现经 `@Inject Producer` / `@Inject Consumer` 或 `ProducerKit` / `ConsumerKit` 取用；引本依赖即可用默认 `memory`，真实后端另引客户端（§1.3）。
+2. **零依赖优先**：契约层与 `memory` 后端均零第三方运行依赖；`aifei-all` 为 `provided`。
 3. **行为契约可测**：投递语义、异常分类、关闭语义、配置键名全部定档到「可写断言」的程度（§5）。
 4. **保持极简**：不做未被需求驱动的抽象；provider 扩展点是需求内唯一允许的抽象。
 5. **基线一致**：无页面，故无 UI 基线；公共面与配置键名对齐需求文档第四节。
@@ -79,9 +73,9 @@
 | **生产者工具类 ProducerKit** | 静态取用 `use()` / `use(instanceName)` + `send`×3 静态镜像 | 根包（公共） |
 | **消费者工具类 ConsumerKit** | 静态取用 `use()` / `use(instanceName)` + `subscribe` / `unsubscribe` 静态镜像 | 根包（公共） |
 | **命名实例** | 由 `mq.names` 声明的扩展实例；主实例走根级 `mq.*`，命名实例走 `mq.<name>.*` | 配置域 |
-| **总线 MessageBus** | 后端统一内部对象：`publish` / `subscribe` / `unsubscribe` / `close` 四方法；Producer / Consumer 视图由装配层统一创建 | `internal`（契约）/ 各后端子模块（实现） |
+| **总线 MessageBus** | 后端统一内部对象：`publish` / `subscribe` / `unsubscribe` / `close` 四方法；Producer / Consumer 视图由装配层统一创建 | `internal`（契约）/ 各实现包 |
 | **后端标识 type** | `mq.type` 取值，如 `"memory"`；白名单由注册表派生 | `internal` |
-| **后端 provider** | 一种后端的装配契约：`type()` + `createBus(MqConfig)`；**必须无状态、`public` 无参构造**，经 `ServiceLoader` 发现 | `internal`（契约）/ 各后端子模块 |
+| **后端 provider** | 一种后端的装配契约：`type()` + `createBus(MqConfig)`；**必须无状态、`public` 无参构造**，经 `ServiceLoader` 发现 | `internal`（契约）/ 各实现包 |
 | **注册表** | `ServiceLoader` 发现结果按 `type` 建的索引；同 `type` 多实现即启动失败 | `internal.MqProviderRegistry` |
 | **实例注册表 MqHolder** | 运行期按**实例名**登记 / 取用 `Producer` / `Consumer`（多实例），供 `ProducerKit` / `ConsumerKit` 取用 | `internal` |
 
@@ -241,9 +235,9 @@ public final class ConsumerKit {
 | `BusProducer` | final（包级） | **生产视图唯一定义点**：实现公共 `Producer` 的 3 个 `send` 重载——经 `MqValidator` 校验后委托 `bus.publish`；`send(topic, String)` 在此做 UTF-8 编码 |
 | `BusConsumer` | final（包级） | **消费视图唯一定义点**：实现公共 `Consumer` 的 `subscribe` / `unsubscribe`——经 `MqValidator` 校验后委托总线 |
 | `MqProvider` | interface | **后端扩展点**：`type()` / `createBus(MqConfig)` |
-| `MqProviderRegistry` | final | **provider 发现唯一定义点**：`ServiceLoader.load(MqProvider.class)` 一次性发现并按 `type()` 建索引；`getProvider(String type)`（未发现抛 `MqException`，消息提示需引入的后端子模块）/ `types()`（供 `MqConfig` 派生白名单）；同一 `type` 多实现 → 启动期明确报错 |
+| `MqProviderRegistry` | final | **provider 发现唯一定义点**：`ServiceLoader.load(MqProvider.class)` 一次性发现并按 `type()` 建索引；`getProvider(String type)`（未发现抛 `MqException`，消息提示排查 `mq.type` 与客户端依赖）/ `types()`（供 `MqConfig` 派生白名单）；同一 `type` 多实现 → 启动期明确报错 |
 
-> **仍不提供** `MqProviderRegistry.register(String, MqProvider)` 公开方法：扩展后端的既定方式是**新增后端子模块 + `META-INF/services` 声明**（M3 定档，§15），核心不感知具体后端；`ServiceLoader` 是唯一发现通道。「同 `type` 多实现」属依赖或配置错误，启动期明确报错，不静默择一。
+> **仍不提供** `MqProviderRegistry.register(String, MqProvider)` 公开方法：扩展后端的既定方式是**新增实现包 + `META-INF/services` 声明**（§15），契约层不感知具体后端；`ServiceLoader` 是唯一发现通道。「同 `type` 多实现」属依赖或配置错误，启动期明确报错，不静默择一。
 
 ### 4.2 `memory`（默认后端实现，`cn.hg.aifei.mq.memory`）
 
@@ -303,9 +297,9 @@ public final class ConsumerKit {
 - **装配原子性**：任一实例装配失败（配置非法 / `mq.type` 未发现对应后端模块 / 同 `type` 多实现 / 建总线失败）→ **立即抛出**（`IllegalArgumentException` / `MqException`），`start()` **不留半装配**——已登记的实例全部回滚（`MqHolder.clear()`）并关闭已建成的总线，应用启动失败。
 - **生命周期**：`stop()` 关闭**全部**实例（幂等，§5.3）。
 
-### 4.5 后端子模块的共用约定（各后端模块通用）
+### 4.5 后端实现包的共用约定
 
-> 每个后端是一个**独立子模块**（`aifei-mq-memory` / `aifei-mq-rocketmq` / `aifei-mq-rabbitmq` / 4 个实验性子模块），**各模块 2 个类 + 1 份 `META-INF/services` 声明**。第三方客户端类型**只允许**出现在该后端模块的实现包内；核心模块不含任何后端实现（§15）。
+> 每个后端是一个**实现包**（`memory` / `rocketmq` / `rabbitmq` / `mqtt` / `mqtt5` / `kafka` / `redisstream`），**各 2 个类**；7 个 provider 统一在 `META-INF/services` 中声明。第三方客户端类型**只允许**出现在实现包内；契约层不含任何后端实现（§15）。
 
 **命名约定**：类名取「**`<产品名>` + `Provider` / `MessageBus`**」，产品名分别为 `MemoryMq` / `RocketMq` / `Mqtt` / `Mqtt5` / `RabbitMq` / `Kafka` / `RedisStream`。包名与后端标识字面量同名：`cn.hg.aifei.mq.memory` / `.rocketmq` / `.mqtt` / `.mqtt5` / `.rabbitmq` / `.kafka` / `.redisstream`，`TYPE` 分别取 `"memory"` / `"rocketmq"` / `"mqtt"` / `"mqtt5"` / `"rabbitmq"` / `"kafka"` / `"redisstream"`。
 
@@ -315,11 +309,11 @@ public final class ConsumerKit {
 | --- | --- |
 | 1 | `XxxProvider implements MqProvider`（`public` 无参构造）：`TYPE` 常量（该后端标识字面量唯一定义点）、`type()`、`createBus(config)` → `new XxxMessageBus(config)`；**无实例字段**（provider 无状态，A10） |
 | 2 | `XxxMessageBus implements internal.MessageBus`：**该后端专有配置键名常量集中于此**（键名常量唯一定义点），键值一律经 `MqConfig.get(relativeKey)` 读取，**不得手写** `"mq.mqtt."` / `"mq.kafka."` 之类前缀（命名实例下实际前缀为 `mq.<name>.<type>.`，§5.5）；持有本地订阅登记（`ConcurrentHashMap<String, List<MessageListener>>`，值对象 `CopyOnWriteArrayList`）、`volatile boolean closed`，以及该后端必要的客户端对象；`@Override publish(Message)` / `subscribe(topic, listener)` / `unsubscribe(topic, listener)`；`close()` 幂等。**不再编写 `XxxProducer` / `XxxConsumer`**——视图由核心的 `BusProducer` / `BusConsumer` 统一承担 |
-| 3 | **发现声明**：该模块 `src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 写一行 provider 全限定类名；核心经 `ServiceLoader` 发现；**不回头改** `MqPlugin` 与核心装配逻辑 |
+| 3 | **发现声明**：在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 追加一行 provider 全限定类名；经 `ServiceLoader` 发现；**不回头改** `MqPlugin` 与装配逻辑 |
 | 4 | **配置键名风格**：一律 kebab-case（与既有 `namesrv-addr` / `producer-group` 一致）；键名相对 `<实例前缀>.<type>.`；面向使用者的键表见 `README.md`，本文只列「必填 + 改变可观测行为」的键。**唯一例外（2026-11-06 定档）**：`rabbitmq` 的 SSL 参数用 `ssl.*` 点号分层（`ssl.enabled` / `ssl.algorithm` / `ssl.trust-store[-type|-password]` / `ssl.key-store[-type|-password]`），对齐 TLS 配置惯例 |
 | 5 | **公共面零扩张**：不新增公共类型、不改 `Producer.send`（仍恰好 3 个重载）、不改 `Consumer` 签名；新能力一律经「provider + 配置域 + §5.6 (B)/(C)」表达 |
 
-> **§4.6–§4.10 的定位**：只写**该后端相对共同骨架（本节）的差异要点**——类清单恒为「provider + 总线」2 类，配置键名以各总线键名常量为准（§11.1），行为差异的权威表在 §5.6 (C)；`rabbitmq` 已真机验证并随 1.0.0 发布，`mqtt` / `mqtt5` / `kafka` / `redisstream` **运行期语义零真机验证、不发布**（§15）。
+> **§4.6–§4.10 的定位**：只写**该后端相对共同骨架（本节）的差异要点**——类清单恒为「provider + 总线」2 类，配置键名以各总线键名常量为准（§11.1），行为差异的权威表在 §5.6 (C)；`mqtt` / `mqtt5` / `kafka` / `redisstream` **运行期语义零真机验证、不承诺行为**（§15）。
 
 ### 4.6 `mqtt`（MQTT v3.1.1，实验性 · 不发布，`cn.hg.aifei.mq.mqtt`）
 
@@ -410,7 +404,7 @@ public final class BusProducer implements Producer { /* 3 个 send 重载：校�
 public final class BusConsumer implements Consumer { /* subscribe / unsubscribe：校验 → 委托总线 */ }
 // internal.MqProviderRegistry —— ServiceLoader 发现（核心不 import 任何后端）
 public final class MqProviderRegistry {
-    public MqProvider getProvider(String type);   // 未发现 → MqException（消息提示需引入的后端子模块）
+    public MqProvider getProvider(String type);   // 未发现 → MqException（消息提示排查取值与客户端依赖）
     public Set<String> types();                   // 供 MqConfig 派生白名单
 }
 ```
@@ -454,7 +448,7 @@ public final class MqProviderRegistry {
 
 | 键 | 必填 | 默认 | 说明 |
 | --- | --- | --- | --- |
-| `mq.type` | **可选** | `memory` | **主实例**的后端类型；指向**未发现**后端（缺后端子模块）或同 `type` 多实现时 `start()` **立即** `MqException`（消息提示需引入的后端子模块），**不留半装配状态** |
+| `mq.type` | **可选** | `memory` | **主实例**的后端类型；指向**未注册** `type` 或同 `type` 多实现时 `start()` **立即** `MqException`，**不留半装配状态** |
 | `mq.names` | 可选 | — | 声明**命名实例**，逗号分隔；**主实例不在此声明**（主实例恒存在、无需声明）；空项 / 重名 / 保留名 / `__MAIN__` 即 `IllegalArgumentException`（校验口径见下） |
 | `mq.<type>.*` | 后端自定 | — | **主实例**的后端专有配置，经 `MqConfig.get(relativeKey)` 读取；**内存后端无额外键**（**不引入** `mq.memory.*`） |
 | `mq.rocketmq.*` | 见 §4.3 | — | **阶段 2**：**主实例**的 RocketMQ 后端专有键（`namesrv-addr` 必填；`producer-group` / `consumer-group` 可选） |
@@ -466,8 +460,8 @@ public final class MqProviderRegistry {
 **配置键面纪律（D1 定档）**：
 
 - **判据**：每个公开配置键必须对应一个**可观察行为**；仅透传客户端默认值的参数键（轮询超时、请求超时、退避间隔等）不保留；「配置了却无效果」的键属负资产，必须删除。
-- **稳定模块（`aifei-mq-memory` / `aifei-mq-rocketmq` / `aifei-mq-rabbitmq`）**：**P4 复核结论——`aifei-mq-memory` 与 `aifei-mq-rocketmq` 自身无可删键，删键数 = 0**（`aifei-mq-memory` 无后端键；`aifei-mq-rocketmq` 的 `namesrv-addr` / `producer-group` / `consumer-group` 均改变可观测行为，全部保留）；`aifei-mq-rabbitmq` 未参与 P4 复核，键面见 §4.8；凭据类键同属保留项。
-- **实验性子模块（`mqtt` / `mqtt5` / `kafka` / `redisstream`，M4）**：键域**冻结**，仅删除死键 `mq.mqtt.reconnect-delay-millis`（已于 P4 删除）；透传键瘦身随 1.1.0 启用时一并处理。
+- **稳定后端（`memory` / `rocketmq` / `rabbitmq`）**：`memory` 无后端键；`rocketmq` 的 `namesrv-addr` / `producer-group` / `consumer-group` 均改变可观测行为，全部保留；`rabbitmq` 键面见 §4.8；凭据类键同属保留项。
+- **实验性后端（`mqtt` / `mqtt5` / `kafka` / `redisstream`）**：键域**冻结**，死键 `mq.mqtt.reconnect-delay-millis` 已删除。
 - **键只增不破坏**：未来按需加回键零兼容负担；先删后加优于先加后删。
 
 **键归属与实例前缀**（对齐 `aifei-cache` 的 `cache.names` 做法）：
@@ -804,14 +798,14 @@ ConsumerKit.subscribe("order-events", message -> dispatch(decode(message.payload
 
 > **类图唯一来源**：`docs/diagrams/class.mermaid`（1.0.0 目标态）；本文不再内嵌副本，避免两处双写漂移，类与关系要点见 §6.1。
 >
-> 目标态结构：父 pom（`packaging=pom`，图中不画类）聚合 8 个子模块；`aifei-mq-core` 承载公共面 8 类型 + `internal` 8 类型 + `MqPlugin`；每个后端模块只有 2 个类——`XxxProvider`（`type()` + `createBus`）与 `XxxMessageBus`（`publish` / `subscribe` / `unsubscribe` / `close` 的 4 方法总线），面向应用的 `Producer` / `Consumer` 视图统一由 `BusProducer` / `BusConsumer` 提供；后端经 `ServiceLoader` 从各模块 `META-INF/services` 发现并按 `type()` 建索引。
+> 结构：单模块 `io.github.gollyhu:aifei-mq:1.0.0`；契约层承载公共面 8 类型 + `internal` 8 类型 + `MqPlugin`；每个后端实现包只有 2 个类——`XxxProvider`（`type()` + `createBus`）与 `XxxMessageBus`（4 方法总线），`Producer` / `Consumer` 视图统一由 `BusProducer` / `BusConsumer` 提供；后端经 `ServiceLoader` 从单一 `META-INF/services` 发现并按 `type()` 建索引。
 
 ### 6.1 类图事实要点（摘要）
 
-- **`aifei-mq-core` / 根包（公共 8 类型）**：`Message`（`of` 唯一工厂，`topic` + `payload` 值语义）、`Producer`（3 个 `send`）、`Consumer`（`subscribe` / `unsubscribe`）、`MessageListener`（`@FunctionalInterface`）、`SendResult`（`of`，`topic` + `messageId`）、`MqException`、`ProducerKit` / `ConsumerKit`（静态门面，经 `MqHolder` 按实例名取）。
-- **`aifei-mq-core` / `internal`**：`MqValidator`（校验唯一定义点）、`MqConfig`（键常量 + `parse` / `parseInstanceNames`）、`MqHolder`（多实例运行期注册表）、`MessageBus`（4 方法总线）、`BusProducer` / `BusConsumer`（视图唯一定义点，分别实现公共 `Producer` / `Consumer`）、`MqProvider`（`type()` + `createBus`）、`MqProviderRegistry`（`ServiceLoader` 发现 + 按 `type` 索引）。
-- **`aifei-mq-core` / `aifei`**：`MqPlugin implements cn.aifei.plugin.Plugin`——唯一引用框架类型的类；`start()` 经 `AopKit` 挂主实例、`stop()` 关闭全部实例。
-- **各后端子模块**：恒为 `XxxProvider implements MqProvider` ＋ `XxxMessageBus implements MessageBus` 两个类 ＋ 一行 `META-INF/services/cn.hg.aifei.mq.internal.MqProvider`；依赖方向恒为「后端子模块 → 核心」，核心不 import 任何后端实现或第三方客户端类型。
+- **根包（公共 8 类型）**：`Message`（`of` 唯一工厂，`topic` + `payload` 值语义）、`Producer`（3 个 `send`）、`Consumer`（`subscribe` / `unsubscribe`）、`MessageListener`（`@FunctionalInterface`）、`SendResult`（`of`，`topic` + `messageId`）、`MqException`、`ProducerKit` / `ConsumerKit`（静态门面，经 `MqHolder` 按实例名取）。
+- **`internal`**：`MqValidator`（校验唯一定义点）、`MqConfig`（键常量 + `parse` / `parseInstanceNames`）、`MqHolder`（多实例运行期注册表）、`MessageBus`（4 方法总线）、`BusProducer` / `BusConsumer`（视图唯一定义点）、`MqProvider`（`type()` + `createBus`）、`MqProviderRegistry`（`ServiceLoader` 发现 + 按 `type` 索引）。
+- **`aifei`**：`MqPlugin implements cn.aifei.plugin.Plugin`——唯一引用框架类型的类；`start()` 经 `AopKit` 挂主实例、`stop()` 关闭全部实例。
+- **各实现包**：恒为 `XxxProvider implements MqProvider` ＋ `XxxMessageBus implements MessageBus` 两个类；7 个 provider 统一在单一 `META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 声明；依赖方向恒为「实现包 → `internal` 契约」，契约层不 import 任何后端实现或第三方客户端类型。
 
 ---
 
@@ -889,15 +883,15 @@ sequenceDiagram
 
 ## 8. 模块与文件清单（1.0.0 目标态）
 
-> **实测口径**：以下树为**实测当前态**（`Get-ChildItem -Recurse` 逐模块核对，排除 `target/`）：父工程 **1 个**（`pom.xml`，仅聚合）+ **8 个子模块**；主源码 **31** 个（core **17** + 7 个后端各 **2**）、测试文件 **30** 个（core **10** + memory **3** + rocketmq **2** + 其余 5 个各 **3**）。
+> **实测口径**：以下树为**实测当前态**（`Get-ChildItem -Recurse` 核对，排除 `target/`）：单模块 **1 个**（`packaging=jar`）；主源码 **31** 个（公共面 8 + `internal` 8 + `aifei` 1 + 7 个实现包各 2）、测试文件 **23** 个。
 >
-> **公共面收敛**：每个后端模块**只有** 一个 `XxxProvider` + **一条** `XxxMessageBus`，**不含任何生产者 / 消费者视图类**（视图已收敛为 core 的 `BusProducer` / `BusConsumer`，§5.2 与 §15.1 C1）。后端替换 = **引一个后端子模块 + `META-INF/services` 一行声明**（§15.1 M2 / M3）。
+> **公共面收敛**：每个后端实现包**只有** 一个 `XxxProvider` + **一条** `XxxMessageBus`，**不含任何生产者 / 消费者视图类**（视图由 `BusProducer` / `BusConsumer` 统一承担，§5.2）。新增后端 = **新增实现包 + services 一行声明**。
 
-### 8.1 父工程（聚合，不发布）
+### 8.1 工程根
 
 ```text
-aifei-mq/                                  【父工程】io.github.gollyhu:aifei-mq:1.0.0（packaging=pom，仅聚合）
-├── pom.xml                                # <modules> 列 8 个子模块；子模块不声明 <parent>
+aifei-mq/                                  io.github.gollyhu:aifei-mq:1.0.0（packaging=jar）
+├── pom.xml                                # 单模块构建；6 个客户端 optional
 ├── README.md                              # 用法 / 配置（面向使用者）
 ├── AGENTS.md                              # 开发约束（面向开发代理）
 └── docs/
@@ -907,112 +901,99 @@ aifei-mq/                                  【父工程】io.github.gollyhu:aife
         └── class.mermaid                  # 类图（源文件，与 §6 内嵌副本一致）
 ```
 
-### 8.2 `aifei-mq-core`（【稳定·发布】主源 17 / 测试 10）
+### 8.2 主源码与测试（主源 31 / 测试 23）
 
 ```text
-aifei-mq-core/  pom.xml：aifei-all（provided）+ junit（test），零第三方运行依赖
-  main/java/cn/hg/aifei/mq/
-    Message / Producer / Consumer / MessageListener /
-    SendResult / MqException / ProducerKit / ConsumerKit   公共 8 类型（§3）
-    internal/  MqValidator · MqConfig · MqHolder           校验 / 配置 / 实例注册表唯一定义点
-               MessageBus · BusProducer · BusConsumer      4 方法总线 + 生产 / 消费视图
-               MqProvider · MqProviderRegistry             扩展点契约 + ServiceLoader 发现
-    aifei/MqPlugin.java                                    唯一 import 框架类型的类
-  test/java/cn/hg/aifei/mq/
-    ArchitectureBoundaryTest（门禁 6 例，§12.6）· MessageBusContractTest（契约基类，test-jar 复用）
-    Message / SendResult / MqConfig / MqValidator / MqHolder / ProducerKit / ConsumerKit 各 *Test
-    internal/MqProviderRegistryTest（provider 注册表：重复 / 缺失类型）
+src/main/java/cn/hg/aifei/mq/
+  Message / Producer / Consumer / MessageListener /
+  SendResult / MqException / ProducerKit / ConsumerKit   公共 8 类型（§3）
+  internal/  MqValidator · MqConfig · MqHolder           校验 / 配置 / 实例注册表唯一定义点
+             MessageBus · BusProducer · BusConsumer      4 方法总线 + 生产 / 消费视图
+             MqProvider · MqProviderRegistry             扩展点契约 + ServiceLoader 发现
+  aifei/MqPlugin.java                                    唯一 import 框架类型的类
+  memory/ rocketmq/ rabbitmq/ mqtt/ mqtt5/ kafka/ redisstream/
+            各 1 个 Provider + 1 个 MessageBus（共 14）
+src/main/resources/META-INF/services/
+  cn.hg.aifei.mq.internal.MqProvider                     7 行 provider 声明
+src/test/java/cn/hg/aifei/mq/
+  ArchitectureBoundaryTest（门禁 6 例，§12）· MessageBusContractTest（契约基类）
+  公共面 / internal / memory 单元测试
+  7 个后端：契约子类（集成默认关闭）· 配置校验（rabbitmq 5 例，其余各 1 例）
 ```
 
-### 8.3 稳定后端子模块（`aifei-mq-memory` / `aifei-mq-rocketmq` / `aifei-mq-rabbitmq`）
+### 8.3 后端实现包（7 个）
 
-| 模块 | 实现类（主源 2） | 测试 | pom 依赖 |
-| --- | --- | --- | --- |
-| `aifei-mq-memory`（测试 3） | `MemoryMqProvider`（`TYPE` 引用 `MqConfig.DEFAULT_TYPE`）＋ `MemoryMessageBus`（同步投递、订阅登记、`close()` 幂等） | `MemoryMessageBusContractTest`（共同底线 + 内存专有）、`MqPluginTest`（装配 / 多实例 / 回滚）、`memory/MemoryBoundaryGateTest`（门禁 3 例） | 仅 `aifei-mq-core`（零第三方运行依赖） |
-| `aifei-mq-rocketmq`（测试 2） | `RocketMqProvider`（`TYPE = "rocketmq"`，无实例字段）＋ `RocketMqMessageBus`（构造内启 producer、首次 `subscribe` 启 consumer） | `RocketMqMessageBusContractTest`（集成，默认关闭）、`RocketMqBoundaryGateTest`（门禁 3 例） | `rocketmq-client:4.9.7`（`compile`） |
-| `aifei-mq-rabbitmq`（测试 3） | `RabbitMqProvider`（`TYPE = "rabbitmq"`，无实例字段）＋ `RabbitMqMessageBus`（构造内建连与发布通道、首次 `subscribe` 声明队列） | `RabbitMqMessageBusContractTest`（集成，默认关闭）、`RabbitMqBoundaryGateTest`（门禁 3 例）、`RabbitMqConfigValidationTest`（配置校验 5 例） | `amqp-client:5.21.0`（`compile`） |
-
-三模块目录结构与 §8.4 同构：`main/java/<实现包>` ＋ `main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider`（单行声明）＋ `test/java`。
-
-### 8.4 实验性后端子模块（`mqtt` / `mqtt5` / `kafka` / `redisstream`，结构同构，不发布）
-
-四个实验性模块**目录结构逐项同构**，各为「主源 2 / 测试 3」，仅产品名与客户端依赖不同（`maven.deploy.skip=true`，§15.3）：
-
-| 模块 | 实现包 | 客户端依赖（`compile`，随模块传递） |
+| 实现包 | 实现类 | 客户端（`optional`，不向下游传递） |
 | --- | --- | --- |
-| `aifei-mq-mqtt` | `cn.hg.aifei.mq.mqtt` | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` |
-| `aifei-mq-mqtt5` | `cn.hg.aifei.mq.mqtt5` | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` |
-| `aifei-mq-kafka` | `cn.hg.aifei.mq.kafka` | `org.apache.kafka:kafka-clients:3.9.1`（**必须停 3.x**，4.x 要求 Java 11+） |
-| `aifei-mq-redisstream` | `cn.hg.aifei.mq.redisstream` | `redis.clients:jedis:8.0.1`（与 `aifei-cache` 对齐，Jedis 直连） |
+| `memory` | `MemoryMqProvider`（`TYPE` 引用 `MqConfig.DEFAULT_TYPE`）＋ `MemoryMessageBus` | 无 |
+| `rocketmq` | `RocketMqProvider` ＋ `RocketMqMessageBus` | `rocketmq-client:4.9.7` |
+| `rabbitmq` | `RabbitMqProvider` ＋ `RabbitMqMessageBus` | `amqp-client:5.21.0` |
+| `mqtt` | `MqttProvider` ＋ `MqttMessageBus` | `org.eclipse.paho.client.mqttv3:1.2.5` |
+| `mqtt5` | `Mqtt5Provider` ＋ `Mqtt5MessageBus` | `org.eclipse.paho.mqttv5.client:1.2.5` |
+| `kafka` | `KafkaProvider` ＋ `KafkaMessageBus` | `kafka-clients:3.9.1`（**必须停 3.x**，4.x 要求 Java 11+） |
+| `redisstream` | `RedisStreamProvider` ＋ `RedisStreamMessageBus` | `jedis:8.0.1`（与 `aifei-cache` 对齐，Jedis 直连） |
 
 ```text
-aifei-mq-<backend>/
-├── pom.xml                                   # aifei-mq-core（compile）+ 上表客户端（compile）+ core test-jar（test）
-└── src/
-    ├── main/java/cn/hg/aifei/mq/<backend>/
-    │   ├── XxxProvider.java                  # TYPE = "<type>"，无实例字段
-    │   └── XxxMessageBus.java                # 4 方法总线（该后端键名常量集中于此）
-    ├── main/resources/META-INF/services/
-    │   └── cn.hg.aifei.mq.internal.MqProvider    # 单行：该模块 provider 的 FQN
-    └── test/java/cn/hg/aifei/mq/<backend>/
-        ├── XxxMessageBusContractTest.java    # 契约子类（集成，默认关闭）
-        ├── XxxBoundaryGateTest.java          # 架构门禁（3 例）
-        └── XxxConfigValidationTest.java      # 缺必填键构造期快速失败（1 例，默认执行）
+具体结构见 §8.2：主源码 `src/main/java/cn/hg/aifei/mq/<type>/` 各 2 类；
+services 声明统一在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider`（7 行）；
+测试在 `src/test/java/cn/hg/aifei/mq/<type>/`（契约子类 + 配置校验）。
 ```
 
-### 8.5 发表状态与计数（实测，`Get-ChildItem -Recurse`）
+### 8.4 支持矩阵与计数
 
-| 模块 | 发表状态 | 主源 | 测试 | 后端标识（`mq.type`） |
-| --- | --- | --- | --- | --- |
-| `aifei-mq`（父） | 不发布（`pom`，仅聚合） | — | — | — |
-| `aifei-mq-core` | **稳定 · 发布** | 17 | 10 | — |
-| `aifei-mq-memory` | **稳定 · 发布** | 2 | 3 | `memory`（默认值） |
-| `aifei-mq-rocketmq` | **稳定 · 发布** | 2 | 2 | `rocketmq` |
-| `aifei-mq-rabbitmq` | **稳定 · 发布** | 2 | 3 | `rabbitmq` |
-| `aifei-mq-mqtt` | 实验性 · 不发布 | 2 | 3 | `mqtt` |
-| `aifei-mq-mqtt5` | 实验性 · 不发布 | 2 | 3 | `mqtt5` |
-| `aifei-mq-kafka` | 实验性 · 不发布 | 2 | 3 | `kafka` |
-| `aifei-mq-redisstream` | 实验性 · 不发布 | 2 | 3 | `redisstream` |
-| **合计** | — | **31** | **30** | — |
+| 后端（`mq.type`） | 支持级别 | 主源 | 测试 |
+| --- | --- | --- | --- |
+| `memory`（默认值） | **稳定** | 2 | 3 |
+| `rocketmq` | **稳定** | 2 | 2 |
+| `rabbitmq` | **稳定** | 2 | 3 |
+| `mqtt` | 随包提供 · 不承诺语义 | 2 | 3 |
+| `mqtt5` | 随包提供 · 不承诺语义 | 2 | 3 |
+| `kafka` | 随包提供 · 不承诺语义 | 2 | 3 |
+| `redisstream` | 随包提供 · 不承诺语义 | 2 | 3 |
+| 公共面 + `internal` + `aifei` | — | 17 | 10 |
+| **合计** | — | **31** | **23** |
 
-- **services 声明恒定单行**：每个后端模块的 `src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 只有一行、内容即该模块 provider 的 FQN（`ServiceLoader` 发现，§5.2 / §15.1 M3）；各后端子模块门禁 `XxxBoundaryGateTest` 断言该声明与 `type()` 一致（§12.6）。
-- **rocketmq 测试为 2 个而非 3 个**：该模块无独立配置校验测试类，其必填键缺失由契约子类建总线时覆盖（§4.3）。
-- **不发布口径**：父工程 `packaging=pom`；4 个实验性模块 `maven.deploy.skip=true`（§15.3）。发布件为 `aifei-mq-core` / `aifei-mq-memory` / `aifei-mq-rocketmq` / `aifei-mq-rabbitmq` 四个 `jar`。
+- **services 声明单文件**：`src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 恰 7 行，内容为各 provider 的 FQN；门禁 `providerDeclarationsMatchTypes` 断言声明集合与 `type()` 集合一致（§12）。
+- **rocketmq 测试为 2 个而非 3 个**：无独立配置校验测试类，其必填键缺失由契约子类建总线时覆盖（§4.3）。
+- **发布件**：`io.github.gollyhu:aifei-mq:1.0.0` 单个 `jar`（§15.3）。
 - **不计入本清单的目录**：`aifei-mq-demo/` 位于**仓库根**、与本工程平级（§15.2）。
-- **时序图以 §7 内嵌副本为唯一来源（独立文件已删除，不再维护）**。
 
 ## 9. 依赖包
 
-### 9.1 模块化依赖分层（1.0.0 定档）
+### 9.1 依赖分层
 
-拆模块后依赖按「**核心零第三方、后端模块自带客户端**」分层：
+单模块依赖按「**契约层零第三方、客户端 optional**」分层：
 
-| 模块 | 依赖 | 说明 |
+| 依赖 | 范围 | 说明 |
 | --- | --- | --- |
-| `aifei-mq-core` | `cn.aifei:aifei-all:1.1.2`（`provided`）、`junit:junit:4.13.2`（`test`） | **零第三方运行依赖**；`aifei-all` 仅供 `aifei.MqPlugin` 使用 |
-| `aifei-mq-memory` | `io.github.gollyhu:aifei-mq-core:1.0.0`（`compile`） | 零第三方运行依赖 |
-| `aifei-mq-rocketmq` | `io.github.gollyhu:aifei-mq-core:1.0.0`（`compile`）＋ `org.apache.rocketmq:rocketmq-client:4.9.7`（**`compile`**） | 引该子模块即传递获得客户端 |
-| `aifei-mq-rabbitmq` | `io.github.gollyhu:aifei-mq-core:1.0.0`（`compile`）＋ `com.rabbitmq:amqp-client:5.21.0`（**`compile`**） | 引该子模块即传递获得客户端 |
-| 4 个实验性子模块 | `io.github.gollyhu:aifei-mq-core:1.0.0`（`compile`）＋ 各自客户端（**`compile`**） | `maven.deploy.skip=true`，不发布 |
+| `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核；仅 `aifei.MqPlugin` 使用，不向下游传递 |
+| `org.apache.rocketmq:rocketmq-client:4.9.7` | `optional` | `rocketmq` 后端客户端；不向下游传递 |
+| `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `optional` | `mqtt` 后端客户端 |
+| `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `optional` | `mqtt5` 后端客户端 |
+| `com.rabbitmq:amqp-client:5.21.0` | `optional` | `rabbitmq` 后端客户端 |
+| `org.apache.kafka:kafka-clients:3.9.1` | `optional` | `kafka` 后端客户端（**必须停 3.x**） |
+| `redis.clients:jedis:8.0.1` | `optional` | `redisstream` 后端客户端 |
+| `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
-- **为什么不再 `optional`**：M2 要求「业务引一个后端子模块即可用」——若客户端仍 `optional` 且不向下游传递，业务还需自行引入客户端，契约不成立；核心模块仍零第三方、公共面仍零第三方类型。**版本与 Java 8 兼容性依据**见 §9.2（各客户端版本与 class major = 52 的实测结论继续有效）。
+- **为什么 `optional`**：消费方只用到其中一个后端，全量传递会强加 6 个客户端及其传递依赖（含 RocketMQ 的 fastjson / netty，CVE 面显著扩大）；`optional` 在**本模块**编译与测试期仍在 classpath，故全部用例照常运行。
+- **代价**（既定取舍）：未引入对应客户端而配置该 `mq.type` 时，`MqPlugin.start()` 回滚后抛 `NoClassDefFoundError`，**不**转换为 `MqException`；消费方须按 `README.md` 依赖表自行引入。
 
 ### 9.2 客户端版本与传递依赖口径
 
-> 拆分前这些客户端以 `optional` 声明；§9.1 已按 M2 改为**各后端子模块内 `compile`**。下列**版本、传递依赖与 Java 8 兼容性结论继续有效**（依赖声明以各子模块 `pom.xml` 为准）。
+> 下列**版本、传递依赖与 Java 8 兼容性结论**为当前基线（依赖声明以 `aifei-mq/pom.xml` 为准）。
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
 | `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.AopKit` / `cn.aifei.util.Prop`（**仅 `aifei` 接入包使用**） |
-| `org.apache.rocketmq:rocketmq-client:4.9.7` | `compile`（随 `aifei-mq-rocketmq` 传递） | **RocketMQ** 客户端；仅该模块实现包使用；内存后端不使用 |
-| `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `compile`（随 `aifei-mq-mqtt` 传递） | **`mqtt`**（v3.1.1）客户端；仅该模块实现包使用 |
-| `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `compile`（随 `aifei-mq-mqtt5` 传递） | **`mqtt5`**（v5.0）客户端——与 v3 客户端**互不替代**（两个独立后端，§13 第 28 条） |
-| `com.rabbitmq:amqp-client:5.21.0` | `compile`（随 `aifei-mq-rabbitmq` 传递） | **`rabbitmq`** 客户端；经 `commons-pool2` / `slf4j-api`（门面）带来传递依赖 |
-| `org.apache.kafka:kafka-clients:3.9.1` | `compile`（随 `aifei-mq-kafka` 传递） | **`kafka`** 客户端；**必须停 3.x**（4.x 要求 Java 11+） |
-| `redis.clients:jedis:8.0.1` | `compile`（随 `aifei-mq-redisstream` 传递） | **`redisstream`** 客户端；**与 `aifei-cache` 版本对齐**，但**Jedis 直连、不依赖 `aifei-cache`** |
+| `org.apache.rocketmq:rocketmq-client:4.9.7` | `optional` | **RocketMQ** 客户端；仅 `rocketmq` 实现包使用 |
+| `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `optional` | **`mqtt`**（v3.1.1）客户端；仅 `mqtt` 实现包使用 |
+| `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `optional` | **`mqtt5`**（v5.0）客户端——与 v3 客户端**互不替代**（两个独立后端，§1.3） |
+| `com.rabbitmq:amqp-client:5.21.0` | `optional` | **`rabbitmq`** 客户端；经 `commons-pool2` / `slf4j-api`（门面）带来传递依赖 |
+| `org.apache.kafka:kafka-clients:3.9.1` | `optional` | **`kafka`** 客户端；**必须停 3.x**（4.x 要求 Java 11+） |
+| `redis.clients:jedis:8.0.1` | `optional` | **`redisstream`** 客户端；**与 `aifei-cache` 版本对齐**，但**Jedis 直连、不依赖 `aifei-cache`** |
 | `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
-- **第三方依赖分层**：内存后端**零第三方运行依赖**；客户端依赖只在**各后端子模块**内声明并随该子模块传递。**公共面（根包 / `internal` / `aifei`）不得出现任何第三方类型**；`cn.aifei:aifei-all` 仅 `aifei` 接入包使用；**不引入日志绑定**（`slf4j-api` 只以门面身份随传递依赖出现）。
+- **第三方依赖分层**：内存后端**零第三方运行依赖**；6 个客户端以 `optional` 统一声明在 `aifei-mq/pom.xml`、只被实现包使用。**契约层（根包 / `internal` / `aifei`）不得出现任何第三方类型**；`cn.aifei:aifei-all` 仅 `aifei` 接入包使用；**不引入日志绑定**（`slf4j-api` 只以门面身份随传递依赖出现）。
 - **`rocketmq-client:4.9.7` 关键传递依赖**（无需额外显式声明）：`rocketmq-common` / `rocketmq-remoting` / `rocketmq-logging`（皆 4.9.7）、`com.alibaba:fastjson:1.2.69_noneautotype`、`io.netty:netty-all:4.1.65.Final`、`commons-validator:1.7`、`com.github.luben:zstd-jni:1.5.2-2`、`org.lz4:lz4-java:1.8.0`、`org.apache.commons:commons-lang3:3.4`；`io.opentracing:opentracing-api` 为 `provided`，不进入运行时传递链。
 - **Java 8 兼容性**：`rocketmq-client:4.9.7` 以 `source/target 1.6` 编译，class major version = **50**（≤ 52），与本模块 Java 8 基线兼容。
 - **本轮 5 个客户端的 Java 8 兼容性（已实测）**：`org.eclipse.paho.client.mqttv3:1.2.5` / `org.eclipse.paho.mqttv5.client:1.2.5` / `amqp-client:5.21.0` / `kafka-clients:3.9.1` / `jedis:8.0.1` 的**全部 class major version = 52**（主会话对本机仓库内的这些 jar **逐类实测**），故在 **Java 8 下加载无障碍**。**`kafka-clients` 必须停 3.x**——4.x 以 Java 11+ 编译，会直接破坏本模块的 Java 8 基线。
@@ -1020,26 +1001,6 @@ aifei-mq-<backend>/
 - 构建插件：`maven-compiler-plugin:3.15.0`（`source`/`target` = `1.8`，UTF-8）、`maven-surefire-plugin:3.2.5`。与 `aifei-websocket/pom.xml` 一致。
 
 ---
-
-## 10. 实现与落地状态（历史任务索引）
-
-> 只保留 **T01–T13 一行式索引**（逐任务明细属历史留痕，已删除）；当前落地顺序见 **§15.4**、文件与计数见 **§8**。全部任务由 `aifei-service-engineer` 单角色顺序执行（本模块无表结构、无 UI）。
-
-| 任务 | 目标 | 状态 |
-| --- | --- | --- |
-| T01 | 模块骨架、公共 API 面与内部支撑 | **已完成** → 现落 `aifei-mq-core` |
-| T02 | 配置域与 provider 扩展点 | **已完成** → `aifei-mq-core`（provider 装配骨架层已按 §15.1 C2 删除，扩展点仅余 `MqProvider` 契约） |
-| T03 | 内存后端实现 | **已完成** → 现落 `aifei-mq-memory` |
-| T04 | aifei 接入装配与文档 | **已完成** → `aifei-mq-core` 的 `aifei.MqPlugin` |
-| T05 | 架构门禁、契约测试与单元测试 | **已完成** → 门禁已按模块分布（§12.6） |
-| T06 | RocketMQ 依赖与 provider 注册 | **已完成** → 现落 `aifei-mq-rocketmq` |
-| T07 | RocketMQ 总线与生产 / 消费视图 | **已完成**（视图类已按 §15.1 C1 收敛为 `BusProducer` / `BusConsumer`） |
-| T08 | 契约基类对齐与 RocketMQ 集成测试 | **已完成**（集成用例默认关闭） |
-| T09 | 5 个后端依赖、provider 与注册表 | **已完成** → `aifei-mq-rabbitmq`（稳定发布）+ 4 个实验性子模块（不发布） |
-| T10 | MQTT v3 + v5 总线 | **已完成**（视图类已删，同 T07） |
-| T11 | RabbitMQ + Kafka 总线 | **已完成**（视图类已删，同 T07） |
-| T12 | Redis Streams 总线 + 契约基类对齐 | **已完成**（视图类已删，同 T07） |
-| T13 | 5 个契约 / 集成子类、验证与文档 | **已完成**（子类只继承共同底线；集成默认关闭） |
 
 ## 11. 共享知识（跨文件横切约定）
 
@@ -1062,7 +1023,7 @@ aifei-mq-<backend>/
 | 后端标识字面量 `"rocketmq"` | `rocketmq.RocketMqProvider.TYPE` |
 | RocketMQ 订阅登记、投递（同步 `send`）、`close()`、建连 | `rocketmq.RocketMqMessageBus` |
 | RocketMQ 后端专有配置键名（`namesrv-addr` / `producer-group` / `consumer-group`） | `rocketmq.RocketMqMessageBus`（键名常量集中于此；前缀经 `MqConfig.get(relativeKey)` 拼装，不手写 `"mq.rocketmq."`） |
-| 后端标识字面量 `"mqtt"` / `"mqtt5"` / `"rabbitmq"` / `"kafka"` / `"redisstream"` | 各自子模块 provider 的 `TYPE`（`mqtt.MqttProvider` / `mqtt5.Mqtt5Provider` / `rabbitmq.RabbitMqProvider` / `kafka.KafkaProvider` / `redisstream.RedisStreamProvider`） |
+| 后端标识字面量 `"mqtt"` / `"mqtt5"` / `"rabbitmq"` / `"kafka"` / `"redisstream"` | 各自 provider 的 `TYPE`（`mqtt.MqttProvider` / `mqtt5.Mqtt5Provider` / `rabbitmq.RabbitMqProvider` / `kafka.KafkaProvider` / `redisstream.RedisStreamProvider`） |
 | 各新后端专有配置键名（§4.6–§4.10 各节；**一后端一处**） | 各后端**各自**的 `XxxMessageBus`——`mqtt.MqttMessageBus`（`broker-url` / `client-id` / `clean-session` / `qos` / `retain` / `username` / `password` / `keep-alive-seconds` / `connection-timeout-seconds` / `auto-reconnect` / `reconnect-delay-max-millis`）、`mqtt5.Mqtt5MessageBus`（`clean-start` / `session-expiry-interval-seconds` 等，见 §4.7）、`rabbitmq.RabbitMqMessageBus`（`host` / `port` / `virtual-host` / `exchange` / `exchange-type` / `durable` / `prefetch` / `publisher-confirms` / `ssl.*` 等，见 §4.8）、`kafka.KafkaMessageBus`（`bootstrap-servers` / `group-id` / `auto-offset-reset` / `acks` / `security-protocol` / `sasl-*` / 退避等，见 §4.9）、`redisstream.RedisStreamMessageBus`（`host` / `port` / `database` / `group` / `consumer-name` / `start-mode` / `claim-enabled` / `claim-idle-millis` / `count` / `block-ms` / `maxlen` / `timeout-millis` 等，见 §4.10）。键名常量集中于此；前缀经 `MqConfig.get(relativeKey)` 拼装，**不得手写** `"mq.mqtt."` / `"mq.kafka."` 等字面量 |
 | 各新后端的订阅登记、投递、建连时机、`close()`（**一后端一处**） | 各后端**各自**的 `XxxMessageBus`——`mqtt.MqttMessageBus`（构造内建连 + 投递 + `close()`）/ `mqtt5.Mqtt5MessageBus`（同构）/ `rabbitmq.RabbitMqMessageBus`（构造内建连；首次 `subscribe` 声明队列并投递）/ `kafka.KafkaMessageBus`（构造内建 producer；首次 `subscribe` 起拉取循环）/ `redisstream.RedisStreamMessageBus`（连接池；首次 `subscribe` 建组并起拉取循环）。视图由核心 `internal.BusProducer` / `internal.BusConsumer` 统一承担，各后端**不再编写视图类**，不得复制登记 / 建连 / 投递逻辑 |
 | 本地 `messageId` 生成（`<type>:<token>:<seq>`） | **文档级**唯一事实来源 = §5.6 (B) 「本地 `messageId` 格式（R1 定档）」段；**实现级**生成点**各后端一处**：`mqtt.MqttMessageBus` / `mqtt5.Mqtt5MessageBus` / `rabbitmq.RabbitMqMessageBus`（**仅** broker 不回消息标识的后端才有本地生成点；Kafka / Redis Streams 取 broker 标识，**无**本地生成点） |
@@ -1074,14 +1035,14 @@ aifei-mq-<backend>/
 - **javadoc**：公共类型与公共成员**必须**写全 javadoc（`@param` / `@return` / `@throws`）；`internal` / `memory` 成员在非自明处书写；`aifei` 包公共类写全。公共面不得出现 `internal` 包行话（唯一定义点、注册表、总线、视图等）。
 - **Java 8 双约束**：禁 `var` / `record` / `switch` 表达式 / text block / `sealed` / pattern matching；禁 `List.of` / `Map.of` 等 Java 9+ API；主 JAR class major = 52。
 - **框架隔离**：`cn.aifei.*` 只出现在 `cn.hg.aifei.mq.aifei`；`internal` / `memory` **一律不 import** `Prop` 等框架类型。
-- **第三方隔离**：第三方类型只允许出现在**后端子模块**的实现包内；核心模块（根包 / `internal` / `aifei`）**零第三方类型、零第三方运行依赖**；后端子模块在自身以 `compile` 声明客户端依赖（引该子模块即传递获得，§9.1）。
+- **第三方隔离**：第三方类型只允许出现在**实现包**内；契约层（根包 / `internal` / `aifei`）**零第三方类型、零第三方运行依赖**；客户端以 `optional` 声明（§9.1）。
 - **服务方法契约**：`send` / `subscribe` / `unsubscribe` 失败时的异常分类见 §5.4；参数非法 `IllegalArgumentException`、状态非法 `IllegalStateException`、运行时故障 `MqException`。
 - **配置解析时机**：一律在 `MqPlugin.start()` 内完成；构造函数只保留 `Prop` 引用，不解析、不校验、不建总线。
 - **配置读取唯一口径**：后端专有键一律经 `MqConfig.get(relativeKey)`（内部拼 `prefix + "." + relativeKey`），**不得手写** `"mq.memory."` 等字面量。
 - **凭据硬纪律（本轮定档）**：`username` / `password`（Kafka 另含 `security-protocol` / `sasl-mechanism` / `sasl-jaas-config`；RabbitMQ 另含 `virtual-host`；Redis Streams 另含 `database`）**只进配置域** `mq.<type>.*`，**不进公共 API**——既不进任何方法签名，也不进 `Message` / `SendResult`；**异常消息只出现键名、绝不出现取值**（`MqException` / `IllegalArgumentException` 的消息串**不得**拼接凭据内容）。
 - **provider 必须无状态**：不得声明实例字段保存解析结果；配置在 `createBus(config)` 内经参数现读现用；provider 必须 `public`、具备**无参构造**（`ServiceLoader` 要求）。
 - **命名一致**：术语一律用「主题 topic / 消息 Message / 生产者 Producer / 消费者 Consumer / 监听器 MessageListener / 总线 MessageBus / 后端 provider / 后端标识 type」，不得另起叫法。
-- **门禁执行**：拆模块后由 `aifei-mq` 父工程聚合构建**逐模块**执行门禁（各模块内仍依赖相对路径 `src/main/java`）；单模块调试在其子目录执行 `mvn clean verify`，见 §12.6。
+- **门禁执行**：在 `aifei-mq/` 根目录执行 `mvn clean verify`；门禁依赖相对路径 `src/main/java`，不得在其他目录执行。
 - **文档同步**：公共行为变化须同步 `docs/design.md`（契约）与 `README.md`（用法 / 配置），并更新 `docs/testing.md`。
 
 ---
@@ -1096,11 +1057,12 @@ aifei-mq-<backend>/
 
 | # | 测试方法 | 断言口径 |
 | --- | --- | --- |
-| ① | `thirdPartyOnlyInImplementationPackage` | 对每个 `.java` 的每条 `import`：若 FQN **不以** `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.mq.` 开头（即第三方或其它模块），则该文件路径**必须位于实现包**（既不是根包直接子文件、也不含 `/internal/`、也不含 `/aifei/`）；否则失败。实现包（`memory` / `rocketmq`）自动放行；**阶段 2 的 `rocketmq` 包引入 `org.apache.rocketmq.*` 无需改动本门禁**。 |
+| ① | `thirdPartyOnlyInImplementationPackage` | 对每个 `.java` 的每条 `import`：若 FQN **不以** `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.mq.` 开头（即第三方或其它模块），则该文件路径**必须位于实现包**（既不是根包直接子文件、也不含 `/internal/`、也不含 `/aifei/`）；否则失败。7 个实现包自动放行。 |
 | ② | `frameworkOnlyInBridgePackage` | 含框架 import（`import cn.aifei.…` 且**不是** `import cn.hg.aifei.mq.…`）的文件，其路径必须包含 `BRIDGE_PACKAGE`，否则失败。 |
 | ③ | `noSqlReference` | 全模块不得出现 `import java.sql.`，否则失败。 |
 | ④ | `aifeiBridgePackageExists` | `SOURCE_ROOT/BRIDGE_PACKAGE` 必须为目录（接入包非空）；且存在以 `BRIDGE_PACKAGE + "MqPlugin.java"` 结尾的源文件。 |
 | ⑤ | `publicSurfaceExact` | 根包**直接子文件**（路径含 `ROOT_PACKAGE` 且其后不再含 `/`）的 `.java` 数量**精确等于** `EXPECTED_PUBLIC_TYPES`（= 8）；且其文件名集合**精确等于**下方 8 个名字。 |
+| ⑥ | `providerDeclarationsMatchTypes` | `META-INF/services/...MqProvider` 存在且**恰 7 行、无重复**；每行 FQN 可 `public` 无参实例化，其 `type()` 与实现包同名，且类型集合与 `MqProviderRegistry.types()` 一致。 |
 
 ### 12.2 `EXPECTED_PUBLIC_TYPES` 钉死（唯一事实来源）
 
@@ -1120,22 +1082,9 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 - `MemoryMessageBusContractTest extends MessageBusContractTest`：`newBus()` 返回 `new MemoryMessageBus(config)`；另承载内存专有用例（含上述被移入的 4 项）。
 - `RocketMqMessageBusContractTest extends MessageBusContractTest`（阶段 2）：`newBus()` 返回 RocketMQ 总线；**默认关闭**，`-Drocketmq.integration=true` 开启后须连上 broker（后端不可达时用例失败，**不得**用 `Assume` 掩盖；因 `producer.start()` **不校验**连通性，失败通常出现在**首个 `send` / `subscribe`** 而非 `newBus()` 建总线处，见 §5.6 B12 与 `docs/testing.md`）。
 - **本轮 R 轮的 5 个后端子类**（`MqttMessageBusContractTest` / `Mqtt5MessageBusContractTest` / `RabbitMqMessageBusContractTest` / `KafkaMessageBusContractTest` / `RedisStreamMessageBusContractTest`，均 `extends MessageBusContractTest`）：只继承运行**共同底线**、不写后端差异断言；**默认关闭**（各自整类经 `Assume` 跳过），开关为 `-Dmqtt.integration=true` / `-Dmqtt5.integration=true` / `-Drabbitmq.integration=true` / `-Dkafka.integration=true` / `-Dredisstream.integration=true`（沿用既有 `-Drocketmq.integration=true` 范式）；**开启后连不上必须失败**（**不得**用 `Assume` 掩盖）——`kafka` / `redisstream` 客户端懒连接，故障通常延迟到首次收发（见 `docs/testing.md`）。**每个子类固定 10 项**（即共同底线用例数），故 6 个集成子类（RocketMQ + 本轮 5 个）合计**跳过 60 项**。
-- **测试按模块分布（1.0.0 拆分后实测）**：`aifei-mq-core` **49** 项（`ArchitectureBoundaryTest` **6**〔含 `#coreNoThirdParty`〕+ `MqConfigTest` 11 + `MessageTest` 5 + `MqValidatorTest` 8 + `MqHolderTest` 5 + `ProducerKitTest` 4 + `ConsumerKitTest` 4 + `SendResultTest` 3 + `MqProviderRegistryTest` 3）；`aifei-mq-memory` **35** 项（`MemoryMessageBusContractTest` 20 + `MqPluginTest` 12 + `MemoryBoundaryGateTest` 3）；`aifei-mq-rocketmq` **13** 项（契约子类 10 默认跳过 + `RocketMqBoundaryGateTest` 3）；`aifei-mq-rabbitmq` **18** 项（契约子类 10 默认跳过 + `RabbitMqBoundaryGateTest` 3 + `RabbitMqConfigValidationTest` 5：`ssl.*` 开关非布尔、信任库不可读、算法非法、可读信任库构建成功）；实验性后端中 `mqtt` / `mqtt5` / `kafka` / `redisstream` 各 **14** 项（契约子类 10 默认跳过 + `XxxBoundaryGateTest` 3 + `XxxConfigValidationTest` 1）。原单模块的 `BackendConfigValidationTest`（6 例）已拆为 5 个后端模块各自的 `XxxConfigValidationTest`，「类型均注册」由各模块门禁的 services 断言承担。聚合 `mvn clean verify` 实测 **`Tests run: 171 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **111** + 跳过 **60**）。
+- **用例分布（实测）**：`ArchitectureBoundaryTest` **6** + `MqConfigTest` 11 + `MessageTest` 5 + `MqValidatorTest` 8 + `MqHolderTest` 5 + `ProducerKitTest` 4 + `ConsumerKitTest` 4 + `SendResultTest` 3 + `MqProviderRegistryTest` 3 + `MemoryMessageBusContractTest` 20 + `MqPluginTest` 12 = **81** 项零跳过；`RabbitMqConfigValidationTest` **5** + `mqtt` / `mqtt5` / `kafka` / `redisstream` 各 **1** = **9** 项配置校验；6 个真实后端契约子类各 **10** 默认跳过。`mvn clean verify` 实测 **`Tests run: 150 / Failures: 0 / Errors: 0 / Skipped: 60`**（执行 **90** + 跳过 **60**）。
 
 > **「新实现包与门禁合规性」论证**：各后端实现包一律落**子包**（`cn.hg.aifei.mq.<type>`）、只引本模块客户端类型且不引 `cn.aifei.*`，故门禁① ② 自动放行、门禁⑤ `publicSurfaceExact` 仍为 8——**公共面零扩张**（§1.4），无需修改任何断言。
-
-### 12.6 模块化拆分后的门禁分布（1.0.0 定档）
-
-拆分后门禁**按模块分布**，语义不降低：
-
-| 模块 | 门禁断言 |
-| --- | --- |
-| `aifei-mq-core` | ① `frameworkOnlyInBridgePackage`（`cn.aifei.*` 仅 `cn.hg.aifei.mq.aifei`）；② `noSqlReference`；③ `aifeiBridgePackageExists`（接入包非空 + `MqPlugin.java`）；④ `publicSurfaceExact`（`EXPECTED_PUBLIC_TYPES = 8` 且文件名集合精确相等）；⑤ **核心零第三方 import**（新增断言） |
-| 各后端子模块 | ① 第三方客户端 import 只在该模块实现包；② `noSqlReference`；③ **不直接引用 `cn.aifei.*`**（框架只由核心接入包使用）；④ `META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 存在且声明的类与 provider 的 `TYPE` 一致 |
-
-- **复用方式**：`aifei-mq-core` 产出 test-jar，后端子模块以 `test` scope 依赖，复用 `MessageBusContractTest` 抽象基类与门禁基类；若 test-jar 配置成本高于收益，退化为每个后端子模块一份约 20 行精简门禁（仅断言第三方 import 位置 + `java.sql` + services 声明），不引入跨模块测试框架。
-- **执行位置**：父工程 `aifei-mq/` 下 `mvn clean verify` 由 reactor 逐模块执行；各模块内仍以 `src/main/java` 相对路径扫描。
-- **§12.1–§12.3 的地位**：其内容描述的是**单模块历史态**（全部后端与 5 项断言位于同一 `src/main/java`）；结构事实以本节为准，断言口径（精确 8 类型、第三方只在实现包、框架只在接入包、禁 `java.sql`）**继续有效**。
 
 ---
 
@@ -1149,20 +1098,20 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | 2 | 配置**装载**（读 `Prop`）落在何处 | `internal` 不得 import 框架类型（门禁），故 `aifei.MqPlugin` 只做 `prop.getProperties()` 一行读取，`internal.MqConfig.parse(Properties, Set)` 承接解析与校验。与需求文档第六节的差异**已显式声明**：框架耦合的装载在接入包，配置对象与键常量 / 校验仍在 `internal` |
 | 3 | 监听器异常隔离后是否需要可观测性 | 本版**静默丢弃**（零日志依赖、公共面无框架类型）；已知取舍，真实后端 provider 可自行补充 |
 | 4 | `SendResult` 构造方式 | **私有构造 + 公开静态工厂 `of`**（对齐 `Message` 值对象惯例） |
-| 5 | `MqProviderRegistry` 是否提供 `register` 公开方法 | **不提供**；扩展后端 = 新增后端子模块 + `META-INF/services` 声明，核心经 `ServiceLoader` 发现（§15.1 M3），不留未使用的 API 面 |
+| 5 | `MqProviderRegistry` 是否提供 `register` 公开方法 | **不提供**；扩展后端 = 新增实现包 + `META-INF/services` 声明，经 `ServiceLoader` 发现（§15），不留未使用的 API 面 |
 | 6 | `MqException` 在内存实现中是否会被抛出 | **不会**（无外部运行时故障源）；该类型为真实后端与运行时故障保留 |
 | 7 | 后端标识字面量与 `mq.type` 默认值的单一来源 | `MqConfig.DEFAULT_TYPE = "memory"` 为唯一字面量，`MemoryMqProvider.TYPE` 引用之（§11.1） |
 | 8 | 跨线程并发 `send` 的顺序 | 不保证相对顺序（各线程内同步完成）；单线程连续 `send` 严格保序（§5.1） |
 | 9 | 是否支持消费组 / 重试 / 持久化 | **不在本模块承诺范围**；`unsubscribe` 已纳入本版（§3.3 / §5.6 A3 / B10）。RocketMQ 由 broker **天然提供**的消费组 / 重试 / 持久化属**后端特性**（§5.6 (C) B4 / B5 / B9），**非**本模块的新增承诺 API |
 | 10 | `ConsumerKit` 是否镜像 `unsubscribe`（原 `MqKit` 门面镜像问题） | **已定档：镜像**。`MqKit` 已拆为 `ProducerKit` / `ConsumerKit`（§3.7），按「静态镜像与接口方法一一对应」范式（照 `CacheKit` / `CounterKit`），故 `ConsumerKit` **同时镜像** `subscribe` 与 `unsubscribe`——后者是已落地接口能力，镜像不属能力扩张。**已实现** |
-| 11 | **RocketMQ broker 验证盲区** | 真实 broker 需 **nameserver + broker 两进程**，故集成测试**默认关闭**（`-Drocketmq.integration=true` 开启）；4 个实验性后端同属此盲区（见第 28 条）。**验证状态以 §15.6 与 `docs/testing.md` 为准**：`rocketmq` / `rabbitmq` / `redisstream` 已真机 PASS，`mqtt` / `mqtt5` / `kafka` 仍 BLOCKED |
+| 11 | **RocketMQ broker 验证盲区** | 真实 broker 需 **nameserver + broker 两进程**，故集成测试**默认关闭**（`-Drocketmq.integration=true` 开启）；4 个实验性后端同属此盲区（见第 28 条）。**验证状态以 `docs/testing.md` 为准**：`rocketmq` / `rabbitmq` / `redisstream` 已真机 PASS，`mqtt` / `mqtt5` / `kafka` 仍 BLOCKED |
 | 12 | **consumer 延迟启动与「不留半装配」的适用范围** | consumer 的 `start()` **延迟到首次 `subscribe`**（订阅主题启动时未知），启动失败抛 `MqException`（§5.4）。**「不留半装配」只适用于配置错误**（未注册后端 / 必填键缺失或非法），由 `MqPlugin.start()` 链路内**立即失败**保证（§5.5）。**连通性不在此列**：RocketMQ `producer.start()` 不校验连通性，nameserver 不可达时启动仍成功、故障延迟到首次使用（§4.3 / §5.6 B12） |
 | 13 | **契约基类需新增异步等待钩子** | 真实后端投递异步，故基类提供**轮询等待**钩子；§5.6 明确**非共同底线**的用例（单主题 FIFO、多订阅者登记顺序、`messageId` 递增格式）**移出基类、移入 `MemoryMessageBusContractTest`**。**不改动** §5.6 (A) 共同底线与 (B) 差异定档 |
 | 14 | **RocketMQ 消费组一致性约束** | 同一 `consumer-group` 的多实例须有**相同订阅集合**，否则 rebalance 异常（§5.6 (C) B9）。本模块**不**为每个 topic 派生独立消费组（保持「一个 bus 一个后端实例」）；需严格隔离时由调用方为不同订阅集合配置不同 `consumer-group` |
 | 15 | **`unsubscribe` 是否调用 broker 侧取消** | **不调用** `consumer.unsubscribe(topic)`——避免影响同 topic 其它本地监听器与消费组一致性；仅做本地按实例身份解绑（尽力语义，§5.6 (C) B10） |
 | 16 | **类图 / 时序图的 `rocketmq` 部分** | **类图**：`docs/diagrams/class.mermaid` 为唯一来源（含 `rocketmq` 类块与对 `MqProviderRegistry` 的注册边），本文不内嵌副本；类清单以代码与 §4.3 为准（视图类已按 §15.1 C1 收敛）。**时序图**：唯一副本为 §7 内嵌块，保持「内存后端五段」、**未**新增真实后端链路，按双 Util（`ProducerKit` / `ConsumerKit`）+ 命名实例表述（静态镜像作用于主实例、经 `internal.MqHolder` 按实例名取用，`stop` 段关闭全部实例）。**权威口径是 §4.4 / §5.5，图仅示意**；五段以内存后端（同步投递）为例，真实后端为异步生产 + 拉取消费，**不把异步语义画成同步** |
 | 17 | **RocketMQ 消费位点策略（`CONSUME_FROM_FIRST_OFFSET`）** | 设计**未规定**位点策略（属 §5.6 (B) B9 维度）；实现**选择 `CONSUME_FROM_FIRST_OFFSET`**（新消费组自队列**最早**位点开始，见 §5.6 (C) 实现期决策 1）。**副作用未专项复核**（首次订阅可能回溯历史消息、重复面扩大）；须在真机 broker 上专项验证后回填 §5.6 (C) 与本节 |
-| 18 | **RocketMQ 依赖安全面** | `rocketmq-client:4.9.7` 的**传递依赖**含 `com.alibaba:fastjson:1.2.69_noneautotype`、`io.netty:netty-all:4.1.65.Final` 等（客户端既有依赖面，§9.2）。按 M2 已在后端子模块内以 `compile` 声明、随模块传递（§9.1），**使用者自行引入时须自行评估 CVE 与版本** |
+| 18 | **RocketMQ 依赖安全面** | `rocketmq-client:4.9.7` 的**传递依赖**含 `com.alibaba:fastjson:1.2.69_noneautotype`、`io.netty:netty-all:4.1.65.Final` 等（客户端既有依赖面，§9.2）。以 `optional` 声明（§9.1），**使用者自行引入时须自行评估 CVE 与版本** |
 | 19 | **时序图 Mermaid 语法缺陷（已修正）** | （历史）两处含**半角分号**的消息文本已改为全角分号。**仍生效的约束**：Mermaid sequence 的**消息文本不接受半角分号**（`Note` 内可以），否则 v11 / v12 解析失败——维护 §7 内嵌时序图时**不得**在消息文本使用半角分号；`class.mermaid` 与 §7 内嵌块须在 v11 / v12 下 `mermaid.parse` 通过 |
 | 20 | **RocketMQ 运行时行为未经真机验证（消费组 / 位点 / 重试 / 取消）** | 消费位点、rebalance、at-least-once 重试与**重复消费**、broker 持久化等**依赖 broker** 的语义，`unsubscribe` 的运行时效果（第 15 条），同组多实例约束（第 14 条）——均**未专项真机验证**（§5.6 (C) B4 / B5 / B9 / B10）；端到端收发已 PASS（§15.6）**不等于**上述语义已验证。4 个实验性后端同类盲区见第 28 条 |
 | 21 | **RocketMQ 启动期不校验 nameserver 连通性（「启动成功」≠「后端可达」）** | `DefaultMQProducer#start()` 属懒连接：`mq.type=rocketmq` 时故障延迟到首次 `send` / 消费拉取才以 `MqException` 暴露（§4.3 / §5.6 B12）。**配置错误**（未注册后端 / 必填键缺失或非法）仍在启动期立即失败、不留半装配。5 个新后端落点不同（§5.6 (C) 续 B12）：`mqtt` / `mqtt5` / `rabbitmq` 构造期 fail-fast，`kafka` / `redisstream` 懒连接。**不得**把「建总线未报错」当作「后端可达」 |
@@ -1172,11 +1121,11 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | 25 | **`MqKit` 拆分 → `ProducerKit` + `ConsumerKit`（公共面 7 → 8，拍板）** | **已定档（项目所有者拍板）并落地**：删除 `MqKit`，替换为 `ProducerKit` + `ConsumerKit`，形态照 `aifei-cache` 的 `CacheKit` / `CounterKit`。根包公共类型 **8**（§3.8），门禁 `EXPECTED_PUBLIC_TYPES` / `EXPECTED_ROOT_TYPES` 同步为 8（§12.2）——属**有意的公共面扩张**，**不得**据此放宽或绕过门禁 |
 | 26 | **延迟消息：不做（决策落档）** | **决策：不做。** 理由链：不允许内存后端引入调度线程 → 内存后端无法「到点才投递」→ 延迟参数在内存后端下无意义 → 按 §5.7「只能被部分后端实现的概念不得进方法签名」⇒ **`delayMillis` / `delayLevel` 不得进公共 API**（`send` 维持恰好 3 个重载，§3.2 / §5.6 A2）。**替代**：调用方自调度后再 `send`，本模块不引入任何延迟相关键或能力。**重启条件**：① 放行内存后端引入调度线程（须先按 §5.7 修订 §5.1 与 §5.6 (B) B2，先改本文再改代码）；或 ② 需求明确「仅真实后端原生延迟、公共面不承诺跨后端一致」 |
 | 27 | （历史）文档与图谱收口已完成 | （历史）该轮只改文档、未改代码：时序图改写为双 Util + 命名实例、测试计数校准、`MqKit` 过时引用更正为 `ProducerKit` / `ConsumerKit`——均已完成，**契约实质未变**（§3 / §5.6 / §5.7 条款未改）。**计数以文首「文档状态」与 §8 为准**，历史计数不再保留 |
-| 28 | **5 个可插拔后端（原实验性，`rabbitmq` 已于 2026-11-06 转稳定）** | 每后端单独成子模块：`XxxProvider` + `XxxMessageBus` + 单行 `META-INF/services` 声明。定档结论：① **客户端与版本** — MQTT v3 `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`、MQTT v5 `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`、RabbitMQ `com.rabbitmq:amqp-client:5.21.0`、Kafka `org.apache.kafka:kafka-clients:3.9.1`（**必须停 3.x**，4.x 要 Java 11+）、Redis Streams `redis.clients:jedis:8.0.1`（与 `aifei-cache` 对齐、Jedis 直连）；**全部 class major = 52**，均在各子模块内 `compile` 声明（§9.1 / §9.2）。② **MQTT 拆两个独立后端**（`mqtt` v3.1.1 / `mqtt5` v5.0，命名空间 `mq.mqtt.*` / `mq.mqtt5.*`），**不引入** `mq.mqtt.version` 键。③ **R1**：保留 A5「`messageId` 强制非空」，MQTT 由适配器本地生成，格式 `<type>:<token>:<seq>`（§5.6 (B)）。④ **R2**：`topic` 读作「主题标识（精确名或过滤器）」，`subscribe` 签名不变（§3.3 / B14）。⑤ **R3**：QoS / retain 等**只落配置域**，`send` 维持 3 个重载（B15）。⑥ **自动重连**不扩张公共面、provider 保持无状态（配置域键 + 客户端原生自愈，B13）；A9 / A6 不动。⑦ **凭据**只进配置域、不进公共 API（B16）；**异常消息只出现键名、绝不出现取值**（§11.2）。⑧ **依赖边界**：**不得引入任何日志绑定**，除 5 个客户端外**不新增直接依赖**，传递依赖可接受。⑨ **集成开关**：`-Dmqtt.integration` / `-Dmqtt5.integration` / `-Drabbitmq.integration` / `-Dkafka.integration` / `-Dredisstream.integration`，**默认关闭、开启后连不上必须失败**（**不得**用 `Assume` 掩盖），命令见 `docs/testing.md`。⑩ **位点 / 起始策略**：Kafka `auto-offset-reset` 默认 `earliest`；Redis Streams 用 `start-mode`（`new` / `pending`）+ `claim-enabled` / `claim-idle-millis`。⑪ **topic 映射**：RabbitMQ 默认队列名（可选 `exchange` / `exchange-type`）、Kafka topic（组取 `group-id`）、Redis Streams 流键（组取 `group`）。⑫ **落档位置**：§4.6–§4.10 / §5.5 / §5.6 (B) B7·B13–B16 与 (C) 续 5 张表 / §9 / §11.1；**运行期语义未经真机验证**（第 11 / 20 / 21 / 22 条）。⑬ **2026-11-06 变更**：`rabbitmq` 在 CloudAMQP（RabbitMQ 4.3.6）真机验证通过，转稳定并随 1.0.0 发布（§15.6）；其余 4 个后端维持实验性、不发布
+| 28 | **7 个后端的实现约束** | ① **客户端与版本** — MQTT v3 `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`、MQTT v5 `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`、RabbitMQ `com.rabbitmq:amqp-client:5.21.0`、Kafka `org.apache.kafka:kafka-clients:3.9.1`（**必须停 3.x**，4.x 要 Java 11+）、Redis Streams `redis.clients:jedis:8.0.1`（与 `aifei-cache` 对齐、Jedis 直连）；**全部 class major = 52**，均以 `optional` 声明（§9.1）。② **MQTT 拆两个独立后端**（`mqtt` v3.1.1 / `mqtt5` v5.0，命名空间 `mq.mqtt.*` / `mq.mqtt5.*`），**不引入** `mq.mqtt.version` 键。③ **R1**：保留 A5「`messageId` 强制非空」，MQTT 由适配器本地生成，格式 `<type>:<token>:<seq>`（§5.6 (B)）。④ **R2**：`topic` 读作「主题标识（精确名或过滤器）」，`subscribe` 签名不变（§3.3 / B14）。⑤ **R3**：QoS / retain 等**只落配置域**，`send` 维持 3 个重载（B15）。⑥ **自动重连**不扩张公共面、provider 保持无状态（配置域键 + 客户端原生自愈，B13）；A9 / A6 不动。⑦ **凭据**只进配置域、不进公共 API（B16）；**异常消息只出现键名、绝不出现取值**（§11.2）。⑧ **依赖边界**：**不得引入任何日志绑定**，除 6 个客户端外**不新增直接依赖**，传递依赖可接受。⑨ **集成开关**：`-Dmqtt.integration` / `-Dmqtt5.integration` / `-Drabbitmq.integration` / `-Dkafka.integration` / `-Dredisstream.integration`，**默认关闭、开启后连不上必须失败**（**不得**用 `Assume` 掩盖），命令见 `docs/testing.md`。⑩ **位点 / 起始策略**：Kafka `auto-offset-reset` 默认 `earliest`；Redis Streams 用 `start-mode`（`new` / `pending`）+ `claim-enabled` / `claim-idle-millis`。⑪ **topic 映射**：RabbitMQ 默认队列名（可选 `exchange` / `exchange-type`）、Kafka topic（组取 `group-id`）、Redis Streams 流键（组取 `group`）。⑫ **落档位置**：§4.6–§4.10 / §5.5 / §5.6 (B) B7·B13–B16 与 (C) 续 5 张表 / §9 / §11.1；**运行期语义未经真机验证**（第 11 / 20 / 21 / 22 条）。**待补验证**：`mqtt` / `mqtt5` / `kafka` 运行期语义未经真机验证
 | 29 | （历史）文档计数口径与图谱状态 | 文件与用例计数**以 §8.5 与文首「文档状态」为准**（历史累计值不再保留）。**类图**：`docs/diagrams/class.mermaid` 为唯一来源，本文不内嵌副本。**时序图**：唯一副本为 §7 内嵌块（无独立文件），五段链路结构不变、不代表真实后端链路。**状态**：T09–T13 均已执行完毕（§10），但 4 个实验性后端的运行期语义**不得当作已验证事实**（第 28 条；`rabbitmq` 已于 2026-11-06 验证通过） |
 | 30 | **E2：固定少量 topic + payload 内路由键（零代码改动）** | **已拍板**：topic 表达稳定业务域、事件类型降级为 payload 业务字段、订阅侧本地分发、运行期不增减 topic——全文见 **§5.8**（含动态 topic 四条候选的否决理由、零改动论证、后端语义矩阵、风险与回退判据）。**无代码改动**（公共 API 8 类型、共同底线、生命周期均不变）。**约束**：`README.md` / `AGENTS.md` 与 §5.8 **同源同口径**，**不得**引入运行期动态 topic 机制。证据版本绑定 `aifei-mq:1.0.0`（§5.8.8） |
 | 31 | **命名约定收口：`ProducerUtil` / `ConsumerUtil` → `ProducerKit` / `ConsumerKit`（仅改后缀）** | **纯重命名**：`XxxUtil` = 无状态工具类，`XxxKit` = 有状态门面（仓库根 `AGENTS.md` 命名约定）；本模块两个静态门面需先从 `internal.MqHolder` 取运行期实例，故用 `Kit` 后缀。公共类型仍 8（§3.8），签名 / 异常口径 / 门禁断言结构不变（`EXPECTED_ROOT_TYPES` 仅换文件名）；本模块未发布，无兼容负担 |
-| 32 | **1.0.0 封版简化与模块化拆分（已拍板）** | 14 项拍板结果与目标态**全文见 §15**（稳定矩阵为 `memory` + `rocketmq`（2026-11-06 起加 `rabbitmq`）、父工程聚合 ＋ 8 子模块、`ServiceLoader` 发现、`MessageBus` 4 方法 ＋ `BusProducer` / `BusConsumer`、删 `AbstractMqProvider` / `TextCodec` / 各后端视图类、`SendResult` 保留且 `messageId` 钉死为诊断用途、插件仅支持单次启动、实验性后端不发布）。**落地纪律**：先按 §15 更新本文（已完成），再改代码；与 §1–§14 冲突时**以 §15 为准** |
+| 32 | **工程结构与依赖口径** | 单模块 `io.github.gollyhu:aifei-mq:1.0.0`（`packaging=jar`），7 个后端同处一个 JAR；6 个客户端 `optional`、不向下传递；`ServiceLoader` 从单一 services 文件发现 7 个 provider；`MessageBus` 4 方法 + `BusProducer` / `BusConsumer`；`SendResult` 保留且 `messageId` 为诊断用途；插件仅支持单次启动；实验性后端随包提供但不承诺语义。全文见 §15 |
 
 ---
 
@@ -1217,86 +1166,52 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 
 ---
 
-## 15. 1.0.0 封版简化与模块化拆分（已拍板，落地中）
+## 15. 工程结构与依赖基线
 
-> 本章是 1.0.0 封版决策的**汇总事实来源**（14 项拍板结果、目标工程结构、发布清单、落地顺序与发布门禁状态）；本章与 §1–§14 冲突时以本章为准，本文受影响的章节已按本章回填。
-
-### 15.1 14 项拍板结果
-
-| 编号 | 决策项 | 拍板结果 |
-| --- | --- | --- |
-| A1 | 1.0.0 后端支持范围 | 稳定范围 `memory` + `rocketmq`（2026-11-06 起加 `rabbitmq`）；工程结构拆分（见 15.2） |
-| A2 | `rocketmq` 真机验证时点 | 真机端到端为 1.0.0 发布**阻断项** |
-| B1 | `SendResult` 去留 | 保留；`messageId` 钉死为诊断用途、唯一性仅本进程、禁止当幂等键（§5.6） |
-| B2 | 「换后端只改配置」宣传语 | 改为「发送与订阅代码保持一致；投递、持久化、顺序和重复语义由后端决定」（§1.1） |
-| B3 | 单次启动契约 | 仅支持单次启动，不支持 `stop()` 后原地重启（§5.3） |
-| C1 | 视图收敛接口形状 | `MessageBus` 4 方法 + `BusProducer` / `BusConsumer`（§5.2） |
-| C2 | 无效层级 | 删 `AbstractMqProvider`；`TextCodec` 并入 `BusProducer`（§4.1 / §5.2） |
-| C3 | 总线骨架基类 | **不做**（稳定总线仅 2 个，收益不足） |
-| D1 | 配置键瘦身 | 删死键 + 透传默认值键；判据写入 §5.5 |
-| D2 | 文档收口 | 结构瘦身 + 修正两处既有不一致（随实现轮 P5） |
-| M1 | 工程结构 | `aifei-mq` 内 Maven 父子聚合 |
-| M2 | 开箱即用 | 纯核心 + 显式选后端（引一个后端子模块即可用） |
-| M3 | provider 发现 | JDK `ServiceLoader` |
-| M4 | 5 个未验证后端 | 拆成子模块、标记实验性、不发布（`rabbitmq` 于 2026-11-06 验证通过并转稳定发布） |
-
-### 15.2 目标工程结构
+### 15.1 结构
 
 ```text
-aifei-mq/                      父工程 io.github.gollyhu:aifei-mq:1.0.0（packaging=pom，仅聚合，不发布）
-  aifei-mq-core/               核心：公共 API 8 类型 + internal + MqPlugin
-  aifei-mq-memory/             稳定后端
-  aifei-mq-rocketmq/           稳定后端
-  aifei-mq-rabbitmq/           稳定后端
-  aifei-mq-kafka/              实验性，不发布
-  aifei-mq-redisstream/        实验性，不发布
-  aifei-mq-mqtt/               实验性，不发布
-  aifei-mq-mqtt5/              实验性，不发布
-aifei-mq-demo/                 仓库根平级，依赖 aifei-mq-memory
+aifei-mq/                      单模块 io.github.gollyhu:aifei-mq:1.0.0（packaging=jar）
+  src/main/java/cn/hg/aifei/mq/
+    根包                       公共 API 8 类型
+    internal/                  校验 / 配置 / 注册表 / 总线契约 / provider 契约与发现
+    aifei/                     MqPlugin（唯一 import 框架类型的类）
+    memory/ rocketmq/ rabbitmq/ mqtt/ mqtt5/ kafka/ redisstream/
+                              7 个实现包，各 1 个 Provider + 1 个 MessageBus
+  src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider
+                              单一文件、7 行
+  src/test/java/cn/hg/aifei/mq/
+                              23 个测试类（含 ArchitectureBoundaryTest 6 例）
+aifei-mq-demo/                 仓库根平级：依赖 aifei-mq，自行声明 6 个客户端
 ```
 
-- 父 `pom.xml` 仅列 `<modules>`，子模块不声明 `<parent>`；各子模块独立声明坐标与 Java 8 编译参数。
-- 依赖方向恒为「后端子模块 → 核心」，核心不得 import 任何后端实现或第三方客户端类型（§9.1）。
+- 依赖方向：后端实现包 → `internal` 契约；契约层零第三方类型；`cn.aifei.*` 仅出现在 `aifei` 包。
+- `MqPlugin` 只支持单次启动，不支持 `stop()` 后原地重启。
 
-### 15.3 发布清单
+### 15.2 支持矩阵
 
-- **发布**：`io.github.gollyhu:aifei-mq-core:1.0.0`、`io.github.gollyhu:aifei-mq-memory:1.0.0`、`io.github.gollyhu:aifei-mq-rocketmq:1.0.0`、`io.github.gollyhu:aifei-mq-rabbitmq:1.0.0` 四个 `jar`。
-- **不发布**：父工程 `io.github.gollyhu:aifei-mq:1.0.0`（`pom`）；4 个实验性子模块（`mqtt` / `mqtt5` / `kafka` / `redisstream`，`maven.deploy.skip=true`）。
-- 实验性模块声明口径：运行期语义零真机验证、不承诺行为、不在 1.0.0 稳定支持矩阵。
-- **发布路径**：本仓库目前仅 `aifei-cache` 具备 Maven Central 发布配置，1.0.0 的实际发布路径须另行评估（本清单只定义「哪些 artifact 进入稳定支持矩阵」）。
-
-### 15.4 落地顺序（每步 `mvn clean verify` 0 failure / 0 error 为门）
-
-1. **P0 决策回流**：本文更新（已完成）。
-2. **P1 结构拆分（已完成 2026-11-04）**：父 pom + 8 个子模块；迁移源码/测试/资源；`aifei-mq-core` 产出 test-jar；`aifei-mq-demo/pom.xml` 改依赖。
-3. **P2 契约重构（已完成 2026-11-04）**：`MessageBus` 4 方法、新增 `BusProducer` / `BusConsumer`、删视图类与 `AbstractMqProvider` / `TextCodec`。
-4. **P3 发现机制（已完成 2026-11-04）**：7 份 `META-INF/services`、`MqProviderRegistry` 改 `ServiceLoader`、补缺后端报错用例。
-5. **P4 范围与配置**：5 个子模块标记实验性；稳定模块键面瘦身。
-6. **P5 文档收口（已完成）**：§8 重写为模块级文件清单（父工程 + 8 个子模块，含发表状态与实测计数）、§10 压缩为历史任务索引、时序图仅保留 §7 内嵌副本，并统一 `docs/design.md` 与 `docs/testing.md` 的后端差异断言口径。
-7. **P6 发布门禁（部分完成 2026-11-04）**：凭据泄露检查、字节码基线、集成开关负向验证、缺后端报错**已 PASS**；`rocketmq` 真机端到端与 Java 8 消费方冒烟 **BLOCKED**（本机无 broker / 无 JRE 8），详见 §15.6。
-
-### 15.5 「单模块历史态」章节的同步状态
-
-§8 文件清单（模块级目标态）与 §10（历史任务索引）**已随 P5 同步**；§6 类图与 §7 时序图以**类关系与调用链路**为主体，模块归属与文件事实以 **§8** 为准、门禁分布以 **§12.6** 为准。
-
-### 15.6 验证环境现状与发布门禁状态（P6，2026-11-04；补验至 2026-11-06）
-
-| 门禁项 | 状态 | 证据 / 阻塞原因 |
+| 后端（`mq.type`） | 支持级别 | 启动期连通性 |
 | --- | --- | --- |
-| 集成开关负向验证（开启后连不上必须失败） | **PASS** | `"-Drocketmq.integration=true"`（**PowerShell 下必须整体加引号**）时 `RocketMqMessageBusContractTest` **6 Error + 4 通过**（通过者是只建总线 / 关闭、不做收发的用例），`Skipped: 0`——未被 `Assume` 掩盖；错误均为 `RemotingConnectException: 127.0.0.1:9876` |
-| 字节码基线（各模块 class major = 52） | **PASS** | 8 个模块代表类 `javap -verbose` 均为 `major version: 52` |
-| 凭据泄露检查（静态 + 现有用例） | **PASS**（含 1 条已知边界） | 96 处抛异常点逐条核对，消息只含键名 / 类名 / topic / 非凭据数值；**已知边界**：`mqtt` / `mqtt5` / `rabbitmq` / `rocketmq` 在建连失败处拼接第三方客户端异常原文，第三方是否回显配置值不受本工程控制，因无 broker 未触发验证 |
-| 缺后端依赖报错 | **PASS** | `MqProviderRegistryTest` 3/3：消息含 `mq.type=` 与 artifact 提示、不含凭据取值 |
-| `rocketmq` 真机端到端 | **PASS（2026-11-05）** | 本机 RocketMQ **5.5.1**（nameserver + broker 均由本轮启动），客户端 `org.apache.rocketmq:rocketmq-client:4.9.7`；`mvn -pl aifei-mq-rocketmq test "-Drocketmq.integration=true"` → **`Tests run: 13 / Failures: 0 / Errors: 0 / Skipped: 0`**（契约 10 项**真实收发通过**，耗时 88.56s） |
-| Java 8 消费方冒烟 | **BLOCKED** | 本机无 JRE 8（仅 JDK 21）；以「class major 52」作为静态兼容证据，不等价于运行时冒烟 |
-| `rabbitmq` 真机端到端 | **PASS（2026-11-06）** | CloudAMQP 云端 broker（RabbitMQ **4.3.6** / Erlang 28.5.0.7），客户端 `com.rabbitmq:amqp-client:5.21.0`；`mvn -pl aifei-mq-rabbitmq test "-Drabbitmq.integration=true"` 契约用例真实收发通过，随后转为稳定后端并纳入 1.0.0 发布清单 |
-| `redisstream` 真机集成 | **PASS（2026-11-05）** | 本机 Redis `6379`，14 项全通过、契约 10 项真实收发通过（不在 1.0.0 稳定矩阵） |
-| `mqtt` / `mqtt5` / `kafka` 真机验证 | **BLOCKED** | `1883` / `9092` 无监听（本机无 MQTT / Kafka broker） |
+| `memory`（默认） | **稳定** | 不涉及 |
+| `rocketmq` | **稳定** | 懒连接（启动成功 ≠ 可达） |
+| `rabbitmq` | **稳定** | 建连即校验（fail-fast） |
+| `mqtt` / `mqtt5` | 随包提供 · 不承诺语义 | 建连即校验 |
+| `kafka` / `redisstream` | 随包提供 · 不承诺语义 | 懒连接 |
 
-> **历史表述修正**：§4.6 / §4.10 / §5.6 / §13 / §14 中「本机无任何 broker（含 Redis）」为 R 轮环境口径；**当前事实以本节为准**——Redis `6379` 可用且 `redisstream` 已于 2026-11-05 通过真机集成验证；RocketMQ `5.5.1` 的 nameserver + broker 已于 2026-11-05 启动并完成端到端验证；`rabbitmq` 已于 2026-11-06 在 CloudAMQP 云端 broker 完成端到端验证；本机 MQTT / Kafka 不可用。
+### 15.3 发布
+
+- **发布件**：`io.github.gollyhu:aifei-mq:1.0.0` 单个 `jar`，内含全部 7 个后端。
+- **客户端**：6 个 `optional` 依赖不随包传递；消费方按 `mq.type` 自行引入（§9.1）。
+- **实验性后端**：`mqtt` / `mqtt5` / `kafka` / `redisstream` 随包提供，**不承诺运行期语义**（`mqtt` / `mqtt5` / `kafka` 未经真机验证）。
+- **未引客户端的表现**：`mq.type` 未注册 → `MqException`；已注册但客户端缺失 → `NoClassDefFoundError`；两者都由 `MqPlugin.start()` 回滚，不留半装配。
+- **发布路径**：本仓库目前仅 `aifei-cache` 具备 Maven Central 发布配置，实际发布路径须另行评估。
+
+
+
+
+
+
 
 ---
 
-> **一句话总览**：根包 8 个公共类型（`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerKit` / `ConsumerKit`）+ `internal` 非承诺支撑（校验 / 配置 / 编解码 / 多实例注册表 / 总线契约 / provider 契约与注册表）+ 稳定后端子模块 `aifei-mq-memory`（同步投递、单主题 FIFO、无订阅者成功、`close()` 幂等、监听器异常隔离）、`aifei-mq-rocketmq`（RocketMQ 4.9.7、异步投递 / 拉取消费、broker 持久化）与 `aifei-mq-rabbitmq`（RabbitMQ、启动期建连、at-least-once、CloudAMQP 真机验证）+ `aifei.MqPlugin` 单一装配入口（按 `mq.names` 装配**多实例**，关闭**全部**实例）；后端可替换 = **新增后端子模块 + `META-INF/services` 声明**（M3 定档）。**1.0.0 目标态见 §15**：稳定后端为 `aifei-mq-memory` / `aifei-mq-rocketmq` / `aifei-mq-rabbitmq`，4 个实验性后端不发布、不承诺语义。
->
-> **R 轮 5 个后端（`rabbitmq` 已于 2026-11-06 转稳定）**：`mqtt`（MQTT v3.1.1）/ `mqtt5`（MQTT v5.0）/ `kafka` / `redisstream` 的代码与配置域保留在仓库，但**不发布、不承诺行为语义、不在 1.0.0 稳定支持矩阵**（§15.1 M4）；`rabbitmq` 在 CloudAMQP 真机验证通过后随 1.0.0 发布。差异落点见 §5.6 (C) 续 5 张表，R1 / R2 / R3 裁定见 §14.2；**4 个实验性后端的运行期语义一律未经真机验证**（§13 第 28 条）。
+> **一句话总览**：`io.github.gollyhu:aifei-mq:1.0.0` 单模块 —— 根包 8 个公共类型（`Message` / `Producer` / `Consumer` / `MessageListener` / `SendResult` / `MqException` / `ProducerKit` / `ConsumerKit`）+ `internal` 非承诺支撑（校验 / 配置 / 编解码 / 多实例注册表 / 总线契约 / provider 契约与发现）+ `aifei.MqPlugin` 单一装配入口（按 `mq.names` 装配多实例、关闭全部实例）+ 7 个后端实现包。稳定后端 `memory` / `rocketmq` / `rabbitmq`；`mqtt` / `mqtt5` / `kafka` / `redisstream` 随包提供但不承诺运行期语义。客户端一律 `optional`，消费方按 `mq.type` 自行引入；新增后端 = 新增实现包 + services 一行声明 + 重新发版。

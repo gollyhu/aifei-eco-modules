@@ -30,43 +30,40 @@
 
         <dependency>
             <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-core</artifactId>
+            <artifactId>aifei-mq</artifactId>
             <version>1.0.0</version>
         </dependency>
+
+        <!-- 客户端在 aifei-mq 内为 optional，不向下游传递；demo 声明全部客户端以演示多后端切换 -->
         <dependency>
-            <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-memory</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-client</artifactId>
+            <version>4.9.7</version>
         </dependency>
         <dependency>
-            <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-mqtt</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.eclipse.paho</groupId>
+            <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+            <version>1.2.5</version>
         </dependency>
         <dependency>
-            <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-mqtt5</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.eclipse.paho</groupId>
+            <artifactId>org.eclipse.paho.mqttv5.client</artifactId>
+            <version>1.2.5</version>
         </dependency>
         <dependency>
-            <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-rabbitmq</artifactId>
-            <version>1.0.0</version>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <version>5.21.0</version>
         </dependency>
         <dependency>
-            <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-kafka</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>3.9.1</version>
         </dependency>
         <dependency>
-            <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-redisstream</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.gollyhu</groupId>
-            <artifactId>aifei-mq-rocketmq</artifactId>
-            <version>1.0.0</version>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>8.0.1</version>
         </dependency>
 
         <dependency>
