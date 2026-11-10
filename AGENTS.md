@@ -58,6 +58,8 @@
 - **已登记的 `compile` 例外**（模块须先在自身 `docs/design.md` 作出设计决策，并在此登记后方可落地）：
   - `aifei-oss` 的 `org.dromara.x-file-storage:x-file-storage-core` 为 `compile`——它是该模块的实现内核，脱离它门面无任何功能，标 `optional` 只会迫使消费方重复声明；理由见 `aifei-oss/docs/design.md` §3.2。
   - `aifei-sa-token` 的 `cn.dev33:sa-token-core` 为 `compile`——公共 API 签名直接暴露其类型（`StpInterface` / `SaTokenDao` 等），插件与上下文桥接也以内核实现为前提，标 `optional` 会让消费方被迫重复声明且编译期缺类型；理由见 `aifei-sa-token/docs/design.md` §2 与 §3 依赖表。
+  - `aifei-job` 的 `org.quartz-scheduler:quartz` 为 `compile`——cron 表达式校验与下次触发计算依赖其 `CronExpression`，是本模块的实现内核（非 Quartz 调度运行时，`Scheduler` / `JobStore` / `Trigger` 均不用），标 `optional` 只会迫使消费方重复声明；理由见 `aifei-job/docs/design.md` §3.1 与 §10。
+  - `aifei-job` 的 `org.slf4j:slf4j-api` 为 `compile`——Quartz 内部日志门面，排掉会导致类加载失败，故显式直接声明（不靠 Quartz 传递，避免 Quartz 变动后门面消失）；本模块自身零 `org.slf4j.*` 引用（门禁断言）；理由同上。
   **新增例外一律须先在此登记**，不得由模块文档单方面声明。
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。

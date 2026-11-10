@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Job 调度演示 · 真实数据</title>
+    <link rel="stylesheet" href="/assets/css/job-demo.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="job-demo-app" v-cloak>
+
+    <!-- 语义提示条：不可关闭。数据来自本进程运行中的 aifei-job 实例 -->
+    <p class="semantic-bar">
+        <span class="semantic-tag">真实数据</span>
+        <span class="semantic-text">
+            本页数据全部来自<strong>本进程运行中的 aifei-job 实例</strong>（<code>/job/demo/</code> 下的 GET 端点，每秒轮询一次）。
+            <code>JobKit.names()</code> 给出已注册任务名；<code>JobKit.state()</code> <strong>只有最近一次终态</strong>，
+            执行中 / 在途只能由监听器事件流推导；「触发方式」与「下次触发时间」由 demo 端按自身注解常量自算，
+            <strong>不是模块能力</strong>。停机区块同样只读：本页不会真的停掉应用。
+        </span>
+    </p>
+
+    <!-- 轮询失败 / 首次连接中的页面级提示（不清空已有数据） -->
+    <p class="alert-bar alert-page alert-err" v-if="!backendOk && backendMsg" role="alert" aria-live="assertive">
+        <strong>后端不可达</strong>：{{ backendMsg }}——页面保留上一次成功拉取的数据，恢复后自动继续轮询。
+    </p>
+    <p class="alert-bar alert-page alert-info" v-else-if="!firstLoaded" role="status" aria-live="polite">
+        正在连接本进程端点 <code>/job/demo/names</code>、<code>/state</code>、<code>/events</code>、<code>/tasks</code>、<code>/shutdown</code> …
+    </p>
+
+    <!-- ① 顶部：状态 + 控制 + 指标 -->
+    <header class="topbar">
+        <div class="topbar-row">
+            <div class="title-wrap">
+                <h1 class="page-title">aifei-job 调度演示</h1>
+                <span class="chip" :class="'chip-' + backendCls" aria-live="polite">{{ backendText }}</span>
+                <span class="chip chip-ghost mono">{{ pollText }}</span>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="refreshing" @click="refreshNow">
+                    {{ refreshing ? '拉取中…' : '手动刷新' }}
+                </button>
+                <label class="checkbox-line switch-line">
+                    <input type="checkbox" :checked="autoPoll" @change="toggleAutoPoll($event.target.checked)">
+                    <span>自动轮询（{{ pollIntervalMs }} ms）</span>
+                </label>
+                <button class="btn btn-danger-ghost" type="button" :disabled="clearing" @click="clearEvents">
+                    {{ clearing ? '清空中…' : '清空事件流' }}
+                </button>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <span class="metric">
+                <span class="metric-k">已注册任务</span>
+                <span class="metric-v">{{ names.length }}</span>
+            </span>
+            <span class="metric">
+                <span class="metric-k">执行层</span>
+                <span class="metric-v">{{ poolText }}</span>
+            </span>
+            <span class="metric">
+                <span class="metric-k">在途（事件流推导）</span>
+                <span class="metric-v">{{ shutdown.runningTotal }}</span>
+            </span>
+            <span class="metric metric-ok">
+                <span class="metric-k">SUCCESS</span>
+                <span class="metric-v">{{ counts.success }}</span>
+            </span>
+            <span class="metric metric-err">
+                <span class="metric-k">FAILED</span>
+                <span class="metric-v">{{ counts.failed }}</span>
+            </span>
+            <span class="metric">
+                <span class="metric-k">SKIPPED</span>
+                <span class="metric-v">{{ counts.skipped }}</span>
+            </span>
+            <span class="metric metric-wide">
+                <span class="metric-k">跳过分类（按事件线程名）</span>
+                <span class="metric-v">
+                    提交被拒 {{ counts.reject }} · fixedRate 超时 {{ counts.overrun }} · 其他（含停机中断）{{ counts.other }}
+                </span>
+            </span>
+            <span class="metric metric-wide">
+                <span class="metric-k">异常隔离（事件流统计）</span>
+                <span class="metric-v">{{ isolationText }}</span>
+            </span>
+            <span class="metric">
+                <span class="metric-k">事件缓冲</span>
+                <span class="metric-v">{{ events.length }} / {{ eventCapacity }}</span>
+            </span>
+            <span class="metric">
+                <span class="metric-k">最近刷新</span>
+                <span class="metric-v mono">{{ lastRefreshAt }}</span>
+            </span>
+        </div>
+
+        <p class="panel-result" v-if="clearMsg" role="status">{{ clearMsg }}</p>
+    </header>
+
+    <!-- ⑤ 停机收敛：只读展示后端返回的三步与在途 / 跳过统计 -->
+    <div class="panel-wrap">
+        <section class="card card-shutdown" aria-live="polite">
+            <div class="card-head">
+                <h2 class="card-title">停机收敛（只读展示）</h2>
+                <span class="head-note mono">
+                    applying = {{ shutdown.applying ? 'true' : 'false' }} ·
+                    job.shutdown.timeoutMillis = {{ shutdown.timeoutMillis }} ms
+                </span>
+            </div>
+
+            <p class="alert-bar alert-inline alert-info">
+                <strong>本页不会真的停掉应用</strong>：下面的三步、在途任务与跳过统计全部来自只读端点
+                <code>/job/demo/shutdown</code>，只用于展示 <code>JobPlugin.stop()</code> 的停机语义。
+                要观察真实停机，请停掉进程（<code>stop-demo.bat</code>）或自行在代码里调用 <code>Plugin&num;stop()</code>。
+            </p>
+
+            <ol class="step-list">
+                <li class="step" v-for="s in shutdown.steps" :key="s.key">
+                    <span class="step-title">{{ s.text }}</span>
+                    <span class="step-state">{{ s.badge }}</span>
+                </li>
+            </ol>
+
+            <div class="in-flight-wrap">
+                <span class="field-label">
+                    在途任务（事件流最新事件为 STARTED 的任务，共 {{ shutdown.runningTotal }} 个；累计跳过 {{ shutdown.skippedTotal }} 次）
+                </span>
+                <p class="hint" v-if="shutdown.inFlight.length === 0">
+                    当前无在途任务：等待阶段 0 个，可直接收敛。
+                </p>
+                <ul class="in-flight-list" v-else>
+                    <li class="in-flight-item" v-for="t in shutdown.inFlight" :key="t.key">
+                        <span class="in-flight-name mono">{{ t.taskName }}</span>
+                        <span class="in-flight-thread mono">{{ t.threadName }} · 起于 {{ t.startedAtText }} · 已运行 {{ t.runningMillis }} ms</span>
+                        <span class="in-flight-state if-waiting">执行中</span>
+                    </li>
+                </ul>
+            </div>
+
+            <p class="hint">
+                模块口径：停机只向在途任务发中断信号，<strong>不保证强制终止</strong>；等待超过 timeoutMillis 即
+                <code>shutdownNow()</code>，未执行的单元逐个记 SKIPPED（事件时间取其原计划触发时刻）；停机期间错过的计划点不补跑。
+                执行层规模 {{ shutdown.poolSize }} 线程 / 队列 {{ shutdown.queueCapacity }}。
+            </p>
+            <p class="hint" v-if="shutdown.note">后端说明：{{ shutdown.note }}</p>
+        </section>
+    </div>
+
+    <div class="layout">
+        <div class="col-left">
+
+            <!-- ① 任务列表（观测点 1 / 2 / 3 / 4） -->
+            <section class="card card-tasks">
+                <div class="card-head">
+                    <h2 class="card-title">任务列表</h2>
+                    <span class="head-note">任务名 = 「类全名&num;方法名」· 阶段取 <code>state()</code> 最近终态 · 执行中取事件流</span>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="job-table">
+                        <caption class="sr-only">
+                            真实任务列表：任务名、触发方式与节拍、阶段、最近触发时间、下次触发时间
+                        </caption>
+                        <thead>
+                        <tr>
+                            <th scope="col">任务</th>
+                            <th scope="col">触发方式与节拍</th>
+                            <th scope="col">阶段</th>
+                            <th scope="col">最近触发时间</th>
+                            <th scope="col">下次触发时间<br><span class="th-note">（demo 自算，非模块能力）</span></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="row in rows" :key="row.name"
+                            :class="{ 'is-firing': row.firing, 'row-failed': row.statePhase === 'FAILED' }">
+                            <th scope="row" class="cell-task">
+                                <span class="task-name mono">{{ row.name }}</span>
+                                <span class="task-biz">{{ row.biz }}</span>
+                                <span class="task-biz" v-if="!row.registered">未出现在 <code>names()</code> 中</span>
+                            </th>
+                            <td class="cell-trigger">
+                                <span class="trigger-expr mono">{{ row.triggerText }}</span>
+                                <span class="trigger-rhythm">{{ row.rhythmText }}</span>
+                            </td>
+                            <td class="cell-phase">
+                                <span class="phase-chip"
+                                      :class="row.statePhase ? 'ph-' + row.statePhase.toLowerCase() : 'ph-idle'">{{ row.statePhase || '尚无终态' }}</span>
+                                <span class="phase-note">{{ row.phaseNote }}</span>
+                                <span class="run-note" v-if="row.running">执行中：事件流最新事件为 STARTED（{{ row.runThread }}）</span>
+                                <span class="fail-note" v-if="row.statePhase === 'FAILED'">异常就地隔离：其他任务节拍照常推进</span>
+                            </td>
+                            <td class="cell-time mono">
+                                {{ row.lastTriggerAt }}
+                                <span class="cell-sub">state 终态：{{ row.stateTriggerAt }}</span>
+                            </td>
+                            <td class="cell-time mono">
+                                {{ row.nextFireAt }}
+                                <span class="cell-sub">{{ row.countdownText }}</span>
+                            </td>
+                        </tr>
+                        <tr v-if="rows.length === 0">
+                            <td colspan="5" class="ev-empty">{{ emptyRowsText }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="hint">
+                    两类跳过按<strong>事件线程名</strong>区分（端点未单独给出跳过原因字段）：唤醒线程
+                    <code>aifei-job-wake</code> 记的 SKIPPED 是<strong>提交被拒</strong>（执行队列已满）；
+                    执行线程 <code>aifei-job-worker-N</code> 记的是<strong>fixedRate 超时</strong>（本轮耗时越过下个计划点）；
+                    其他线程（如 <code>stop()</code> 调用线程）记的属停机中断。SKIPPED 的事件时间是<strong>原计划触发时刻</strong>。
+                    本 demo 执行层 4 线程 / 队列 64，故页面上常见的是 fixedRate 超时那一类。
+                </p>
+                <p class="hint">
+                    下次触发时间取 <code>/job/demo/tasks</code> 的 <code>nextFireTime</code>：cron 按秒对齐、fixedRate 以上次开始为基准、
+                    fixedDelay 以上次结束为基准，均由 demo 自算；倒计时按浏览器时钟与该时间戳的差值估算。
+                </p>
+                <p class="hint">
+                    FAILED 只终止本任务本轮，续排在 <code>finally</code> 中完成，所以 <code>DemoFailingJob&num;boom</code> 周期失败时，
+                    其他任务的触发时间点照常推进（对照「异常隔离」指标里的两条计数即可看到）。
+                </p>
+            </section>
+
+            <!-- 只读观测面：模块真正的公共面 -->
+            <section class="card card-state">
+                <div class="card-head">
+                    <h2 class="card-title">只读观测面（<code>JobKit.names()</code> / <code>JobKit.state()</code>）</h2>
+                    <span class="head-note">state() 只承载最近终态，不承载运行态</span>
+                </div>
+
+                <p class="names-line"><span class="names-k">names()</span><span class="mono names-v">{{ namesText }}</span></p>
+
+                <div class="table-wrap">
+                    <table class="state-table">
+                        <caption class="sr-only">JobKit.state() 的真实观测结果</caption>
+                        <thead>
+                        <tr>
+                            <th scope="col">任务名（key）</th>
+                            <th scope="col">最近终态</th>
+                            <th scope="col">触发时间</th>
+                            <th scope="col">异常</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="r in stateRows" :key="r.name">
+                            <td class="mono">{{ r.name }}</td>
+                            <td>
+                                <span class="phase-chip" :class="r.phase ? 'ph-' + r.phase.toLowerCase() : 'ph-idle'">{{ r.phase || '—' }}</span>
+                            </td>
+                            <td class="mono">{{ r.triggerAt }}</td>
+                            <td class="mono err-cell">{{ r.error || '—' }}</td>
+                        </tr>
+                        <tr v-if="stateRows.length === 0">
+                            <td colspan="4" class="ev-empty">尚无终态：从未执行过、或首次执行中的任务都不出现在 state()。</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="hint">
+                    STARTED 既不记账也不清除记录：任务再次执行期间这里仍保留上一次终态——所以「执行中 / 在途」只能由监听器事件流提供。
+                </p>
+            </section>
+        </div>
+
+        <div class="col-right">
+            <!-- ②③④ 事件流侧栏 -->
+            <section class="card card-events">
+                <div class="card-head">
+                    <h2 class="card-title">监听器事件流</h2>
+                    <span class="head-note">共 {{ events.length }} 条 / 后端容量 {{ eventCapacity }} · 最新在上</span>
+                </div>
+
+                <p class="thread-legend">
+                    <span class="lg lg-pool">执行层 aifei-job-worker-N</span>STARTED / SUCCESS / FAILED / fixedRate 超时跳过
+                    <span class="lg lg-wake">唤醒层 aifei-job-wake</span>提交被拒的 SKIPPED
+                    <span class="lg lg-stop">其他线程</span>停机中断的 SKIPPED
+                </p>
+                <p class="hint">
+                    监听器回调是<strong>同步</strong>的，运行在产生事件的线程上：同一实例会被多个线程并发回调，故它只做一件事——
+                    线程安全地写环形缓冲，不做阻塞 IO。事件时间即触发时间（SKIPPED 取原计划触发时刻）。
+                </p>
+
+                <div class="ev-body" aria-live="polite">
+                    <p class="ev-empty" v-if="events.length === 0">
+                        暂无事件。任务按各自节拍触发后事件会实时追加；若刚清空过事件流，等下一轮节拍即可重新看到。
+                    </p>
+                    <div class="ev-line" v-for="e in events" :key="e.key">
+                        <div class="ev-row1">
+                            <span class="ev-time mono">{{ e.time }}</span>
+                            <span class="phase-chip" :class="'ph-' + e.phase.toLowerCase()">{{ e.phase }}</span>
+                            <span class="ev-thread" :class="'th-' + e.threadRole">{{ e.threadName }}</span>
+                        </div>
+                        <div class="ev-name mono">{{ e.taskName || '（未知任务）' }}</div>
+                        <div class="ev-desc">{{ e.desc }}</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+</main>
+
+<script src="/assets/js/job-demo.js"></script>
+</body>
+</html>

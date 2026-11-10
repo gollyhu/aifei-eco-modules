@@ -1,0 +1,20 @@
+# ===== aifei-job-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18110 传入；本文件只放 job.* 四个键
+# 与两个非 job.* 的演示开关（enjoyDevMode / printAction，见文件末尾）。
+# job.* 的解析与校验全部发生在 JobPlugin.start()（构造函数只保存 Prop 引用），配置有误即应用启动失败。
+
+# ===== aifei-job 配置（1.0.0）=====
+# 扫描包：唯一必填键，逗号分隔、逐项 trim；只扫本 demo 的任务包，任务名为「类全名#方法名」。
+job.scan.packages = cn.hg.aifei.job.demo.job
+# 执行层线程数（缺省为 availableProcessors）：取 4 让慢任务 / 阻塞任务不独占执行层，其余任务照常触发。
+job.pool.size = 4
+# 执行层有界队列容量（缺省 256）：取 64，队满时提交被拒并记 SKIPPED。
+job.pool.queue = 64
+# 停机等待上限（缺省 10000）：取 1000 让「等待在途 → 超时中断」这一幕可观（本 demo 不停应用，仅展示该配置）。
+job.shutdown.timeoutMillis = 1000
+
+# ===== 演示开关（非 job.* 键）=====
+# Enjoy 模板热加载：改 view/job/*.html 后刷新浏览器即生效，无需重启进程（默认 false 会缓存模板）
+enjoyDevMode = true
+# 打开后每个 action 调用打印到控制台（默认 false）；排查路由是否命中时可临时改为 true
+printAction = false

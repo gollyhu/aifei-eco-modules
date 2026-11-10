@@ -54,3 +54,5 @@ WORDBUDDY.md
 
 # aifei-oss-demo 运行时本地存储数据（start-demo.bat 在 demo 目录下生成）
 aifei-oss-demo/data/
+services/
+aifei-mq-demo-*

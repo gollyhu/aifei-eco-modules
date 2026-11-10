@@ -19,6 +19,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-oss](aifei-oss/README.md) | `io.github.gollyhu:aifei-oss:1.0.0` | 多平台对象 / 文件存储能力：基于 X File Storage（覆盖 30+ 平台）二次封装，本模块类型白名单 20 项 |
 | [aifei-oss-demo](aifei-oss-demo/README.md) | （示例工程，不发布） | aifei-oss 的完整接入示例：本地存储的上传 / 下载 / 列举 / 复制 / 删除演示 |
 | [aifei-lock](aifei-lock/README.md) | `io.github.gollyhu:aifei-lock:1.0.0` | 分布式锁：基于共享缓存的原子加锁、CAS 释放与 CAS 续期 |
+| [aifei-job](aifei-job/README.md) | `io.github.gollyhu:aifei-job:1.0.0` | 应用内定时任务：cron / 固定频率 / 固定延迟，单飞自续排、拒绝记账、优雅停机 |
+| [aifei-job-demo](aifei-job-demo/README.md) | （示例工程，不发布） | aifei-job 的完整接入示例：任务列表 / 到点触发 / 跳过 / 异常隔离 / 停机收敛演示（端口 18110） |
 
 ### aifei-cache
 
@@ -104,6 +106,17 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 提供的是**互斥**而非**一致性**：租约到期双持有、Redis 主从切换丢锁均不在保证范围
 - 详细用法见 [aifei-lock/README.md](aifei-lock/README.md)，设计文档见 [docs/design.md](aifei-lock/docs/design.md)
 
+### aifei-job
+
+为 aifei 应用补齐**应用内**定时任务能力：业务只写一个方法 + 一个注解，调度、并发控制、异常隔离与停机收敛由模块统一负责。
+
+- 公共面固定 7 个类型：`JobKit` / `JobEvent` / `JobListener` / `JobException` + `@Cron` / `@FixedRate` / `@FixedDelay`，零第三方类型、零框架类型
+- 调度内核为 JDK `ScheduledThreadPoolExecutor` 上的**单飞自续排**：每任务恒至多一个待触发实例，不重叠、不堆叠、不补跑是结构属性；唤醒层固定 1 线程只做提交，执行层有界队列 + `AbortPolicy`，被拒就地重排并记 `SKIPPED`
+- cron 解析委托 Quartz `CronExpression`（唯一用途，不启动调度器、不建表、不连库）；Quartz 2.3.2 为 `compile`，**会向消费方传递**
+- `aifei-all` 为 `provided`，**消费方须自带**；不引入任何日志绑定，模块记录经 `cn.aifei.log.Log`
+- **v1 不支持多实例互斥**：多实例各跑一次，业务任务必须自行幂等
+- 详细用法见 [aifei-job/README.md](aifei-job/README.md)，设计文档见 [docs/design.md](aifei-job/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -117,6 +130,7 @@ cd aifei-websocket && mvn clean install
 cd aifei-mq        && mvn clean install
 cd aifei-oss       && mvn clean install
 cd aifei-lock      && mvn clean install
+cd aifei-job       && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -130,6 +144,7 @@ cd aifei-lock      && mvn clean install
 - `aifei-websocket`：`aifei-all` 为 `provided`，**运行时零第三方依赖**（传输层为内建 JDK 自实现，无传输库与日志绑定要求）
 - `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；内存后端零第三方运行依赖，6 个真实后端的客户端（`rocketmq-client` / `mqttv3` / `mqttv5` / `amqp-client` / `kafka-clients` / `jedis`）均为 `optional`，用到哪个后端自带哪个，不向下游传递
 - `aifei-lock`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 为 `optional`（**不向下游传递**，消费方必须显式引入，否则类加载期即 `NoClassDefFoundError`）；不直接依赖 Jedis
+- `aifei-job`：`aifei-all` 为 `provided`，消费方应用自带（只引核心 `cn.aifei:aifei` 时运行期 `NoClassDefFoundError: cn/aifei/log/Log`）；`quartz:2.3.2` 与 `slf4j-api:1.7.30` 为 **`compile`**，**会随本模块传递**（Quartz 版本冲突由消费方 `exclusion` 或显式对齐；`slf4j-api` 仅 Quartz 内部使用，不承诺日志语义），Quartz 的 `c3p0` / `mchange-commons-java` / `HikariCP-java7` 传递项已排空；不引入任何日志绑定
 - `aifei-oss`：`aifei-all` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
 
 ## 许可证
