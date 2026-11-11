@@ -1,0 +1,31 @@
+# ===== aifei-http-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18120 传入。
+# 本文件放两类配置：aifei-http 的 http.* 七键（键名全写前缀，不省略）与 demo 自身的回环地址。
+# 全程零外网：demo 唯一请求目标是 http://127.0.0.1:18120 自己的 /demo/echo 端点。
+
+# ===== aifei-http 七键（全部可选，缺失即取默认值）=====
+# 建连超时（毫秒），默认 5000
+http.connect-timeout = 5000
+# 读超时（毫秒），默认 10000
+http.read-timeout = 10000
+# 幂等（GET / HEAD）请求的默认重试次数，默认 0 = 不重试（重试必须显式开启）
+http.retry-times = 0
+# 每次重试前的固定等待（毫秒），默认 200；0 合法
+http.retry-interval = 200
+# 单次响应体上限（触发解压后字节数），默认 8388608 = 8 MiB
+http.max-response-bytes = 8388608
+# gzip：true 时模块自动发 Accept-Encoding: gzip 并在模块内解压
+# 本 demo 置 true 以便演示「解压」；改为 false 后模块不发 Accept-Encoding、也不解压（原样返回压缩字节）
+http.gzip = true
+# 默认 User-Agent；空白串表示模块不主动设置该头
+http.user-agent = aifei-http-demo/1.0.0
+
+# ===== demo 自身 =====
+# 回环目标基址：即便改动 undertow.port，也请同步改这里，否则演示端点会请求错误的端口
+demo.self-base-url = http://127.0.0.1:18120
+
+# ===== 演示开关（非 http.* 键）=====
+# Enjoy 模板热加载：改 view/*.html 后刷新浏览器即生效
+enjoyDevMode = true
+# 打开后每个 action 调用会打印到控制台；默认关闭以免刷屏
+printAction = false

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-http 出站请求演示 · 真实端点</title>
+    <link rel="stylesheet" href="/assets/css/http-demo.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="http-demo-app" v-cloak>
+
+    <!-- 语义提示条：不可关闭。所有数据来自本进程真实发出的出站请求 -->
+    <p class="semantic-bar">
+        <span class="semantic-tag">真实请求</span>
+        <span class="semantic-text">
+            本页每个控件都会真的触发一次出站 HTTP 请求：页面调 <code>/http/demo/*</code>，
+            后端再用真实装配的 <code>@Inject HttpClient</code> 去请求<strong>本机回环端点</strong>
+            <code>/demo/echo</code>（<code>127.0.0.1:18120</code>）。全程零外网，没有任何假数据、假开关或装饰性按钮：
+            重试次数、超时、资源名、请求头、请求体都由你填写后真实下发，结果原样回显。
+        </span>
+    </p>
+
+    <p class="alert-bar alert-page alert-err" v-if="stateError" role="alert" aria-live="assertive">
+        <strong>状态读取失败</strong>：{{ stateError }} —— 请确认 <code>start-demo.bat</code> 已在本机 18120 端口启动。
+    </p>
+
+    <!-- 顶部：装配状态 + 计数 + 全局动作 -->
+    <header class="topbar">
+        <div class="topbar-row">
+            <div class="title-wrap">
+                <h1 class="page-title">aifei-http 出站请求演示</h1>
+                <span class="chip" :class="backendCls" aria-live="polite">{{ backendText }}</span>
+                <span class="chip chip-ghost mono">{{ selfBaseUrl || '回环基址待读取' }}</span>
+            </div>
+            <div class="controls">
+                <button class="btn" type="button" :disabled="stateLoading" @click="loadState(false)">
+                    {{ stateLoading ? '读取中…' : '刷新状态快照' }}
+                </button>
+                <button class="btn btn-danger-ghost" type="button" :disabled="resetBusy" @click="resetEchoState">
+                    {{ resetBusy ? '重置中…' : '重置 echo 计数' }}
+                </button>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <span class="metric metric-tight">
+                <span class="metric-k">累计请求</span>
+                <span class="metric-v">{{ counters.requestCount }}</span>
+            </span>
+            <span class="metric metric-tight">
+                <span class="metric-k">累计尝试</span>
+                <span class="metric-v">{{ counters.attemptCount }}</span>
+            </span>
+            <span class="metric metric-tight">
+                <span class="metric-k">累计重试</span>
+                <span class="metric-v">{{ counters.retryCount }}</span>
+            </span>
+            <span class="metric metric-wide">
+                <span class="metric-k">最近资源名（拦截器读到的）</span>
+                <span class="metric-v mono">{{ counters.lastResource || '（尚未发生请求）' }}</span>
+            </span>
+            <span class="metric metric-wide">
+                <span class="metric-k">配置 http.gzip</span>
+                <span class="metric-v mono">{{ configValue('http.gzip') }}</span>
+            </span>
+            <span class="metric">
+                <span class="metric-k">快照时间</span>
+                <span class="metric-v mono">{{ stateAt || '—' }}</span>
+            </span>
+        </div>
+
+        <p class="alert-bar" :class="resetError ? 'alert-err' : 'alert-ok'" v-if="resetMsg || resetError" aria-live="polite">
+            {{ resetError || resetMsg }}
+        </p>
+    </header>
+
+    <!-- ① 请求构造区 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="builder-title">
+            <div class="card-head">
+                <h2 class="card-title" id="builder-title">① 请求构造区</h2>
+                <span class="head-note">提交到 <code>/http/demo/send</code>，由后端真实发出；<code>path</code> 含 <code>://</code> 会被当场拒绝</span>
+            </div>
+
+            <div class="form-grid">
+                <div class="field">
+                    <label class="field-label" for="f-method">方法 method</label>
+                    <select id="f-method" class="select" v-model="form.method" :disabled="sending || busyAny">
+                        <option v-for="m in methods" :key="m" :value="m">{{ m }}</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label" for="f-path">路径 path（相对本机回环）</label>
+                    <input id="f-path" class="input" type="text" v-model="form.path" :disabled="sending || busyAny"
+                           placeholder="/demo/echo">
+                </div>
+                <div class="field">
+                    <label class="field-label" for="f-resource">资源名 resource（留空 = 自动推导）</label>
+                    <input id="f-resource" class="input" type="text" v-model="form.resource" :disabled="sending || busyAny"
+                           placeholder="留空则用 METHOD host:port path">
+                </div>
+                <div class="field">
+                    <label class="field-label" for="f-ct">Content-Type</label>
+                    <input id="f-ct" class="input" type="text" v-model="form.contentType" :disabled="sending || busyAny"
+                           placeholder="application/json">
+                </div>
+                <div class="field">
+                    <label class="field-label" for="f-connect">connectTimeout（毫秒，留空 = 用配置）</label>
+                    <input id="f-connect" class="input" type="number" min="0" v-model="form.connectTimeout"
+                           :disabled="sending || busyAny" placeholder="5000">
+                </div>
+                <div class="field">
+                    <label class="field-label" for="f-read">readTimeout（毫秒，留空 = 用配置）</label>
+                    <input id="f-read" class="input" type="number" min="0" v-model="form.readTimeout"
+                           :disabled="sending || busyAny" placeholder="10000">
+                </div>
+                <div class="field">
+                    <label class="field-label" for="f-retry">重试次数 retryTimes（留空 = 不调用 retry）</label>
+                    <input id="f-retry" class="input" type="number" min="0" v-model="form.retryTimes"
+                           :disabled="sending || busyAny" placeholder="0">
+                </div>
+                <div class="field">
+                    <label class="field-label" for="f-interval">重试间隔 intervalMillis（留空 = 用配置）</label>
+                    <input id="f-interval" class="input" type="number" min="0" v-model="form.intervalMillis"
+                           :disabled="sending || busyAny" placeholder="200">
+                </div>
+            </div>
+
+            <div class="form-grid" style="margin-top: 16px;">
+                <div class="field">
+                    <span class="field-label">查询参数 query（名 / 值，逐条拼接在 path 之后）</span>
+                    <div class="kv-list">
+                        <p class="kv-empty" v-if="!form.query.length">暂无查询参数，点下方按钮新增</p>
+                        <div class="kv-row" v-for="(row, idx) in form.query" :key="'q' + idx">
+                            <input class="input" type="text" v-model="row.k" :disabled="sending || busyAny"
+                                   :aria-label="'查询参数名 ' + (idx + 1)" placeholder="名，如 status">
+                            <input class="input" type="text" v-model="row.v" :disabled="sending || busyAny"
+                                   :aria-label="'查询参数值 ' + (idx + 1)" placeholder="值，如 200">
+                            <button class="btn btn-mini" type="button" :disabled="sending || busyAny"
+                                    :aria-label="'删除第 ' + (idx + 1) + ' 个查询参数'" @click="removeQuery(idx)">删除</button>
+                        </div>
+                        <div class="kv-actions">
+                            <button class="btn btn-mini" type="button" :disabled="sending || busyAny" @click="addQuery">新增查询参数</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <span class="field-label">请求头 headers（名 / 值，同名多值会逐条追加）</span>
+                    <div class="kv-list">
+                        <p class="kv-empty" v-if="!form.headers.length">暂无自定义请求头，点下方按钮新增</p>
+                        <div class="kv-row" v-for="(row, idx) in form.headers" :key="'h' + idx">
+                            <input class="input" type="text" v-model="row.k" :disabled="sending || busyAny"
+                                   :aria-label="'请求头名 ' + (idx + 1)" placeholder="名，如 X-Demo-Token">
+                            <input class="input" type="text" v-model="row.v" :disabled="sending || busyAny"
+                                   :aria-label="'请求头值 ' + (idx + 1)" placeholder="值">
+                            <button class="btn btn-mini" type="button" :disabled="sending || busyAny"
+                                    :aria-label="'删除第 ' + (idx + 1) + ' 个请求头'" @click="removeHeader(idx)">删除</button>
+                        </div>
+                        <div class="kv-actions">
+                            <button class="btn btn-mini" type="button" :disabled="sending || busyAny" @click="addHeader">新增请求头</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field field-wide">
+                    <label class="field-label" for="f-body">请求体 body（文本，按 Content-Type 编码；echo 端点仅在声明 Content-Length 时回显）</label>
+                    <textarea id="f-body" class="textarea" v-model="form.body" :disabled="sending || busyAny"
+                              placeholder='{"demo":"aifei-http"}'></textarea>
+                </div>
+            </div>
+
+            <!-- 发送前预览：最终 URL 与推导出的资源名 -->
+            <div class="preview-box" aria-live="polite">
+                <span class="field-label">即将发出的请求（本页实时推导，非占位文本）</span>
+                <div class="preview-line">
+                    <span class="preview-k">方法</span>
+                    <span class="preview-v">{{ previewMethod }}</span>
+                </div>
+                <div class="preview-line">
+                    <span class="preview-k">最终 URL</span>
+                    <span class="preview-v">{{ previewUrl }}</span>
+                </div>
+                <div class="preview-line">
+                    <span class="preview-k">查询串</span>
+                    <span class="preview-v">{{ previewQuery || '（无）' }}</span>
+                </div>
+                <div class="preview-line">
+                    <span class="preview-k">请求头</span>
+                    <span class="preview-v">{{ previewHeaderText || '（仅模块默认头：UA / Accept-Encoding gzip）' }}</span>
+                </div>
+                <div class="preview-line">
+                    <span class="preview-k">请求体</span>
+                    <span class="preview-v">{{ previewBodyText }}</span>
+                </div>
+                <div class="preview-line">
+                    <span class="preview-k">资源名</span>
+                    <span class="preview-v">{{ effectiveResource }}<span class="order-chip" style="margin-left: 8px;">{{ resourceOverridden ? '显式覆盖' : '默认推导' }}</span></span>
+                </div>
+                <div class="preview-line">
+                    <span class="preview-k">超时 / 重试</span>
+                    <span class="preview-v">{{ previewPolicyText }}</span>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-primary" type="button" :disabled="sending || busyAny" @click="sendRequest">
+                    {{ sending ? '请求发出中…' : '发送请求' }}
+                </button>
+                <button class="btn" type="button" :disabled="sending || busyAny" @click="resetForm">清空表单与结果</button>
+                <span class="hint" v-if="sending" role="status" aria-live="polite">
+                    正在等待后端回显（真实网络往返，含 echo 端点的 delay 与重试间隔）…
+                </span>
+            </div>
+        </section>
+    </div>
+
+    <!-- ② 响应区 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="resp-title">
+            <div class="card-head">
+                <h2 class="card-title" id="resp-title">② 响应区</h2>
+                <span class="head-note" v-if="sendAt">最近一次发送于 {{ sendAt }}</span>
+            </div>
+
+            <p class="alert-bar alert-info" v-if="!hasSent && !sending && !sendError" role="status">
+                还没有发出任何请求：先在上面的「请求构造区」填好参数并点「发送请求」，
+                或用下面「③ 场景快捷区」的按钮逐条验证 §八 的演示场景。
+            </p>
+
+            <p class="alert-bar alert-info" v-if="sending" role="status" aria-live="polite">
+                请求进行中，按钮已禁用以防重复提交…
+            </p>
+
+            <p class="alert-bar alert-err" v-if="sendError" role="alert" aria-live="assertive">
+                <strong>请求失败</strong>：{{ sendError }}
+            </p>
+
+            <p class="hint mono" v-if="sendUrl">页面实际调用的端点：{{ sendUrl }}</p>
+
+            <div class="scene-body" v-if="hasSent && !sending">
+                <div class="metrics">
+                    <span class="metric metric-tight">
+                        <span class="metric-k">业务 code</span>
+                        <span class="metric-v">{{ sendCode }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">HTTP 状态</span>
+                        <span class="metric-v">{{ sendRun ? statusLabel(sendRun) : '—' }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">服务端耗时(ms)</span>
+                        <span class="metric-v">{{ sendServiceElapsed === null ? '—' : sendServiceElapsed }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">msg</span>
+                        <span class="metric-v">{{ sendMsg || '（空）' }}</span>
+                    </span>
+                </div>
+
+                <p class="alert-bar alert-ok" v-if="sendMsg && sendCode === 0 && !sendRejected.length">
+                    code = 0，业务成功。
+                </p>
+
+                <div v-if="sendRejected.length">
+                    <h3 class="sub-title">被拒绝的入参（后端当场拒收，未参与发送）</h3>
+                    <ul class="error-box">
+                        <li v-for="(item, idx) in sendRejected" :key="'rej' + idx">{{ item }}</li>
+                    </ul>
+                </div>
+
+                <div class="compare-grid">
+                    <div class="run-panel" v-if="requestEcho">
+                        <span class="run-title">服务端回显的「实际请求」（HttpRequest 描述）</span>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <tbody>
+                                <tr><td class="cell-key">method</td><td class="cell-val">{{ requestEcho.method }}</td></tr>
+                                <tr><td class="cell-key">url</td><td class="cell-val">{{ requestEcho.url }}</td></tr>
+                                <tr><td class="cell-key">显式资源名</td><td class="cell-val">{{ requestEcho.explicitResource || '（null：走默认推导）' }}</td></tr>
+                                <tr><td class="cell-key">connectTimeout</td><td class="cell-val">{{ requestEcho.connectTimeout }} ms</td></tr>
+                                <tr><td class="cell-key">readTimeout</td><td class="cell-val">{{ requestEcho.readTimeout }} ms</td></tr>
+                                <tr><td class="cell-key">retryTimes</td><td class="cell-val">{{ requestEcho.retryTimes }}</td></tr>
+                                <tr><td class="cell-key">retryIntervalMillis</td><td class="cell-val">{{ requestEcho.retryIntervalMillis }} ms</td></tr>
+                                <tr><td class="cell-key">bodySize</td><td class="cell-val">{{ requestEcho.bodySize }} 字节</td></tr>
+                                <tr><td class="cell-key">请求头</td><td class="cell-val">{{ headerText(requestEcho.headers) }}</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <run-panel title="响应 / 异常" :run="sendRun" :show-headers="true" :show-body="true"></run-panel>
+                </div>
+
+                <div v-if="sendTrace.length">
+                    <h3 class="sub-title">本次穿链记录（每次尝试各穿一次链，{{ sendTrace.length }} 条）</h3>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                            <tr>
+                                <th>序号</th><th>阶段</th><th>拦截器</th><th>attempt</th>
+                                <th>状态码</th><th>耗时(ms)</th><th>资源名</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr v-for="(ev, idx) in sendTrace" :key="'tr' + idx">
+                                <td class="cell-nowrap">{{ idx + 1 }}</td>
+                                <td class="cell-nowrap">{{ ev.phase }}</td>
+                                <td class="cell-nowrap">{{ ev.interceptor }}</td>
+                                <td class="cell-nowrap">{{ ev.attempt }}</td>
+                                <td class="cell-nowrap">{{ ev.status === null ? '—' : ev.status }}</td>
+                                <td class="cell-nowrap">{{ ev.elapsedMillis }}</td>
+                                <td class="cell-val">{{ ev.resource }}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ③ 场景快捷区 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="scene-title">
+            <div class="card-head">
+                <h2 class="card-title" id="scene-title">③ 场景快捷区（§八 逐条覆盖，每个按钮都打真实端点）</h2>
+                <span class="head-note">
+                    预期内的失败（读超时 / 连接被拒）由后端放在 <code>error</code> 字段里，端点仍 <code>code=0</code>；
+                    一次只跑一个：后端计数器是进程级静态的，并发运行会互相污染拦截器顺序
+                </span>
+            </div>
+
+            <div class="scene-grid">
+
+                <!-- 场景 0：基本 GET（§八-2 原始入口） -->
+                <article class="scene-card" aria-labelledby="scene-basic-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-basic-title">基本 GET：状态码 / 延迟 / 前 N 次失败</h3>
+                        <span class="result-time" v-if="basicScene.at">{{ basicScene.at }}</span>
+                    </div>
+                    <p class="hint">
+                        打 <code>/http/demo/get</code>：把 status / delay / failFirst 透传给 echo，
+                        返回「即将发出的请求」与响应。failFirst 的计数按 <code>key</code> 分组，所以可反复触发同一条 503。
+                    </p>
+                    <div class="scene-params">
+                        <div class="field">
+                            <label class="field-label" for="b-status">status（100–599）</label>
+                            <input id="b-status" class="input" type="number" min="100" max="599"
+                                   v-model="basicScene.status" :disabled="basicScene.busy || busyAny">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="b-delay">delay（毫秒）</label>
+                            <input id="b-delay" class="input" type="number" min="0"
+                                   v-model="basicScene.delay" :disabled="basicScene.busy || busyAny">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="b-fail">failFirst（前 N 次 503）</label>
+                            <input id="b-fail" class="input" type="number" min="0"
+                                   v-model="basicScene.failFirst" :disabled="basicScene.busy || busyAny">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="b-key">key（计数分组名）</label>
+                            <input id="b-key" class="input" type="text"
+                                   v-model="basicScene.key" :disabled="basicScene.busy || busyAny">
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" type="button"
+                                :disabled="basicScene.busy || busyAny" @click="runBasicGet">
+                            {{ basicScene.busy ? '运行中…' : '运行基本 GET' }}
+                        </button>
+                    </div>
+                    <p class="hint mono" v-if="basicScene.url">端点：{{ basicScene.url }}</p>
+                    <p class="alert-bar alert-err" v-if="basicScene.error" role="alert">{{ basicScene.error }}</p>
+                    <div class="scene-body" v-if="basicScene.data">
+                        <div class="metrics">
+                            <span class="metric metric-wide">
+                                <span class="metric-k">实际请求的 URL（服务端回显）</span>
+                                <span class="metric-v mono">{{ basicScene.data.request ? basicScene.data.request.url : '—' }}</span>
+                            </span>
+                        </div>
+                        <run-panel title="响应 / 异常" :run="basicScene.data" :show-headers="true"></run-panel>
+                    </div>
+                </article>
+
+                <!-- 场景 1：重试对照 -->
+                <article class="scene-card" aria-labelledby="scene-retry-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-retry-title">重试对照：默认不重试 vs 显式 retry(N)</h3>
+                        <span class="result-time" v-if="retryScene.at">{{ retryScene.at }}</span>
+                    </div>
+                    <p class="hint">
+                        打 <code>/http/demo/retry</code>：echo 前 N 次返回 503。默认 <code>http.retry-times=0</code> 首次即返回 503；
+                        显式 <code>retry(N)</code> 后 5xx 触发重试，<code>attempts</code> 应为 N+1。
+                    </p>
+                    <div class="scene-params">
+                        <div class="field">
+                            <label class="field-label" for="r-fail">failFirst（前 N 次 503）</label>
+                            <input id="r-fail" class="input" type="number" min="1" v-model="retryScene.failFirst"
+                                   :disabled="retryScene.busy || busyAny">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="r-times">retryTimes（显式重试次数）</label>
+                            <input id="r-times" class="input" type="number" min="1" v-model="retryScene.retryTimes"
+                                   :disabled="retryScene.busy || busyAny">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="r-interval">intervalMillis（留空 = 用配置）</label>
+                            <input id="r-interval" class="input" type="number" min="0" v-model="retryScene.intervalMillis"
+                                   :disabled="retryScene.busy || busyAny" placeholder="200">
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" type="button" :disabled="retryScene.busy || busyAny" @click="runRetry">
+                            {{ retryScene.busy ? '运行中…' : '运行重试对照' }}
+                        </button>
+                    </div>
+                    <p class="hint mono" v-if="retryScene.url">端点：{{ retryScene.url }}</p>
+                    <p class="alert-bar alert-err" v-if="retryScene.error" role="alert">{{ retryScene.error }}</p>
+                    <div class="scene-body" v-if="retryScene.data">
+                        <div class="metrics">
+                            <span class="metric metric-wide">
+                                <span class="metric-k">本次参数</span>
+                                <span class="metric-v">failFirst={{ retryScene.data.failFirst }} · retryTimes={{ retryScene.data.retryTimes }} · 配置 retry-times={{ retryScene.data.configRetryTimes }} · 配置 retry-interval={{ retryScene.data.configRetryInterval }}</span>
+                            </span>
+                        </div>
+                        <div class="compare-grid">
+                            <run-panel title="① 默认不重试（withoutRetry）" :run="retryScene.data.withoutRetry"></run-panel>
+                            <run-panel title="② 显式 retry(N)（withRetry）" :run="retryScene.data.withRetry"></run-panel>
+                        </div>
+                        <p class="hint">{{ retryScene.data.explain }}</p>
+                        <p class="hint">
+                            第二次运行穿链事件 {{ (retryScene.data.trace || []).length }} 条；每次尝试各穿一次链，
+                            故重试次数增加时事件数同步增加。
+                        </p>
+                    </div>
+                </article>
+
+                <!-- 场景 2：超时对照 -->
+                <article class="scene-card" aria-labelledby="scene-timeout-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-timeout-title">超时对照：正常 / 读超时 / 连接被拒</h3>
+                        <span class="result-time" v-if="timeoutScene.at">{{ timeoutScene.at }}</span>
+                    </div>
+                    <p class="hint">
+                        打 <code>/http/demo/timeout</code>：① 正常（echo 延迟 100ms，用全局读超时）；
+                        ② 读超时（echo 延迟 &gt; 逐请求 readTimeout）；③ 连接被拒（<code>127.0.0.1:1</code> 未监听）。
+                    </p>
+                    <div class="scene-params">
+                        <div class="field">
+                            <label class="field-label" for="t-delay">delay（毫秒）</label>
+                            <input id="t-delay" class="input" type="number" min="1" v-model="timeoutScene.delay"
+                                   :disabled="timeoutScene.busy || busyAny">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="t-read">readTimeout（毫秒）</label>
+                            <input id="t-read" class="input" type="number" min="1" v-model="timeoutScene.readTimeout"
+                                   :disabled="timeoutScene.busy || busyAny">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="t-connect">connectTimeout（毫秒）</label>
+                            <input id="t-connect" class="input" type="number" min="1" v-model="timeoutScene.connectTimeout"
+                                   :disabled="timeoutScene.busy || busyAny">
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" type="button" :disabled="timeoutScene.busy || busyAny" @click="runTimeout">
+                            {{ timeoutScene.busy ? '运行中…' : '运行超时对照' }}
+                        </button>
+                    </div>
+                    <p class="hint mono" v-if="timeoutScene.url">端点：{{ timeoutScene.url }}</p>
+                    <p class="alert-bar alert-err" v-if="timeoutScene.error" role="alert">{{ timeoutScene.error }}</p>
+                    <div class="scene-body" v-if="timeoutScene.data">
+                        <div class="metrics">
+                            <span class="metric metric-wide">
+                                <span class="metric-k">生效参数</span>
+                                <span class="metric-v">delay={{ timeoutScene.data.delayMillis }} ms · readTimeout={{ timeoutScene.data.readTimeoutMillis }} ms · connectTimeout={{ timeoutScene.data.connectTimeoutMillis }} ms · 配置 read-timeout={{ timeoutScene.data.configReadTimeout }} ms</span>
+                            </span>
+                            <span class="metric" :class="timeoutScene.data.readTimeoutAsExpected ? 'metric-ok' : 'metric-err'">
+                                <span class="metric-k">读超时符合预期</span>
+                                <span class="metric-v">{{ timeoutScene.data.readTimeoutAsExpected ? '是' : '否' }}</span>
+                            </span>
+                            <span class="metric" :class="timeoutScene.data.connectRefusedAsExpected ? 'metric-ok' : 'metric-err'">
+                                <span class="metric-k">连接被拒符合预期</span>
+                                <span class="metric-v">{{ timeoutScene.data.connectRefusedAsExpected ? '是' : '否' }}</span>
+                            </span>
+                        </div>
+                        <run-panel title="① normal（不超时）" :run="timeoutScene.data.normal"></run-panel>
+                        <run-panel title="② readTimeout（预期抛异常，cause 为 SocketTimeoutException）"
+                                   :run="timeoutScene.data.readTimeout"></run-panel>
+                        <run-panel title="③ connectRefused（预期抛异常，cause 为 ConnectException）"
+                                   :run="timeoutScene.data.connectRefused"></run-panel>
+                        <p class="hint">{{ timeoutScene.data.expectation }}</p>
+                    </div>
+                </article>
+
+                <!-- 场景 3：拦截器顺序 -->
+                <article class="scene-card" aria-labelledby="scene-interceptor-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-interceptor-title">拦截器顺序：before 正序 / after 逆序</h3>
+                        <span class="result-time" v-if="interceptorScene.at">{{ interceptorScene.at }}</span>
+                    </div>
+                    <p class="hint">
+                        打 <code>/http/demo/interceptor</code>：登记了 3 个记录型拦截器
+                        <code>demo-a / demo-b / demo-c</code>，它们只记录不短路。目标是看
+                        <code>before</code> 正序进入、<code>after</code> 逆序收尾。
+                    </p>
+                    <div class="scene-params">
+                        <div class="field">
+                            <label class="field-label" for="i-status">status（echo 回的状态码）</label>
+                            <input id="i-status" class="input" type="number" min="100" max="599"
+                                   v-model="interceptorScene.status" :disabled="interceptorScene.busy || busyAny">
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" type="button" :disabled="interceptorScene.busy || busyAny" @click="runInterceptor">
+                            {{ interceptorScene.busy ? '运行中…' : '运行拦截器顺序' }}
+                        </button>
+                    </div>
+                    <p class="hint mono" v-if="interceptorScene.url">端点：{{ interceptorScene.url }}</p>
+                    <p class="alert-bar alert-err" v-if="interceptorScene.error" role="alert">{{ interceptorScene.error }}</p>
+                    <div class="scene-body" v-if="interceptorScene.data">
+                        <div class="metrics">
+                            <span class="metric metric-wide">
+                                <span class="metric-k">已登记拦截器（登记顺序 = 进入顺序）</span>
+                                <span class="metric-v mono">{{ (interceptorScene.data.interceptors || []).join(' &gt; ') }}</span>
+                            </span>
+                        </div>
+
+                        <div class="run-panel">
+                            <span class="run-title">① 默认资源名那一次</span>
+                            <div class="order-line">
+                                <span class="preview-k">before</span>
+                                <span v-for="(name, idx) in interceptorScene.data.defaultRun.beforeOrder" :key="'db' + idx">
+                                    <span class="order-chip">{{ name }}</span>
+                                    <span class="order-sep" v-if="idx &lt; interceptorScene.data.defaultRun.beforeOrder.length - 1">&gt;</span>
+                                </span>
+                            </div>
+                            <div class="order-line">
+                                <span class="preview-k">after</span>
+                                <span v-for="(name, idx) in interceptorScene.data.defaultRun.afterOrder" :key="'da' + idx">
+                                    <span class="order-chip">{{ name }}</span>
+                                    <span class="order-sep" v-if="idx &lt; interceptorScene.data.defaultRun.afterOrder.length - 1">&gt;</span>
+                                </span>
+                            </div>
+                            <p class="hint">拦截器读到的资源名：<code>{{ interceptorScene.data.defaultRun.resource }}</code></p>
+                            <div class="table-wrap" style="margin-top: 8px;">
+                                <table class="data-table">
+                                    <thead>
+                                    <tr><th>序号</th><th>阶段</th><th>拦截器</th><th>attempt</th><th>状态码</th><th>耗时(ms)</th></tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr v-for="(ev, idx) in interceptorScene.data.defaultRun.events" :key="'de' + idx">
+                                        <td class="cell-nowrap">{{ idx + 1 }}</td>
+                                        <td class="cell-nowrap">{{ ev.phase }}</td>
+                                        <td class="cell-nowrap">{{ ev.interceptor }}</td>
+                                        <td class="cell-nowrap">{{ ev.attempt }}</td>
+                                        <td class="cell-nowrap">{{ ev.status === null ? '—' : ev.status }}</td>
+                                        <td class="cell-nowrap">{{ ev.elapsedMillis }}</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="run-panel">
+                            <span class="run-title">② 显式资源名那一次</span>
+                            <div class="order-line">
+                                <span class="preview-k">before</span>
+                                <span v-for="(name, idx) in interceptorScene.data.explicitRun.beforeOrder" :key="'eb' + idx">
+                                    <span class="order-chip">{{ name }}</span>
+                                    <span class="order-sep" v-if="idx &lt; interceptorScene.data.explicitRun.beforeOrder.length - 1">&gt;</span>
+                                </span>
+                            </div>
+                            <div class="order-line">
+                                <span class="preview-k">after</span>
+                                <span v-for="(name, idx) in interceptorScene.data.explicitRun.afterOrder" :key="'ea' + idx">
+                                    <span class="order-chip">{{ name }}</span>
+                                    <span class="order-sep" v-if="idx &lt; interceptorScene.data.explicitRun.afterOrder.length - 1">&gt;</span>
+                                </span>
+                            </div>
+                            <p class="hint">拦截器读到的资源名：<code>{{ interceptorScene.data.explicitRun.resource }}</code></p>
+                            <div class="table-wrap" style="margin-top: 8px;">
+                                <table class="data-table">
+                                    <thead>
+                                    <tr><th>序号</th><th>阶段</th><th>拦截器</th><th>attempt</th><th>状态码</th><th>耗时(ms)</th></tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr v-for="(ev, idx) in interceptorScene.data.explicitRun.events" :key="'ee' + idx">
+                                        <td class="cell-nowrap">{{ idx + 1 }}</td>
+                                        <td class="cell-nowrap">{{ ev.phase }}</td>
+                                        <td class="cell-nowrap">{{ ev.interceptor }}</td>
+                                        <td class="cell-nowrap">{{ ev.attempt }}</td>
+                                        <td class="cell-nowrap">{{ ev.status === null ? '—' : ev.status }}</td>
+                                        <td class="cell-nowrap">{{ ev.elapsedMillis }}</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <p class="hint">{{ interceptorScene.data.chainRule }}</p>
+                    </div>
+                </article>
+
+                <!-- 场景 4：资源名推导 vs 覆盖 -->
+                <article class="scene-card" aria-labelledby="scene-resource-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-resource-title">资源名：默认推导 vs 显式覆盖</h3>
+                        <span class="result-time" v-if="resourceScene.at">{{ resourceScene.at }}</span>
+                    </div>
+                    <p class="hint">
+                        同样打 <code>/http/demo/interceptor</code>，但把 <code>resource</code> 传进去：
+                        <code>resource()</code> 会完全替代默认推导（默认规则 = <code>METHOD host:port path</code>，去 query、方法大写）。
+                    </p>
+                    <div class="scene-params">
+                        <div class="field">
+                            <label class="field-label" for="res-name">resource（显式资源名）</label>
+                            <input id="res-name" class="input" type="text" v-model="resourceScene.resource"
+                                   :disabled="resourceScene.busy || busyAny" placeholder="demo.resource.explicit">
+                        </div>
+                        <div class="field">
+                            <label class="field-label" for="res-status">status</label>
+                            <input id="res-status" class="input" type="number" min="100" max="599"
+                                   v-model="resourceScene.status" :disabled="resourceScene.busy || busyAny">
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" type="button" :disabled="resourceScene.busy || busyAny" @click="runResource">
+                            {{ resourceScene.busy ? '运行中…' : '运行资源名对照' }}
+                        </button>
+                    </div>
+                    <p class="hint mono" v-if="resourceScene.url">端点：{{ resourceScene.url }}</p>
+                    <p class="alert-bar alert-err" v-if="resourceScene.error" role="alert">{{ resourceScene.error }}</p>
+                    <div class="scene-body" v-if="resourceScene.data">
+                        <div class="compare-grid">
+                            <div class="run-panel">
+                                <span class="run-title">默认推导</span>
+                                <p class="preview-line">
+                                    <span class="preview-k">资源名</span>
+                                    <span class="preview-v">{{ resourceScene.data.defaultResource }}</span>
+                                </p>
+                                <p class="hint">该次运行拦截器读到：<code>{{ resourceScene.data.defaultRun.resource }}</code></p>
+                            </div>
+                            <div class="run-panel">
+                                <span class="run-title">显式覆盖</span>
+                                <p class="preview-line">
+                                    <span class="preview-k">资源名</span>
+                                    <span class="preview-v">{{ resourceScene.data.explicitResource }}</span>
+                                </p>
+                                <p class="hint">该次运行拦截器读到：<code>{{ resourceScene.data.explicitRun.resource }}</code></p>
+                            </div>
+                        </div>
+                        <run-panel title="默认推导那一次的响应" :run="resourceScene.data.defaultRun"></run-panel>
+                        <p class="hint">{{ resourceScene.data.resourceRule }}</p>
+                    </div>
+                </article>
+
+                <!-- 场景 5：gzip -->
+                <article class="scene-card" aria-labelledby="scene-gzip-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-gzip-title">gzip：Accept-Encoding 与模块内解压</h3>
+                        <span class="result-time" v-if="gzipScene.at">{{ gzipScene.at }}</span>
+                    </div>
+                    <p class="hint">
+                        打 <code>/http/demo/gzip</code>：先用探针请求看 echo <strong>实际收到的</strong>
+                        <code>Accept-Encoding</code>，再取一次 gzip 压缩响应，判定模块是否解压回原文。
+                    </p>
+                    <div class="controls">
+                        <button class="btn btn-primary" type="button" :disabled="gzipScene.busy || busyAny" @click="runGzip">
+                            {{ gzipScene.busy ? '运行中…' : '运行 gzip 演示' }}
+                        </button>
+                    </div>
+                    <p class="hint mono" v-if="gzipScene.url">端点：{{ gzipScene.url }}</p>
+                    <p class="alert-bar alert-err" v-if="gzipScene.error" role="alert">{{ gzipScene.error }}</p>
+                    <div class="scene-body" v-if="gzipScene.data">
+                        <div class="metrics">
+                            <span class="metric" :class="gzipScene.data.moduleGzip ? 'metric-ok' : 'metric-warn'">
+                                <span class="metric-k">配置 http.gzip</span>
+                                <span class="metric-v">{{ gzipScene.data.moduleGzip ? 'true' : 'false' }}</span>
+                            </span>
+                            <span class="metric metric-wide">
+                                <span class="metric-k">echo 实收 Accept-Encoding</span>
+                                <span class="metric-v mono">{{ gzipScene.data.echoSawAcceptEncoding || '（未收到该头）' }}</span>
+                            </span>
+                            <span class="metric" :class="gzipScene.data.decompressed ? 'metric-ok' : 'metric-err'">
+                                <span class="metric-k">decompressed（解压后逐字相等）</span>
+                                <span class="metric-v">{{ gzipScene.data.decompressed ? 'true' : 'false' }}</span>
+                            </span>
+                        </div>
+                        <p class="hint">压缩响应原文应为：<code>{{ gzipScene.data.expectedText }}</code></p>
+                        <run-panel title="① 探针请求（观察发出的请求头）" :run="gzipScene.data.probe" :show-headers="true"></run-panel>
+                        <run-panel title="② gzip 压缩响应（模块内解压后的 body）" :run="gzipScene.data.compressed"></run-panel>
+                        <p class="hint">{{ gzipScene.data.note }}</p>
+                    </div>
+                </article>
+
+                <!-- 场景 6：重定向 -->
+                <article class="scene-card" aria-labelledby="scene-redirect-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-redirect-title">重定向：302 原样返回、不跟随</h3>
+                        <span class="result-time" v-if="redirectScene.at">{{ redirectScene.at }}</span>
+                    </div>
+                    <p class="hint">
+                        打 <code>/http/demo/redirect</code>：echo 返回 302，模块固定
+                        <code>setInstanceFollowRedirects(false)</code>，3xx 原样返回。
+                    </p>
+                    <div class="controls">
+                        <button class="btn btn-primary" type="button" :disabled="redirectScene.busy || busyAny" @click="runRedirect">
+                            {{ redirectScene.busy ? '运行中…' : '运行重定向演示' }}
+                        </button>
+                    </div>
+                    <p class="hint mono" v-if="redirectScene.url">端点：{{ redirectScene.url }}</p>
+                    <p class="alert-bar alert-err" v-if="redirectScene.error" role="alert">{{ redirectScene.error }}</p>
+                    <div class="scene-body" v-if="redirectScene.data">
+                        <div class="metrics">
+                            <span class="metric" :class="redirectScene.data.response && redirectScene.data.response.status === 302 ? 'metric-ok' : 'metric-warn'">
+                                <span class="metric-k">status</span>
+                                <span class="metric-v">{{ redirectScene.data.response ? redirectScene.data.response.status : '—' }}</span>
+                            </span>
+                            <span class="metric" :class="redirectScene.data.followedRedirect ? 'metric-err' : 'metric-ok'">
+                                <span class="metric-k">followedRedirect</span>
+                                <span class="metric-v">{{ redirectScene.data.followedRedirect ? 'true' : 'false' }}</span>
+                            </span>
+                            <span class="metric metric-tight">
+                                <span class="metric-k">attempts</span>
+                                <span class="metric-v">{{ redirectScene.data.response ? redirectScene.data.response.attempts : '—' }}</span>
+                            </span>
+                            <span class="metric metric-wide">
+                                <span class="metric-k">Location</span>
+                                <span class="metric-v mono">{{ redirectScene.data.location || '（无）' }}</span>
+                            </span>
+                        </div>
+                        <run-panel title="响应" :run="redirectScene.data" :show-headers="true"></run-panel>
+                        <p class="hint">{{ redirectScene.data.note }}</p>
+                    </div>
+                </article>
+
+                <!-- 场景 7：全局属性只读 -->
+                <article class="scene-card" aria-labelledby="scene-jvm-title">
+                    <div class="scene-head">
+                        <h3 class="scene-title" id="scene-jvm-title">全局 JVM 连接池属性（只读展示）</h3>
+                        <span class="result-time" v-if="stateAt">{{ stateAt }}</span>
+                    </div>
+                    <p class="readonly-note">
+                        只读：本页<strong>不提供</strong>修改入口。这两个属性是 JVM 级全局开关，aifei-http v1 只读不写，
+                        连接池行为受它们约束；要改变枚举值只能改启动参数。
+                    </p>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                            <tr><th>属性</th><th>当前值</th></tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td class="cell-key">http.maxConnections</td>
+                                <td class="cell-val">{{ jvmValue('http.maxConnections') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="cell-key">http.keepAlive</td>
+                                <td class="cell-val">{{ jvmValue('http.keepAlive') }}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="hint">{{ jvmNote() || '（状态快照未读取时无数据）' }}</p>
+                    <div class="controls">
+                        <button class="btn" type="button" :disabled="stateLoading" @click="loadState(false)">
+                            {{ stateLoading ? '读取中…' : '重新读取状态快照' }}
+                        </button>
+                    </div>
+                </article>
+
+            </div>
+        </section>
+    </div>
+
+    <!-- ④ 状态快照区 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="state-title">
+            <div class="card-head">
+                <h2 class="card-title" id="state-title">④ 状态快照区（<code>/http/demo/state</code>）</h2>
+                <span class="head-note" v-if="stateAt">快照于 {{ stateAt }}</span>
+            </div>
+
+            <p class="alert-bar alert-info" v-if="stateLoading && !state" role="status" aria-live="polite">
+                正在读取本进程的装配与运行态快照…
+            </p>
+
+            <div class="scene-body" v-if="state">
+                <div class="metrics">
+                    <span class="metric" :class="state.clientInjected ? 'metric-ok' : 'metric-err'">
+                        <span class="metric-k">clientInjected</span>
+                        <span class="metric-v">{{ state.clientInjected ? 'true' : 'false' }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">requestCount</span>
+                        <span class="metric-v">{{ state.requestCount }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">attemptCount</span>
+                        <span class="metric-v">{{ state.attemptCount }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">retryCount</span>
+                        <span class="metric-v">{{ state.retryCount }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">穿链事件缓冲</span>
+                        <span class="metric-v">{{ state.traceEventCount }} / {{ state.traceCapacity }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">lastResource</span>
+                        <span class="metric-v mono">{{ state.lastResource || '（尚未发生请求）' }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">回环基址 / echo 端点</span>
+                        <span class="metric-v mono">{{ state.selfBaseUrl }} → {{ state.echoUrl }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">拦截器顺序</span>
+                        <span class="metric-v mono">{{ (state.interceptors || []).join(' &gt; ') }}</span>
+                    </span>
+                </div>
+
+                <div>
+                    <h3 class="sub-title">配置七键（<code>http.*</code>，启动期生效，页面上不可改）</h3>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                            <tr><th>键</th><th>当前值</th></tr>
+                            </thead>
+                            <tbody>
+                            <tr v-for="row in httpConfigRows" :key="row.key">
+                                <td class="cell-key">{{ row.key }}</td>
+                                <td class="cell-val">{{ row.value }}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="sub-title">echo 端点计数分组（failFirst 计数，可被「重置 echo 计数」清空）</h3>
+                    <p class="kv-empty" v-if="!echoCounterRows.length">当前没有计数分组（或已被重置）</p>
+                    <div class="table-wrap" v-else>
+                        <table class="data-table">
+                            <thead>
+                            <tr><th>key</th><th>已命中次数</th></tr>
+                            </thead>
+                            <tbody>
+                            <tr v-for="row in echoCounterRows" :key="row.key">
+                                <td class="cell-key">{{ row.key }}</td>
+                                <td class="cell-val">{{ row.value }}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <p class="alert-bar alert-info" v-else-if="!stateLoading" role="status">
+                尚未读取状态快照，点上方「刷新状态快照」重试。
+            </p>
+        </section>
+    </div>
+
+    <p class="page-foot">
+        aifei-http-demo · 端口 18120 · 零外网：所有请求目标都是 <code>127.0.0.1:18120</code> 自身或本机未监听端口
+        <code>127.0.0.1:1</code>
+    </p>
+
+</main>
+
+<script src="/assets/js/http-demo.js"></script>
+</body>
+</html>
