@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-trace 链路贯穿演示 · 4 场景</title>
+    <link rel="stylesheet" href="/assets/css/trace-demo.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="trace-demo-app" v-cloak>
+
+    <!-- 语义提示条：全部数据来自本进程真实链路上下文 -->
+    <p class="semantic-bar">
+        <span class="semantic-tag">真实链路</span>
+        <span class="semantic-text">
+            本页每个按钮都调用 <code>/trace/demo/*</code> 端点，读取的是
+            <strong>本进程真实的链路上下文</strong>：请求进入时由第一位 Handler <code>TraceHandler</code>
+            绑定 traceId，业务日志经 <code>TraceLogFactory</code> 自动拼 <code>[traceId] </code> 前缀，
+            请求结束 finally 清理。全程零外网、零构建、无假数据。
+        </span>
+    </p>
+
+    <p class="alert-bar alert-page alert-err" v-if="stateError" role="alert" aria-live="assertive">
+        <strong>装配状态读取失败</strong>：{{ stateError }} —— 请确认 <code>start-demo.bat</code> 已在本机 18130 端口启动。
+    </p>
+
+    <!-- 顶部：装配状态 -->
+    <header class="topbar">
+        <div class="topbar-row">
+            <div class="title-wrap">
+                <h1 class="page-title">aifei-trace 链路贯穿演示</h1>
+                <span class="chip" :class="backendCls" aria-live="polite">{{ backendText }}</span>
+                <span class="chip chip-ghost">端口 18130</span>
+            </div>
+            <div class="controls">
+                <button class="btn" type="button" :disabled="stateLoading" @click="loadState(false)">
+                    {{ stateLoading ? '读取中…' : '刷新装配状态' }}
+                </button>
+            </div>
+        </div>
+
+        <div class="metrics" v-if="state">
+            <span class="metric metric-wide">
+                <span class="metric-k">日志工厂链（场景②）</span>
+                <span class="metric-v mono">{{ state.logFactoryChain }}</span>
+            </span>
+            <span class="metric metric-wide">
+                <span class="metric-k">Handler 链（链顺序即语义）</span>
+                <span class="metric-v mono">{{ state.handlerChain }}</span>
+            </span>
+            <span class="metric metric-wide">
+                <span class="metric-k">TraceId 生成器</span>
+                <span class="metric-v mono">{{ state.generatorClass }}</span>
+            </span>
+            <span class="metric metric-tight">
+                <span class="metric-k">提取头（场景④）</span>
+                <span class="metric-v mono">{{ state.traceHeader }}</span>
+            </span>
+        </div>
+
+        <p class="alert-bar alert-info" v-else-if="stateLoading" role="status" aria-live="polite">
+            正在读取装配状态…
+        </p>
+    </header>
+
+    <!-- 场景① -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="scene1-title">
+            <div class="card-head">
+                <h2 class="card-title" id="scene1-title">场景① 当前请求 traceId / spanId 实时展示</h2>
+                <span class="head-note">端点 <code>/trace/demo/current</code>、<code>/trace/demo/span</code></span>
+            </div>
+
+            <p class="hint">
+                每次点击「获取当前上下文」都是一次<b>新请求</b>：TraceHandler 绑定新生成的 traceId，
+                请求结束 finally 清理。<strong>多刷几次，traceId 每次都应变化</strong>；下方历史列表会记录每次的值。
+            </p>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="currentBusy" @click="loadCurrent">
+                    {{ currentBusy ? '读取中…' : '获取当前上下文' }}
+                </button>
+                <button class="btn" type="button" :disabled="currentBusy" @click="loadSpan">
+                    {{ currentBusy ? '读取中…' : '开启新 Span（startSpan）' }}
+                </button>
+                <button class="btn" type="button" :disabled="!currentHistory.length" @click="currentHistory = []">
+                    清空历史
+                </button>
+            </div>
+
+            <p class="alert-bar alert-err" v-if="currentError" role="alert">{{ currentError }}</p>
+
+            <div class="scene-body" v-if="currentData">
+                <div class="metrics">
+                    <span class="metric metric-wide">
+                        <span class="metric-k">traceId</span>
+                        <span class="metric-v mono">{{ currentData.traceId || '（未绑定）' }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">spanId</span>
+                        <span class="metric-v mono">{{ currentData.spanId || '（未绑定，startSpan 后才有值）' }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">traceId 长度</span>
+                        <span class="metric-v">{{ currentData.traceIdLength }}（应为 32）</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">请求线程</span>
+                        <span class="metric-v mono">{{ currentData.threadName }}</span>
+                    </span>
+                </div>
+                <p class="hint">{{ currentData.note }}</p>
+            </div>
+
+            <div v-if="currentHistory.length">
+                <h3 class="sub-title">历次请求的 traceId（{{ currentHistory.length }} 条，逐次不同即为「绑定 + 清理」生效）</h3>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr><th>#</th><th>traceId</th><th>spanId</th><th>时间</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="(row, idx) in currentHistory" :key="row.traceId + idx">
+                            <td class="cell-nowrap">{{ idx + 1 }}</td>
+                            <td class="cell-val mono">{{ row.traceId }}</td>
+                            <td class="cell-val mono">{{ row.spanId || '—' }}</td>
+                            <td class="cell-nowrap">{{ row.at }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <p class="kv-empty" v-else>暂无历史记录，点上方按钮发起请求</p>
+        </section>
+    </div>
+
+    <!-- 场景② -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="scene2-title">
+            <div class="card-head">
+                <h2 class="card-title" id="scene2-title">场景② TraceLogFactory 装配：[traceId] 前缀贯通</h2>
+                <span class="head-note">端点 <code>/trace/demo/log</code>、<code>/trace/demo/log/clear</code></span>
+            </div>
+
+            <p class="hint">
+                <code>settings.setLogFactory(new TraceLogFactory(new ConsoleLogFactory()))</code>
+                已在启动期装配：Service 里 <code>Log.get(...)</code> 拿到的是
+                <code>TraceLog</code>（拼前缀）包装 <code>ConsoleLog</code>（System.out 落地）。
+                点击按钮触发 4 条业务日志，下方展示控制台输出样本（ConsoleLog 环形缓冲回显，
+                启动 demo 的控制台同步可见）。<strong>每行都应以 <code>[traceId] </code> 开头（紧跟日志正文）</strong>。
+            </p>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="logBusy" @click="writeLog">
+                    {{ logBusy ? '写入中…' : '触发业务日志（info / 格式化 / warn / Supplier）' }}
+                </button>
+                <button class="btn" type="button" :disabled="logBusy" @click="clearLog">
+                    清空控制台样本
+                </button>
+            </div>
+
+            <p class="alert-bar alert-err" v-if="logError" role="alert">{{ logError }}</p>
+
+            <div class="scene-body" v-if="logData">
+                <div class="metrics">
+                    <span class="metric metric-tight">
+                        <span class="metric-k">本次写入</span>
+                        <span class="metric-v">{{ logData.writtenCount }} 条</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">触发时请求 traceId</span>
+                        <span class="metric-v mono">{{ logData.traceId }}</span>
+                    </span>
+                </div>
+                <p class="field-label">控制台输出样本（System.out 实时同步）</p>
+                <pre class="console-box" aria-live="polite">{{ consoleText || '（缓冲为空，先点上方按钮触发日志）' }}</pre>
+                <p class="hint">{{ logData.note }}</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- 场景③ -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="scene3-title">
+            <div class="card-head">
+                <h2 class="card-title" id="scene3-title">场景③ 线程池手动传递</h2>
+                <span class="head-note">端点 <code>/trace/demo/async</code></span>
+            </div>
+
+            <p class="hint">
+                后端使用单线程池（<code>trace-demo-worker-*</code>）。请求线程提交任务前捕获
+                <code>parentTraceId</code>，任务体内 <code>TraceKit.init(parentTraceId)</code> 恢复链路、
+                finally <code>TraceKit.clear()</code> 防池线程复用串号。
+                <strong>三项断言应全部为「是」</strong>；子线程日志行的前缀应与父 traceId 一致。
+            </p>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="asyncBusy" @click="runAsync">
+                    {{ asyncBusy ? '任务运行中…' : '触发异步任务' }}
+                </button>
+            </div>
+
+            <p class="alert-bar alert-err" v-if="asyncError" role="alert">{{ asyncError }}</p>
+
+            <div class="scene-body" v-if="asyncData">
+                <div class="metrics">
+                    <span class="metric metric-wide">
+                        <span class="metric-k">父 traceId（请求线程 {{ asyncData.requestThreadName }}）</span>
+                        <span class="metric-v mono">{{ asyncData.parentTraceId }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">子 traceId（{{ asyncData.childThreadName }}）</span>
+                        <span class="metric-v mono">{{ asyncData.childTraceId }}</span>
+                    </span>
+                    <span class="metric" :class="asyncData.sameTraceId ? 'metric-ok' : 'metric-err'">
+                        <span class="metric-k">断言① childTraceId == parentTraceId</span>
+                        <span class="metric-v">{{ asyncData.sameTraceId ? '是 ✓' : '否 ✗' }}</span>
+                    </span>
+                    <span class="metric" :class="asyncData.childSpanIdNull ? 'metric-ok' : 'metric-err'">
+                        <span class="metric-k">断言② 子线程 spanId 未继承（null）</span>
+                        <span class="metric-v">{{ asyncData.childSpanIdNull ? '是 ✓' : '否 ✗' }}</span>
+                    </span>
+                    <span class="metric" :class="asyncData.clearedProperly ? 'metric-ok' : 'metric-err'">
+                        <span class="metric-k">断言③ finally clear 后回到 null</span>
+                        <span class="metric-v">{{ asyncData.clearedProperly ? '是 ✓' : '否 ✗' }}</span>
+                    </span>
+                </div>
+                <p class="field-label">子线程日志行（前缀应为父 traceId）</p>
+                <pre class="console-box">{{ childLogText || '（本次未取到日志样本）' }}</pre>
+                <p class="hint">{{ asyncData.note }}</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- 场景④ -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="scene4-title">
+            <div class="card-head">
+                <h2 class="card-title" id="scene4-title">场景④ 提取演示：X-Trace-Id 请求头</h2>
+                <span class="head-note">端点 <code>/trace/demo/extract</code>；extractor = in -&gt; in.getHeader("X-Trace-Id")</span>
+            </div>
+
+            <p class="hint">
+                <code>cn.aifei.core.Input</code> 公开接口无 header 访问能力，故 demo 的 <code>In</code> 实现暴露了
+                <code>getHeader(...)</code>，TraceHandler 据此提取上游透传的 traceId。
+                携带<b>非空白</b>值 → 提取贯通（trim 后原样绑定）；<b>空白 / 不携带</b> → 回退生成 32 位新值。
+                服务端返回的 traceId 与发送值逐字相等即为提取成功。
+            </p>
+
+            <div class="scene-params">
+                <div class="field field-grow">
+                    <label class="field-label" for="x-trace-id">自定义 X-Trace-Id 值（可填任意字符串，会先 trim）</label>
+                    <input id="x-trace-id" class="input" type="text" v-model="extractValue"
+                           :disabled="extractBusy" placeholder="例如 my-trace-id-2026">
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="extractBusy || !extractValue.trim()"
+                        @click="runExtract('custom')">
+                    {{ extractBusy ? '请求中…' : '① 携带该值发请求（提取贯通）' }}
+                </button>
+                <button class="btn" type="button" :disabled="extractBusy" @click="runExtract('blank')">
+                    ② 携带空白值（回退生成）
+                </button>
+                <button class="btn" type="button" :disabled="extractBusy" @click="runExtract('missing')">
+                    ③ 不携带该头（回退生成）
+                </button>
+                <button class="btn" type="button" :disabled="!extractHistory.length" @click="extractHistory = []">
+                    清空历史
+                </button>
+            </div>
+
+            <p class="alert-bar alert-err" v-if="extractError" role="alert">{{ extractError }}</p>
+
+            <div class="scene-body" v-if="extractData">
+                <div class="metrics">
+                    <span class="metric metric-wide">
+                        <span class="metric-k">本次发送方式</span>
+                        <span class="metric-v">{{ extractData.modeText }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">服务端最终生效 traceId</span>
+                        <span class="metric-v mono">{{ extractData.traceId }}</span>
+                    </span>
+                    <span class="metric" :class="extractData.extracted ? 'metric-ok' : 'metric-warn'">
+                        <span class="metric-k">判定</span>
+                        <span class="metric-v">{{ extractData.extracted ? '提取贯通 ✓（与发送值一致）' : '回退生成 ✓（生成了新 traceId）' }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">生成器样本（DefaultTraceIdGenerator）</span>
+                        <span class="metric-v mono">{{ extractData.generatorSample }}</span>
+                    </span>
+                </div>
+                <p class="hint">{{ extractData.note }}</p>
+            </div>
+
+            <div v-if="extractHistory.length">
+                <h3 class="sub-title">提取历史（{{ extractHistory.length }} 条）</h3>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr><th>#</th><th>发送方式</th><th>发送值</th><th>服务端 traceId</th><th>判定</th><th>时间</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="(row, idx) in extractHistory" :key="'ex' + idx">
+                            <td class="cell-nowrap">{{ idx + 1 }}</td>
+                            <td class="cell-nowrap">{{ row.modeText }}</td>
+                            <td class="cell-val mono">{{ row.sent || '—' }}</td>
+                            <td class="cell-val mono">{{ row.traceId }}</td>
+                            <td class="cell-nowrap">{{ row.extracted ? '提取贯通' : '回退生成' }}</td>
+                            <td class="cell-nowrap">{{ row.at }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <p class="page-foot">
+        aifei-trace-demo · 端口 18130 · 零外网 · 零构建（纯 HTML/CSS/JS + 本地 Vue） ·
+        库坐标 <code>io.github.gollyhu:aifei-trace:1.0.0</code>
+    </p>
+
+</main>
+
+<script src="/assets/js/trace-demo.js"></script>
+</body>
+</html>

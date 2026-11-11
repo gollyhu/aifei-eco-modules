@@ -62,6 +62,8 @@
   - `aifei-job` 的 `org.slf4j:slf4j-api` 为 `compile`——Quartz 内部日志门面，排掉会导致类加载失败，故显式直接声明（不靠 Quartz 传递，避免 Quartz 变动后门面消失）；本模块自身零 `org.slf4j.*` 引用（门禁断言）；理由同上。
   **新增例外一律须先在此登记**，不得由模块文档单方面声明。
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
+- **已登记的公共面框架类型例外**（须先在此登记，模块文档不得单方面声明）：
+  - `aifei-trace` 的 `TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `cn.aifei.log.LogFactory`——日志门面接口即框架公共契约，包装实现收进 `internal` 会使使用方 `settings.setLogFactory(new TraceLogFactory(...))` 这一核心用法失效；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链；理由见 `aifei-trace/docs/design.md` §2 决策 2 / 3。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。
 
 ### 命名约定（类型后缀语义）
@@ -147,7 +149,7 @@
 - [ ] 每类规则仍只有唯一定义点，实现类未复制规则；多实现模块已遵循共同契约底线，允许差异已在模块 `docs/design.md` 逐项列明（单实现模块不适用）。
 - [ ] 架构门禁测试未被放宽；公共 API 未暴露具体实现类型。
 - [ ] 公共行为变化已同步 `docs/design.md` 与 `README.md`（及其他相关文档），并有测试覆盖。
-- [ ] 新增/改动的注释符合「注释规范」，文件头版权块未被改写。
-- [ ] 新增类型的后缀符合「命名约定」：无状态工具类用 `Util`，有状态门面用 `Kit`。
+- [ ] 新增/改动的注释符合「注释规范」，文件头版权块未被改写。
+- [ ] 新增类型的后缀符合「命名约定」：无状态工具类用 `Util`，有状态门面用 `Kit`。
 - [ ] `git status` 无 `AD` 残留；未提交构建产物、IDE 文件、日志与凭据。
 - [ ] 当日工作日志已追加到仓库根的协作记忆目录。

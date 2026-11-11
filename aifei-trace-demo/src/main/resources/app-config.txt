@@ -1,0 +1,6 @@
+# ===== aifei-trace-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18130 传入。
+# 本 demo 只有一个自定义键：enjoy 模板热加载开关。
+
+# Enjoy 模板热加载：改 view/*.html 后刷新浏览器即生效
+enjoyDevMode = true
