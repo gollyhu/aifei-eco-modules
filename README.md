@@ -21,6 +21,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-lock](aifei-lock/README.md) | `io.github.gollyhu:aifei-lock:1.0.0` | 分布式锁：基于共享缓存的原子加锁、CAS 释放与 CAS 续期 |
 | [aifei-job](aifei-job/README.md) | `io.github.gollyhu:aifei-job:1.0.0` | 应用内定时任务：cron / 固定频率 / 固定延迟，单飞自续排、拒绝记账、优雅停机 |
 | [aifei-job-demo](aifei-job-demo/README.md) | （示例工程，不发布） | aifei-job 的完整接入示例：任务列表 / 到点触发 / 跳过 / 异常隔离 / 停机收敛演示（端口 18110） |
+| [aifei-id](aifei-id/README.md) | `io.github.gollyhu:aifei-id:1.0.0` | 分布式 ID：雪花（`1+41+10+12`）与号段双策略，workerId 三来源，零第三方 |
+| [aifei-id-demo](aifei-id-demo/README.md) | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140） |
 
 ### aifei-cache
 
@@ -117,6 +119,17 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - **v1 不支持多实例互斥**：多实例各跑一次，业务任务必须自行幂等
 - 详细用法见 [aifei-job/README.md](aifei-job/README.md)，设计文档见 [docs/design.md](aifei-job/docs/design.md)
 
+### aifei-id
+
+为 aifei 应用补齐分布式 ID 生成能力，业务只依赖 `IdGenerator` 一个接口。
+
+- 公共面固定 3 个类型：`IdGenerator` / `IdKit` / `IdException`（装配入口 `IdPlugin` 在 `aifei` 装配包，非承诺 API）
+- 两种策略：**雪花**（`1+41+10+12`，EPOCH `2024-01-01Z`，单节点 4096/ms，位布局与 EPOCH 冻结不可配）/ **号段**（step 默认 1000，同步取段，回退即 fail-fast）
+- workerId 三来源：`config`（默认，0..1023）/ `cache`（`aifei-cache` 计数器取模 1024）/ `lock`（`aifei-lock` 升序抢占 + 租约续期）
+- 时钟回拨 ≤5ms 等待追上，>5ms 抛 `IdException`；**永不降级、永不返回 0**
+- `aifei-cache` / `aifei-lock` 均为 `optional`：不引依赖时用 `config` + `local` 号段存储即可离线运行（`local` 重启会重号）
+- 详细用法见 [aifei-id/README.md](aifei-id/README.md)，设计文档见 [docs/design.md](aifei-id/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -131,6 +144,7 @@ cd aifei-mq        && mvn clean install
 cd aifei-oss       && mvn clean install
 cd aifei-lock      && mvn clean install
 cd aifei-job       && mvn clean install
+cd aifei-id        && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -146,6 +160,7 @@ cd aifei-job       && mvn clean install
 - `aifei-lock`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 为 `optional`（**不向下游传递**，消费方必须显式引入，否则类加载期即 `NoClassDefFoundError`）；不直接依赖 Jedis
 - `aifei-job`：`aifei-all` 为 `provided`，消费方应用自带（只引核心 `cn.aifei:aifei` 时运行期 `NoClassDefFoundError: cn/aifei/log/Log`）；`quartz:2.3.2` 与 `slf4j-api:1.7.30` 为 **`compile`**，**会随本模块传递**（Quartz 版本冲突由消费方 `exclusion` 或显式对齐；`slf4j-api` 仅 Quartz 内部使用，不承诺日志语义），Quartz 的 `c3p0` / `mchange-commons-java` / `HikariCP-java7` 传递项已排空；不引入任何日志绑定
 - `aifei-oss`：`aifei-all` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
+- `aifei-id`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 与 `aifei-lock` 1.0.0 均为 `optional`（**不向下游传递**，用到 `cache` / `lock` workerId 来源或 `cache` 号段存储时显式引入）；**零第三方**，不引入任何日志绑定
 
 ## 许可证
 

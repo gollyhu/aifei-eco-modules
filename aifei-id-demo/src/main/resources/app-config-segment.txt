@@ -1,0 +1,15 @@
+# ===== aifei-id-demo 配置（号段策略，start-demo-segment.bat 专用）=====
+# HTTP 端口与 app-config.txt 相同（18140）：两个脚本不可同时启动，顺序演示。
+# id.* 的解析与校验全部发生在 IdPlugin.start()，配置有误即应用启动失败。
+
+# ===== aifei-id 配置（1.0.0）=====
+# 发号策略：segment（从存储一次性领走连续号段 [start, end]，长度 = step）
+id.strategy = segment
+# 号段长度：取 200（默认 1000），便于在几百次生成内看到「耗尽 → 取段 → 继续」
+id.segment.step = 200
+# 号段存储：local（进程内计数，离线可跑；重启后从 step 重新开始 → 重号，仅限单实例 / 开发测试）
+id.segment.store = local
+
+# ===== 演示开关（非 id.* 键）=====
+# Enjoy 模板热加载：改 view/id/*.html 后刷新浏览器即生效，无需重启进程
+enjoyDevMode = true

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-id 分布式 ID 演示 · 雪花 / 号段</title>
+    <link rel="stylesheet" href="/assets/css/id-demo.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="id-demo-app" v-cloak>
+
+    <!-- 语义提示条：所有数字都来自本进程真实生成器 -->
+    <p class="semantic-bar">
+        <span class="semantic-tag">真实发号</span>
+        <span class="semantic-text">
+            本页每个按钮都调用 <code>/id/demo/*</code> 端点，ID 一律由本进程已装配的
+            <code>IdKit</code>（雪花或号段生成器）真实产出，<strong>无假数据</strong>。
+            带 <span class="tag-self">demo 自算</span> 标记的视图（位拆解、段边界）是<b>页面按 ID 值与 demo 自身配置推算</b>的
+            展示口径，<strong>不是模块 API</strong>。全程零外网、零构建、ID 全程按字符串处理。
+        </span>
+    </p>
+
+    <!-- 模块未装配：整页顶部告警 -->
+    <p class="alert-bar alert-page alert-err" v-if="stateLoaded && !installed"
+       role="alert" aria-live="assertive">
+        <strong>模块未装配</strong>：<code>/id/demo/state</code> 返回 <code>installed = false</code>，
+        即 <code>IdKit.nextId()</code> 会抛 <code>IllegalStateException</code>（消息 O）。
+        请确认 <code>DemoAppConfig.config(Plugins)</code> 中已 <code>plugins.add(new IdPlugin(prop))</code>，
+        且 <code>app-config.txt</code> 的 <code>id.*</code> 键装配成功（启动日志会打印生效策略与 workerId）。
+    </p>
+
+    <p class="alert-bar alert-page alert-err" v-if="stateError" role="alert" aria-live="assertive">
+        <strong>装配状态读取失败</strong>：{{ stateError }}
+        —— 请确认 <code>start-demo.bat</code>（雪花）或 <code>start-demo-segment.bat</code>（号段）已在本机 18140 端口启动。
+    </p>
+
+    <!-- 顶部：装配摘要 -->
+    <header class="topbar">
+        <div class="topbar-row">
+            <div class="title-wrap">
+                <h1 class="page-title">aifei-id 分布式 ID 演示</h1>
+                <span class="chip" :class="installedChipCls" aria-live="polite">{{ installedChipText }}</span>
+                <span class="chip chip-ghost" v-if="state">策略 {{ state.strategy }}</span>
+                <span class="chip chip-ghost" v-if="state && state.workerId !== null && state.workerId !== undefined">
+                    workerId {{ state.workerId }}
+                </span>
+                <span class="chip chip-ghost">端口 18140</span>
+            </div>
+            <div class="controls">
+                <button class="btn" type="button" :disabled="stateLoading" @click="loadState(false)">
+                    {{ stateLoading ? '读取中…' : '刷新装配状态' }}
+                </button>
+            </div>
+        </div>
+
+        <p class="alert-bar alert-info" v-if="stateLoading && !state" role="status" aria-live="polite">
+            正在读取装配状态…
+        </p>
+        <p class="alert-bar alert-info" v-else-if="!state && !stateError" role="status">
+            尚未读取装配状态。
+        </p>
+    </header>
+
+    <!-- 功能块① 雪花单号生成 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="block1-title">
+            <div class="card-head">
+                <h2 class="card-title" id="block1-title">① 单号生成与位拆解</h2>
+                <span class="head-note">端点 <code>/id/demo/next</code> · 数据来源 <code>IdKit.nextIdStr()</code></span>
+            </div>
+
+            <p class="hint">
+                每点一次都是一次真实发号，返回值是 <strong>十进制字符串</strong>（19 位 <code>long</code> 超出 JS
+                <code>Number.MAX_SAFE_INTEGER</code>，用数字传会静默丢精度，故后端契约强制字符串、前端全程按字符串处理）。
+                下方位拆解按设计文档 §7.1 的 <code>1 + 41 + 10 + 12</code> 布局展示：
+                <strong>中间 10 位是 workerId、末 12 位是序列号</strong>。
+                <span class="tag-self">位拆解为 demo 自算，非模块 API</span>
+            </p>
+
+            <p class="alert-bar alert-warn" v-if="stateLoaded && !installed">
+                模块未装配，发号按钮已禁用 —— 见页面顶部告警。
+            </p>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="nextBusy || notInstalled"
+                        @click="generateOne">
+                    {{ nextLoadingText }}
+                </button>
+                <button class="btn" type="button" :disabled="nextBusy || notInstalled" @click="generateMany">
+                    {{ manyLoadingText }}
+                </button>
+                <button class="btn" type="button" :disabled="!nextHistory.length"
+                        @click="clearNextHistory">
+                    清空历史
+                </button>
+                <span class="hint" v-if="progress">连续生成进度 {{ progress }} / {{ manyCount }}</span>
+            </div>
+
+            <p class="alert-bar alert-err" v-if="nextError" role="alert" aria-live="assertive">{{ nextError }}</p>
+
+            <div class="scene-body" v-if="nextData">
+                <div class="id-hero">
+                    <span class="id-hero-k">本次生成 ID（字符串，长度 {{ nextData.length }}）</span>
+                    <div class="id-hero-v" aria-live="polite">{{ nextData.id }}</div>
+                    <div class="metrics">
+                        <span class="metric metric-tight">
+                            <span class="metric-k">本次往返耗时</span>
+                            <span class="metric-v">{{ nextData.elapsed }} ms</span>
+                        </span>
+                        <span class="metric metric-tight" :class="nextData.firstSeen ? 'metric-ok' : 'metric-err'">
+                            <span class="metric-k">firstSeen（demo 首次出现判定）</span>
+                            <span class="metric-v">{{ nextData.firstSeen ? '是 ✓' : '否 ✗' }}</span>
+                        </span>
+                        <span class="metric metric-tight" v-if="nextData.dec">
+                            <span class="metric-k">序列号（末 12 位）</span>
+                            <span class="metric-v mono">{{ nextData.dec.sequence }}</span>
+                        </span>
+                        <span class="metric metric-tight" v-if="nextData.dec">
+                            <span class="metric-k">workerId（中间 10 位）</span>
+                            <span class="metric-v mono">{{ nextData.dec.workerId }}</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 位拆解（雪花策略） -->
+                <template v-if="nextData.dec">
+                    <h3 class="sub-title">
+                        位拆解 <code>1 + 41 + 10 + 12</code>
+                        <span class="tag-self">demo 自算展示，非模块 API</span>
+                    </h3>
+                    <div class="bit-map">
+                        <div class="bit-group bit-sign">
+                            <span class="bit-k">符号位 · 1 位（恒 0）</span>
+                            <code class="bit-v">{{ nextData.dec.signBits }}</code>
+                            <span class="bit-dec">= {{ nextData.dec.sign }}</span>
+                        </div>
+                        <div class="bit-group bit-ts">
+                            <span class="bit-k">毫秒时间戳 · 41 位</span>
+                            <code class="bit-v">{{ nextData.dec.tsBits }}</code>
+                            <span class="bit-dec">相对 EPOCH {{ nextData.dec.tsOffset }} ms</span>
+                            <span class="bit-k">绝对时间 {{ nextData.dec.absTime }}</span>
+                        </div>
+                        <div class="bit-group bit-worker">
+                            <span class="bit-k">workerId · 10 位（中间）</span>
+                            <code class="bit-v">{{ nextData.dec.workerBits }}</code>
+                            <span class="bit-dec">= {{ nextData.dec.workerId }}（范围 0..1023）</span>
+                        </div>
+                        <div class="bit-group bit-seq">
+                            <span class="bit-k">序列号 · 12 位（末）</span>
+                            <code class="bit-v">{{ nextData.dec.seqBits }}</code>
+                            <span class="bit-dec">= {{ nextData.dec.sequence }}（范围 0..4095）</span>
+                        </div>
+                    </div>
+                    <p class="bit-legend">64 位二进制：{{ nextData.dec.signBits }} · {{ nextData.dec.tsBits }} · {{ nextData.dec.workerBits }} · {{ nextData.dec.seqBits }}</p>
+                </template>
+
+                <!-- 号段策略下不适用位拆解 -->
+                <p class="alert-bar alert-warn" v-else-if="isSegment">
+                    当前为<strong>号段策略</strong>（<code>id.strategy=segment</code>），雪花位布局不适用：
+                    号段 ID 是从 1 起的连续整数，没有时间戳 / workerId / 序列号位。位拆解仅对 <code>snowflake</code> 有意义。
+                </p>
+                <p class="alert-bar alert-err" v-else-if="!bigIntOk">
+                    当前浏览器不支持 <code>BigInt</code>，无法在不丢精度的前提下做位运算，故跳过位拆解
+                    （ID 字符串本身不受影响，仍可正常生成与查看）。请换用较新的 Chrome / Edge / Firefox。
+                </p>
+                <p class="alert-bar alert-info" v-else>
+                    位拆解需要先确认装配策略（<code>/id/demo/state</code> 未读取成功），故本次跳过 —— 避免把号段 ID 误拆成雪花字段。
+                </p>
+            </div>
+
+            <div v-if="nextHistory.length">
+                <h3 class="sub-title">
+                    生成历史（{{ nextHistory.length }} 条，自下而上为时间顺序）
+                    <span class="tag-self">「与上一行差」「严格递增」为 demo 自算</span>
+                </h3>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>ID（字符串）</th>
+                            <th>长度</th>
+                            <th>workerId</th>
+                            <th>序列号</th>
+                            <th>时间戳（绝对时间）</th>
+                            <th>与上一行差</th>
+                            <th>严格递增</th>
+                            <th>客户端时刻</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="(row, idx) in nextHistory" :key="'nx' + idx + row.id">
+                            <td class="cell-nowrap">{{ idx + 1 }}</td>
+                            <td class="cell-val mono">{{ row.id }}</td>
+                            <td class="cell-num">{{ row.length }}</td>
+                            <td class="cell-num">{{ row.dec ? row.dec.workerId : '—' }}</td>
+                            <td class="cell-num">{{ row.dec ? row.dec.sequence : '—' }}</td>
+                            <td class="cell-nowrap mono">{{ row.dec ? row.dec.absTime : '—' }}</td>
+                            <td class="cell-num">{{ row.delta === null ? '—' : row.delta }}</td>
+                            <td class="cell-nowrap" v-if="row.increasing === null">—</td>
+                            <td class="cell-nowrap" :class="row.increasing ? 'txt-ok' : 'txt-err'" v-else>
+                                {{ row.increasing ? '是 ✓' : '否 ✗' }}
+                            </td>
+                            <td class="cell-nowrap mono">{{ row.at }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint">
+                    雪花在同一实例内<strong>严格递增</strong>：同毫秒内差值应为 1（序列号 +1），跨毫秒差值会变大（时间戳进位）。
+                    点「连续生成 {{ manyCount }} 次」即可直观看到这两种情形。
+                </p>
+            </div>
+            <p class="kv-empty" v-else>暂无生成记录，点上方按钮发起真实发号请求。</p>
+        </section>
+    </div>
+
+    <!-- 功能块② 并发批量生成去重校验 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="block2-title">
+            <div class="card-head">
+                <h2 class="card-title" id="block2-title">② 并发批量生成去重校验</h2>
+                <span class="head-note">端点 <code>/id/demo/batch?size=</code> · 多线程并发生成 + 去重计数</span>
+            </div>
+
+            <p class="hint">
+                后端用多线程并发调用 <code>IdKit.nextIdStr()</code>，再用 <code>ConcurrentHashMap</code> 统计唯一数。
+                <strong>唯一数 == size 且 duplicated == 0</strong> 才算通过，否则说明并发下出现了重复 ID。
+                首尾值（<code>first</code> / <code>last</code>）同样以字符串返回。
+            </p>
+
+            <p class="alert-bar alert-warn" v-if="stateLoaded && !installed">
+                模块未装配，批量生成已禁用 —— 见页面顶部告警。
+            </p>
+
+            <div class="scene-params">
+                <div class="field">
+                    <label class="field-label" for="batch-size">生成数量 size（默认 2000）</label>
+                    <input id="batch-size" class="input num-input" type="number" min="1" max="200000"
+                           v-model="batchSize" :disabled="batchBusy || notInstalled">
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="batchBusy || notInstalled"
+                        @click="runBatch">
+                    {{ batchBusy ? '并发生成中…' : '并发生成并去重校验' }}
+                </button>
+            </div>
+
+            <p class="alert-bar alert-err" v-if="batchError" role="alert" aria-live="assertive">{{ batchError }}</p>
+
+            <div class="scene-body" v-if="batchData">
+                <div class="metrics">
+                    <span class="metric metric-tight">
+                        <span class="metric-k">size（请求数量）</span>
+                        <span class="metric-v">{{ batchData.size }}</span>
+                    </span>
+                    <span class="metric metric-tight" :class="uniqueOk ? 'metric-ok' : 'metric-err'">
+                        <span class="metric-k">unique（唯一数）</span>
+                        <span class="metric-v">{{ batchData.unique }}</span>
+                    </span>
+                    <span class="metric metric-tight" :class="dupOk ? 'metric-ok' : 'metric-err'">
+                        <span class="metric-k">duplicated（重复数）</span>
+                        <span class="metric-v">{{ batchData.duplicated }} {{ dupOk ? '✓' : '✗' }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">costMillis（后端耗时）</span>
+                        <span class="metric-v">{{ batchData.costMillis }} ms</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">first（首个 ID，字符串）</span>
+                        <span class="metric-v mono">{{ batchData.first }}</span>
+                    </span>
+                    <span class="metric metric-wide">
+                        <span class="metric-k">last（末个 ID，字符串）</span>
+                        <span class="metric-v mono">{{ batchData.last }}</span>
+                    </span>
+                </div>
+
+                <p class="alert-bar" :class="dupOk ? 'alert-ok' : 'alert-err'" role="status" aria-live="polite">
+                    <template v-if="dupOk">
+                        <strong>去重校验通过</strong>：{{ batchData.size }} 个并发 ID 全部唯一（duplicated = 0），
+                        并发下无重号。
+                    </template>
+                    <template v-else>
+                        <strong>去重校验未通过</strong>：出现 {{ batchData.duplicated }} 个重复 ID，
+                        唯一数 {{ batchData.unique }} &lt; size {{ batchData.size }} —— 需排查 workerId 冲突或号段回退。
+                    </template>
+                </p>
+            </div>
+            <p class="kv-empty" v-else>尚未执行批量生成。</p>
+        </section>
+    </div>
+
+    <!-- 功能块③ 号段耗尽与新段获取 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="block3-title">
+            <div class="card-head">
+                <h2 class="card-title" id="block3-title">③ 号段耗尽与新段获取</h2>
+                <span class="head-note">端点 <code>/id/demo/segment?size=</code> · 以「段」为行展示边界</span>
+            </div>
+
+            <p class="hint">
+                一次连续生成 <code>size</code> 个 ID，后端按「段」聚合返回。段长 = <code>id.segment.step</code>；
+                号段策略下（<code>start-demo-segment.bat</code> 启动、<code>step=200</code>）生成 450 个必然横跨 3 段，
+                可直接看到 <strong>「耗尽 → 取新段 → 继续」</strong>：前序段被填满（<code>count = step</code>），
+                最后一段是<strong>正在使用中</strong>的部分段。
+                <span class="tag-self">段边界为 demo 自算，非模块 API</span>
+            </p>
+
+            <p class="alert-bar alert-warn" v-if="stateLoaded && isSnowflakeStrategy">
+                <strong>当前为雪花策略</strong>（<code>id.strategy=snowflake</code>）：本端点仍返回数据，
+                但段边界是 demo 按自身 <code>step</code> 对雪花 ID 值<strong>自算</strong>的展示口径
+                （<code>index = (id - 1) / step</code>），<strong>不代表模块具备号段能力</strong>，也没有真实的取段动作。
+                要体验真实跨段，请停掉当前进程并用 <code>start-demo-segment.bat</code> 启动。
+                <br>
+                另外：雪花 ID 量级下 <code>start</code> / <code>end</code> 由后端以 JSON 数字下发，已超出
+                JS 安全整数范围（2<sup>53</sup>），<strong>这两位数字仅作示意、可能不精确</strong>；
+                <code>index</code> / <code>count</code> 不受影响。真实号段模式（<code>step=200</code>）下是小整数，完全精确。
+            </p>
+
+            <p class="alert-bar alert-warn" v-if="stateLoaded && !installed">
+                模块未装配，生成已禁用 —— 见页面顶部告警。
+            </p>
+
+            <div class="scene-params">
+                <div class="field">
+                    <label class="field-label" for="seg-size">生成数量 size（默认 450，跨段请 &gt; step）</label>
+                    <input id="seg-size" class="input num-input" type="number" min="1" max="200000"
+                           v-model="segSize" :disabled="segBusy || notInstalled">
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" type="button" :disabled="segBusy || notInstalled"
+                        @click="runSegment">
+                    {{ segBusy ? '生成中…' : '生成并展示段分布' }}
+                </button>
+            </div>
+
+            <p class="alert-bar alert-err" v-if="segError" role="alert" aria-live="assertive">{{ segError }}</p>
+
+            <div class="scene-body" v-if="segData">
+                <div class="metrics">
+                    <span class="metric metric-tight">
+                        <span class="metric-k">step（段长）</span>
+                        <span class="metric-v">{{ segData.step }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">generated（生成数）</span>
+                        <span class="metric-v">{{ segData.generated }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">段数</span>
+                        <span class="metric-v">{{ segments.length }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">currentSegment（当前段序号）</span>
+                        <span class="metric-v mono">{{ segData.currentSegment }}</span>
+                    </span>
+                </div>
+
+                <h3 class="sub-title">
+                    段分布（{{ segments.length }} 行，最后一行为当前使用中的段）
+                    <span class="tag-self">demo 自算展示，非模块 API</span>
+                </h3>
+                <div class="table-wrap" v-if="segments.length">
+                    <table class="data-table">
+                        <thead>
+                        <tr>
+                            <th>index（段序号）</th>
+                            <th>start</th>
+                            <th>end</th>
+                            <th>count（本段已发数）</th>
+                            <th>状态</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="seg in segments" :key="'seg' + seg.index"
+                            :class="isCurrentSegmentRow(seg) ? 'row-cur' : ''">
+                            <td class="cell-num">{{ seg.index }}</td>
+                            <td class="cell-val mono">{{ seg.start }}</td>
+                            <td class="cell-val mono">{{ seg.end }}</td>
+                            <td class="cell-num">{{ seg.count }}</td>
+                            <td class="cell-nowrap" :class="segRowCls(seg)">{{ segRowText(seg) }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="kv-empty" v-else>后端未返回任何段（generated = 0），请加大 size 后重试。</p>
+
+                <p class="hint">
+                    「段已填满」= 该段 <code>count == step</code>，说明这一段已耗尽、进程已向存储取了下一段；
+                    「正在使用中」= 当前段 <code>count &lt; step</code>，下一次发号会从这里继续；
+                    「历史段（本批未填满）」= 本批从段中间开始（上一次请求已用掉该段前几个号），不是异常。
+                    号段策略下若 <code>start-demo-segment.bat</code> 使用 <code>id.segment.store=local</code>，
+                    重启进程会从 <code>step</code> 重新开始（设计文档 §7.4 的显式退化，重启重号）。
+                </p>
+            </div>
+            <p class="kv-empty" v-else>尚未执行段分布生成。</p>
+        </section>
+    </div>
+
+    <!-- 功能块④ workerId 来源与状态 -->
+    <div class="panel-wrap">
+        <section class="card" aria-labelledby="block4-title">
+            <div class="card-head">
+                <h2 class="card-title" id="block4-title">④ workerId 来源与当前状态</h2>
+                <span class="head-note">端点 <code>/id/demo/state</code> · demo 自身配置 + <code>IdKit</code> 可用性探测</span>
+            </div>
+
+            <p class="hint">
+                <code>installed</code> 由「调用 <code>IdKit.nextId()</code> 是否抛 <code>IllegalStateException</code>」判定；
+                <code>strategy</code> / <code>workerSource</code> / <code>workerId</code> / <code>segmentStore</code> / <code>step</code>
+                取自 <strong>demo 自身配置</strong> —— 模块不提供状态查询 API（设计文档 §2 D1），
+                故这些值不是模块能力，只反映本进程启动时的配置。
+            </p>
+
+            <div class="controls">
+                <button class="btn" type="button" :disabled="stateLoading" @click="loadState(false)">
+                    {{ stateLoading ? '读取中…' : '重新读取状态' }}
+                </button>
+            </div>
+
+            <div class="scene-body" v-if="state">
+                <div class="metrics">
+                    <span class="metric metric-tight" :class="installed ? 'metric-ok' : 'metric-err'">
+                        <span class="metric-k">installed</span>
+                        <span class="metric-v">{{ installed ? 'true ✓' : 'false ✗' }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">strategy</span>
+                        <span class="metric-v mono">{{ stateText('strategy') }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">workerSource</span>
+                        <span class="metric-v mono">{{ stateText('workerSource') }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">workerId</span>
+                        <span class="metric-v mono">{{ stateText('workerId') }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">segmentStore</span>
+                        <span class="metric-v mono">{{ stateText('segmentStore') }}</span>
+                    </span>
+                    <span class="metric metric-tight">
+                        <span class="metric-k">step</span>
+                        <span class="metric-v mono">{{ stateText('step') }}</span>
+                    </span>
+                </div>
+
+                <p class="alert-bar" :class="workerHintCls" role="status" aria-live="polite">
+                    {{ workerHintText }}
+                </p>
+
+                <p class="hint">
+                    雪花位布局里 workerId 占 <strong>10 位</strong>（取值 0..1023），同一时刻全局不得重复。
+                    <code>id.strategy=segment</code> 时 <code>id.worker.*</code> 键<strong>不读、不校验</strong>
+                    （设计文档 §7.5 场景 21），因此 <code>workerId</code> 显示为 <code>—</code> 属正常。
+                </p>
+            </div>
+            <p class="kv-empty" v-else-if="!stateLoading">
+                装配状态未读取成功 —— {{ stateError || '请点上方按钮重试' }}
+            </p>
+            <p class="kv-empty" v-else>正在读取装配状态…</p>
+        </section>
+    </div>
+
+    <p class="page-foot">
+        aifei-id-demo · 端口 18140 · 零外网 · 零构建（纯 HTML/CSS/JS + 本地 Vue） ·
+        库坐标 <code>io.github.gollyhu:aifei-id:1.0.0</code> ·
+        雪花/号段演示用两个启动脚本：<code>start-demo.bat</code> / <code>start-demo-segment.bat</code>（同端口，不可并存）
+    </p>
+
+</main>
+
+<script src="/assets/js/id-demo.js"></script>
+</body>
+</html>

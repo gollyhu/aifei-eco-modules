@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.gollyhu</groupId>
+    <artifactId>aifei-id</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>aifei-id</name>
+    <description>分布式 ID 的 aifei 接入 SDK：雪花（1+41+10+12）与号段两代策略，零第三方依赖</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <aifei.version>1.1.2</aifei.version>
+        <aifei-cache.version>1.1.0</aifei-cache.version>
+        <aifei-lock.version>1.0.0</aifei-lock.version>
+        <junit.version>4.13.2</junit.version>
+    </properties>
+
+    <dependencies>
+        <!-- 内核：provided，消费方自带（cn.aifei.plugin.Plugin / cn.aifei.util.Prop / cn.aifei.aop.AopKit / cn.aifei.log.Log 随它提供） -->
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-all</artifactId>
+            <version>${aifei.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--
+            可选协同模块：optional 阻断传递。号段取段与 cache 模式 workerId 需要它，
+            id.segment.store=cache 或 id.worker.source=cache 时若缺失，启动期由 internal.IdDeps 报可读错误。
+        -->
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-cache</artifactId>
+            <version>${aifei-cache.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 可选协同模块：optional 阻断传递，仅 id.worker.source=lock 需要 -->
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-lock</artifactId>
+            <version>${aifei-lock.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <!-- 架构门禁依赖模块根的相对路径 src/main/java，工作目录固定为模块根 -->
+                    <workingDirectory>${project.basedir}</workingDirectory>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

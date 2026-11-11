@@ -1,0 +1,16 @@
+# ===== aifei-id-demo 配置（雪花策略，默认配置）=====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18140 传入。
+# id.* 的解析与校验全部发生在 IdPlugin.start()（构造函数只保存 Prop 引用），配置有误即应用启动失败。
+# 本文件为「雪花 + 静态 workerId」组合：零外部依赖，只引 aifei-id 一个 jar 即可跑通（离线可跑）。
+
+# ===== aifei-id 配置（1.0.0）=====
+# 发号策略：snowflake（1 符号位 + 41 毫秒 + 10 workerId + 12 序列号）
+id.strategy = snowflake
+# workerId 来源：config（静态配置，零依赖）/ cache / lock；多实例部署必须改用 cache 或 lock
+id.worker.source = config
+# 静态 workerId，取值 0..1023；两个实例配同一 workerId 必然重号，模块无法检测（README 已警告）
+id.workerId = 1
+
+# ===== 演示开关（非 id.* 键）=====
+# Enjoy 模板热加载：改 view/id/*.html 后刷新浏览器即生效，无需重启进程
+enjoyDevMode = true
