@@ -95,3 +95,64 @@ aifei-lock           ┴─→ aifei-id（号段 + workerId）
 aifei-weixin（PayApi 契约）─→ aifei-pay（支付宝侧对齐）
 aifei-log ─→ aifei-trace
 ```
+
+## 六、现有模块依赖关系与关联分析
+
+> 本节基于各模块 `pom.xml`、源码引用与关卡测试实测梳理，作为第一至五节规划的依赖基线；口径截至 2026-11-17。
+
+### 6.1 模块全景（按角色分两层）
+
+| 层级 | 模块 | 说明 |
+| --- | --- | --- |
+| 库模块（SDK，12 个） | `aifei-cache` `aifei-lock` `aifei-sentinel` `aifei-weixin` `aifei-sa-token` `aifei-websocket` `aifei-mq` `aifei-oss` `aifei-job` `aifei-id` `aifei-trace` `aifei-http` | 可被应用依赖，坐标统一 `io.github.gollyhu:*`，Java 8 |
+| 示例工程（8 个，不发布） | `aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-oss-demo` | 各依赖对应库模块，并以 `compile` 声明 `aifei-all` |
+
+共同底座：全部库模块均以 `provided` 依赖 `cn.aifei:aifei-all:1.1.2`，共享 Plugin 装配范式、`Prop` 配置、`@Inject` 单例、AOP 拦截与日志门面 `cn.aifei.log.Log`。`CODEBUDDY.md` 的模块表尚未列入 `aifei-lock` 与 `aifei-oss-demo`，需同步校准。
+
+### 6.2 已落地的代码级依赖（3 条，全部 `optional`）
+
+```mermaid
+graph TD
+    KERNEL["cn.aifei:aifei-all:1.1.2（provided）"]
+    CACHE["aifei-cache:1.1.0"]
+    LOCK["aifei-lock:1.0.0"]
+    ID["aifei-id:1.0.0"]
+    SATOKEN["aifei-sa-token:1.0.0"]
+
+    KERNEL --> CACHE
+    KERNEL --> LOCK
+    KERNEL --> ID
+    KERNEL --> SATOKEN
+    CACHE -. "optional 硬引用" .-> LOCK
+    CACHE -. "optional + Class.forName 探测" .-> ID
+    LOCK -. "optional + Class.forName 探测" .-> ID
+    CACHE -. "optional 硬引用" .-> SATOKEN
+```
+
+| 依赖方 | 被依赖方 | 性质 | 代码证据 |
+| --- | --- | --- | --- |
+| `aifei-lock` | `aifei-cache` | `optional`，硬引用 | `CacheLockStore` 直接引用 `Cache` / `CacheKit`，基于 `putIfAbsent` / `removeIfEquals` / `expireIfEquals` / `supportsCas` 实现原子锁 |
+| `aifei-id` | `aifei-cache` + `aifei-lock` | `optional`，运行期按配置探测 | `IdDeps` 用 `Class.forName(name, false, loader)` 探测 `CounterKit` / `LockKit`，仅 `id.segment.store=cache` 或 `id.worker.source=cache/lock` 时需要 |
+| `aifei-sa-token` | `aifei-cache` | `optional`，硬引用 | `SaTokenDaoForCache` 实现 `SaTokenDao`，以 `Cache` 作登录态持久层（纯缓存 / 缓存加速 + 权威委托两种形态） |
+
+依赖方向的关键设计：`cache` 是事实上的底层基座，`lock` / `id` / `sa-token` 只向它单向依赖，`cache` 从不反向引用兄弟模块。所有跨模块依赖均为 `optional`、阻断传递，缺失时由 `IdDeps` / `LockErrors` 给出可读错误，而非直接 `NoClassDefFoundError`。
+
+### 6.3 规划中 / 契约级关联（非代码依赖）
+
+| 关联 | 当前状态 | 耦合方式 |
+| --- | --- | --- |
+| `aifei-lock` → `aifei-job:1.1.0` | 规划中（集群互斥） | `job.cluster.enabled=true` 时 `optional` 探测；锁语义完全交给 lock，本模块不复制 |
+| `aifei-http` ↔ `aifei-sentinel` | 契约对齐（非代码依赖） | sentinel 资源名 = http 接口标识，规则 JSON 的 `resource` 须严格一致 |
+| `aifei-trace` 贯通 `http` / `mq` / `websocket` / `job` | 规划中；`trace:1.0.0` 仅做 Web 入口绑定清理，零第三方、无 Plugin | 未来经 HTTP 头 / MQ 消息头 / WS 帧头 / Job 事件传播 traceId |
+| `aifei-weixin` → `aifei-pay` | 未立项 | 复用 `PayApi` 契约，便于业务两侧切换 |
+| `aifei-oss` ↔ `aifei-excel` | 未立项 | 导入源 / 导出落盘的组合关系 |
+| `aifei-http` ↔ `aifei-weixin` | 技术底稿复用（非运行时依赖） | 同为纯 JDK `HttpURLConnection` 路线，http 复用 weixin 的 JdkHttpClient 实现经验 |
+
+另有一组架构同构关系：`aifei-mq` / `aifei-websocket` / `aifei-cache` 共享「Provider 扩展点 + 静态注册表 + 命名实例」的装配范式；`aifei-sentinel` / `aifei-sa-token` 都通过 `cn.aifei.aop.Interceptor` 挂接横切逻辑。这些是模式复用而非代码依赖，由 `ArchitectureBoundaryTest` / `KernelBindingTest` 守护边界。
+
+### 6.4 依赖形成与约束判断
+
+1. **方向只能自底向上**：`cache` → `lock` → `job` / `id` / `sa-token` 这条链单向。任何让 `cache` 反向引用上层模块的改动都会引入循环依赖，破坏其基座定位。
+2. **`optional` + 探测是刻意取舍**：跨模块依赖不向下传递，消费者必须显式声明所需坐标。"能形成依赖"不等于"自动获得依赖"——例如 `aifei-id-demo` 只声明 `aifei-id`，雪花模式可跑，号段模式还需引入 `aifei-cache`，否则启动期给出可读错误，属于契约式关联而非隐式耦合。
+3. **能力协同不应升级为代码依赖**：`trace` 贯通 `mq` / `ws` / `job`、`http` 对齐 `sentinel`，正确做法是通过公共数据契约（消息头 / 帧头 / 资源名字符串）解耦，而非库模块互相 `import`——否则会撞上「公共 API 零第三方类型、零框架类型、根包公共类型数量精确」的门禁。
+4. **版本管理风险**：`aifei-cache` 已是 `1.1.0`，其余库模块为 `1.0.0`；`lock` / `sa-token` / `id` 的 pom 各自写死 `<aifei-cache.version>1.1.0</aifei-cache.version>`，仓库根无聚合 pom，后续升级 cache 需逐个同步，存在遗漏风险。
