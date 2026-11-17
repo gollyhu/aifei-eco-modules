@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-excel 演示 · 注解映射 / 分批读 / 流式写</title>
+    <link rel="stylesheet" href="/assets/css/excel-demo.css">
+    <script src="/assets/lib/vue.global.prod.js"></script>
+</head>
+<body>
+<main id="excel-demo-app" v-cloak>
+
+    <p class="semantic-bar">
+        <span class="semantic-tag">真实读写</span>
+        <span class="semantic-text">
+            本页所有数据都来自本进程对 <code>aifei-excel</code> 的真实调用：
+            <code>/parse</code> 真实解析你上传的 xlsx/xls，<code>/export-*</code> 真实生成可打开的 Excel。
+            库模块是 SDK（无 Plugin、无配置键），<code>Excel</code> / <code>ExcelKit</code> 随取随用。全程零外网、零假数据。
+        </span>
+    </p>
+
+    <header class="topbar">
+        <div class="topbar-row">
+            <div class="title-wrap">
+                <h1 class="page-title">aifei-excel 读写门面演示</h1>
+                <span class="chip" :class="stateChipCls">{{ stateChipText }}</span>
+                <span class="chip chip-ghost" v-if="state">内核版本 {{ state.version }}</span>
+                <span class="chip chip-ghost">端口 18150</span>
+            </div>
+            <div class="controls">
+                <button class="btn" type="button" :disabled="stateLoading" @click="loadState">
+                    {{ stateLoading ? '读取中…' : '刷新依赖状态' }}
+                </button>
+            </div>
+        </div>
+        <p class="alert-bar alert-err" v-if="stateError" role="alert">{{ stateError }}</p>
+    </header>
+
+    <section class="card">
+        <h2 class="card-title">① 上传解析 <small>Excel.read 分批回调</small></h2>
+        <p class="card-desc">选择 xlsx/xls 文件，设置批大小后提交。服务端逐行 SAX 解析、满批回调，返回总行数、回调批次数、表头与前若干行样例。</p>
+        <div class="form-row">
+            <label class="field">
+                <span>Excel 文件</span>
+                <input type="file" accept=".xlsx,.xls" @change="onFileChange">
+            </label>
+            <label class="field field-sm">
+                <span>batchSize</span>
+                <input type="number" min="1" v-model.number="batchSize" placeholder="默认 1000">
+            </label>
+            <button class="btn btn-primary" type="button" :disabled="parseLoading || !selectedFile" @click="parseFile">
+                {{ parseLoading ? '解析中…' : '上传并解析' }}
+            </button>
+        </div>
+        <p class="alert-bar alert-err" v-if="parseError" role="alert">{{ parseError }}</p>
+        <div class="result" v-if="parseResult">
+            <div class="stat-grid">
+                <div class="stat"><span class="stat-k">文件名</span><span class="stat-v">{{ parseResult.fileName }}</span></div>
+                <div class="stat"><span class="stat-k">总行数</span><span class="stat-v">{{ parseResult.rows }}</span></div>
+                <div class="stat"><span class="stat-k">回调批次</span><span class="stat-v">{{ parseResult.batches }}</span></div>
+                <div class="stat"><span class="stat-k">batchSize</span><span class="stat-v">{{ batchSize || 1000 }}</span></div>
+            </div>
+            <div class="table-block" v-if="parseResult.headers && parseResult.headers.length">
+                <h3>表头</h3>
+                <div class="chips"><span class="chip chip-ghost" v-for="(h, i) in parseResult.headers" :key="i">{{ h }}</span></div>
+            </div>
+            <div class="table-block" v-if="parseResult.sample && parseResult.sample.length">
+                <h3>前 {{ parseResult.sample.length }} 行样例</h3>
+                <table class="data-table">
+                    <thead><tr><th v-for="(h, i) in sampleHeaders" :key="i">{{ h }}</th></tr></thead>
+                    <tbody>
+                        <tr v-for="(row, ri) in parseResult.sample" :key="ri">
+                            <td v-for="(cell, ci) in row" :key="ci">{{ cell }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2 class="card-title">② 一次性导出 <small>ExcelKit.write</small></h2>
+        <p class="card-desc">列表一次写：内部创建 writer 会话、写一批、finish，演示小文件便捷门面。点击下载后用 Excel 打开可见示例数据表头与行。</p>
+        <button class="btn btn-primary" type="button" @click="exportOnce">下载 xlsx（一次性）</button>
+    </section>
+
+    <section class="card">
+        <h2 class="card-title">③ 流式导出 <small>Excel.writer + write×N + finish</small></h2>
+        <p class="card-desc">设置行数（如 50000）下载。服务端用同一个 writer 会话分批多次追加写出，内存仅驻留当前批、不随总行数线性增长。</p>
+        <div class="form-row">
+            <label class="field field-sm">
+                <span>导出行数</span>
+                <input type="number" min="1" v-model.number="streamRows" placeholder="默认 50000">
+            </label>
+            <button class="btn btn-primary" type="button" @click="exportStream">下载 xlsx（流式）</button>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>依赖状态由 <code>/excel/demo/state</code> 探测驱动；<code>easyexcel</code> 以 optional 声明，消费方需自行引入。</p>
+    </footer>
+
+</main>
+<script src="/assets/js/excel-demo.js"></script>
+</body>
+</html>

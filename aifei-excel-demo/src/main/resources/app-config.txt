@@ -1,0 +1,8 @@
+# ===== aifei-excel-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18150 传入。
+# aifei-excel 是库模块（SDK）：无 Plugin、无配置键，Excel / ExcelKit 随取随用，
+# 全部行为由方法入参（类型、批大小、流）决定，本文件无需任何 excel.* 键。
+
+# ===== 演示开关（非库模块配置键）=====
+# Enjoy 模板热加载：改 view/excel/*.html 后刷新浏览器即生效，无需重启进程
+enjoyDevMode = true

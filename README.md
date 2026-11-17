@@ -27,6 +27,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-trace-demo](aifei-trace-demo/README.md) | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
 | [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
 | [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
+| [aifei-excel](aifei-excel/README.md) | `io.github.gollyhu:aifei-excel:1.0.0` | Excel 读写统一门面：注解表头映射、一次性便捷读写、流式分批读写，唯一内核 easyexcel 可选引入 |
+| [aifei-excel-demo](aifei-excel-demo/README.md) | （示例工程，不发布） | aifei-excel 的完整接入示例：上传解析 / 一次性导出 / 流式导出演示（端口 18150） |
 
 ### aifei-cache
 
@@ -156,6 +158,17 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 配置 `http.*` 七键全可选：connect-timeout / read-timeout / retry-times / retry-interval / max-response-bytes（默认 8 MiB）/ gzip / user-agent；JVM 全局属性 `http.maxConnections` / `http.keepAlive` 只读不写
 - 详细用法见 [aifei-http/README.md](aifei-http/README.md)，设计文档见 [docs/design.md](aifei-http/docs/design.md)
 
+### aifei-excel
+
+为 aifei 应用补齐 Excel 读写能力（库模块 / SDK 而非应用工程）：业务只认注解模型与输入输出流，表头映射、流式分批、异常口径由模块统一负责。与 `aifei-oss` 仅经 `InputStream` / `OutputStream` 组合，不产生代码依赖。
+
+- 根包精确 5 个公共类型：`Excel`（流式门面：静态分批读 + 有状态 writer 会话）/ `ExcelKit`（一次性便捷门面：全量读 / 列表一次写）/ `ExcelException` / `@ExcelColumn` / `@ExcelIgnore`；零第三方 / 零框架类型、无 Plugin、无配置键
+- 读：`Excel.read` 按行 SAX 解析、满 `batchSize`（默认 1000）回调、内存 `O(batchSize)`；`ExcelKit.readAll` 一次性全量读，**仅小文件**。写：`Excel.writer(...)` 会话分步 `write(...)` → `finish()` 多次追加，`ExcelKit.write` 一次写；`write` / `finish` 返回 `void`，不链式
+- 注解默认全部当前类字段参与、`@ExcelColumn.value` 指定表头名（严格相等）/ `index>=0` 按列序优先、`@ExcelIgnore` 排除；仅内置常用类型转换，无自定义转换器 SPI
+- 三段失败统一收敛 `ExcelException`（保留 cause）；流所有权归调用方（读不关 `in`、写不关 `out`）
+- 唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（不传递，消费方须显式引入，缺失时首次调用抛可读 `ExcelException`），`aifei-all:1.1.2` 为 `provided`
+- 详细用法见 [aifei-excel/README.md](aifei-excel/README.md)，设计文档见 [docs/design.md](aifei-excel/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -173,6 +186,7 @@ cd aifei-job       && mvn clean install
 cd aifei-id        && mvn clean install
 cd aifei-trace     && mvn clean install
 cd aifei-http      && mvn clean install
+cd aifei-excel     && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -191,6 +205,7 @@ cd aifei-http      && mvn clean install
 - `aifei-id`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 与 `aifei-lock` 1.0.0 均为 `optional`（**不向下游传递**，用到 `cache` / `lock` workerId 来源或 `cache` 号段存储时显式引入）；**零第三方**，不引入任何日志绑定
 - `aifei-trace`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方、无 Plugin、无配置键**——纯静态门面 + 使用方在自身 `AppConfig` 显式构造接入构件（`TraceLogFactory` / `TraceHandler`），不绑定任何日志实现（只面向 `cn.aifei.log` 接口，`Slf4jLogFactory` 等适配器由消费方经 aifei-all 自带）
 - `aifei-http`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方（纯 JDK `HttpURLConnection`）、无 `optional`、不引任何日志绑定**；不支持 HTTP/2，连接池仅受 JVM 全局 `http.maxConnections` / `http.keepAlive` 只读约束
+- `aifei-excel`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（**不向下游传递**，消费方要用读写能力必须显式引入，缺失时首次调用抛可读 `ExcelException` 而非裸 `NoClassDefFoundError`），POI 随其传递；零 DB、零 Web 面、无 Plugin、无配置键、不引任何日志绑定
 
 ## 许可证
 

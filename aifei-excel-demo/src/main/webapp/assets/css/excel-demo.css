@@ -1,0 +1,163 @@
+/*
+ * Copyright 2014-2026 糊搞 (3722711@qq.com)
+ *
+ * https://gitee.com/gollyhu
+ */
+:root {
+    --bg: #f5f7fb;
+    --card: #ffffff;
+    --ink: #1f2933;
+    --muted: #60707e;
+    --line: #e2e8f0;
+    --primary: #2f6fed;
+    --ok: #1f9d55;
+    --err: #d64545;
+    --shadow: 0 2px 10px rgba(31, 41, 51, .06);
+}
+
+* { box-sizing: border-box; }
+
+[v-cloak] { display: none; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.6 -apple-system, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+}
+
+main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 48px;
+}
+
+.semantic-bar {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: #eef4ff;
+    border: 1px solid #cfe0ff;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 0 0 20px;
+}
+
+.semantic-tag {
+    flex: none;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.semantic-text { color: #33475b; }
+
+code {
+    background: #eef1f5;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+}
+
+.topbar { margin-bottom: 18px; }
+.topbar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.title-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.page-title { font-size: 22px; margin: 0; }
+
+.chip {
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.chip-ghost { background: #e8edf4; color: var(--muted); }
+.chip-ok { background: #e3f6ea; color: var(--ok); }
+.chip-err { background: #fdeaea; color: var(--err); }
+
+.btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+.btn:hover:not(:disabled) { background: #f0f4fb; border-color: #b9cdf0; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #255fd4; border-color: #255fd4; }
+
+.alert-bar {
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 12px 0 0;
+    font-size: 14px;
+}
+.alert-info { background: #eef4ff; border: 1px solid #cfe0ff; color: #33475b; }
+.alert-err { background: #fdeaea; border: 1px solid #f6c9c9; color: var(--err); }
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+    margin-bottom: 18px;
+}
+.card-title { font-size: 18px; margin: 0 0 8px; }
+.card-title small { font-size: 13px; font-weight: 400; color: var(--muted); }
+.card-desc { color: var(--muted); margin: 0 0 16px; }
+
+.form-row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.field-sm input { width: 160px; }
+.field input {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    color: var(--ink);
+}
+
+.result { margin-top: 18px; }
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+.stat {
+    background: #f7f9fc;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+}
+.stat-k { font-size: 12px; color: var(--muted); }
+.stat-v { font-size: 18px; font-weight: 600; word-break: break-all; }
+
+.table-block { margin-top: 18px; }
+.table-block h3 { font-size: 14px; margin: 0 0 8px; color: var(--muted); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th, .data-table td {
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+    text-align: left;
+}
+.data-table th { background: #f0f4fb; }
+
+.footer { color: var(--muted); font-size: 13px; margin-top: 24px; }

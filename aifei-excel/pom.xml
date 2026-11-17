@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.gollyhu</groupId>
+    <artifactId>aifei-excel</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>aifei-excel</name>
+    <description>Excel 读写门面 SDK：注解表头映射、一次性便捷读写、流式分批读写（唯一内核 easyexcel，可选引入）</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <aifei.version>1.1.2</aifei.version>
+        <easyexcel.version>3.3.2</easyexcel.version>
+        <junit.version>4.13.2</junit.version>
+    </properties>
+
+    <dependencies>
+        <!-- 生态统一底座：provided，消费方自带，本模块源码零引用、不向下游传递 -->
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-all</artifactId>
+            <version>${aifei.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- 唯一实现内核：optional 阻断传递，消费方按需自带；缺失时首次调用抛可读 ExcelException -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>${easyexcel.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <!-- 架构门禁依赖模块根相对路径 src/main/java，工作目录固定为模块根 -->
+                    <workingDirectory>${project.basedir}</workingDirectory>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+            <!-- 源码包：forceCreation 保证每次构建重新生成；不绑定生命周期，避免影响 verify -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <forceCreation>true</forceCreation>
+                </configuration>
+            </plugin>
+            <!-- javadoc：排除 internal 非承诺实现层；不绑定生命周期，避免影响 verify -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.10.1</version>
+                <configuration>
+                    <excludePackageNames>cn.hg.aifei.excel.internal.*</excludePackageNames>
+                    <doclint>none</doclint>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
