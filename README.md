@@ -25,6 +25,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-id-demo](aifei-id-demo/README.md) | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140） |
 | [aifei-trace](aifei-trace/README.md) | `io.github.gollyhu:aifei-trace:1.0.0` | 请求链路贯通：`TraceKit` 链路上下文 + 日志 `[traceId] ` 前缀贯通 + Web 入口绑定清理，零第三方 |
 | [aifei-trace-demo](aifei-trace-demo/README.md) | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
+| [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
+| [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
 
 ### aifei-cache
 
@@ -143,6 +145,17 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 零第三方依赖：`aifei-all` 为 `provided`，不绑定任何日志实现（只面向 `cn.aifei.log` 接口）
 - 详细用法见 [aifei-trace/README.md](aifei-trace/README.md)，设计文档见 [docs/design.md](aifei-trace/docs/design.md)
 
+### aifei-http
+
+aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应，超时 / 重试 / 拦截 / 编解码 / 资源名由模块统一负责。
+
+- 公共面固定 6 个类型：`HttpClient` / `HttpRequest` / `HttpResponse` / `HttpKit` / `HttpException` / `HttpInterceptor`（`HttpInterceptor.HttpAttempt` 为嵌套类型）；装配入口 `HttpPlugin` 在 `aifei` 包，非承诺 API
+- **零第三方纯 JDK**：传输只用 `HttpURLConnection`（唯一出现点 `internal.JdkHttpTransport`），不引 okhttp / jackson / slf4j，不支持 HTTP/2
+- 装配：`plugins.add(new HttpPlugin(prop).addInterceptor(...))`，`@Inject HttpClient` 取单例，静态上下文用 `HttpKit`
+- 行为：非 2xx 不抛异常由业务判断；重试仅幂等方法（GET / HEAD）且仅网络失败 / 5xx 触发；拦截器 `before` 正序 / `after` 逆序；资源名默认 `METHOD host path`，显式 `resource(...)` 可覆盖
+- 配置 `http.*` 七键全可选：connect-timeout / read-timeout / retry-times / retry-interval / max-response-bytes（默认 8 MiB）/ gzip / user-agent；JVM 全局属性 `http.maxConnections` / `http.keepAlive` 只读不写
+- 详细用法见 [aifei-http/README.md](aifei-http/README.md)，设计文档见 [docs/design.md](aifei-http/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -159,6 +172,7 @@ cd aifei-lock      && mvn clean install
 cd aifei-job       && mvn clean install
 cd aifei-id        && mvn clean install
 cd aifei-trace     && mvn clean install
+cd aifei-http      && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -176,6 +190,7 @@ cd aifei-trace     && mvn clean install
 - `aifei-oss`：`aifei-all` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
 - `aifei-id`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 与 `aifei-lock` 1.0.0 均为 `optional`（**不向下游传递**，用到 `cache` / `lock` workerId 来源或 `cache` 号段存储时显式引入）；**零第三方**，不引入任何日志绑定
 - `aifei-trace`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方、无 Plugin、无配置键**——纯静态门面 + 使用方在自身 `AppConfig` 显式构造接入构件（`TraceLogFactory` / `TraceHandler`），不绑定任何日志实现（只面向 `cn.aifei.log` 接口，`Slf4jLogFactory` 等适配器由消费方经 aifei-all 自带）
+- `aifei-http`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方（纯 JDK `HttpURLConnection`）、无 `optional`、不引任何日志绑定**；不支持 HTTP/2，连接池仅受 JVM 全局 `http.maxConnections` / `http.keepAlive` 只读约束
 
 ## 许可证
 
