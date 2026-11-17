@@ -23,6 +23,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-job-demo](aifei-job-demo/README.md) | （示例工程，不发布） | aifei-job 的完整接入示例：任务列表 / 到点触发 / 跳过 / 异常隔离 / 停机收敛演示（端口 18110） |
 | [aifei-id](aifei-id/README.md) | `io.github.gollyhu:aifei-id:1.0.0` | 分布式 ID：雪花（`1+41+10+12`）与号段双策略，workerId 三来源，零第三方 |
 | [aifei-id-demo](aifei-id-demo/README.md) | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140） |
+| [aifei-trace](aifei-trace/README.md) | `io.github.gollyhu:aifei-trace:1.0.0` | 请求链路贯通：`TraceKit` 链路上下文 + 日志 `[traceId] ` 前缀贯通 + Web 入口绑定清理，零第三方 |
+| [aifei-trace-demo](aifei-trace-demo/README.md) | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
 
 ### aifei-cache
 
@@ -130,6 +132,17 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - `aifei-cache` / `aifei-lock` 均为 `optional`：不引依赖时用 `config` + `local` 号段存储即可离线运行（`local` 重启会重号）
 - 详细用法见 [aifei-id/README.md](aifei-id/README.md)，设计文档见 [docs/design.md](aifei-id/docs/design.md)
 
+### aifei-trace
+
+为 aifei 应用补齐请求链路贯通能力：一次请求跨 Handler → Service → 线程池 → 日志输出，所有环节归到同一条链路。
+
+- 公共面固定 8 个类型：根包 `TraceKit` / `TraceContext` / `TraceIdGenerator` / `DefaultTraceIdGenerator` / `TraceLog` / `TraceLogFactory` + `web` 包 `TraceHandler` / `TraceIdExtractor`
+- 三件事各一个落点：链路上下文（`TraceKit` + `TraceContext`）、日志贯通（`settings.setLogFactory(new TraceLogFactory(...))` 一行，全应用日志自动带 `[traceId] ` 前缀）、Web 入口（`TraceHandler` 第一个 `addHandler`，finally 保证清理）
+- TraceId 固定 32 位小写十六进制（UUID 去横线），生成器可替换；提取失败 / 空白回退生成，trace 失败永不影响业务请求
+- 跨线程传播须业务手动传递（刻意不用 `InheritableThreadLocal` 防线程池串号）；MQ / WS / Job 跨模块传播 v1 不做
+- 零第三方依赖：`aifei-all` 为 `provided`，不绑定任何日志实现（只面向 `cn.aifei.log` 接口）
+- 详细用法见 [aifei-trace/README.md](aifei-trace/README.md)，设计文档见 [docs/design.md](aifei-trace/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -145,6 +158,7 @@ cd aifei-oss       && mvn clean install
 cd aifei-lock      && mvn clean install
 cd aifei-job       && mvn clean install
 cd aifei-id        && mvn clean install
+cd aifei-trace     && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -161,6 +175,7 @@ cd aifei-id        && mvn clean install
 - `aifei-job`：`aifei-all` 为 `provided`，消费方应用自带（只引核心 `cn.aifei:aifei` 时运行期 `NoClassDefFoundError: cn/aifei/log/Log`）；`quartz:2.3.2` 与 `slf4j-api:1.7.30` 为 **`compile`**，**会随本模块传递**（Quartz 版本冲突由消费方 `exclusion` 或显式对齐；`slf4j-api` 仅 Quartz 内部使用，不承诺日志语义），Quartz 的 `c3p0` / `mchange-commons-java` / `HikariCP-java7` 传递项已排空；不引入任何日志绑定
 - `aifei-oss`：`aifei-all` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
 - `aifei-id`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 与 `aifei-lock` 1.0.0 均为 `optional`（**不向下游传递**，用到 `cache` / `lock` workerId 来源或 `cache` 号段存储时显式引入）；**零第三方**，不引入任何日志绑定
+- `aifei-trace`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方、无 Plugin、无配置键**——纯静态门面 + 使用方在自身 `AppConfig` 显式构造接入构件（`TraceLogFactory` / `TraceHandler`），不绑定任何日志实现（只面向 `cn.aifei.log` 接口，`Slf4jLogFactory` 等适配器由消费方经 aifei-all 自带）
 
 ## 许可证
 

@@ -6,7 +6,7 @@
 >
 > **坐标**：`io.github.gollyhu:aifei-trace:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.trace`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（pom 仅 `cn.aifei:aifei-all` provided + junit test）。
 >
-> **文档状态**：本文是 1.0.0 的**设计定稿**，代码尚未落地。§5 的 8 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
+> **文档状态**：本文是 1.0.0 的**设计定稿，已按本文实现交付**（模块 + `aifei-trace-demo` 已落地并过 `mvn clean verify`，§12 事项 1 已完成根 `AGENTS.md` 登记）。§5 的 8 个公共类型签名仍是公共面的**唯一依据**，变更前必须先改本文。
 >
 > **底稿**：官方 `cn.aifei:aifei-trace:1.1.1` 已解包核实（8 个公共类型源码逐字精读）。本模块**参考其语义重写**（包名改为 `cn.hg.aifei.trace`、版权头换为仓库统一版权、异常口径有显式偏离），**不逐字复制官方源文件**，故全部文件按仓库「原创文件」口径处理。
 
@@ -718,7 +718,7 @@ mvn dependency:tree                                  # 断言：仅 aifei-all(pr
 
 | # | 事项 | 处理 / 假设 |
 | --- | --- | --- |
-| 1 | **公共面框架类型例外的根 AGENTS.md 登记** | 决策 2 / 3 使 `cn.aifei.log.*`（根包 2 文件）与 `cn.aifei.core.*`（web 包 2 文件）出现在公共 API。根 `AGENTS.md` 现行「已登记的 compile 例外」清单不含本模块；本设计按 aifei-sa-token 先例作**模块级定档**，**回弹调度人**：落地前须在根 `AGENTS.md` 登记此「公共面框架类型例外」（trace 模块：`cn.aifei.log.*` 限根包 TraceLog/TraceLogFactory、`cn.aifei.core.*` 限 web 包），否则门禁 ② 与根纪律冲突。pom 依赖口径不受影响（维持 aifei-all provided，非 compile 例外） |
+| 1 | **公共面框架类型例外的根 AGENTS.md 登记** | **已完成**：根 `AGENTS.md`「已登记的公共面框架类型例外」清单已登记本模块两处例外（`TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `LogFactory`；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`），理由引用本文 §2 决策 2 / 3。pom 依赖口径不受影响（维持 aifei-all provided，非 compile 例外） |
 | 2 | **IllegalArgumentException 替代官方 NPE** | 官方三处（setTraceIdGenerator / TraceLog / TraceLogFactory 构造）用 `Objects.requireNonNull` 抛 NPE；本模块统一 `IllegalArgumentException`（§7.3 消息逐字对齐官方 message）。属显式偏离，测试按本表断言 |
 | 3 | **运行期替换生成器的可见性** | `idGenerator` 为普通 static 字段（官方同形态），运行期替换无锁；javadoc 与 README 声明「建议仅启动期替换」。不引入 volatile / AtomicReference：替换属一次性启动期动作，为它加同步语义收益为零 |
 | 4 | **生成产出不校验** | 替换实现产出格式违例（如非 32 位）时模块按原值绑定、不拦截（决策 7）；格式契约靠 javadoc。若未来需要强校验，属公共行为变更，先改本文再实施 |

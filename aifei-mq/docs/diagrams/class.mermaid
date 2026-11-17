@@ -1,0 +1,150 @@
+classDiagram
+    direction LR
+
+    %% ═══ aifei-mq 1.0.0 目标态：父 pom（packaging=pom，本图不画类）聚合 8 个子模块 ═══
+    %% 稳定/发布：core、memory、rocketmq ｜ 实验性/不发布：mqtt、mqtt5、rabbitmq、kafka、redisstream
+    %% 发现：各后端模块在 META-INF/services/cn.hg.aifei.mq.internal.MqProvider 各声明一行 XxxProvider，由 MqProviderRegistry 经 ServiceLoader.load(MqProvider.class) 读取并按 type() 建索引（core 无该文件）
+    %% ─── aifei-mq-core ｜ 根包 cn.hg.aifei.mq：精确 8 个公共类型 ───
+    class Message {
+        -String topic / byte[] payload
+        +static of(String topic, byte[] payload) Message
+    }
+    class Producer {
+        <<interface>>
+        +send(Message) / send(topic, byte[]) / send(topic, String) SendResult
+    }
+    class Consumer {
+        <<interface>>
+        +subscribe(topic, listener) / unsubscribe(topic, listener) void
+    }
+    class MessageListener {
+        <<interface>>
+        +onMessage(Message message) void
+    }
+    class SendResult {
+        -String topic / messageId
+        +static of(String topic, String messageId) SendResult
+    }
+    class ProducerKit {
+        +static use() / use(String instanceName) Producer
+        +static send(...) SendResult
+    }
+    class ConsumerKit {
+        +static use() / use(String instanceName) Consumer
+        +static subscribe(...) / unsubscribe(...) void
+    }
+    class MqException {
+        +MqException(String message) / MqException(String message, Throwable cause)
+    }
+    %% ─── aifei-mq-core ｜ internal：非承诺 API，框架无关 ───
+    class MqValidator {
+        +static requireTopic / requirePayload / requireText / requireMessage / requireMessageId / requireListener / requireProducer / requireConsumer
+    }
+    class MqConfig {
+        +static final MAIN_INSTANCE_NAME / TYPE_KEY / NAMES_KEY / DEFAULT_TYPE
+        -String instanceName / type / prefix
+        +static parse(Properties, Set~String~ registeredTypes, String instanceName) / parseInstanceNames(Properties, String key) MqConfig
+        +type() / prefix() / get(String relativeKey) String
+    }
+    class MqHolder {
+        +static register(String instanceName, Producer, Consumer) / producer(String) / consumer(String) / clear() ...
+    }
+    class MessageBus {
+        <<interface>>
+        +publish(Message message) SendResult
+        +subscribe(String topic, MessageListener listener) void
+        +unsubscribe(String topic, MessageListener listener) void
+        +close() void
+    }
+    class BusProducer {
+        -MessageBus bus
+        +send(Message) / send(topic, byte[]) / send(topic, String) SendResult
+    }
+    class BusConsumer {
+        -MessageBus bus
+        +subscribe(topic, listener) / unsubscribe(topic, listener) void
+    }
+    class MqProvider {
+        <<interface>>
+        +type() String
+        +createBus(MqConfig config) MessageBus
+    }
+    class MqProviderRegistry {
+        -static Map~String,MqProvider~ PROVIDERS
+        +types() Set~String~
+        +getProvider(String type) MqProvider
+    }
+
+    %% ─── aifei-mq-core ｜ aifei：装配接入，框架类型唯一落点 ───
+    class MqPlugin {
+        -Prop prop
+        -MqProviderRegistry registry
+        -List~MessageBus~ buses
+        +start() void
+        +stop() void
+    }
+    %% ─── aifei-mq-memory（稳定后端；type = "memory"，缺省）同步投递 ───
+    class MemoryMqProvider {
+        +static final TYPE = MqConfig.DEFAULT_TYPE
+        +createBus(MqConfig config) MessageBus
+    }
+    class MemoryMessageBus {
+        -Map~String,List~ subscriptions
+        +publish / subscribe / unsubscribe / close
+    }
+    %% ─── aifei-mq-rocketmq（稳定后端；type = "rocketmq"）异步生产 + 拉取消费 ───
+    class RocketMqProvider {
+        +static final TYPE = "rocketmq"
+        +createBus(MqConfig config) MessageBus
+    }
+    class RocketMqMessageBus {
+        -Map~String,List~ subscriptions
+        +publish / subscribe / unsubscribe / close
+    }
+
+    %% ─── 关系：公共面与视图 ───
+    MqException --|> RuntimeException
+    BusProducer ..|> Producer
+    BusConsumer ..|> Consumer
+    ProducerKit ..> MqHolder : 取实例
+    ConsumerKit ..> MqHolder : 取实例
+    MqHolder o-- Producer
+    MqHolder o-- Consumer
+
+    %% ─── 关系：装配（MqPlugin.start / stop；start 从注册表取 provider 后调其 createBus）───
+    MqPlugin ..|> Plugin : 框架接口
+    MqPlugin ..> MqProviderRegistry : types / getProvider
+    MqPlugin ..> MqConfig : parse / parseInstanceNames
+    MqPlugin ..> BusProducer : new
+    MqPlugin ..> BusConsumer : new
+    MqPlugin ..> MqHolder : register / clear
+    MqPlugin ..> MessageBus : close
+    MqPlugin ..> AopKit : addSingletonObject（框架，provided）
+    MqProviderRegistry ..> MqProvider : ServiceLoader.load
+
+    %% ─── 关系：4 方法总线视图 ───
+    BusProducer ..> MessageBus : publish
+    BusConsumer ..> MessageBus : subscribe / unsubscribe
+
+    %% ─── 关系：后端实现。逐模块同构，类框由本段关系行给出：XxxProvider（type() + createBus）与 XxxMessageBus（4 方法总线）───
+    MemoryMqProvider ..|> MqProvider
+    MemoryMessageBus ..|> MessageBus
+    MemoryMqProvider ..> MemoryMessageBus : createBus
+    RocketMqProvider ..|> MqProvider
+    RocketMqMessageBus ..|> MessageBus
+    RocketMqProvider ..> RocketMqMessageBus : createBus
+    MqttProvider ..|> MqProvider
+    MqttMessageBus ..|> MessageBus
+    MqttProvider ..> MqttMessageBus : createBus
+    Mqtt5Provider ..|> MqProvider
+    Mqtt5MessageBus ..|> MessageBus
+    Mqtt5Provider ..> Mqtt5MessageBus : createBus
+    RabbitMqProvider ..|> MqProvider
+    RabbitMqMessageBus ..|> MessageBus
+    RabbitMqProvider ..> RabbitMqMessageBus : createBus
+    KafkaProvider ..|> MqProvider
+    KafkaMessageBus ..|> MessageBus
+    KafkaProvider ..> KafkaMessageBus : createBus
+    RedisStreamProvider ..|> MqProvider
+    RedisStreamMessageBus ..|> MessageBus
+    RedisStreamProvider ..> RedisStreamMessageBus : createBus
