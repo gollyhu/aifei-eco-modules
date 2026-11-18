@@ -87,7 +87,7 @@ public final class QrException extends RuntimeException {
 
 ## 七、mask 工具要求
 
-- **定位与场景**：通用脱敏 + 5 个默认规则，落 `cn.hg.aifei.tools.mask` 子包，子包隔离、各自独立可用；纯 JDK 零依赖，无第三方内核、无配置键、随取随用。
+- **定位与场景**：通用脱敏 + 9 个默认规则，落 `cn.hg.aifei.tools.mask` 子包，子包隔离、各自独立可用；纯 JDK 零依赖，无第三方内核、无配置键、随取随用。
 - **公共面（精确 3 个，冻结）**：落 `cn.hg.aifei.tools.mask` 子包，类型与签名如下：
 
 ```java
@@ -101,6 +101,10 @@ public final class MaskUtil {
     public static String maskBankCard(String value);
     public static String maskEmail(String value);
     public static String maskName(String value);
+    public static String maskFixedPhone(String value);
+    public static String maskPassword(String value);
+    public static String maskAddress(String value);
+    public static String maskIp(String value);
 }
 public final class MaskKit {
     private MaskKit();
@@ -113,9 +117,9 @@ public final class MaskException extends RuntimeException {
 }
 ```
 
-- **默认规则与注册表**：默认规则名 `phone`/`idCard`/`bankCard`/`email`/`name` 初始即在注册表；`maskPhone(x)` ≡ `use("phone").apply(x)`；默认规则不可删；注册表 `ConcurrentHashMap`；`MaskUtil` 默认方法转发注册表，`replace` 后跟随新规则。
+- **默认规则与注册表**：默认规则名 `phone`/`idCard`/`bankCard`/`email`/`name`/`fixedPhone`/`password`/`address`/`ip` 初始即在注册表；`maskXxx(x)` ≡ `use("规则名").apply(x)`（如 `maskPhone(x)` ≡ `use("phone").apply(x)`）；默认规则不可删；注册表 `ConcurrentHashMap`；`MaskUtil` 默认方法转发注册表，`replace` 后跟随新规则。
 - **自定义规则**：类型为 `UnaryOperator<String>`，调用 `use("xxx").apply(value)`；`register`/`replace`/`use` 均用全拼写。
-- **默认规则格式（中国大陆格式假设）**：手机号 11 位前 3 后 4、身份证 18 位前 6 后 4、银行卡前 6 后 4、邮箱 @ 前保留首尾各 1 位、姓名保留姓——实现期可演进的约定，不臆造其它格式。
+- **默认规则格式（中国大陆格式假设）**：手机号 11 位前 3 后 4、身份证 18 位前 6 后 4、银行卡前 6 后 4、邮箱 @ 前保留首尾各 1 位、姓名保留姓；座机保留区号（含 `-`）与后 4 位、中间等长 `*`，无 `-` 时退化为保留前 4 后 4（`0571-88886666` → `0571-****6666`）；密码恒定返回 `******`，不保留原长度、不泄露位数（`abc123` → `******`）；地址保留前 6 字符、其余等长 `*`，长度 ≤6 时全打码（`浙江省杭州市金城坊街2号` → `浙江省杭州市******`）；IP 保留首段、其余每段一个 `*`，IPv4 用 `.` 分段、IPv6 用 `:` 分段（`192.168.2.1` → `192.*.*.*`；`2001:db8:85a3::8a2e:370:7334` → `2001:*:*:*:*:*:*:*`）——实现期可演进的约定，不臆造其它格式。
 - **异常**：统一收敛为 `MaskException`——重复 `register`、`replace` 不存在的规则、`use` 未注册规则均抛 `MaskException`。
 
 ## 八、验收要点
@@ -139,15 +143,19 @@ public final class MaskException extends RuntimeException {
 - qr：未引入 ZXing 依赖时首次调用抛可读 `QrException`。
 - qr：门禁断言根包公共类型为零、`qr` 子包公共类型精确 4 个。
 - mask：通用 `mask` 按保留位数与掩码字符输出。
-- mask：5 个默认规则按标注格式脱敏。
+- mask：9 个默认规则按标注格式脱敏。
 - mask：未注册规则名 `use` 抛 `MaskException`。
 - mask：重复 `register` 抛 `MaskException`。
 - mask：`replace` 不存在的规则抛 `MaskException`。
 - mask：`replace` 后 `MaskUtil` 默认方法跟随新规则。
 - mask：默认规则不可删除。
 - mask：门禁断言 `mask` 子包公共类型精确 3 个。
+- mask：`maskFixedPhone` 按座机规则脱敏，`0571-88886666` → `0571-****6666`；且 `maskFixedPhone(x)` ≡ `use("fixedPhone").apply(x)`，`fixedPhone` 初始在册，`replace("fixedPhone", ...)` 后跟随新规则。
+- mask：`maskPassword` 恒定返回 `******`，`abc123` → `******`，不保留原长度、不泄露位数；且 `maskPassword(x)` ≡ `use("password").apply(x)`，`password` 初始在册，`replace("password", ...)` 后跟随新规则。
+- mask：`maskAddress` 保留前 6 字符、其余等长 `*`，`浙江省杭州市金城坊街2号` → `浙江省杭州市******`，长度 ≤6 时全打码；且 `maskAddress(x)` ≡ `use("address").apply(x)`，`address` 初始在册，`replace("address", ...)` 后跟随新规则。
+- mask：`maskIp` 保留首段、其余每段一个 `*`，IPv4/IPv6 分别按 `.`/`:` 分段，`192.168.2.1` → `192.*.*.*`、`2001:db8:85a3::8a2e:370:7334` → `2001:*:*:*:*:*:*:*`；且 `maskIp(x)` ≡ `use("ip").apply(x)`，`ip` 初始在册，`replace("ip", ...)` 后跟随新规则。
 
-## 九、待确认问题（ip / qr 工具）
+## 九、待确认问题（ip / qr / mask 工具）
 
 1. `ip2region` 具体版本：仅写「3.x，版本待设计决策实证」，须由设计阶段实测 Maven 坐标可用版本后定档（tag v3.19.0 仅线索）。
 2. IPv4 / IPv6 路由：单实例绑单库，还是按 IP 版本自动路由双库（影响公共面形态与 `IpRegion` 来源）——待设计决策，不冻结。
@@ -161,3 +169,5 @@ public final class MaskException extends RuntimeException {
 10. qr：`decode` 失败语义。
 11. qr：`QrOptions` 是否扩展。
 12. qr：是否加流式输出。
+13. mask：`null` / 空串输入语义——9 个默认规则对 `null`/空串是返回原值、返回 `null` 还是抛 `MaskException`，未定档（qr 同类问题见第 9 条）。
+14. mask：`maskIp` 对非 IPv4/IPv6 非法文本的处理语义（按文本格式分段打码 vs 抛 `MaskException`），未定档。

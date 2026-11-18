@@ -65,7 +65,7 @@
 - **ip**：调用方显式传 v4/v6 xdb 路径 + 模式 → `IpSearcher` 会话内部 `IpSession` 用 `ConfigBuilder` 构建双 Config → `Ip2Region.create(v4Cfg,v6Cfg)` → `search(ip)` 内核自动路由 → 原始 region 字符串 → `RegionParser`（唯一定义点）解析五段、`"0"`/`"Reserved"` 归空串 → `IpRegion`。
 - **captcha**：`CaptchaKit.generate(type)` → `TokenGenerator`（SecureRandom token + 字符/算式题及答案）→ `ImageGenerator`（Graphics2D PNG）→ 存答案进 `CaptchaStore`（默认 LRU / 可切集群）→ 返回 `Captcha`；`verify(token,input)` → 取答案比对（一次性消费，成功即删、失败计数超限失效）→ boolean。
 - **qr**：`QrKit.encode(text[, options])` → `QrDeps.requireZxing()`（缺失→可读 `QrException`）→ `QrOptions.defaults()`/`of(...)`（size=300/margin=4/EC=M，UTF-8 内部固定）→ ZXing `MultiFormatWriter` 出 `BitMatrix` → `ImageCodec.toPng(BitMatrix)`（`Graphics2D`/`ImageIO`）→ `byte[]` PNG；`decode(byte[]|InputStream)` → `ImageCodec` 还原 `BitMatrix` → ZXing `MultiFormatReader` → 文本（InputStream 变体**不关闭调用方流**）。
-- **mask**：`DefaultMasks` 初始化时把 `phone`/`idCard`/`bankCard`/`email`/`name` 五个默认规则注册进 `MaskRegistry`（唯一 `ConcurrentHashMap`）→ 业务 `MaskKit.register/replace/use` 操作注册表 → `MaskUtil.maskXxx(x)` 转发 `use("xxx").apply(x)`（`replace` 后默认规则自动跟随）；通用 `mask(value,keepLeft,keepRight[,maskChar])` 直接按保留位数打码。
+- **mask**：`DefaultMasks` 初始化时把 `phone`/`idCard`/`bankCard`/`email`/`name`/`fixedPhone`/`password`/`address`/`ip` 九个默认规则注册进 `MaskRegistry`（唯一 `ConcurrentHashMap`）→ 业务 `MaskKit.register/replace/use` 操作注册表 → `MaskUtil.maskXxx(x)` 转发 `use("xxx").apply(x)`（`replace` 后默认规则自动跟随）；通用 `mask(value,keepLeft,keepRight[,maskChar])` 直接按保留位数打码。
 
 ## 2. 文件清单（相对 `aifei-tools/`，每个文件恰好归属一个任务，见 §5）
 
@@ -113,13 +113,13 @@ aifei-tools/
     │   │       ├── QrErrors.java              [T13] 异常唯一构造点+消息（前缀 qr: ）
     │   │       └── ImageCodec.java            [T13] BitMatrix↔BufferedImage/PNG（Graphics2D/ImageIO）
     │   └── mask/
-    │       ├── MaskUtil.java                  [T16] 无状态工具（通用 mask + 5 默认规则转发）
+    │       ├── MaskUtil.java                  [T16] 无状态工具（通用 mask + 9 默认规则转发）
     │       ├── MaskKit.java                   [T16] 注册表门面 register/replace/use（全 static）
     │       ├── MaskException.java             [T16] 统一异常
     │       └── internal/
     │           ├── MaskRegistry.java          [T15] ConcurrentHashMap 唯一持有者
     │           ├── MaskErrors.java            [T15] 异常唯一构造点+消息（前缀 mask: ）
-    │           └── DefaultMasks.java          [T15] 5 默认规则初始注册唯一定义点
+    │           └── DefaultMasks.java          [T15] 9 默认规则初始注册唯一定义点
     └── test/java/cn/hg/aifei/tools/
         ├── ArchitectureBoundaryTest.java      [T10] 门禁 17 例
         ├── ipdb/
@@ -135,7 +135,7 @@ aifei-tools/
         │   ├── QrKitTest.java                 [T17] 生成/识别闭环/options 默认值/流不关闭/依赖缺失
         │   └── PublicApiContractQrTest.java   [T17] 公共面形态与签名
         ├── mask/
-        │   ├── MaskUtilTest.java              [T18] 通用 mask + 5 默认规则 + replace 跟随
+        │   ├── MaskUtilTest.java              [T18] 通用 mask + 9 默认规则 + replace 跟随
         │   ├── MaskKitTest.java               [T18] register/replace/use 三态 + 默认规则在册不可删
         │   └── PublicApiContractMaskTest.java [T18] 公共面形态与签名
         └── support/
@@ -236,6 +236,10 @@ public final class MaskUtil {                                     // 无状态�
     public static String maskBankCard(String value);              // ≡ use("bankCard")
     public static String maskEmail(String value);                 // ≡ use("email")
     public static String maskName(String value);                  // ≡ use("name")
+    public static String maskFixedPhone(String value);            // ≡ use("fixedPhone")；保留区号(含 -)+后 4 位，中间等长 *，无 - 退化为前 4 后 4（0571-88886666→0571-****6666）
+    public static String maskPassword(String value);              // ≡ use("password")；恒定 ******，不保留原长度、不泄露位数（abc123→******）
+    public static String maskAddress(String value);               // ≡ use("address")；保留前 6 字符、其余等长 *，长度 ≤6 全打码（浙江省杭州市金城坊街2号→浙江省杭州市******）
+    public static String maskIp(String value);                    // ≡ use("ip")；保留首段、其余每段一个 *，IPv4 按 . / IPv6 按 : 分段（192.168.2.1→192.*.*.*；2001:db8:85a3::8a2e:370:7334→2001:*:*:*:*:*:*:*）
 }
 public final class MaskKit {                                      // 注册表门面（全 static）
     private MaskKit();
@@ -248,7 +252,7 @@ public final class MaskException extends RuntimeException {
     public MaskException(String message, Throwable cause);
 }
 ```
-`UnaryOperator` 为 `java.util.function.UnaryOperator`（JDK 类型）；五个默认规则 `maskXxx` 均转发注册表，故 `replace` 后自动跟随（冻结契约）。
+`UnaryOperator` 为 `java.util.function.UnaryOperator`（JDK 类型）；九个默认规则 `maskXxx` 均转发注册表，故 `replace` 后自动跟随（冻结契约）。
 
 ## 4. 调用流程（Mermaid）
 
@@ -351,7 +355,7 @@ sequenceDiagram
     participant R as MaskRegistry(internal, CHM)
     participant Def as DefaultMasks(internal)
     participant U as MaskUtil
-    Note over R,Def: 初始化：DefaultMasks 将 phone/idCard/bankCard/email/name 注册进 R（不可删）
+    Note over R,Def: 初始化：DefaultMasks 将 phone/idCard/bankCard/email/name/fixedPhone/password/address/ip 注册进 R（不可删）
     Biz->>Kit: register(name, fn)
     alt name 已存在
         Kit--xBiz: MaskException(已存在)
@@ -395,7 +399,7 @@ sequenceDiagram
 | T12 demo（建议，主理人拍板） | `aifei-tools-demo/**`（平级工程） | T04、T07 | P1 | 端口 18160；captcha 生成/校验、ip 查询（用内嵌样本）、state 端点真实可跑；零外网 |
 | T13 qr 内核 | `QrDeps.java` · `QrErrors.java` · `ImageCodec.java` | T01 | P0 | ZXing 缺失可读 `QrException`；`BitMatrix`→PNG 正确；class major 52 实测（§0.3） |
 | T14 qr 公共面 | `QrKit.java` · `QrOptions.java` · `QrErrorCorrection.java` · `QrException.java` | T13 | P0 | §3.3 签名逐字一致；`defaults()`=300/4/M；`decode(InputStream)` 不关闭流；encode→decode 闭环 |
-| T15 mask 内核 | `MaskRegistry.java` · `MaskErrors.java` · `DefaultMasks.java` | T01 | P0 | `ConcurrentHashMap` 唯一持有；5 默认规则初始在册不可删；异常唯一构造点 |
+| T15 mask 内核 | `MaskRegistry.java` · `MaskErrors.java` · `DefaultMasks.java` | T01 | P0 | `ConcurrentHashMap` 唯一持有；9 默认规则初始在册不可删；异常唯一构造点 |
 | T16 mask 公共面 | `MaskUtil.java` · `MaskKit.java` · `MaskException.java` | T15 | P0 | §3.4 签名逐字一致；register/replace/use 三态正确；`maskXxx≡use(...).apply`；replace 后跟随 |
 | T17 qr 测试 | `QrKitTest.java` · `PublicApiContractQrTest.java` | T14 | P0 | §9 qr 验收覆盖；全离线；decode 相关用例受 §8-C 分歧点 1/3 定档约束 |
 | T18 mask 测试 | `MaskUtilTest.java` · `MaskKitTest.java` · `PublicApiContractMaskTest.java` | T16 | P0 | §9 mask 验收覆盖；默认规则在册与 replace 跟随 |
@@ -446,8 +450,8 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 
 ### 7.1 命名与唯一定义点
 - 后缀：`IpSearcher`/`Captcha` 会话对象与值对象用名词（命名例外，对齐 `Excel`/`HttpClient`）；`IpKit`/`CaptchaKit` = 有状态门面（操作有生命周期的会话/存储，全 static，无 Plugin 装配期——对齐 `TraceKit` 命名例外）；`QrKit` = 全静态门面（无状态，对齐 `IpKit`）；`QrOptions` 值对象；`MaskUtil` 无状态工具（全 static）；`MaskKit` 注册表门面（全 static，操作 `ConcurrentHashMap`）；`XxxException`/`XxxType`/`XxxMode`/`XxxRegion` 按 Java 习惯；internal 用 `Deps/Errors/Session/Parser/Store/Generator/Registry/Codec/Masks`。
-- 唯一定义点：依赖探测=`*Deps`；异常构造与消息=`*Errors`；region 五段解析=`RegionParser`；Config 构建与 close 幂等=`IpSession`；token 随机与题目生成=`TokenGenerator`；ZXing 依赖探测=`QrDeps`；`BitMatrix`↔PNG 编解码=`ImageCodec`；mask 注册表（唯一 `ConcurrentHashMap`）=`MaskRegistry`；5 默认规则初始注册=`DefaultMasks`。
-- 冻结契约落实点：默认规则名 `phone`/`idCard`/`bankCard`/`email`/`name` 初始在册、不可删（唯一在 `DefaultMasks`）；`maskPhone(x)≡use("phone").apply(x)` 及 `replace` 后跟随，落实在 `DefaultMasks` + `MaskUtil` 转发；`register`/`replace`/`use` 全拼写。
+- 唯一定义点：依赖探测=`*Deps`；异常构造与消息=`*Errors`；region 五段解析=`RegionParser`；Config 构建与 close 幂等=`IpSession`；token 随机与题目生成=`TokenGenerator`；ZXing 依赖探测=`QrDeps`；`BitMatrix`↔PNG 编解码=`ImageCodec`；mask 注册表（唯一 `ConcurrentHashMap`）=`MaskRegistry`；9 默认规则初始注册=`DefaultMasks`。
+- 冻结契约落实点：默认规则名 `phone`/`idCard`/`bankCard`/`email`/`name`/`fixedPhone`/`password`/`address`/`ip` 初始在册、不可删（唯一在 `DefaultMasks`）；`maskPhone(x)≡use("phone").apply(x)` 及 `replace` 后跟随（其余 8 条同构），落实在 `DefaultMasks` + `MaskUtil` 转发；`register`/`replace`/`use` 全拼写。
 - 每类规则只一处；公共 javadoc 简体中文、写全标签；文件头统一版权块；CRLF + UTF-8。
 
 ### 7.2 异常语义表（定档，唯一措辞来源 `*Errors`）
@@ -544,10 +548,14 @@ qr 5 个行为分歧点，未定档前 T14/T17 的 decode 相关实现与测试�
 | decode(InputStream) 不关闭调用方流 | §3.3/§4.3；T14/T17 |
 | ZXing 缺失首次调用抛可读 QrException、不裸抛、不引 javase | §0.3/§6.1/§7.2；T13/T17；§8-A6 Java 基线实证 |
 | qr 公共面精确 4、zxing 仅 internal | §6.2 门禁⑮⑯；T10/T14 |
-| mask 通用 mask + 5 默认规则（phone/idCard/bankCard/email/name） | §3.4/§4.4；T15/T16/T18 |
+| mask 通用 mask + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip） | §3.4/§4.4；T15/T16/T18 |
+| 新增 maskFixedPhone：座机保留区号(含 -)+后 4 位、中间等长 *，无 - 退化为前 4 后 4 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；0571-88886666→0571-****6666 |
+| 新增 maskPassword：恒定 ******，不保留原长度、不泄露位数 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；abc123→****** |
+| 新增 maskAddress：保留前 6 字符、其余等长 *，长度 ≤6 全打码 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；浙江省杭州市金城坊街2号→浙江省杭州市****** |
+| 新增 maskIp：保留首段、其余每段一个 *，IPv4 按 . / IPv6 按 : 分段 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；192.168.2.1→192.*.*.*；2001:db8:85a3::8a2e:370:7334→2001:*:*:*:*:*:*:* |
 | 默认规则初始在册不可删、maskPhone≡use("phone").apply、replace 后跟随 | §3.4/§7.1；T15/T16；`MaskKitTest` |
 | register 已存在抛 / replace 不存在抛 / use 未注册抛 | §3.4/§7.2；T16/T18 |
 | mask 公共面精确 3 | §6.2 门禁⑰；T10/T16 |
 | 两工具无 Plugin/配置键、公共签名零第三方/框架类型、零日志绑定、根包仍零类型 | §1.1/§3.3/§3.4；T10/T13–T18 |
 
-> 一句话总览：`aifei-tools` 单模块——根包零公共类型，四子包共 16 公共类型（`ipdb` 5 / `captcha` 4 / `qr` 4 / `mask` 3）；ipdb 走实测锁定的 `ip2region:3.3.7`（Java 8 class 52，弃用 Java 11 的 3.3.8 有实证）双库自动路由、三模式映射内核四策略、默认 VECTOR_INDEX + 内核池化并发、region `"0"`→空串；captcha 纯 JDK 绘 PNG + 一次性消费 + LRU/可选 aifei-cache 双存储；qr 走 `zxing:core:3.5.3`（optional，Java 基线待实测）+ 自写 `BitMatrix`→PNG；mask 走 `ConcurrentHashMap` 注册表 + 5 默认规则；四子包公共面零第三方/框架类型，17 例门禁守护。
+> 一句话总览：`aifei-tools` 单模块——根包零公共类型，四子包共 16 公共类型（`ipdb` 5 / `captcha` 4 / `qr` 4 / `mask` 3）；ipdb 走实测锁定的 `ip2region:3.3.7`（Java 8 class 52，弃用 Java 11 的 3.3.8 有实证）双库自动路由、三模式映射内核四策略、默认 VECTOR_INDEX + 内核池化并发、region `"0"`→空串；captcha 纯 JDK 绘 PNG + 一次性消费 + LRU/可选 aifei-cache 双存储；qr 走 `zxing:core:3.5.3`（optional，Java 基线待实测）+ 自写 `BitMatrix`→PNG；mask 走 `ConcurrentHashMap` 注册表 + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）；四子包公共面零第三方/框架类型，17 例门禁守护。
