@@ -1,14 +1,14 @@
 # aifei-excel 设计文档
 
-本文是 `aifei-excel` 的**设计事实来源（契约）**：公共 API 逐字签名、注解语义、流式内存边界、异常模型、架构门禁、任务分解与验收标准（AC）以本文为准。面向使用者的用法见 `README.md`（实现阶段产出）；面向开发代理的约束见模块 `AGENTS.md`（实现阶段产出）；测试策略与用例清单见 `docs/testing.md`（实现阶段产出，本文只定契约与端点清单）。
+本文是 `aifei-excel` 的**设计事实来源（契约）**：公共 API 逐字签名、注解语义、流式内存边界、异常模型、架构门禁、任务分解与验收标准（AC）以本文为准。面向使用者的用法见 `README.md`；面向开发代理的约束见模块 `AGENTS.md`；测试策略与用例清单见 `docs/testing.md`（本文只定契约与端点清单）。
 
 > **交付性质**：`aifei-excel` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**。工程内**没有** `AppConfig implements AifeiConfig` / `Launcher` / `@Path` Service 方法 / `service/` 业务包 / 业务库表 / `Db+Row` / `Generator` / 服务拓扑 / 部署架构 / 数据层实现 / UI 原型与 QA 基线门禁；只有「根包公共 API 精确 5 类型 + `internal/easyexcel` 非承诺适配层」。不适用章节声明见 §0。
 >
 > **坐标**：`io.github.gollyhu:aifei-excel:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.excel`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**唯一第三方依赖** `com.alibaba:easyexcel:3.3.2`（`optional`），`aifei-all:1.1.2` 为 `provided`。
 >
-> **文档状态**：1.0.0 设计定稿，代码尚未落地。§5 的 5 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
+> **文档状态**：1.0.0 已落地（库模块 + demo + 门禁测试齐备）。§5 的 5 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
 >
-> **唯一落盘文件**：本文是本轮唯一写入磁盘的文件（`aifei-excel/docs/design.md`）。模板默认路径 `docs/02-design-*.md` 对库模块**不适用**；`README.md` / `AGENTS.md` / `docs/testing.md` / 根导航由实现批次产出，本轮仅在 §11.1 文件清单与 §11.3 任务分解中登记，不落盘。
+> **文件位置**：本文位于 `aifei-excel/docs/design.md`。模板默认路径 `docs/02-design-*.md` 对库模块**不适用**；`README.md` / `AGENTS.md` / `docs/testing.md` 与根导航均已落盘（§11.1 文件清单、§11.3 任务分解记录了产出过程）。
 >
 > **底稿说明**：本模块为原创设计，无官方同名模块可对齐。范式参考 `aifei-trace`（无 Plugin / 无配置键门面 + 命名例外登记）、`aifei-http`（公共面收敛 + `internal` 实现层 + 门禁 + 时序写法）、`aifei-id`（决策表 + 唯一定义点 + 任务分解 + AC 映射）、`aifei-oss`（第三方内核 + `optional` 边界）。文中所有 EasyExcel / POI API 签名均按本地 3.3.2 sources jar 与源码核对，不臆造。
 
