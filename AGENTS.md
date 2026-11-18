@@ -1,6 +1,6 @@
 # aifei-eco-modules 开发约束（全体模块共同遵守）
 
-本文件适用于仓库内全部模块（包括但不限于 `aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
+本文件适用于仓库内全部模块（发布模块：`aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-trace` / `aifei-http` / `aifei-excel`；示例工程：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-excel-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
 
 各模块的专属约束与验证命令见其自身 `AGENTS.md`。模块文件可**补充、收紧**本文件，但不得**放宽**；两者不一致时以更严格者为执行标准，并应及时消除不一致。
 
@@ -60,6 +60,7 @@
   - `aifei-sa-token` 的 `cn.dev33:sa-token-core` 为 `compile`——公共 API 签名直接暴露其类型（`StpInterface` / `SaTokenDao` 等），插件与上下文桥接也以内核实现为前提，标 `optional` 会让消费方被迫重复声明且编译期缺类型；理由见 `aifei-sa-token/docs/design.md` §2 与 §3 依赖表。
   - `aifei-job` 的 `org.quartz-scheduler:quartz` 为 `compile`——cron 表达式校验与下次触发计算依赖其 `CronExpression`，是本模块的实现内核（非 Quartz 调度运行时，`Scheduler` / `JobStore` / `Trigger` 均不用），标 `optional` 只会迫使消费方重复声明；理由见 `aifei-job/docs/design.md` §3.1 与 §10。
   - `aifei-job` 的 `org.slf4j:slf4j-api` 为 `compile`——Quartz 内部日志门面，排掉会导致类加载失败，故显式直接声明（不靠 Quartz 传递，避免 Quartz 变动后门面消失）；本模块自身零 `org.slf4j.*` 引用（门禁断言）；理由同上。
+  - `aifei-sentinel` 的 `com.alibaba.csp:sentinel-core` / `sentinel-parameter-flow-control` / `sentinel-datasource-extension` 为 `compile`（随 SDK 传递）——三者是 Sentinel 治理能力的实现内核（埋点、热点参数限流、规则文件热读），标 `optional` 只会迫使消费方重复声明；`sentinel-transport-simple-http` 仍为 `provided + optional`；理由见 `aifei-sentinel/docs/design.md` §3.3。
   **新增例外一律须先在此登记**，不得由模块文档单方面声明。
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
 - **已登记的公共面框架类型例外**（须先在此登记，模块文档不得单方面声明）：

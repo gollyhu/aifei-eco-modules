@@ -7,7 +7,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 
 | 模块 | 坐标 | 定位 |
 | --- | --- | --- |
-| [aifei-cache](aifei-cache/README.md) | `io.github.gollyhu:aifei-cache:1.0.0` | 缓存与计数组件：Caffeine / Redis 双后端，支持多实例 |
+| [aifei-cache](aifei-cache/README.md) | `io.github.gollyhu:aifei-cache:1.1.0` | 缓存与计数组件：Caffeine / Redis 双后端，支持多实例 |
 | [aifei-sentinel](aifei-sentinel/README.md) | `io.github.gollyhu:aifei-sentinel:1.0.0` | Sentinel 流量治理接入 SDK：流控、熔断、系统保护 |
 | [aifei-sentinel-demo](aifei-sentinel-demo/README.md) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
 | [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
@@ -22,9 +22,9 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-job](aifei-job/README.md) | `io.github.gollyhu:aifei-job:1.0.0` | 应用内定时任务：cron / 固定频率 / 固定延迟，单飞自续排、拒绝记账、优雅停机 |
 | [aifei-job-demo](aifei-job-demo/README.md) | （示例工程，不发布） | aifei-job 的完整接入示例：任务列表 / 到点触发 / 跳过 / 异常隔离 / 停机收敛演示（端口 18110） |
 | [aifei-id](aifei-id/README.md) | `io.github.gollyhu:aifei-id:1.0.0` | 分布式 ID：雪花（`1+41+10+12`）与号段双策略，workerId 三来源，零第三方 |
-| [aifei-id-demo](aifei-id-demo/README.md) | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140） |
+| aifei-id-demo | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140） |
 | [aifei-trace](aifei-trace/README.md) | `io.github.gollyhu:aifei-trace:1.0.0` | 请求链路贯通：`TraceKit` 链路上下文 + 日志 `[traceId] ` 前缀贯通 + Web 入口绑定清理，零第三方 |
-| [aifei-trace-demo](aifei-trace-demo/README.md) | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
+| aifei-trace-demo | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
 | [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
 | [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
 | [aifei-excel](aifei-excel/README.md) | `io.github.gollyhu:aifei-excel:1.0.0` | Excel 读写统一门面：注解表头映射、一次性便捷读写、流式分批读写，唯一内核 easyexcel 可选引入 |
@@ -58,7 +58,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - Api 客户端：`ApiCaller` 及菜单 / 用户 / 素材 / 模板消息 / OAuth2 / 二维码 / JsTicket
 - 小程序：`MiniAppApi`（code2Session / 订阅消息 / 手机号 / 小程序码）
 - 微信支付 V3：`PayApi` 下单查单退款 + `PayNotifyUtil` 回调验签解密，RSA / GCM / mTLS 纯 JDK 实现
-- 接入前必读 [docs/design.md](aifei-weixin/docs/design.md)
+- 接入前必读 [docs/design.md](aifei-weixin/docs/design.md)；详细用法见 [aifei-weixin/README.md](aifei-weixin/README.md)
 
 ### aifei-sa-token
 
@@ -194,7 +194,7 @@ cd aifei-excel     && mvn clean install
 ## 依赖说明
 
 - `aifei-cache`：强依赖 `cn.aifei:aifei`；Caffeine、Jedis、Fury 为可选依赖，用哪个后端加哪个
-- `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带
+- `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带；`sentinel-core` / `sentinel-parameter-flow-control` / `sentinel-datasource-extension` 为 `compile`，随 SDK 传递；`sentinel-transport-simple-http` 为 `provided + optional`，仅 Dashboard 模式由消费方提供
 - `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
 - `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
 - `aifei-websocket`：`aifei-all` 为 `provided`，**运行时零第三方依赖**（传输层为内建 JDK 自实现，无传输库与日志绑定要求）
