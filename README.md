@@ -29,6 +29,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
 | [aifei-excel](aifei-excel/README.md) | `io.github.gollyhu:aifei-excel:1.0.0` | Excel 读写统一门面：注解表头映射、一次性便捷读写、流式分批读写，唯一内核 easyexcel 可选引入 |
 | [aifei-excel-demo](aifei-excel-demo/README.md) | （示例工程，不发布） | aifei-excel 的完整接入示例：上传解析 / 一次性导出 / 流式导出演示（端口 18150） |
+| [aifei-audit](aifei-audit/README.md) | `io.github.gollyhu:aifei-audit:1.0.0` | 注解式操作审计：`@Audit` 声明式采集 + `AuditKit` 手动埋点，事件交 `AuditSink` SPI，零存储 / 零线程池 / 零生态依赖 |
+| [aifei-audit-demo](aifei-audit-demo/README.md) | （示例工程，不发布） | aifei-audit 的完整接入示例：8 场景单页演示——注解与未标注对照 / 手动埋点 / 脱敏对照 / sink 切换 / 业务异常 / traceId 关联 / 空态 / 失败隔离（端口 18160，零外网） |
 
 ### aifei-cache
 
@@ -169,6 +171,17 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（不传递，消费方须显式引入，缺失时首次调用抛可读 `ExcelException`），`aifei-all:1.1.2` 为 `provided`
 - 详细用法见 [aifei-excel/README.md](aifei-excel/README.md)，设计文档见 [docs/design.md](aifei-excel/docs/design.md)
 
+### aifei-audit
+
+为 aifei 应用补齐**注解式操作审计**能力：把「谁在何时对什么做了什么、结果如何」采集为一条不可变事件，交给消费方自己实现的落点。
+
+- 公共面：根包 4 个类型 `Audit`（注解）/ `AuditEvent` / `AuditKit`（手动埋点门面）/ `AuditException`（`Result` 为嵌套枚举）；`spi` 包 3 类 `AuditSink` / `AuditActorProvider` / `AuditResultJudge`；`aifei` 包 2 类 `AuditPlugin` / `AuditInterceptor`（非承诺 API）
+- 三态语义：① 未启动 / 启动失败 / `audit.enabled=false`——注解路径不采集不抛、`AuditKit.record*` 抛 `AuditException`；② 已启动但容器无 `AuditSink`——注解路径不构造事件直接返回、`start()` 恰一条告警；③ 已停止——同 ①
+- 采集拦截器**必须首个传入** `routes.scan(...)`（下标 0 即最外层）：顺序颠倒时审计完全失效——不是少记字段，而是一条都不记
+- 落点在业务方法所在线程**同步直写**：无线程池、无队列、无批量、无重试——**sink 慢则业务慢**；落点 / 操作人 / 判定任一处异常就地吞掉并记一条模块日志，业务返回值与异常语义不变
+- 零存储、零线程池、零生态依赖：`aifei-all:1.1.2` 为 `provided`，不引任何日志绑定，零 `java.sql`、零线程创建
+- 详细用法见 [aifei-audit/README.md](aifei-audit/README.md)，设计文档见 [docs/design.md](aifei-audit/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
@@ -187,6 +200,7 @@ cd aifei-id        && mvn clean install
 cd aifei-trace     && mvn clean install
 cd aifei-http      && mvn clean install
 cd aifei-excel     && mvn clean install
+cd aifei-audit     && mvn clean install
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -206,6 +220,7 @@ cd aifei-excel     && mvn clean install
 - `aifei-trace`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方、无 Plugin、无配置键**——纯静态门面 + 使用方在自身 `AppConfig` 显式构造接入构件（`TraceLogFactory` / `TraceHandler`），不绑定任何日志实现（只面向 `cn.aifei.log` 接口，`Slf4jLogFactory` 等适配器由消费方经 aifei-all 自带）
 - `aifei-http`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方（纯 JDK `HttpURLConnection`）、无 `optional`、不引任何日志绑定**；不支持 HTTP/2，连接池仅受 JVM 全局 `http.maxConnections` / `http.keepAlive` 只读约束
 - `aifei-excel`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（**不向下游传递**，消费方要用读写能力必须显式引入，缺失时首次调用抛可读 `ExcelException` 而非裸 `NoClassDefFoundError`），POI 随其传递；零 DB、零 Web 面、无 Plugin、无配置键、不引任何日志绑定
+- `aifei-audit`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
 
 ## 许可证
 

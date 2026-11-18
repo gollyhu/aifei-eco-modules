@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aifei-audit 演示</title>
+<link rel="stylesheet" href="/assets/css/audit-demo.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div class="brand-text">
+      <h1>aifei-audit</h1>
+      <p>注解式操作审计 · 零存储 / 零线程池 / 零生态依赖</p>
+    </div>
+  </div>
+
+  <div class="status" role="status" aria-live="polite">
+    <span class="chip chip-accent" data-chip="sink">落点：—</span>
+    <span class="chip" data-chip="args">入参记录：—</span>
+    <span class="chip" data-chip="max">摘要上限：—</span>
+    <span class="chip" data-chip="failfast">fail-fast：—</span>
+    <span class="chip" data-chip="client">客户端标识：—</span>
+    <span class="chip" data-chip="module">模块：—</span>
+    <span class="chip chip-mono" data-chip="trace" title="当前请求 traceId">traceId：—</span>
+    <span class="chip chip-actor" data-chip="actor">操作人：未登录</span>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" type="button" data-act="login" data-user="alice">登录 alice</button>
+    <button class="btn btn-ghost" type="button" data-act="login" data-user="bob">登录 bob</button>
+    <button class="btn btn-ghost" type="button" data-act="logout">登出</button>
+    <button class="btn btn-ghost" type="button" data-act="reset">清空并重置</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="column" aria-label="演示场景">
+    <div class="column-head">
+      <h2>动作面板</h2>
+      <p>每个按钮都发真实请求；成对场景同屏对照，判定依据直接显示在卡片里。</p>
+    </div>
+
+    <div class="scenarios" id="scenarios">
+      <article class="scenario" data-scenario="1">
+        <header class="scenario-head">
+          <span class="scenario-index">01</span>
+          <h3>注解采集</h3>
+          <span class="tag">AC-01 / AC-02</span>
+        </header>
+        <p class="scenario-hint">同一业务包内两种方法：一个标了 <code>@Audit</code>，一个没标。前者应产 1 条事件，后者 0 条。</p>
+        <div class="btn-row">
+          <button class="btn btn-primary" type="button" data-act="annotated">已标注 order.cancel</button>
+          <button class="btn" type="button" data-act="unannotated">未标注动作（对照）</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+      </article>
+
+      <article class="scenario" data-scenario="2">
+        <header class="scenario-head">
+          <span class="scenario-index">02</span>
+          <h3>手动埋点</h3>
+          <span class="tag">AC-07</span>
+        </header>
+        <p class="scenario-hint">不经注解的批处理循环调用 <code>AuditKit.record</code>：一次请求产多条，字段口径与注解路径一致（耗时恒 0）。</p>
+        <div class="btn-row">
+          <label class="field">
+            <span>次数</span>
+            <select data-role="times">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="5">5</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" type="button" data-act="manual">批量记录</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+      </article>
+
+      <article class="scenario" data-scenario="3">
+        <header class="scenario-head">
+          <span class="scenario-index">03</span>
+          <h3>脱敏对照</h3>
+          <span class="tag">AC-13 / AC-14</span>
+        </header>
+        <p class="scenario-hint">同一动作两种配置并排：不记录入参 → 摘要为空；记录且 <code>mask={1}</code> → 只剔除第二个参数。</p>
+        <div class="btn-row">
+          <button class="btn" type="button" data-act="masked-off">record=false</button>
+          <button class="btn btn-primary" type="button" data-act="masked">record=true</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+      </article>
+
+      <article class="scenario" data-scenario="4">
+        <header class="scenario-head">
+          <span class="scenario-index">04</span>
+          <h3>落点切换</h3>
+          <span class="tag">AC-08</span>
+        </header>
+        <p class="scenario-hint">容器里始终只有一个「可切换委托落点」；切换后业务代码零改动，计数落在对应落点上。</p>
+        <div class="btn-row">
+          <label class="field">
+            <span>落点</span>
+            <select data-role="sink">
+              <option value="memory">memory</option>
+              <option value="console">console</option>
+              <option value="mq">mq</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" type="button" data-act="switch-sink">切换落点</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+      </article>
+
+      <article class="scenario" data-scenario="5">
+        <header class="scenario-head">
+          <span class="scenario-index">05</span>
+          <h3>业务异常</h3>
+          <span class="tag">AC-03 / AC-21</span>
+        </header>
+        <p class="scenario-hint">必抛异常的动作：事件结果为失败、错误码含异常类名，异常原样抛给调用方（同一实例）。</p>
+        <div class="btn-row">
+          <button class="btn btn-danger" type="button" data-act="failure">触发必抛异常</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+        <div class="evidence" data-role="evidence" hidden></div>
+      </article>
+
+      <article class="scenario" data-scenario="6">
+        <header class="scenario-head">
+          <span class="scenario-index">06</span>
+          <h3>traceId 关联</h3>
+          <span class="tag">AC-20</span>
+        </header>
+        <p class="scenario-hint">链路标识来自 <code>aifei-trace</code>，经 supplier 注入到事件：每次请求各绑定一个 traceId，故对比「同一请求的响应 traceId」与「该请求产出事件的 traceId」。顶部展示的是 /state 请求自己的 traceId。</p>
+        <div class="btn-row">
+          <button class="btn" type="button" data-act="trace-check">对比顶部与最新事件</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+      </article>
+
+      <article class="scenario" data-scenario="7">
+        <header class="scenario-head">
+          <span class="scenario-index">07</span>
+          <h3>空态</h3>
+          <span class="tag">空态 / 重置</span>
+        </header>
+        <p class="scenario-hint">清空展示数据与计数，事件列表回到占位文案，多次演示互不干扰。</p>
+        <div class="btn-row">
+          <button class="btn" type="button" data-act="reset">清空并重置</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+      </article>
+
+      <article class="scenario scenario-alert" data-scenario="8">
+        <header class="scenario-head">
+          <span class="scenario-index">08</span>
+          <h3>错误态（落点抛异常）</h3>
+          <span class="tag">AC-16 / AC-17</span>
+        </header>
+        <p class="scenario-hint">打开开关后落点每次交付先抛异常：<code>fail-fast=false</code> 时异常被吞掉并记一条模块日志，业务返回值不变。</p>
+        <div class="btn-row">
+          <button class="btn" type="button" data-act="sink-fail-on">打开 sink 异常</button>
+          <button class="btn" type="button" data-act="sink-fail-off">关闭 sink 异常</button>
+          <button class="btn btn-primary" type="button" data-act="annotated-error">触发已标注动作</button>
+        </div>
+        <div class="feedback" data-role="feedback">等待触发</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="column" aria-label="事件与计数">
+    <div class="column-head">
+      <h2>事件流</h2>
+      <p>消费方落点自己收集的事件（模块不提供查询 API），每秒增量轮询。</p>
+    </div>
+
+    <div class="counters" id="counters">
+      <div class="counter"><span class="counter-label">交付总数</span><strong data-counter="delivered">0</strong></div>
+      <div class="counter"><span class="counter-label">memory</span><strong data-counter="memory">0</strong></div>
+      <div class="counter"><span class="counter-label">console</span><strong data-counter="console">0</strong></div>
+      <div class="counter"><span class="counter-label">mq 投递</span><strong data-counter="mq">0</strong></div>
+      <div class="counter"><span class="counter-label">mq 消费</span><strong data-counter="mqConsumed">0</strong></div>
+    </div>
+
+    <div class="stream-head">
+      <span class="stream-seq">seq <b data-role="seq">0</b></span>
+      <span class="stream-note" data-role="poll">增量轮询：等待接入</span>
+    </div>
+
+    <div class="events" id="events" aria-live="polite">
+      <div class="empty" data-role="empty">
+        <p class="empty-title">还没有采集到事件</p>
+        <p class="empty-hint">点击左侧「已标注 order.cancel」或「批量记录」，事件会出现在这里。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/assets/js/audit-demo.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  demo 工程日志配置（仅示例工程使用，不影响 aifei-audit 模块本身）。
+
+  目的：log4j2 无配置文件时根级别默认 ERROR，模块的 WARN（失败隔离留痕）在控制台不可见，
+  需求 §八 场景 8（AC-30）的「记一条模块日志」无法演示。
+  策略：只把被演示库的包 cn.hg.aifei.audit 放开到 warn，根 logger 保持 error，
+        框架内部日志（cn.aifei.* 等）不会刷屏。
+  约束：纯控制台输出，无文件落地、无外网 appender，离线可跑。
+-->
+<Configuration status="OFF">
+
+    <Appenders>
+        <!-- 控制台输出：时间 / 级别 / logger / 消息，一行一条，便于页面演示时对照 -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level [%logger{36}] - %msg%n"/>
+            <!-- 只放行 WARN 及以上，避免框架 DEBUG / INFO 级内容混进演示输出 -->
+            <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <!-- 被演示库：WARN 可见（场景 8 的「已按失败隔离吞掉」留痕） -->
+        <Logger name="cn.hg.aifei.audit" level="warn" additivity="true"/>
+
+        <!-- 根 logger 保持 error：框架内部日志不外溢，控制台只留演示相关内容 -->
+        <Root level="error">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+
+</Configuration>

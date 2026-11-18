@@ -1,0 +1,31 @@
+# ===== aifei-audit-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18160 传入。
+# 全程零外网：页面只请求本机自身的 /audit/demo/* 端点。
+
+# ===== aifei-audit =====
+audit.enabled = true
+# false：落点异常被吞掉并记一条模块日志，业务返回值不变（场景 8）
+audit.fail-fast = false
+# 全局入参开关；本 demo 主要靠注解的 args=true 逐方法打开（场景 3）
+audit.args.enabled = false
+audit.args.max-length = 512
+# 客户端标识不演示：要素列展示占位符
+audit.client.enabled = false
+audit.module = aifei-audit-demo
+# 扫描范围由 DemoAppConfig 的 addScanPackages 给出，这里留空即可
+# audit.scan.packages = cn.hg.aifei.audit.demo.biz
+
+# ===== aifei-mq（内存后端，零第三方）=====
+mq.type = memory
+
+# ===== aifei-sa-token（操作人来源）=====
+sa-token.token-name = audit-demo-token
+sa-token.timeout = 86400
+sa-token.is-read-header = true
+sa-token.is-write-header = true
+
+# ===== demo 自身 =====
+# Enjoy 模板热加载：改页面后刷新即生效
+enjoyDevMode = true
+# 打开后每个 action 调用打印到控制台；默认关闭以免刷屏
+printAction = false
