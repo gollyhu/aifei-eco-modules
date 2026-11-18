@@ -1,7 +1,7 @@
 # aifei-tools 模块需求（任务输入）
 
 > 本文件是任务输入，不是 PRD / 设计。
-> 关联：`aifei-cache`（验证码答案共享存储，`optional`）；`org.lionsoul:ip2region`（IP 归属地数据内核，`optional`）。
+> 关联：`aifei-cache`（验证码答案共享存储，`optional`）；`org.lionsoul:ip2region`（IP 归属地数据内核，`optional`）；`com.google.zxing:core`（二维码编解码内核，`optional`）。
 > 决策出处：`docs/计划/aifei-eco-modules 模块规划与排期.md` §6.2（2026-11-18 复评：`aifei-captcha` 不独立立项，并入本模块作为首个工具）。
 
 ## 一、背景
@@ -15,9 +15,9 @@
 ## 二、范围
 
 - 交付 `io.github.gollyhu:aifei-tools:1.0.0`，包名 `cn.hg.aifei.tools`，Java 8（class major 52）
-- 首批工具（2 个，各自独立可用）：验证码落 `cn.hg.aifei.tools.captcha` 子包；IP 归属地查询落 `cn.hg.aifei.tools.ip` 子包
-- 后续工具按需追加（候选：二维码、脱敏），本版不预置空壳、不留占位类
-- 零**强制**第三方运行依赖；`aifei-all` 为 `provided`；第三方能力内核为 `optional`（captcha 的 `aifei-cache`、ip 的 `org.lionsoul:ip2region`），缺失时首次调用抛可读异常，对齐 `aifei-excel` 的 EasyExcel 先例
+- 首批工具（4 个，各自独立可用）：验证码落 `cn.hg.aifei.tools.captcha` 子包；IP 归属地查询落 `cn.hg.aifei.tools.ip` 子包；二维码落 `cn.hg.aifei.tools.qr` 子包；脱敏落 `cn.hg.aifei.tools.mask` 子包
+- 后续工具按需追加（候选：其它极简工具），本版不预置空壳、不留占位类
+- 零**强制**第三方运行依赖；`aifei-all` 为 `provided`；第三方能力内核为 `optional`（captcha 的 `aifei-cache`、ip 的 `org.lionsoul:ip2region`、qr 的 `com.google.zxing:core:3.5.3`），缺失时首次调用抛可读异常，对齐 `aifei-excel` 的 EasyExcel 先例
 
 **不做**（边界）：
 
@@ -60,7 +60,65 @@
   4. 配置键与自动加载；db 路径必须显式入参。
   5. 跨工具公共抽象层（同「二、范围」不做第 4 条）。
 
-## 六、验收要点
+## 六、qr 工具要求
+
+- **定位与场景**：二维码生成与解码，落 `cn.hg.aifei.tools.qr` 子包，子包隔离、各自独立可用（同「二、范围」定位）。
+- **依赖策略**：唯一第三方内核 `com.google.zxing:core:3.5.3` 为 `optional`、零传递依赖已实证，不引 `javase`；库模块公共签名零第三方、零框架类型。ZXing 缺失探测放 `internal`，缺失时首次调用抛可读 `QrException`（不得裸抛），对齐 `aifei-excel` 的 EasyExcel 先例。
+- **公共面（精确 4 个，冻结）**：落 `cn.hg.aifei.tools.qr` 子包，类型与签名如下：
+
+```java
+public final class QrKit {
+    private QrKit();
+    public static byte[] encode(String text);                     // 等价于 encode(text, QrOptions.defaults())
+    public static byte[] encode(String text, QrOptions options);
+    public static String decode(byte[] pngBytes);
+    public static String decode(InputStream in);                  // 不关闭调用方传入的流
+}
+public final class QrOptions {
+    public static QrOptions defaults();                           // size=300, margin=4, EC=M, UTF-8 内部固定
+    public static QrOptions of(int size, int margin, QrErrorCorrection ec);
+    public int getSize(); public int getMargin(); public QrErrorCorrection getErrorCorrection();
+}
+public enum QrErrorCorrection { L, M, Q, H }
+public final class QrException extends RuntimeException {
+    public QrException(String message); public QrException(String message, Throwable cause);
+}
+```
+
+## 七、mask 工具要求
+
+- **定位与场景**：通用脱敏 + 5 个默认规则，落 `cn.hg.aifei.tools.mask` 子包，子包隔离、各自独立可用；纯 JDK 零依赖，无第三方内核、无配置键、随取随用。
+- **公共面（精确 3 个，冻结）**：落 `cn.hg.aifei.tools.mask` 子包，类型与签名如下：
+
+```java
+public final class MaskUtil {
+    private MaskUtil();
+    public static String mask(String value, int keepLeft, int keepRight);
+    public static String mask(String value, int keepLeft, int keepRight, char maskChar);
+    // 默认规则：转发注册表，replace 后跟随
+    public static String maskPhone(String value);
+    public static String maskIdCard(String value);
+    public static String maskBankCard(String value);
+    public static String maskEmail(String value);
+    public static String maskName(String value);
+}
+public final class MaskKit {
+    private MaskKit();
+    public static void register(String name, UnaryOperator<String> masker);      // 已存在→MaskException
+    public static void replace(String name, UnaryOperator<String> masker);       // 不存在→MaskException
+    public static UnaryOperator<String> use(String name);                        // 未注册→MaskException
+}
+public final class MaskException extends RuntimeException {
+    public MaskException(String message); public MaskException(String message, Throwable cause);
+}
+```
+
+- **默认规则与注册表**：默认规则名 `phone`/`idCard`/`bankCard`/`email`/`name` 初始即在注册表；`maskPhone(x)` ≡ `use("phone").apply(x)`；默认规则不可删；注册表 `ConcurrentHashMap`；`MaskUtil` 默认方法转发注册表，`replace` 后跟随新规则。
+- **自定义规则**：类型为 `UnaryOperator<String>`，调用 `use("xxx").apply(value)`；`register`/`replace`/`use` 均用全拼写。
+- **默认规则格式（中国大陆格式假设）**：手机号 11 位前 3 后 4、身份证 18 位前 6 后 4、银行卡前 6 后 4、邮箱 @ 前保留首尾各 1 位、姓名保留姓——实现期可演进的约定，不臆造其它格式。
+- **异常**：统一收敛为 `MaskException`——重复 `register`、`replace` 不存在的规则、`use` 未注册规则均抛 `MaskException`。
+
+## 八、验收要点
 
 - 生成 → 校验成功 → 同 token 二次校验失败（一次性消费）
 - TTL 到期失效；超过错误次数上限失效；token 不可从图片字节反推
@@ -74,8 +132,22 @@
 - `close()` 连续调用幂等；关闭后查询抛可读异常（符合定档语义）
 - 门禁按定档口径断言：根包公共类型为零、`ip` 子包公共类型精确 N 个（N 由设计决策确定）
 - 测试不提交 xdb 二进制；测试样本策略（现场生成小样本 / 测试期拉取）由设计决策确定后落地
+- qr：`encode` 产出可被 `decode` 还原的 PNG。
+- qr：四档纠错等级与 `size`/`margin` 选项生效。
+- qr：中文文本 UTF-8 不乱码。
+- qr：`decode` 不关闭调用方流。
+- qr：未引入 ZXing 依赖时首次调用抛可读 `QrException`。
+- qr：门禁断言根包公共类型为零、`qr` 子包公共类型精确 4 个。
+- mask：通用 `mask` 按保留位数与掩码字符输出。
+- mask：5 个默认规则按标注格式脱敏。
+- mask：未注册规则名 `use` 抛 `MaskException`。
+- mask：重复 `register` 抛 `MaskException`。
+- mask：`replace` 不存在的规则抛 `MaskException`。
+- mask：`replace` 后 `MaskUtil` 默认方法跟随新规则。
+- mask：默认规则不可删除。
+- mask：门禁断言 `mask` 子包公共类型精确 3 个。
 
-## 七、待确认问题（ip 工具）
+## 九、待确认问题（ip / qr 工具）
 
 1. `ip2region` 具体版本：仅写「3.x，版本待设计决策实证」，须由设计阶段实测 Maven 坐标可用版本后定档（tag v3.19.0 仅线索）。
 2. IPv4 / IPv6 路由：单实例绑单库，还是按 IP 版本自动路由双库（影响公共面形态与 `IpRegion` 来源）——待设计决策，不冻结。
@@ -84,3 +156,8 @@
 5. 查询模式默认值与并发默认值：未显式指定模式时的默认选择、并发策略默认项（每次新建 / ThreadLocal / 实例独占）——待设计决策。
 6. region 五段中「0」/未知值的对外语义（空串 / 特定占位 / 可选字段）与 `close()` 后异常类型、消息——按仓库纪律「未经设计决策不得自定空值/异常语义」，须先定档。
 7. 范围边界提示（非本轮产出）：规划文档 §3.3 / §6.2 的「首个工具 / 1 周」措辞、是否配 `aifei-tools-demo`、精确公共类型数，均不在本片段内，未擅自扩张。
+8. qr：是否保留 `decode`。
+9. qr：`null` / 空输入语义。
+10. qr：`decode` 失败语义。
+11. qr：`QrOptions` 是否扩展。
+12. qr：是否加流式输出。
