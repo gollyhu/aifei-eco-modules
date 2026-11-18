@@ -87,7 +87,7 @@
 
 ## 行为契约要点速查
 
-- **流式读**：`Excel.read` 默认 `batchSize=1000`；逐行 SAX 解析、满批回调、末批不足兜底一次；回调后不再持有该批引用，内存 `O(batchSize)`；回调内抛异常 → 包装 `ExcelException`（cause=原异常）并中止；读过程不关闭 `in`。
+- **流式读**：`Excel.read` 默认 `batchSize=1000`；逐行 SAX 解析、满批回调、末批不足兜底一次；0 数据行（仅表头 / 空 Sheet）**不回调空批**；回调后不再持有该批引用，内存 `O(batchSize)`；回调内抛异常 → 包装 `ExcelException`（cause=原异常）并中止；读过程不关闭 `in`。
 - **流式写**：`Excel.writer` 创建会话时不写 `out`；首次 `write`（含空列表）写一次表头，同实例多次 `write` 按序追加同一 Sheet；`finish()`/`close()` 幂等（flush + 关闭底层 writer，不关闭 `out`）；已 `finish` 后再 `write` → `ExcelException`；writer 会话非线程安全。
 - **便捷门面**：`ExcelKit.readAll` 一次性全量读，**内存 `O(行数)`，仅小文件**，大文件用 `Excel.read`；无数据行返回空 `List`（非 null）；`ExcelKit.write` 是 writer 会话语法糖，rows 为 null/空时写表头后结束。两者随取随用、无 Plugin 装配期。
 - **注解映射**：默认全部当前类声明字段参与（不含父类，跳过 `static`/`transient`）；`@ExcelIgnore` 优先排除；`@ExcelColumn.value` 指定表头名（缺省用字段名原样匹配，严格相等、不折叠大小写、不转下划线）；`index>=0` 按列位置定位、优先于表头名；重复 index / 重复表头 → `ExcelException`。

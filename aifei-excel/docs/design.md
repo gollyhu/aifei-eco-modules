@@ -82,6 +82,8 @@ aifei 生态有 `aifei-oss` 负责「文件往哪存」，但**缺 Excel 读写�
 | **多 Sheet 高级编排** | 读写默认单 Sheet（读第 0 个 Sheet、写单 Sheet）；多 Sheet 场景本期不提供 API |
 | **流式读的随机访问 / 回退** | 单向逐批读，回调后不可回退；不缓存历史批次 |
 
+> **归类口径**：本表是「实现期防范围蔓延红线」，不是需求池 / 演进清单的完备来源——某项未在本表列举，不等于它属于本期范围。凡 §13 标注「1.1 演进」的条目即需求池演进候选（P1），与是否在本表列举无关（例：父类字段映射，见 §6.5 / §13 事项 7）。
+
 ---
 
 ## 2. 选型实证记录（含依赖树结论）
@@ -232,9 +234,9 @@ public final class Excel {
 | 方法 | 契约 | 失败 |
 | --- | --- | --- |
 | `read(in,type,consumer)` | 默认 `batchSize=1000`；等价于 `read(in,type,1000,consumer)` | 参数非法 / IO / 解析转换失败 → `ExcelException` |
-| `read(in,type,batchSize,consumer)` | SAX 逐行读；累积满 `batchSize` 行回调 `batchConsumer` 一次，末批不足亦回调一次；**读完或异常后 `batchConsumer` 持有的批引用不再被复用**；读过程**不关闭 `in`** | `batchSize<=0`、`in/type/consumer` 为 null → 参数错；回调内抛异常 → 包装为 `ExcelException`（cause=原异常）并中止读 |
+| `read(in,type,batchSize,consumer)` | SAX 逐行读；累积满 `batchSize` 行回调 `batchConsumer` 一次，末批不足亦回调一次；**0 数据行（仅表头 / 空 Sheet）不回调空批**（§7.3）；**读完或异常后 `batchConsumer` 持有的批引用不再被复用**；读过程**不关闭 `in`** | `batchSize<=0`、`in/type/consumer` 为 null → 参数错；回调内抛异常 → 包装为 `ExcelException`（cause=原异常）并中止读 |
 | `writer(out,type[,sheetName])` | 创建 writer 会话；`sheetName` 为空时用默认 Sheet 名（唯一定义点 `ExcelWriterAdapter.DEFAULT_SHEET_NAME`）；**不写 `out`** 直到首次 `write` | 参数非法 → `ExcelException` |
-| `write(rows)`（实例） | 向同一会话追加一批数据行；可多次调用，行按调用顺序追加；`rows` 为 null/空按「无操作」处理（不写表头外的行）；**不关闭 `out`** | 会话已 `finish()` 后再写 → `ExcelException`（会话已关闭）；转换失败 → `ExcelException` |
+| `write(rows)`（实例） | 向同一会话追加一批数据行；可多次调用，行按调用顺序追加；`rows` 为 null/空时**只保证表头、不写数据行**（首次 `write` 写一次表头；表头已写则本次调用无实际写入；均不抛异常）；**不关闭 `out`** | 会话已 `finish()` 后再写 → `ExcelException`（会话已关闭）；转换失败 → `ExcelException` |
 | `finish()` / `close()` | 写表头（若尚未写）+ flush + 关闭底层 writer；**幂等**（重复调用无副作用）；**不关闭 `out`**（D16） | flush/close 底层失败 → `ExcelException` |
 
 - **命名依据**：`Excel` 是**流式会话对象**（名词，`final` + 私有构造 + 静态工厂），承载读门面与 writer 生命周期；非典型 `Util`/`Kit`，按定档冻结名登记为命名例外（§3 D15）。
@@ -430,6 +432,7 @@ Excel.read(in, type, batchSize, consumer)
 ```
 
 - **内存边界**：`BatchReadListener` 内部只持有**当前一批**（`ArrayList<T>`，上限 `batchSize`）。每读到一行：经 `RowMapper` 映射为 `T` 加入当前批；`size == batchSize` 时调用 `consumer.accept(batch)`，**随后 `batch = new ArrayList<>(batchSize)` 丢弃旧引用**。故峰值内存 `O(batchSize × 单对象大小)`，与文件总行数无关。末批不足 `batchSize` 在 `doAfterAllAnalysed` 中兜底回调一次。
+- **0 数据行不回调空批**：`BatchReadListener.doAfterAllAnalysed` 只在 `headerResolved && !currentBatch.isEmpty()` 时 `deliver()`，故「仅表头」与「连表头都没有」的文件 `batchConsumer` 一次也不被调用，**绝不回调空批**（消费方无需判 `batch.isEmpty()`）。所依赖的 EasyExcel 行为：解析结束必调用一次 `doAfterAllAnalysed`（0 行亦然）——实测仅表头文件 `invoke=1` / `doAfterAllAnalysed=1`，空 Sheet `invoke=0` / `doAfterAllAnalysed=1`。
 - **`batchSize` 默认 1000**（`Excel.read` 两参重载内写死常量 1000；四参重载用调用方值），`<=0` 抛参数错误。
 - **回调异常**：`consumer.accept` 抛任何异常 → 立即包装 `ExcelException`（cause=原异常，场景 5）并中止读；不吞异常、不继续下一批。
 - **不缓存历史批**：回调后本模块不再持有该批引用；若 `consumer` 需要留存，由使用方自行复制。
@@ -777,7 +780,7 @@ aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.
         └── ExcelErrors.java                  # ★ 异常唯一构造点 + 消息措辞（门禁 ⑬）
 ```
 
-**测试**（`src/test/java/cn/hg/aifei/excel/`）：`ArchitectureBoundaryTest`（门禁 14 例）、`ExcelReadTest`（分批回调 / 末批 / 回调异常 / 表头映射 / 类型转换 / 不关流）、`ExcelWriteTest`（同流多次追加 / 表头时机 / finish 幂等 / 不关流）、`ExcelKitTest`（readAll 空结果 / write 语法糖 / 小文件）、`AnnotationMappingTest`（index 优先 / 默认字段名 / ExcelIgnore 优先 / index 冲突 / 重复表头 / 无字段）、`ExcelExceptionTest`（三段分类 / 消息逐字 / cause 保留 / 依赖缺失）；`support/` 放测试用 POJO（如 `UserRow` / `OrderRow`，业务视角命名，禁 `foo`/`bar`）。
+**测试**（`src/test/java/cn/hg/aifei/excel/`）：`ArchitectureBoundaryTest`（门禁 14 例）、`ExcelReadTest`（分批回调 / 末批 / 回调异常 / 表头映射 / 类型转换 / 不关流）、`ExcelWriteTest`（同流多次追加 / 表头时机 / finish 幂等 / 不关流）、`ExcelKitTest`（readAll 空结果 / write 语法糖 / 小文件）、`AnnotationMappingTest`（index 优先 / 默认字段名 / ExcelIgnore 优先 / index 冲突 / 重复表头 / 无字段）、`ExcelExceptionTest`（三段分类 / 消息逐字 / cause 保留 / 依赖缺失）、`PublicApiContractTest`（公共面精确 5 / 公共签名零第三方 / 注解形状 / 门面形态 / 流所有权）；`support/` 放测试用 POJO（如 `UserRow` / `OrderRow`，业务视角命名，禁 `foo`/`bar`）。
 
 **不计入本清单**：`aifei-excel-demo/` 位于仓库根、与本模块平级（§12）。
 
@@ -828,6 +831,7 @@ aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.
 | **写** | `ExcelWriteTest`：同流多次追加（两批以上，读回校验行数与顺序）/ 表头时机（首次 write / finish 补写）/ finish 幂等（场景 3）/ flush 失败（场景 13）/ **写后 `out` 未关闭** / xls 与 xlsx 各一遍 | §5.1 / §7.4 / §7.5 |
 | **便捷门面** | `ExcelKitTest`：`readAll` 空结果返回空 `List` / `readAll` 小文件全量 / `write` 语法糖读回一致 / 参数 null（场景 1） | §5.2 |
 | **异常** | `ExcelExceptionTest`：三段分类 / §7.5 消息逐字 / cause 保留 / 构造器 javadoc 语义 | §5.3 / §7.5 |
+| **公共面契约** | `PublicApiContractTest` 9 例：公共面精确 5 / 公共签名零第三方 / 注解形状 / 门面形态（会话 vs 便捷）/ 流所有权契约 | §5 逐条断言 |
 | **内存边界** | 生成较大行数（如 10 万行）走 `Excel.read(batchSize=1000)`，断言「回调内累计持有的对象数与文件总行数无关」——用计数器而非全量 `List` 校验，避免测试自身 OOM | §7.3 / D11 |
 
 - **离线**：全部单测零外网；xlsx/xls 样本用 EasyExcel 在 `target/` 现场写出再读回（自洽闭环），或固定极小样本（不提交二进制到仓库，§10.1 / 门禁 ⑭）。
