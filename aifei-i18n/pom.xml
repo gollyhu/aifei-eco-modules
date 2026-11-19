@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.gollyhu</groupId>
+    <artifactId>aifei-i18n</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>aifei-i18n</name>
+    <description>面向 aifei 应用的国际化 SDK：开放来源 + 唯一回退链 + Locale 贯通 + 整包导出 + 格式化薄封装（零第三方 compile 依赖）。</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <aifei.version>1.1.2</aifei.version>
+        <aifei-cache.version>1.1.0</aifei-cache.version>
+        <junit.version>4.13.2</junit.version>
+    </properties>
+
+    <dependencies>
+        <!-- 框架内核：provided，消费方自带，不向下游传递 -->
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-all</artifactId>
+            <version>${aifei.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- kv 来源的可选依赖：optional，不向下游传递，消费方须显式引入 -->
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-cache</artifactId>
+            <version>${aifei-cache.version}</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <!-- 门禁依赖模块根相对路径 src/main/java，工作目录固定为模块根 -->
+                    <workingDirectory>${project.basedir}</workingDirectory>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

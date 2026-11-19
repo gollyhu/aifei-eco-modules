@@ -27,6 +27,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | aifei-trace-demo | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
 | [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
 | [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
+| [aifei-i18n](aifei-i18n/README.md) | `io.github.gollyhu:aifei-i18n:1.0.0` | 国际化能力：开放来源扩展 + 3 默认来源（properties/db/kv）+ 单条取文案/整包导出 + Locale 上下文贯通 + JDK 格式化薄封装，零第三方 |
 | [aifei-excel](aifei-excel/README.md) | `io.github.gollyhu:aifei-excel:1.0.0` | Excel 读写统一门面：注解表头映射、一次性便捷读写、流式分批读写，唯一内核 easyexcel 可选引入 |
 | [aifei-excel-demo](aifei-excel-demo/README.md) | （示例工程，不发布） | aifei-excel 的完整接入示例：上传解析 / 一次性导出 / 流式导出演示（端口 18150） |
 | [aifei-audit](aifei-audit/README.md) | `io.github.gollyhu:aifei-audit:1.0.0` | 注解式操作审计：`@Audit` 声明式采集 + `AuditKit` 手动埋点，事件交 `AuditSink` SPI，零存储 / 零线程池 / 零生态依赖 |
@@ -160,6 +161,19 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 配置 `http.*` 七键全可选：connect-timeout / read-timeout / retry-times / retry-interval / max-response-bytes（默认 8 MiB）/ gzip / user-agent；JVM 全局属性 `http.maxConnections` / `http.keepAlive` 只读不写
 - 详细用法见 [aifei-http/README.md](aifei-http/README.md)，设计文档见 [docs/design.md](aifei-http/docs/design.md)
 
+### aifei-i18n
+
+为 aifei 应用补齐国际化能力：后端按 Locale 取单条文案、前端取整包语言包，Locale 贯通到 JDK 格式化；来源开放扩展、运行期可刷新，缺翻译绝不使业务接口 500。
+
+- 公共面精确 9 个类型：根包 `I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException` + `web` 包 `I18nHandler` / `LocaleExtractor` + `aifei` 包 `I18nPlugin`（非承诺 API）；门禁按「文件名集合 + 反射 public 类型」双重精确断言
+- 三默认来源开箱即用：`properties`（classpath 资源启动全量载入，改值须重启）/ `db`（只读，建表 SQL 随文档、模块不执行 DDL）/ `kv`（依赖 `aifei-cache`，optional）；自定义来源按稳定名声明即参与叠加，零改模块源码
+- 回退链唯一不可配：按 locale 逐来源 → 默认 locale 逐来源 → 返回 key 原文；未命中 DEBUG、来源故障继续回退并 WARN；叠加顺序由 `i18n.sources` 声明顺序决定
+- Locale 四级优先级：显式 > 上下文 > 请求头 > `defaultLocale`；`I18nHandler` 第一个 `addHandler`，finally 保证清理（不串语言）；`_` 归一 `-` 后精确匹配
+- 整包导出四字段 `locale` / `localeName` / `dir` / `messages`：`dir` 只走 JDK `ComponentOrientation`（Java 9+ jlink 须保留 `java.desktop`，不可用降级 `ltr` + WARN），配置 `i18n.locales` 白名单仅用于请求头过滤、不阻断显式 locale 导出
+- 格式化为 Locale 贯通薄封装：数值（含百分比）/ 货币 / 日期 / 日期时间四能力、三参正交、默认 MEDIUM 硬编码；不自建任何 CLDR 模式串 / 货币符号表 / 方向表，推荐 `-Djava.locale.providers=CLDR` 统一行为
+- 4 配置键恰好无启用开关：`i18n.defaultLocale`（必填）/ `i18n.locales` / `i18n.sources`（默认仅 properties）/ `i18n.cache.ttlMillis`（默认 60000，≤0 不缓存）；零第三方 compile 依赖，`aifei-all` 为 `provided`
+- 详细用法见 [aifei-i18n/README.md](aifei-i18n/README.md)，设计文档见 [docs/design.md](aifei-i18n/docs/design.md)
+
 ### aifei-excel
 
 为 aifei 应用补齐 Excel 读写能力（库模块 / SDK 而非应用工程）：业务只认注解模型与输入输出流，表头映射、流式分批、异常口径由模块统一负责。与 `aifei-oss` 仅经 `InputStream` / `OutputStream` 组合，不产生代码依赖。
@@ -201,6 +215,7 @@ cd aifei-trace     && mvn clean install
 cd aifei-http      && mvn clean install
 cd aifei-excel     && mvn clean install
 cd aifei-audit     && mvn clean install
+cd aifei-i18n      && mvn clean verify
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -221,6 +236,7 @@ cd aifei-audit     && mvn clean install
 - `aifei-http`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方（纯 JDK `HttpURLConnection`）、无 `optional`、不引任何日志绑定**；不支持 HTTP/2，连接池仅受 JVM 全局 `http.maxConnections` / `http.keepAlive` 只读约束
 - `aifei-excel`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（**不向下游传递**，消费方要用读写能力必须显式引入，缺失时首次调用抛可读 `ExcelException` 而非裸 `NoClassDefFoundError`），POI 随其传递；零 DB、零 Web 面、无 Plugin、无配置键、不引任何日志绑定
 - `aifei-audit`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
+- `aifei-i18n`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` 为 `provided + optional`（**不向下游传递**，仅 `kv` 来源需要，用到时消费方须显式引入）；**零第三方 compile 依赖**（`junit` 仅 `test`），不引任何日志绑定；Java 8 / class major 52
 
 ## 许可证
 

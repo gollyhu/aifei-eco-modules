@@ -1,6 +1,6 @@
 # aifei-eco-modules 开发约束（全体模块共同遵守）
 
-本文件适用于仓库内全部模块（发布模块：`aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-trace` / `aifei-http` / `aifei-excel`；示例工程：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-excel-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
+本文件适用于仓库内全部模块（发布模块：`aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-trace` / `aifei-http` / `aifei-excel` / `aifei-i18n`；示例工程：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-excel-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
 
 各模块的专属约束与验证命令见其自身 `AGENTS.md`。模块文件可**补充、收紧**本文件，但不得**放宽**；两者不一致时以更严格者为执行标准，并应及时消除不一致。
 
@@ -65,6 +65,7 @@
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
 - **已登记的公共面框架类型例外**（须先在此登记，模块文档不得单方面声明）：
   - `aifei-trace` 的 `TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `cn.aifei.log.LogFactory`——日志门面接口即框架公共契约，包装实现收进 `internal` 会使使用方 `settings.setLogFactory(new TraceLogFactory(...))` 这一核心用法失效；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链；理由见 `aifei-trace/docs/design.md` §2 决策 2 / 3。
+  - `aifei-i18n` 的 `web.I18nHandler` / `web.LocaleExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链（与 `aifei-trace` 同构）；理由见 `aifei-i18n/docs/design.md` §2 决策 D-1 / §5.7 / §13 待明确事项 1。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。
 
 ### 命名约定（类型后缀语义）
