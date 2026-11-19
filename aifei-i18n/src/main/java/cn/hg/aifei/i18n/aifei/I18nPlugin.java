@@ -72,10 +72,7 @@ public class I18nPlugin implements Plugin {
             I18nEngine engine = new I18nEngine(config, registry.orderedSources());
             I18nHolder.install(engine);
             this.started = true;
-        } catch (RuntimeException e) {
-            I18nHolder.clear();
-            throw e;
-        } catch (Error e) {
+        } catch (RuntimeException | Error e) {
             I18nHolder.clear();
             throw e;
         }
