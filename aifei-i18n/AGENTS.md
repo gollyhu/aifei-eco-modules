@@ -10,17 +10,19 @@
 - 本模块不提供 HTTP 端点；语言包下发由消费方 Just Service 一行完成。
 - 坐标 `io.github.gollyhu:aifei-i18n:1.0.0`，包名 `cn.hg.aifei.i18n`，Java 8（class major 52）。
 
-## 二、公共面（精确 9 类型，不得增删）
+## 二、公共面（精确 10 类型，不得增删）
 
-- 根包 6：`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`。
+- 根包 7：`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`。
 - `web` 2：`I18nHandler` / `LocaleExtractor`；`aifei` 1：`I18nPlugin`。
 - `internal` / `defaultSource` 为非承诺实现，不得升为公共类型。
 - 公共签名零第三方类型、零框架类型；`cn.aifei.*` 只允许在 `web`（core）与 `aifei`（Prop/Plugin）包。
+- `Localizer` 仅 import `internal.I18nHolder` 与 JDK；构造为包级（仅同包 `I18nKit.local` 可 new），不可变可复用，无 getter。
 
 ## 三、唯一定义点（实现类不得复制）
 
 | 规则 | 唯一定义点 |
 | --- | --- |
+| `key` 非空校验（空/空白 → IAE，消息 §8.3 逐字） | `internal.I18nEngine#message` |
 | 配置键名 / 默认值 / 解析 / 校验 / 非法消息 | `internal.I18nConfig` |
 | locale 规范化 + 严格 BCP 47 校验 | `internal.LocaleNormalizer` |
 | 生效 locale 四级优先级 + Accept-Language 解析 | `internal.LocaleResolver` |

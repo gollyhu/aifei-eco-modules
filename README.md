@@ -166,7 +166,7 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 
 为 aifei 应用补齐国际化能力：后端按 Locale 取单条文案、前端取整包语言包，Locale 贯通到 JDK 格式化；来源开放扩展、运行期可刷新，缺翻译绝不使业务接口 500。
 
-- 公共面精确 9 个类型：根包 `I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException` + `web` 包 `I18nHandler` / `LocaleExtractor` + `aifei` 包 `I18nPlugin`（非承诺 API）；门禁按「文件名集合 + 反射 public 类型」双重精确断言
+- 公共面精确 10 个类型：根包 `I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException` + `web` 包 `I18nHandler` / `LocaleExtractor` + `aifei` 包 `I18nPlugin`（非承诺 API）；门禁按「文件名集合 + 反射 public 类型」双重精确断言；`I18nKit.local(tag).message(key[, args])` 链式显式 locale，`I18nKit.message(key[, args])` 为默认 local 入口
 - 三默认来源开箱即用：`properties`（classpath 资源启动全量载入，改值须重启）/ `db`（只读，建表 SQL 随文档、模块不执行 DDL）/ `kv`（依赖 `aifei-cache`，optional）；自定义来源按稳定名声明即参与叠加，零改模块源码
 - 回退链唯一不可配：按 locale 逐来源 → 默认 locale 逐来源 → 返回 key 原文；未命中 DEBUG、来源故障继续回退并 WARN；叠加顺序由 `i18n.sources` 声明顺序决定
 - Locale 四级优先级：显式 > 上下文 > 请求头 > `defaultLocale`；`I18nHandler` 第一个 `addHandler`，finally 保证清理（不串语言）；`_` 归一 `-` 后精确匹配

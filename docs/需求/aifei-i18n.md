@@ -547,8 +547,8 @@ flowchart LR
 
 **成功标准**（3 条）：
 1. 三条指令在**真实 Enjoy 引擎**中跑通，`lang` 具名参数位置无关提取的规则单一、可测试；
-2. 指令层只做「抽 `lang` + 切位置 + 分发到 `I18nKit` 既有重载」，零新增解析逻辑；
-3. 模块公共面精确 9 类型与「公共签名零第三方类型」约束不变。
+2. 指令层只做「抽 `lang` + 切位置 + 分发到 `I18nKit` 新 API（`local` 链式 / `message` 默认 local）」，零新增解析逻辑；
+3. 模块公共面精确 10 类型与「公共签名零第三方类型」约束不变。
 
 **本期做**：三条指令 + 参数解析规则 + 页面级/局部语言分层 + 真实 Enjoy 端到端用例（含 demo）。
 
@@ -558,14 +558,14 @@ flowchart LR
 
 ### 11.2 Q7 定档边界突破声明（核心变更）
 
-本文 §十 Q7 / §8 D-02 已于 2026-11-18 裁决定档为「**不新建 demo 工程 + 不引入 Enjoy 依赖**」，以测试内模拟函数 `Function tpl = k -> I18nKit.message(k, locale)` 做等价输出断言。本章在该裁决**已成立**的前提下，于「Enjoy 模板指令」这一新增范围内**显式突破**这两条（并非 Q7 从未裁决），理由与影响如下：
+本文 §十 Q7 / §8 D-02 已于 2026-11-18 裁决定档为「**不新建 demo 工程 + 不引入 Enjoy 依赖**」，以测试内模拟函数 `Function tpl = k -> I18nKit.local(locale).message(k)` 做等价输出断言。本章在该裁决**已成立**的前提下，于「Enjoy 模板指令」这一新增范围内**显式突破**这两条（并非 Q7 从未裁决），理由与影响如下：
 
 | 原定档 | 本章决策 | 突破理由 | 影响面 |
 | --- | --- | --- | --- |
 | 不新建 demo，模板用例落模块测试内 | **新增 `aifei-i18n-demo` 示例工程**，以真实 Enjoy 渲染验证指令（端口与排期由设计关定） | 指令契约的核心是「具名参数与位置参数混排、位置无关提取」，模拟函数无法覆盖指令解析行为，必须真实引擎跑通 | D-02 升级；demo 为示例工程、不发布 |
 | 不引入 Enjoy 依赖，零第三方 | **复用 `aifei-all:1.1.2` 已内含的 `aifei-enjoy`**（spike 实证：aifei-all 的 shade 配置已打包 aifei-enjoy），**零新增依赖坐标、零 pom 改动** | 真实指令必须依赖引擎才能注册与解析；框架已把引擎打进既有 provided 依赖，无需另引 | 「零第三方」口径明确为「零**非 aifei 生态**第三方」；Enjoy 类型仅在指令实现与 demo 内可见，**不进入任何公共 API 签名**，根包零第三方类型约束不变 |
 
-**变更效力**：本文 §十 Q7 裁决**仅在本章增量范围内失效**（对其余范围仍然有效）；其余 Q1~Q9 裁决与 §6.1 的 16 条 P0 / 75 条 AC 保持不变。原「同一入口、同一回退语义」的根本约束继承——所有指令最终都走 `I18nKit` 既有重载，不另起解析。
+**变更效力**：本文 §十 Q7 裁决**仅在本章增量范围内失效**（对其余范围仍然有效）；其余 Q1~Q9 裁决与 §6.1 的 16 条 P0 / 75 条 AC 保持不变。原「同一入口、同一回退语义」的根本约束继承——所有指令最终都走 `I18nKit` 新 API（`local` 链式 / `message` 默认 local），不另起解析。
 
 ---
 
@@ -587,14 +587,14 @@ flowchart LR
 → 均为 key=hello, lang=zh-CN, args=[Bob]
 ```
 
-**分发映射**（薄封装，零新逻辑）：
+**分发映射**（薄封装，零新逻辑；`effLang` = 局部 lang 或当前生效 locale）：
 
 | 解析结果 | 分发到 |
 | --- | --- |
-| 有 lang、有 args | `message(key, lang, args...)` |
-| 有 lang、无 args | `message(key, lang)` |
-| 无 lang、有 args | `message(key, null, args...)`（当前 locale） |
-| 无 lang、无 args | `message(key)` |
+| 有 lang（局部） | `I18nKit.local(lang).message(key[, args...])` |
+| 无 lang（当前生效 locale） | `I18nKit.local(effLang).message(key[, args...])` |
+
+语言取值经 `effectivePageLang()` 选出后统一走 `local(effLang)` 绑定；有 args 用 `message(key, args...)` 插值，无 args 用 `message(key)`。
 
 **边界**：`lang` 重复 → IAE；`lang` 非法（`''` / `zh_CN_` 等）→ IAE（沿用 §6.1 AC-08-7 口径），`zh_CN` 合法并规范化为 `zh-CN`；缺 key → IAE；字符串字面量中的 `lang=` 文本不得被误判为具名参数。
 
@@ -657,9 +657,9 @@ flowchart LR
 
 ### 11.6 关键约束与唯一定义点
 
-- **薄封装**：指令只抽 `lang`、切位置、分发到 `I18nKit` 三重载；回退链、locale 规范化、locale 解析优先级、消息插值各仍只有原唯一定义点，指令层不得复制。
+- **薄封装**：指令只抽 `lang`、切位置、分发到 `I18nKit` 新 API（`local` 链式 / `message` 默认 local）；回退链、locale 规范化、locale 解析优先级、消息插值各仍只有原唯一定义点，指令层不得复制。
 - **dir 数据源**：只走 JDK `ComponentOrientation`，禁语言码→方向映射表；`#dir('xxx')` 的显式覆盖仅作用于本次页面渲染的元数据输出，**不改变** `I18nKit.bundle(...)` 导出语言包的 `dir` 值。
-- **公共面不变**：指令类置于 `internal/`（非承诺 API，可 public 供注册），不计入根/web/aifei 三包的公共面 9 类型门禁；Enjoy 类型不出现在任何公共签名。
+- **公共面不变**：指令类置于 `internal/`（非承诺 API，可 public 供注册），不计入根/web/aifei 三包的公共面 10 类型门禁；Enjoy 类型不出现在任何公共签名。
 - **依赖口径**：Enjoy 仅作指令实现与 demo 的依赖，不向消费方传递；不引非 aifei 生态第三方。
 - **异常语义**：全部沿用既有 IAE / WARN / DEBUG 口径，不为模板另设一套。
 
@@ -678,7 +678,7 @@ flowchart LR
 
 **派生结论**：
 - **零依赖改动**：`aifei-all:1.1.2` 的 shade 配置已打包 `cn.aifei:aifei-enjoy`，现有 `aifei-all(provided)` 已提供全部 Enjoy 类型，无需新增依赖坐标或改 pom。
-- **实现路径清晰**：指令继承 `Directive` → `setExprList` 中用 `instanceof Assign && getId().equals("lang")` 抽 lang（重复则 IAE）、其余按位置切 key/args → `exec` 调 `I18nKit` 对应重载 → `writer.write(...)` 输出，与 §11.3 分发映射吻合。
+- **实现路径清晰**：指令继承 `Directive` → `setExprList` 中用 `instanceof Assign && getId().equals("lang")` 抽 lang（重复则 IAE）、其余按位置切 key/args → `exec` 调 `I18nKit.local(effLang).message(...)` → `writer.write(...)` 输出，与 §11.3 分发映射吻合。
 - **具名参数语义提醒**：`Assign.eval(scope)` 会把值写入 scope（wisdom/local/global）；取 lang 值必须走 `getRight().eval(scope)` 读值，避免具名参数污染页面作用域（`#render` 用 `Ctrl.setLocalAssignment()` 包裹求值同理）。
 
 ---

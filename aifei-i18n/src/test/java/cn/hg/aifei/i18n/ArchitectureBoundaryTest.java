@@ -33,8 +33,8 @@ import org.junit.Test;
  * <pre>
  *  ① noThirdPartyReference          import 只能来自 JDK / aifei / 本模块（cache 仅 KvSource）
  *  ② frameworkScopeRules            Prop/Plugin/aop 仅在 aifei 包，core 仅在 web 包，log 仅在三处
- *  ③ publicSurfaceExact             根 6 / web 2 / aifei 1 文件名集合精确相等
- *  ④ publicSurfaceByReflection      target/classes 顶层 public 类型 FQN 精确等于 9 个
+ *  ③ publicSurfaceExact             根 7 / web 2 / aifei 1 文件名集合精确相等
+ *  ④ publicSurfaceByReflection      target/classes 顶层 public 类型 FQN 精确等于 10 个
  *  ⑤ noSqlReference                 全模块不得 import java.sql.
  *  ⑥ noJvmGlobalPropertyWrite       不得改写 JVM 全局属性 / 标准输出错误流
  *  ⑦ noServiceProvider              不得出现 ServiceLoader / META-INF/services
@@ -63,9 +63,9 @@ public class ArchitectureBoundaryTest {
     /** 唯一新增门禁例外：Enjoy 类型仅允许出现在指令实现包（design.md §16.8.1）。 */
     private static final String DIRECTIVE_PACKAGE = "cn/hg/aifei/i18n/enjoy/directive/";
 
-    private static final int EXPECTED_PUBLIC_TYPES = 6;
+    private static final int EXPECTED_PUBLIC_TYPES = 7;
     private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Arrays.asList(
-            "I18nKit.java", "FormatKit.java", "MessageSource.java",
+            "I18nKit.java", "Localizer.java", "FormatKit.java", "MessageSource.java",
             "LanguageBundle.java", "DateStyle.java", "I18nException.java"));
     private static final Set<String> EXPECTED_WEB_TYPES = new LinkedHashSet<>(Arrays.asList(
             "I18nHandler.java", "LocaleExtractor.java"));
@@ -73,6 +73,7 @@ public class ArchitectureBoundaryTest {
             "I18nPlugin.java"));
     private static final Set<String> EXPECTED_PUBLIC_FQNS = new LinkedHashSet<>(Arrays.asList(
             "cn.hg.aifei.i18n.I18nKit",
+            "cn.hg.aifei.i18n.Localizer",
             "cn.hg.aifei.i18n.FormatKit",
             "cn.hg.aifei.i18n.MessageSource",
             "cn.hg.aifei.i18n.LanguageBundle",
@@ -158,10 +159,10 @@ public class ArchitectureBoundaryTest {
 
     @Test
     public void publicSurfaceExact() throws IOException {
-        assertEquals("根包公共类型应精确 6 个", EXPECTED_ROOT_TYPES, directFiles(ROOT_PACKAGE));
+        assertEquals("根包公共类型应精确 7 个", EXPECTED_ROOT_TYPES, directFiles(ROOT_PACKAGE));
         assertEquals("web 包公共类型应精确 2 个", EXPECTED_WEB_TYPES, directFiles(WEB_PACKAGE));
         assertEquals("aifei 包公共类型应精确 1 个", EXPECTED_AIFEI_TYPES, directFiles(AIFEI_PACKAGE));
-        assertEquals("公共类型总数应为 9", 9,
+        assertEquals("公共类型总数应为 10", 10,
                 EXPECTED_ROOT_TYPES.size() + EXPECTED_WEB_TYPES.size() + EXPECTED_AIFEI_TYPES.size());
         assertEquals("根包期望常量个数", EXPECTED_PUBLIC_TYPES, EXPECTED_ROOT_TYPES.size());
     }
@@ -196,7 +197,7 @@ public class ArchitectureBoundaryTest {
                 }
             }
         }
-        assertEquals("反射口径的顶层 public 类型集合应精确为 9 个", EXPECTED_PUBLIC_FQNS, actual);
+        assertEquals("反射口径的顶层 public 类型集合应精确为 10 个", EXPECTED_PUBLIC_FQNS, actual);
     }
 
     @Test

@@ -57,7 +57,7 @@ public class QaConsistencyTest {
         int compared = 0;
         for (Map.Entry<String, String> entry : bundle.messages().entrySet()) {
             assertEquals("缓存/刷新后单点与整包对 key=" + entry.getKey() + " 应一致",
-                    entry.getValue(), I18nKit.message(entry.getKey(), locale));
+                    entry.getValue(), I18nKit.local(locale).message(entry.getKey()));
             compared++;
         }
         assertTrue("至少比对一个 key", compared > 0);
@@ -71,8 +71,8 @@ public class QaConsistencyTest {
                 .put("zh-CN", "k2", "v2");
         install(60000, src);
         // 先用单条路径填充缓存层
-        assertEquals("v1", I18nKit.message("k1", "zh-CN"));
-        assertEquals("v2", I18nKit.message("k2", "zh-CN"));
+        assertEquals("v1", I18nKit.local("zh-CN").message("k1"));
+        assertEquals("v2", I18nKit.local("zh-CN").message("k2"));
         assertBundleMatchesSingleEntry(I18nKit.bundle("zh-CN"), "zh-CN");
     }
 
@@ -83,7 +83,7 @@ public class QaConsistencyTest {
                 .put("zh-CN", "k1", "v1")
                 .put("zh-CN", "k2", "v2");
         install(60000, src);
-        I18nKit.message("k1", "zh-CN");
+        I18nKit.local("zh-CN").message("k1");
         I18nKit.refresh();
         assertBundleMatchesSingleEntry(I18nKit.bundle("zh-CN"), "zh-CN");
     }
@@ -99,9 +99,9 @@ public class QaConsistencyTest {
         LanguageBundle bundle = I18nKit.bundle("zh-CN");
         // 可列举来源覆盖的 shared：两路径一致（叠加顺序 listable 在前 → "S"）
         assertEquals("S", bundle.messages().get("shared"));
-        assertEquals("S", I18nKit.message("shared", "zh-CN"));
+        assertEquals("S", I18nKit.local("zh-CN").message("shared"));
         // 仅存于不可列举来源的 key：单条命中、整包不含
-        assertEquals("RO", I18nKit.message("remote.only", "zh-CN"));
+        assertEquals("RO", I18nKit.local("zh-CN").message("remote.only"));
         assertTrue("仅不可列举来源的 key 不应出现在整包",
                 !bundle.messages().containsKey("remote.only"));
     }

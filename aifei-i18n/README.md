@@ -47,10 +47,11 @@ plugins.add(new I18nPlugin(prop).addSource(new MyRemoteSource()));
 ### 3. 后端取文案
 
 ```java
-String text = I18nKit.message("login.title", "zh-CN");          // 显式 locale
-String text2 = I18nKit.message("hello", "en", "Bob");            // {0} 插值 → "hello Bob"
-String text3 = I18nKit.message("login.title");                   // 走四级优先级
-I18nKit.refresh();                                               // 后台改文案后全清缓存
+String text  = I18nKit.local("zh-CN").message("login.title");     // 显式 locale
+String text2 = I18nKit.local("zh-CN").message("hello", "Bob");    // {0} 插值 → "hello Bob"
+String text3 = I18nKit.message("login.title");                    // 默认 local：走四级优先级
+String text4 = I18nKit.message("hello", "Bob");                   // 默认 local + 插值
+I18nKit.refresh();                                                // 后台改文案后全清缓存
 ```
 
 未命中返回 key 原文（DEBUG 日志），不抛异常；来源运行期故障（DB 超时 / KV 不可用）WARN 后继续回退。
@@ -192,7 +193,7 @@ DirectiveRegistrar.register(engine);   // 一次注册 i18n / lang / dir，keepL
 | `#dir()` / `#dir('xxx')` | 无参读、单参写 | 读页面方向（`ltr`/`rtl`）；显式写只接受 `ltr`/`rtl`，其它 → IAE；判定只走 JDK，无自建方向表 |
 
 **语言取值唯一优先级链**：`#i18n(..., lang='xxx')`（单条局部） > `#lang('xxx')`（页面级默认） > `#lang()`（当前生效 locale）。
-局部覆盖只影响该条文案、不改写页面默认值；三条指令最终都分发到 `I18nKit` 既有重载，回退 / 规范化 / 插值零复制。
+局部覆盖只影响该条文案、不改写页面默认值；三条指令最终都分发到 `I18nKit` 新 API（`local` 链式 / `message` 默认 local），回退 / 规范化 / 插值零复制。
 
 ### ⚠ 页面级状态的 clear 责任（必须遵守）
 
@@ -210,12 +211,13 @@ try {
 ```
 
 `DirectiveRegistrar` / `DirectivePageState` / `DirectiveSupport` 与三条指令类均为 `enjoy.directive`
-下的非承诺 API（可 public 供注册，不计入公共面 9 类型）。完整可运行示例见 `aifei-i18n-demo`。
+下的非承诺 API（可 public 供注册，不计入公共面 10 类型）。完整可运行示例见 `aifei-i18n-demo`。
 
 ## 七、公开 API
 
-根包 6 个公共类型：`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；
-`web` 包 2 个：`I18nHandler` / `LocaleExtractor`；`aifei` 包 1 个：`I18nPlugin`。
+根包 7 个公共类型：`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；
+`web` 包 2 个：`I18nHandler` / `LocaleExtractor`；`aifei` 包 1 个：`I18nPlugin`，合计 10 个。
+`I18nKit.local(localeTag)` 返回不可变 `Localizer`，链式 `message(key[, args])` 绑定显式 locale；`I18nKit.message(key[, args])` 为默认 local 入口。
 公共签名只出现 JDK 与本模块类型（框架类型仅出现在 `web` 接入与 `aifei` 装配包、以及 `enjoy.directive` 指令实现）。
 
 ## 八、构建与验证

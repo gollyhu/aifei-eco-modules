@@ -4,13 +4,11 @@
 
 > **需求事实来源**：`docs/需求/aifei-i18n.md`（第四轮定档，16 条 P0 / 75 条 AC / Q1~Q9 已裁决；§十一 为 Enjoy 模板指令增量需求）。本文**不推翻任何需求结论**；需求关核对结论并入 `docs/需求/aifei-i18n.md` §十一。
 >
-> **交付性质**：`aifei-i18n` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。工程内**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构实体 / Generator / UI 页面。只有「根包公共 API 精确 6 类型 + `web` 接入包 2 类型 + `aifei` 装配包 1 类型 + `internal` 非承诺实现」。**本模块不提供 HTTP 端点**——语言包下发由消费方 Just Service 一行完成（契约见 §9.4）。
+> **交付性质**：`aifei-i18n` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。工程内**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构实体 / Generator / UI 页面。只有「根包公共 API 精确 7 类型 + `web` 接入包 2 类型 + `aifei` 装配包 1 类型 + `internal` 非承诺实现」。**本模块不提供 HTTP 端点**——语言包下发由消费方 Just Service 一行完成（契约见 §9.4）。
 >
 > **坐标**：`io.github.gollyhu:aifei-i18n:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.i18n`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（`aifei-all` 为 `provided`、`aifei-cache` 为 `optional`，junit 为 `test`）。
 >
-> **文档状态**：本文是 1.0.0 的**设计定稿，代码尚未落地**。§5 的公共类型签名、§7 的 4 个配置键名、§2 的 4 项定档结论是编码角色的**唯一依据**，变更前必须先改本文并过设计决策。
->
-> **合并留痕（2026-11-19）**：Enjoy 模板指令增量设计已整章并入本文 §16，原独立增量设计文件已删除；§1~§15 章节号与内容保持不变。增量需求来源见 `docs/需求/aifei-i18n.md` §十一。
+> **文档状态**：本文是 1.0.0 的**设计定稿（契约）**。§5 的公共类型签名、§7 的 4 个配置键名、§2 的 4 项定档结论是编码与维护的**唯一依据**，变更前必须先改本文并过设计决策。增量需求来源见 `docs/需求/aifei-i18n.md` §十一。
 
 ---
 
@@ -46,7 +44,7 @@
 
 | # | 纪律 |
 | --- | --- |
-| 1 | **根包公共 API 精确 6 个类型**：`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；**`web` 包精确 2 个**：`I18nHandler` / `LocaleExtractor`；**`aifei` 包精确 1 个**：`I18nPlugin`。合计 9 个公共类型。不得增删、不得改名；变更须先改本文 §5 并过设计决策 |
+| 1 | **根包公共 API 精确 7 个类型**：`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；**`web` 包精确 2 个**：`I18nHandler` / `LocaleExtractor`；**`aifei` 包精确 1 个**：`I18nPlugin`。合计 10 个公共类型。不得增删、不得改名；变更须先改本文 §5 并过设计决策 |
 | 2 | 公共面**零第三方类型、零框架类型**：`cn.aifei.*` 只允许出现在 `aifei` 接入包（`I18nPlugin`），`cn.hg.aifei.cache.*` 只允许出现在 `internal.source.KvSource`（且仅限方法体，不进签名）。根包与 `web` 包的公共签名**只出现** JDK 类型（`String` / `Locale` / `Date` / `TimeZone` / `Map` / `Object...` / `double`）与本模块类型 |
 | 3 | **零第三方 compile 依赖**：pom 只有 `aifei-all`（`provided`）+ `aifei-cache`（`optional`）+ `junit`（`test`）；无日志绑定、无 `java.sql` 依赖 |
 | 4 | 每类规则只有一个定义点（§6.3），实现类不得复制 |
@@ -89,7 +87,7 @@
 
 | # | 决策 | 理由（含当场实证） | 被否决的替代方案 |
 | --- | --- | --- | --- |
-| **D-1** | **公共面精确 9 类型**：根包 6（`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`）+ `web` 2（`I18nHandler` / `LocaleExtractor`）+ `aifei` 1（`I18nPlugin`）；门禁按**文件名集合精确相等 + 反射 `Modifier.isPublic` 双重断言**（§12 ③） | ① 需求 A-3 预估 `I18nKit`/`MessageSource`/`I18nException` 仅覆盖取文案；按 trace（根6+web2）与 http（根6+门禁集合精确）同构，格式化入口扩充为独立 `FormatKit`（薄门面，职责与取文案正交），整包导出需值对象 `LanguageBundle`，档位需枚举 `DateStyle`（定档 D-3），共 6 根包类型；② 按文件名集合精确相等可防「同名替换 / 悄悄增删」（http 门禁 ⑤ 已验证形态）；③ 反射断言补「源码扫描漏掉的 public 类型」；④ `web` 接入构件与 `aifei` 装配包分列，不让框架类型污染根包 | ① 只断言数量：无法防同名替换；② 只按反射扫 class：依赖先 `compile`，源码文本扫描更稳，故两者并用；③ 把 `I18nHandler` 塞进根包：`cn.aifei.core.*` 污染公共面且包边界不可断言；④ 把 `I18nPlugin` 塞进根包：违反 `cn.aifei.*` 仅 `aifei` 包的纪律 |
+| **D-1** | **公共面精确 10 类型**：根包 7（`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`）+ `web` 2（`I18nHandler` / `LocaleExtractor`）+ `aifei` 1（`I18nPlugin`）；门禁按**文件名集合精确相等 + 反射 `Modifier.isPublic` 双重断言**（§12 ③） | ① 需求 A-3 预估 `I18nKit`/`MessageSource`/`I18nException` 仅覆盖取文案；按 trace（根6+web2）与 http（根6+门禁集合精确）同构，格式化入口扩充为独立 `FormatKit`（薄门面，职责与取文案正交），整包导出需值对象 `LanguageBundle`，档位需枚举 `DateStyle`（定档 D-3），`Localizer` 为 `I18nKit.local` 返回的不可变链式载体、与 Kit 正交，仍零第三方/框架类型，共 7 根包类型；② 按文件名集合精确相等可防「同名替换 / 悄悄增删」（http 门禁 ⑤ 已验证形态）；③ 反射断言补「源码扫描漏掉的 public 类型」；④ `web` 接入构件与 `aifei` 装配包分列，不让框架类型污染根包 | ① 只断言数量：无法防同名替换；② 只按反射扫 class：依赖先 `compile`，源码文本扫描更稳，故两者并用；③ 把 `I18nHandler` 塞进根包：`cn.aifei.core.*` 污染公共面且包边界不可断言；④ 把 `I18nPlugin` 塞进根包：违反 `cn.aifei.*` 仅 `aifei` 包的纪律 |
 | **D-2** | **`messages` key 排序 = Java `String` 自然序（`compareTo`，UTF-16 code unit 升序）**，对 i18n 常见的 ASCII/BMP key 即 A-2 建议的「字典序（Unicode 码点）升序」；**唯一定义点 = `internal.BundleExporter` 用 `TreeMap<String,String>` 收集**，契约文档（§5.4 / §9.7）写明并稳定 | ① A-2 已建议字典序且「设计关选其它序须写明」，采纳建议避免分歧；② `TreeMap` 自然序是 JDK 唯一稳定实现，无需自建比较器（自建即第二定义点）；③ 编码角色与测试可用同一 `String.compareTo` 断言，不引入歧义；④ i18n key 惯用 ASCII（`login.title`），与码点序一致，无代理对边界问题 | ① 按插入序（`LinkedHashMap`）：来源声明顺序变化时 key 序漂移，破坏 AC-09-3；② 按 locale 排序（Collator）：依赖 JDK locale 数据，跨 provider 不稳；③ 自建码点比较器：多一个定义点且对代理对处理易错 |
 | **D-3** | **非法档位采用「枚举编译期类型检查」**（`DateStyle` 枚举，仅 `SHORT`/`MEDIUM`/`LONG`/`FULL` 四个合法构造），**不做运行期「任意档位值→IAE」分支**；**`null` 档位按 null 口径抛 `IllegalArgumentException`**。二者取其一已明确选枚举 | ① 需求 §5.8⑥/⑧与 AC-16-9 允许「二者取其一」；枚举把非法值挡在**编译期**，比运行期断言更早、更省；② 档位与 JDK `DateFormat` 四常量一一对应，枚举是自然映射；③ `null` 是唯一可在运行期构造的「非四档」输入，按 §5.8⑥ null 口径抛 IAE，不留静默默认；④ 本设计**没有**选 IAE 路径，故不定义任何字符串档位解析入口 | ① 用 `int`/`String` 档位 + 运行期 IAE：把编译期可查的错误推迟到运行期，且需自建字符串→档位映射表（触「零自建规则数据」）；② 两者都做：冗余且给调用方「签名为何是宽松类型」的错误暗示 |
 | **D-4** | **`dir` 判定 API = `java.awt.ComponentOrientation.getOrientation(Locale).isLeftToRight()`；Java 8 可用（已实测）；Java 9+ jlink 须保留 `java.desktop`；不可用降级 `ltr` + WARN。`唯一定义点 = internal.LocaleMeta#dir`** | ① 需求 Q9 硬边界：禁自建语言码→方向表，只能走 JDK 公开 API；② **实证**：`javac --release 8` 编译通过，运行 `ar`/`he`/`fa-IR`→`isLeftToRight()==false`（RTL），`zh-CN`/`en-US`→`true`（LTR）；③ `ComponentOrientation` 在 Java 8 无模块系统随 JDK 提供，Java 9+ 位于 `java.desktop`，jlink 裁剪环境须保留（README 显式声明）；④ 降级用 `catch (LinkageError\|RuntimeException)` 包裹，返回 `ltr` + `Log.warn`（含 locale），不改 JSON 形状、不阻断导出 | ① 自建 RTL 语言码集合：违反 Q9 与 §3.3⑤，且语言/地区方向会变化长期失修；② 让判定失败直接抛异常：AC-14-5 要求导出仍成功；③ 无 WARN 静默降级：不可观测，违反 Q9 裁决 |
@@ -162,27 +160,25 @@
 | --- | --- | --- |
 | A-1 | 空串译文视为命中 | D-14：`MessageSource#get` 用 `null` 表未命中，空串为命中；`FallbackChain` 只对 `null` 回退 |
 | A-2 | `messages` key 字典序升序 | D-2：`TreeMap` 自然序，唯一定义点 `BundleExporter` |
-| A-3 | 公共面类型与数量由设计关定档 | D-1：精确 9 类型（根 6 + web 2 + aifei 1），门禁文件名集合 + 反射双重断言 |
+| A-3 | 公共面类型与数量由设计关定档 | D-1：精确 10 类型（根 7 + web 2 + aifei 1），门禁文件名集合 + 反射双重断言 |
 | A-4 | P0 精确匹配，无语言级宽松匹配 | `internal.LocaleResolver` 只做规范化后精确匹配；`zh`↔`zh-CN` 落默认（P1） |
 | A-5 | `dir` API 可用，不可用降级 `ltr` + WARN | D-4 + E-1；`LocaleMeta#dir` 降级分支 + WARN |
 | A-6 | 货币符号/小数位取自 JDK `Currency`，不自建 | E-5；`FormatSupport` 读 `Currency.getDefaultFractionDigits()` |
 
 ---
 
-## 5. 公共 API 契约（根包 6 + web 2 + aifei 1）
+## 5. 公共 API 契约（根包 7 + web 2 + aifei 1）
 
-根包 `cn.hg.aifei.i18n`、子包 `cn.hg.aifei.i18n.web`、`cn.hg.aifei.i18n.aifei` 共 **9 个公共类型**，为本节与门禁 `EXPECTED_ROOT_TYPES` / `EXPECTED_WEB_TYPES` / `EXPECTED_AIFEI_TYPES` 的**唯一事实来源**。逐字签名如下（**编码角色照抄**；`static` 与否、返回类型、异常声明均不得改动）。
+根包 `cn.hg.aifei.i18n`、子包 `cn.hg.aifei.i18n.web`、`cn.hg.aifei.i18n.aifei` 共 **10 个公共类型**，为本节与门禁 `EXPECTED_ROOT_TYPES` / `EXPECTED_WEB_TYPES` / `EXPECTED_AIFEI_TYPES` 的**唯一事实来源**。逐字签名如下（**编码角色照抄**；`static` 与否、返回类型、异常声明均不得改动）。
 
-### 5.1 `I18nKit`（公共静态门面，`final`）——取文案 / 导出 / 刷新
+### 5.1 `I18nKit`（公共静态门面，`final`）——显式 locale / 默认取文案 / 导出 / 刷新
 
 ```java
 public final class I18nKit {
 
-    public static String message(String key);
+    public static Localizer local(String localeTag);
 
-    public static String message(String key, String localeTag);
-
-    public static String message(String key, String localeTag, Object... args);
+    public static String message(String key, Object... args);
 
     public static LanguageBundle bundle(String localeTag);
 
@@ -192,15 +188,36 @@ public final class I18nKit {
 
 | 方法 | 契约 | 非法入参 |
 | --- | --- | --- |
-| `message(key)` | 等价 `message(key, null)`：locale 走 §5.5 优先级解析 | `key == null`/空白 → `IllegalArgumentException` |
-| `message(key, localeTag)` | 取单条文案；`localeTag` 为 BCP 47 字符串（可下划线写法，先规范化）；走 `FallbackChain`；未命中回 key 原文 + DEBUG；来源故障 WARN 后继续 | 同上；`localeTag` 显式非法（如 `zh_CN_`、`""`）→ `IllegalArgumentException`（Q8） |
-| `message(key, localeTag, args)` | 命中后用 `MessageFormat` 风格 `{0}` 位置插值；**缺参占位符原样保留、不抛**（E-6）；`args` 为 `null` 或空数组等价无参数 | 同上 |
+| `local(localeTag)` | 显式 locale 的唯一入口：当场把 `localeTag` 交 `LocaleNormalizer.normalize` 规范化，返回不可变 `Localizer`（§5.1.1）；链式 `I18nKit.local(localeTag).message(key[, args])` | `localeTag` 为 `null`/空白/非法 BCP 47 → `IllegalArgumentException`（§8.3 逐字）；`zh_CN` → `zh-CN` |
+| `message(key, args)` | 默认 local 入口：locale 走 §5.5 四级优先级解析（`args` 缺省即无参数）；命中后用 `MessageFormat` 风格 `{0}` 位置插值，**缺参占位符原样保留、不抛**（E-6）；`args` 为 `null` 或空数组等价无参数 | `key == null`/空白 → `IllegalArgumentException`（§8.3 逐字，`I18nEngine#message` 统一抛）；无显式 locale 参数 |
 | `bundle(localeTag)` | 整包导出：**显式 locale，不受上下文影响**（AC-09-4）；四字段 + 有序 messages；不可列举来源跳过 + WARN；`dir` 不可用时 `ltr` + WARN | `localeTag` 非法 → `IllegalArgumentException`（AC-14-3） |
 | `refresh()` | 显式全清所有来源本地缓存（含 db/kv 懒缓存与 `properties` 快照重建标记）；`properties` 资源仍须重启才变（AC-07-4） | — |
 
 - **有状态门面**：`final` + 私有构造，零实例字段；全部方法经 `internal.I18nHolder` 取当前 `I18nEngine`——**未装配 / 已停止 → `I18nException`**（不静默返回 `null`）。
-- 门面**只做参数校验 + 转发**，不重复实现回退/解析/排序（§6.3）。
+- 门面转发，`key` 校验与规则均在 engine/规则类唯一定义点（§6.3），本类不重复实现。
 - 线程安全：底层注册表与规则类只读；缓存层内部并发安全（§6.2）。
+
+### 5.1.1 `Localizer`（公共不可变链式载体，`final`）
+
+```java
+public final class Localizer {
+
+    Localizer(String normalizedLocaleTag);   // 包级构造，仅同包 I18nKit 可 new
+
+    public String message(String key);
+
+    public String message(String key, Object... args);
+}
+```
+
+| 项 | 契约 |
+| --- | --- |
+| 构造 | 包级构造，入参是**已规范化**的 locale tag（由 `I18nKit.local` 当场经 `LocaleNormalizer.normalize` 产出）；外部不可直接 new、无 getter |
+| 不可变 / 可复用 | 仅持一个 `final String localeTag`，无状态变更；同一 `Localizer` 可反复调用 `message`、可跨线程复用 |
+| `message(key)` | 等价 `message(key, new Object[0])`：转发 `I18nHolder.engine().message(key, localeTag, args)` |
+| `message(key, args)` | 命中后用 `{0}` 位置插值（缺参原样保留）；`key` 校验由 `I18nEngine#message` 统一抛（§8.3 逐字） |
+| 二次规范化幂等 | `local` 已规范化一次；`I18nEngine#message` 内 `LocaleResolver.resolve` 再对已规范化 tag 规范化，结果不变（幂等），链路无第二套规则 |
+| 公共面纯净 | 仅 import `internal.I18nHolder` 与 JDK 类型；公共签名零第三方/框架类型；不复制规范化/回退/插值规则（各有唯一定义点） |
 
 ### 5.2 `FormatKit`（公共静态门面，`final`）——Locale 贯通的格式化薄门面
 
@@ -405,16 +422,17 @@ public class I18nPlugin implements Plugin {
 
 ### 5.10 公共面计数口径（供门禁复用）
 
-- 「根包公共类型」= `src/main/java/cn/hg/aifei/i18n/` **直接子级** `.java` 文件（不含子包）：`I18nKit.java` / `FormatKit.java` / `MessageSource.java` / `LanguageBundle.java` / `DateStyle.java` / `I18nException.java` —— **精确 6 个**。
+- 「根包公共类型」= `src/main/java/cn/hg/aifei/i18n/` **直接子级** `.java` 文件（不含子包）：`I18nKit.java` / `Localizer.java` / `FormatKit.java` / `MessageSource.java` / `LanguageBundle.java` / `DateStyle.java` / `I18nException.java` —— **精确 7 个**。
 - 「web 包公共类型」= `.../i18n/web/` 直接子级：`I18nHandler.java` / `LocaleExtractor.java` —— **精确 2 个**。
 - 「aifei 包公共类型」= `.../i18n/aifei/` 直接子级：`I18nPlugin.java` —— **精确 1 个**。
-- 反射断言：`target/classes` 下顶层 public 类型（过滤含 `$` 的嵌套/匿名类）集合**精确等于**上述 9 个全限定名。
+- 反射断言：`target/classes` 下顶层 public 类型（过滤含 `$` 的嵌套/匿名类）集合**精确等于**上述 10 个全限定名。
 
 ### 5.11 命名依据（`Kit` / 接口 / 值对象 / 枚举 / 异常）
 
 | 类型 | 形态 | 命名依据（根 `AGENTS.md` 命名约定） |
 | --- | --- | --- |
 | `I18nKit` / `FormatKit` | `public final` + 私有构造 + 全 static | **有状态门面**：需先经 `I18nPlugin.start()` 装配、再取实例才能干活；未装配失败 → `Kit`（去掉入参就产不出结果，非 `Util`） |
+| `Localizer` | `public final` + 包级构造 + 两实例方法 | **不可变链式载体**：由 `I18nKit.local` 返回的、绑定已规范化 locale 的取值器；名词（载体），与门面正交 |
 | `MessageSource` | `public interface` | 行为角色用名词 `XxxSource`（来源扩展点） |
 | `LanguageBundle` | `public final` 值对象 | 值对象按 Java 习惯用名词 |
 | `DateStyle` | `public enum` | 枚举表意，对应 JDK `FormatStyle` 四档 |
@@ -429,7 +447,7 @@ public class I18nPlugin implements Plugin {
 ### 6.1 包结构与依赖方向
 
 ```text
-cn.hg.aifei.i18n                 根包：6 公共类型（门面 + 扩展点 + 值对象 + 枚举 + 异常）
+cn.hg.aifei.i18n                 根包：7 公共类型（门面 + 链式载体 + 扩展点 + 值对象 + 枚举 + 异常）
 cn.hg.aifei.i18n.web             接入包：2 公共类型（Handler 链接入）
 cn.hg.aifei.i18n.aifei           装配包：1 公共类型（I18nPlugin，唯一 Prop/Plugin）
 cn.hg.aifei.i18n.internal        非承诺实现（规则类 + 引擎）
@@ -455,6 +473,7 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 
 | 类型 | 职责 |
 | --- | --- |
+| `Localizer` | 不可变链式载体：持有 `I18nKit.local` 传入的已规范化 tag；`message(key[, args])` 纯转发 `I18nHolder.engine().message(key, localeTag, args)`，零规则复制 |
 | `internal.I18nConfig` | **★ 4 配置键名/默认值/解析/校验/非法消息唯一定义点**：`parse(Properties)`；`defaultLocale()`（必填）/ `locales()`（可空=不设白名单）/ `sources()`（默认 `["properties"]`）/ `cacheTtlMillis()`（默认 60000，≤0 不缓存） |
 | `internal.LocaleNormalizer` | **★ locale 规范化 + 严格 BCP47 校验唯一定义点**：`normalize(String)`（`_`→`-` + `Locale.Builder`）；`tryNormalize(String)`（请求头用，非法返回 `null` 不抛） |
 | `internal.LocaleResolver` | **★ 生效 locale 四级优先级唯一定义点**：`resolve(String explicit)`（显式>上下文>默认）；**★ Accept-Language 解析唯一定义点**：`parseAcceptLanguage(String raw)`（首个受支持语种，非法片段静默忽略） |
@@ -467,7 +486,7 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 | `internal.BundleExporter` | **★ 整包导出唯一定义点**：`export(localeTag, sources)`——按序合并可列举来源（先命中先返回）+ `TreeMap` 稳定排序（D-2）+ 原文 value + 不可列举/故障跳过 WARN + 装配四字段 |
 | `internal.LocaleMeta` | **★ `localeName` / `dir` 判定唯一定义点**：`localeName(Locale)`（`getDisplayName`）；`dir(Locale)`（`ComponentOrientation` + `catch(LinkageError\|RuntimeException)` 降级 `ltr` + WARN，D-4） |
 | `internal.FormatSupport` | **★ 格式化薄封装唯一定义点**：`number` / `percent` / `currency` / `date` / `dateTime` + `toJdkStyle`（枚举映射）+ 参数校验（null/币种/时区/档位） + 小数位取自 `Currency`（E-5） + locale 经 `LocaleResolver` 解析 |
-| `internal.I18nEngine` | **★ 编排门面后端**：持有 config / sources / cache；`message` / `bundle` / `refresh` / 格式化转发到上述规则类；本身不实现规则 |
+| `internal.I18nEngine` | **★ 编排门面后端 + key 非空校验唯一定义点**：持有 config / sources / cache；`message` 首行校验 `key`（空/空白 → IAE，§8.3 逐字）后再委派 `LocaleResolver`；`message` / `bundle` / `refresh` 转发到上述规则类；本身不实现回退/解析/插值规则 |
 | `defaultSource.PropertiesSource` | classpath 资源启动期全量载入内存（`name=properties`）；`refresh()` 无操作（须重启）；零第三方 |
 | `defaultSource.DbSource` | 只读查询（`name=db`），参数化 SQL，不执行 DDL；按 key 懒缓存；可列举（D-6）；SQL 由消费方建表（§9.5） |
 | `defaultSource.KvSource` | 经 `CacheKit`（`aifei-cache`，optional）命中（`name=kv`）；按 key 懒缓存；不可列举（`list()` 返回 `null`，D-6）；类加载期依赖防护见 §6.1 |
@@ -477,6 +496,7 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 
 | 规则 | 唯一定义点 |
 | --- | --- |
+| `key` 非空校验（空/空白 → IAE，消息 §8.3 逐字） | `internal.I18nEngine#message` |
 | 配置键名 / 默认值 / 解析 / 校验 / 非法消息 | `internal.I18nConfig` |
 | locale 规范化（`_`→`-`、语言小写、地区大写、脚本首字母大写）与严格 BCP47 校验 | `internal.LocaleNormalizer` |
 | 生效 locale 四级优先级 + Accept-Language 首个受支持语种解析 | `internal.LocaleResolver` |
@@ -562,7 +582,7 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 | 场景 | 消息（逐字模板） |
 | --- | --- |
 | 显式非法 locale / 导出非法 locale | `locale 非法: <原值>（不是合法 BCP 47）` |
-| `I18nKit#message` key 空白 | `key 不能为空` |
+| `I18nEngine#message` key 空白（经 `I18nKit.message` / `Localizer.message` 转发） | `key 不能为空` |
 | 格式化 null 值 / 币种 / 时区 / 档位 | `值不能为 null` / `币种代码不能为 null` / `时区不能为 null` / `档位不能为 null` |
 | 非法币种 | `币种代码非法: <原值>`（由 `Currency.getInstance` 的 IAE 透传，消息以 JDK 为准；模块包装时沿用本模板） |
 | 非法时区 | `时区非法: <原值>`（由 `ZoneId.of` 转换） |
@@ -586,20 +606,21 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 
 ```text
 装配期：plugins.add(new I18nPlugin(prop));
-请求期：String text = I18nKit.message("login.title", "zh-CN", "Bob");
-        → 生效 locale = 显式 zh-CN（规范化）
+请求期：String text = I18nKit.local("zh-CN").message("login.title", "Bob");
+        → local 当场规范化 locale = 显式 zh-CN
+        → 生效 locale = 显式 zh-CN
         → FallbackChain: zh-CN 逐来源 → 默认 locale 逐来源 → key 原文
         → 命中 "hello {0}" → MessageInterpolator → "hello Bob"
 ```
 
 ### 9.2 模板渲染取文案（D-02 端到端用例 2，等价输出断言）
 
-需求 Q7 裁决**不新建 demo**：模板渲染用例落模块测试内。思路：在测试中构造「模板函数 → `I18nKit.message(key, locale)`」的最小包装（等价消费方 Enjoy 模板函数 `I18nKit.message(...)` 的一行调用），断言其输出与服务层同一 key/locale 逐字相等：
+需求 Q7 裁决**不新建 demo**：模板渲染用例落模块测试内。思路：在测试中构造「模板函数 → `I18nKit.local("zh-CN").message(k)`」的最小包装（等价消费方 Enjoy 模板函数的一行调用），断言其输出与服务层同一 key/locale 逐字相等：
 
 ```text
 // 测试内：模拟模板函数（与消费方模板函数形态一致）
-Function<String,String> tpl = k -> I18nKit.message(k, "zh-CN");
-assertEquals(I18nKit.message("login.title", "zh-CN"), tpl.apply("login.title"));
+Function<String,String> tpl = k -> I18nKit.local("zh-CN").message(k);
+assertEquals(I18nKit.local("zh-CN").message("login.title"), tpl.apply("login.title"));
 ```
 
 > 该断言证明「同一入口、同一回退语义」在模板路径成立；不引入 Enjoy 依赖（零第三方）。
@@ -681,11 +702,18 @@ classDiagram
 
     class I18nKit {
         <<final, 全 static>>
-        +message(String)$ String
-        +message(String, String)$ String
-        +message(String, String, Object...)$ String
+        +local(String)$ Localizer
+        +message(String, Object...)$ String
         +bundle(String)$ LanguageBundle
         +refresh()$ void
+    }
+
+    class Localizer {
+        <<final, 不可变链式载体>>
+        -String localeTag
+        ~Localizer(String)
+        +message(String) String
+        +message(String, Object...) String
     }
 
     class FormatKit {
@@ -834,7 +862,7 @@ classDiagram
 
     class I18nEngine {
         <<internal>>
-        +message(String, String) String
+        +message(String, String, Object...) String
         +bundle(String) LanguageBundle
         +refresh() void
     }
@@ -875,6 +903,8 @@ classDiagram
     I18nHandler ..> LocaleResolver : parseAcceptLanguage
     I18nHandler ..> LocaleContext : set / clear
     I18nKit ..> I18nHolder : 取引擎
+    I18nKit ..> Localizer : local 返回（包级构造）
+    Localizer ..> I18nHolder : message 取引擎
     I18nHolder o-- I18nEngine
     FormatKit ..> FormatSupport : 薄封装
     FormatSupport ..> LocaleResolver : 复用 locale 解析
@@ -891,7 +921,7 @@ classDiagram
     SourceRegistry o-- MessageSource : 按序持有
 ```
 
-> 类图事实要点：公共 9 类型（根 6 + web 2 + aifei 1）+ `internal` 11 规则类 + `defaultSource` 3 默认来源 + 3 框架类型（`Handler`/`Input`/`Prop`，均属已定档例外）。**没有** Controller / Service / DTO / Mapper / SPI / 配置类进入公共面。
+> 类图事实要点：公共 10 类型（根 7 + web 2 + aifei 1）+ `internal` 11 规则类 + `defaultSource` 3 默认来源 + 3 框架类型（`Handler`/`Input`/`Prop`，均属已定档例外）。**没有** Controller / Service / DTO / Mapper / SPI / 配置类进入公共面。
 
 ### 10.2 时序图 ①：服务层取文案（含回退 + 缓存 + 插值）
 
@@ -900,6 +930,7 @@ sequenceDiagram
     autonumber
     participant Biz as 业务 Service
     participant Kit as I18nKit
+    participant Loc as Localizer
     participant Holder as I18nHolder
     participant Eng as I18nEngine
     participant LR as LocaleResolver
@@ -910,12 +941,14 @@ sequenceDiagram
     participant S2 as 来源2
     participant MI as MessageInterpolator
 
-    Biz->>Kit: message("hello {0}", "zh_CN", "Bob")
-    Kit->>Kit: key 非空校验
-    Kit->>Holder: engine()（未装配 → I18nException）
-    Kit->>Eng: message(key, "zh_CN", args)
-    Eng->>LR: resolve("zh_CN")
-    LR->>LR: LocaleNormalizer.normalize → "zh-CN"（显式优先）
+    Biz->>Kit: local("zh_CN").message("hello {0}", "Bob")
+    Kit->>Kit: local 规范化 "zh_CN" → "zh-CN"，返回 Localizer
+    Kit-->>Loc: 返回 Localizer（绑定 "zh-CN"）
+    Loc->>Holder: engine()（未装配 → I18nException）
+    Loc->>Eng: message(key, "zh-CN", args)（key 非空校验在此）
+    Note over Eng: I18nEngine#message 首行校验 key（空/空白 → IAE）
+    Eng->>LR: resolve("zh-CN")
+    LR->>LR: LocaleNormalizer 二次规范化 → "zh-CN"（幂等，显式优先）
     LR-->>Eng: "zh-CN"
     Eng->>FC: get(key, "zh-CN", sources, defaultLocale, cache)
     FC->>Cache: get(key, "zh-CN", loader=逐来源查)
@@ -979,7 +1012,7 @@ sequenceDiagram
 
     rect rgb(245,245,245)
     Note over Biz,Log: 取文案：db 故障 → 继续回退
-    Biz->>Kit: message("login.title", "zh-CN")
+    Biz->>Kit: local("zh-CN").message("login.title")
     Kit->>FC: get(...)
     FC->>DB: get(key, "zh-CN")
     DB--xFC: 抛 RuntimeException（DB 超时）
@@ -1045,9 +1078,9 @@ private static final String WEB_PACKAGE      = "cn/hg/aifei/i18n/web/";
 private static final String AIFEI_PACKAGE    = "cn/hg/aifei/i18n/aifei/";
 private static final String INTERNAL_PACKAGE = "cn/hg/aifei/i18n/internal/";
 private static final String DEFAULT_SRC      = "cn/hg/aifei/i18n/defaultSource/";
-private static final int    EXPECTED_PUBLIC_TYPES = 6;
+private static final int    EXPECTED_PUBLIC_TYPES = 7;
 private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Arrays.asList(
-        "I18nKit.java", "FormatKit.java", "MessageSource.java",
+        "I18nKit.java", "Localizer.java", "FormatKit.java", "MessageSource.java",
         "LanguageBundle.java", "DateStyle.java", "I18nException.java"));
 private static final Set<String> EXPECTED_WEB_TYPES = new LinkedHashSet<>(Arrays.asList(
         "I18nHandler.java", "LocaleExtractor.java"));
@@ -1063,8 +1096,8 @@ private static final Set<String> EXPECTED_AIFEI_TYPES = new LinkedHashSet<>(Arra
 | --- | --- | --- | --- |
 | ① | `noThirdPartyReference` | 每个 `.java` 的每条 `import`：FQN 必须以 `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.i18n.` / `cn.hg.aifei.cache.`（仅 `KvSource`）之一开头，否则失败 | AC-13-1 |
 | ② | `frameworkScopeRules` | `cn.aifei.util.Prop` / `cn.aifei.plugin.Plugin` / `cn.aifei.aop.*` 只允许在 `AIFEI_PACKAGE`；`cn.aifei.core.*` 只允许在 `WEB_PACKAGE`；`cn.aifei.log.*` 只允许在 `INTERNAL_PACKAGE` 的三个 WARN 记录类与 `AIFEI_PACKAGE`；其余 `cn.aifei.*` 一律失败 | AC-13-1 |
-| ③ | `publicSurfaceExact` | 根包直接子文件数精确 = 6 且集合 = `EXPECTED_ROOT_TYPES`；web 包 = 2 且集合 = `EXPECTED_WEB_TYPES`；aifei 包 = 1 且集合 = `EXPECTED_AIFEI_TYPES`（文件名精确相等，防同名替换/增删） | AC-13-2 |
-| ④ | `publicSurfaceByReflection` | 编译产物存在时，扫描 `target/classes` 顶层 `.class`（过滤 `$`），`Modifier.isPublic` 的类型 FQN 集合**精确等于**根 6 + web 2 + aifei 1 的 9 个 FQN（防源码扫描漏报） | AC-13-2 |
+| ③ | `publicSurfaceExact` | 根包直接子文件数精确 = 7 且集合 = `EXPECTED_ROOT_TYPES`；web 包 = 2 且集合 = `EXPECTED_WEB_TYPES`；aifei 包 = 1 且集合 = `EXPECTED_AIFEI_TYPES`（文件名精确相等，防同名替换/增删） | AC-13-2 |
+| ④ | `publicSurfaceByReflection` | 编译产物存在时，扫描 `target/classes` 顶层 `.class`（过滤 `$`），`Modifier.isPublic` 的类型 FQN 集合**精确等于**根 7 + web 2 + aifei 1 的 10 个 FQN（防源码扫描漏报） | AC-13-2 |
 | ⑤ | `noSqlReference` | 全模块任何 `.java` 不得 `import java.sql.`（零 DB 依赖，db 来源走框架 `cn.aifei.db` 且仅在方法体） | REQ-P0-06 |
 | ⑥ | `noJvmGlobalPropertyWrite` | 不得出现 `System.setProperty` / `System.getProperties().put` / `System.setOut` / `System.setErr`（禁 JVM 全局写） | §1.3 |
 | ⑦ | `noServiceProvider` | 全模块不得出现 `ServiceLoader` / `META-INF/services` 字面量；`src/main/resources` 下不得存在 `META-INF/services/` 目录（无 SPI/Plugin 偷装） | D-5 |
@@ -1130,9 +1163,9 @@ mvn dependency:tree                             # 断言：aifei-all(provided) +
 
 ## 14. 文件清单与有序任务分解
 
-### 14.1 文件清单（待创建 39 个：主源 25 + 测试 10 + 模块文档/构建 4）
+### 14.1 文件清单（待创建 40 个：主源 26 + 测试 10 + 模块文档/构建 4）
 
-> 计数口径：主源 25 = 根包 6 + web 2 + aifei 1 + internal 13 + defaultSource 3；测试 10；模块文档/构建 4 = `pom.xml` + `README.md` + `AGENTS.md` + `docs/testing.md`。另有 `docs/design.md`（本文，已产出）与仓库根 `README.md`（模块总览加一行，归属 T12）不计入 39。每个待创建文件**恰好归属** T01–T12 中的一个任务（见 §14.2）。
+> 计数口径：主源 26 = 根包 7 + web 2 + aifei 1 + internal 13 + defaultSource 3；测试 10；模块文档/构建 4 = `pom.xml` + `README.md` + `AGENTS.md` + `docs/testing.md`。另有 `docs/design.md`（本文，已产出）与仓库根 `README.md`（模块总览加一行，归属 T12）不计入 40。每个待创建文件**恰好归属** T01–T12 中的一个任务（见 §14.2）。
 
 ```text
 aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1.0.0（packaging=jar）
@@ -1144,7 +1177,8 @@ aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1
 │   └── testing.md                                # 测试策略与用例清单（测试角色产出）
 └── src/
     ├── main/java/cn/hg/aifei/i18n/
-    │   ├── I18nKit.java                          ┐ 根包 6 公共类型
+    │   ├── I18nKit.java                          ┐ 根包 7 公共类型
+    │   ├── Localizer.java                        │
     │   ├── FormatKit.java                        │
     │   ├── MessageSource.java                    │
     │   ├── LanguageBundle.java                   │
@@ -1300,8 +1334,6 @@ aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1
 
 ## 16. Enjoy 模板指令增量设计
 
-> **合并留痕（2026-11-19）**：本章由 Enjoy 模板指令增量设计（阶段二 Demo 实现）整章并入，原独立增量设计文件已删除。合并后本文 §1~§15 章节号与内容一字未改；原增量文档 §0~§10 依次降为本章 §16.1~§16.11，其内部小节同步重编；文内原指向独立设计文件的「原 design §x」类表述统一改为「本文 §x」，对增量需求的引用改为 `docs/需求/aifei-i18n.md` §11.x。
->
 > **事实来源**：`docs/需求/aifei-i18n.md` §十一（§11.3 指令契约、§11.5 AC-INC-01~13、§11.6 唯一定义点、§11.7 spike 结论、§11.9 P-01~P-06、§11.10 交付物）；已确认阶段一原型 `docs/原型/aifei-i18n/index.html` + `README.md`；模块 `AGENTS.md`；本文 §1~§15。
 >
 > **版本纪律**：`aifei-i18n` 仍为 `1.0.0`，**不递增**；新建示例工程 `aifei-i18n-demo` 同为 `1.0.0`（示例工程，不发布）。
@@ -1314,7 +1346,7 @@ aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1
 
 ```
 aifei-i18n（库模块 SDK，既有）
-└─ enjoy/directive/（新增，非承诺实现，public 供注册，不计入公共面 9 类型）
+└─ enjoy/directive/（新增，非承诺实现，public 供注册，不计入公共面 10 类型）
    ├─ I18nDirective   → #i18n(...)  取文案（薄封装分发）
    ├─ LangDirective   → #lang() / #lang('xxx')  页面语言读写
    ├─ DirDirective    → #dir() / #dir('xxx')   页面方向读写
@@ -1327,7 +1359,7 @@ aifei-i18n-demo（新建示例工程，不发布，端口 18170）
    → I18nKit.bundle(locale) 下发语言包 JSON（前端控件文案）→ FormatKit 货币展示
 ```
 
-**数据流（一句话）**：模板指令只做「抽 `lang` + 切位置 + 选语言层 + 调 `I18nKit` 既有重载」；选中 locale 后，规范化（`LocaleNormalizer`）、四级优先级（`LocaleResolver`）、回退链/插值（`I18nKit`→`FallbackChain`/`MessageInterpolator`）、dir 判定与降级（`LocaleMeta`）**全部复用本文 §1~§15 的唯一定义点**，指令层零复制。
+**数据流（一句话）**：模板指令只做「抽 `lang` + 切位置 + 选语言层 + 调 `I18nKit` 新 API（`local` 链式 / `message` 默认 local）」；选中 locale 后，规范化（`LocaleNormalizer`）、四级优先级（`LocaleResolver`）、回退链/插值（`I18nKit`→`FallbackChain`/`MessageInterpolator`）、dir 判定与降级（`LocaleMeta`）**全部复用本文 §1~§15 的唯一定义点**，指令层零复制。
 
 #### 16.1.2 技术选型与实证记录（选型门禁）
 
@@ -1348,16 +1380,16 @@ aifei-i18n-demo（新建示例工程，不发布，端口 18170）
 #### 16.2.1 增量目标（对齐 `docs/需求/aifei-i18n.md` §11.1 成功标准）
 
 1. 三条指令在真实 Enjoy 引擎跑通，`lang` 位置无关提取规则单一、可测试；
-2. 指令层只做「抽 lang + 切位置 + 分发到 I18nKit 既有重载」，零新增回退/规范化/插值逻辑；
-3. 公共面精确 9 类型与「公共签名零第三方/框架类型」约束不变。
+2. 指令层只做「抽 lang + 切位置 + 分发到 I18nKit 新 API（local 链式/message 默认 local）」，零新增回退/规范化/插值逻辑；
+3. 公共面精确 10 类型与「公共签名零第三方/框架类型」约束不变。
 
 #### 16.2.2 继续有效的既有条款（明确不变更）
 
 | 来源 | 继续有效的条款 |
 | --- | --- |
 | `docs/需求/aifei-i18n.md` §一~§十 | Q1~Q9 裁决、16 条 P0 / 75 条 AC，除 §11.2 明示变更（Q7 突破）外全部有效 |
-| 本文 §1~§15 | §5 公共 API 逐字签名（9 类型）、§6.3 全部唯一定义点、§7 四个配置键、§8.3 异常逐字表、§11 双门禁、§12 依赖、§14 任务、§15 AC 映射 |
-| AGENTS.md | 公共面 9 类型不变；零新增依赖坐标；零 pom 改动；Java 8 语法/API；简体中文注释；dir 只走 JDK；非零第三方生态依赖 |
+| 本文 §1~§15 | §5 公共 API 逐字签名（10 类型）、§6.3 全部唯一定义点、§7 四个配置键、§8.3 异常逐字表、§11 双门禁、§12 依赖、§14 任务、§15 AC 映射 |
+| AGENTS.md | 公共面 10 类型不变；零新增依赖坐标；零 pom 改动；Java 8 语法/API；简体中文注释；dir 只走 JDK；非零第三方生态依赖 |
 | `docs/需求/aifei-i18n.md` §十一 | §11.2 Q7 突破（新增 demo、复用 aifei-enjoy 零新增坐标）；§11.3.4 优先级链；§11.6 唯一定义点；§11.7 spike 结论；§11.9 P-01~P-06；§11.10 交付物 |
 
 #### 16.2.3 本增量唯一新增文件边界
@@ -1375,7 +1407,7 @@ aifei-i18n-demo（新建示例工程，不发布，端口 18170）
 | `#lang()` / `#lang('xxx')` | `LangDirective` | 同上 | 同上 | 同上 | `Engine.addDirective("lang", LangDirective.class, true)` |
 | `#dir()` / `#dir('xxx')` | `DirDirective` | 同上 | 同上 | 同上 | `Engine.addDirective("dir", DirDirective.class, true)` |
 
-- **公共面安全**：三者位于 `enjoy/directive/` 子包，本文 §11 门禁③按「根/web/aifei 直接子级文件集合」断言、门禁④按 `tail.startsWith("web.")/("aifei.")` 过滤——`enjoy.directive.*` 均不计入，公共面仍精确 9 类型。
+- **公共面安全**：三者位于 `enjoy/directive/` 子包，本文 §11 门禁③按「根/web/aifei 直接子级文件集合」断言、门禁④按 `tail.startsWith("web.")/("aifei.")` 过滤——`enjoy.directive.*` 均不计入，公共面仍精确 10 类型。
 - **注册集中化**：`DirectiveRegistrar.register(Engine)` 一处完成三条 `addDirective`，demo 的 `IoHandler` 构造引擎后调用一次；`keepLineBlank=true` 保持页面排版（指令独占行时保留换行，避免文案粘连）。
 - **Enjoy 类型不外泄**：Enjoy 类型（`Directive`/`Stat`/`Expr`/`Assign`/`Scope`/`Writer`/`Engine`）只出现在 `enjoy/directive/*` 与 demo 工程，根/web/aifei 三包公共签名零 Enjoy 类型。
 
@@ -1404,7 +1436,7 @@ if langAssign != null:
 
 ### 16.4 参数解析与分发伪码
 
-#### 16.4.1 `#i18n` 完整解析与四式分发
+#### 16.4.1 `#i18n` 完整解析与两式分发
 
 ```text
 exec(Scope scope, Writer writer):
@@ -1423,25 +1455,23 @@ exec(Scope scope, Writer writer):
     // ③ 选语言层：局部 lang > 页面级 #lang > 当前生效 locale（唯一落点）
     String effLang = (langVal != null) ? langVal : DirectiveSupport.effectivePageLang()
 
-    // ④ 分发到 I18nKit 既有重载（薄封装，零新逻辑）
-    String out
-    if effLang != null && args.length > 0:  out = I18nKit.message(key, effLang, args)
-    elif effLang != null:                   out = I18nKit.message(key, effLang)
-    elif args.length > 0:                   out = I18nKit.message(key, null, args)   // 理论兜底：落 defaultLocale
-    else:                                   out = I18nKit.message(key)
+    // ④ 两式分发到 I18nKit 新 API（薄封装，零新逻辑）
+    String out = (args.length > 0)
+            ? I18nKit.local(effLang).message(key, args)
+            : I18nKit.local(effLang).message(key)
     writer.write(out)
 ```
 
-**§16.4.1 四式分发映射（显式化）**：
+**§16.4.1 两式分发映射（显式化）**：
 
-| 指令层解析结果 | `effLang` 来源 | 调用 `I18nKit` 重载 | 对应 `docs/需求/aifei-i18n.md` §11.3.1 表 |
+| 指令层解析结果 | `effLang` 来源 | 调用 `I18nKit` 新 API | 对应 `docs/需求/aifei-i18n.md` §11.3.1 表 |
 | --- | --- | --- | --- |
-| 有 lang、有 args | `normalizeLang(lang)` | `message(key, lang, args)` | 有 lang、有 args |
-| 有 lang、无 args | `normalizeLang(lang)` | `message(key, lang)` | 有 lang、无 args |
-| 无 lang、有 args | `effectivePageLang()`（页面级 > 四级优先级） | `message(key, effLang, args)` | 无 lang、有 args（当前 locale，此处具体化为页面生效 locale） |
-| 无 lang、无 args | `effectivePageLang()` | `message(key, effLang)` | 无 lang、无 args |
+| 有 lang、有 args | `normalizeLang(lang)` | `local(lang).message(key, args)` | 有 lang、有 args |
+| 有 lang、无 args | `normalizeLang(lang)` | `local(lang).message(key)` | 有 lang、无 args |
+| 无 lang、有 args | `effectivePageLang()`（页面级 > 四级优先级） | `local(effLang).message(key, args)` | 无 lang、有 args（当前 locale，此处具体化为页面生效 locale） |
+| 无 lang、无 args | `effectivePageLang()` | `local(effLang).message(key)` | 无 lang、无 args |
 
-> **为何"无 lang"显式传 `effLang` 而非直接 `message(key)`**：`message(key)` 走 `LocaleResolver.resolve(null)`，只读请求级 `LocaleContext` + defaultLocale，**读不到页面级 `#lang('xxx')`**。为落实 `docs/需求/aifei-i18n.md` §11.3.4 优先级链与 AC-INC-13，指令层用 `effectivePageLang()` 选出语言层后**显式**传入既有重载；`effLang` 已规范化，`message(key, effLang)` 与 `message(key)` 在无页面级覆盖时内部 resolve 结果一致（幂等），行为等价、语义更稳。回退链/插值仍由 `I18nKit` 内部完成，指令层零复制。
+> **为何统一走 `local(effLang)`**：`I18nKit.message(key)` 为默认 local 入口，走 `LocaleResolver.resolve(null)`，只读请求级 `LocaleContext` + defaultLocale，**读不到页面级 `#lang('xxx')`**。为落实 `docs/需求/aifei-i18n.md` §11.3.4 优先级链与 AC-INC-13，指令层用 `effectivePageLang()` 选出语言层后统一经 `local(effLang)` 显式绑定：有 args 走 `message(key, args)` 插值，无 args 走 `message(key)` 无参数形态。`effLang` 已规范化，`local(effLang)` 二次规范化幂等，无页面级覆盖时四级解析结果与默认 local 一致（幂等），行为等价、语义更稳。回退链/插值仍由 `I18nKit` 内部完成，指令层零复制。
 
 #### 16.4.2 `#lang` 伪码
 
@@ -1532,7 +1562,7 @@ String effectivePageLang():
 
 | AC | 判定要点 | 实现点（类 / 方法） | 验证通道 |
 | --- | --- | --- | --- |
-| AC-INC-01 | 三式写法输出逐字相等 | `I18nDirective#setExprList`（位置无关抽 lang）+ `#exec`（`langVal` 分支 ⇒ 同一 `message(key, lang, args)`） | `DirectiveTest#testLangPositionIndependence` |
+| AC-INC-01 | 三式写法输出逐字相等 | `I18nDirective#setExprList`（位置无关抽 lang）+ `#exec`（`langVal` 分支 ⇒ 同一 `local(lang).message(key, args)`） | `DirectiveTest#testLangPositionIndependence` |
 | AC-INC-02 | lang 置首/中/尾均提取、剩余参数顺序不变 | `I18nDirective#setExprList`（`positionalExprs` 保序） | `DirectiveTest#testLangAnyPositionKeepsArgsOrder` |
 | AC-INC-03 | `{0}` 插值 + 缺参原样保留 | `I18nKit.message` → `MessageInterpolator#format`（E-6，既有唯一定义点） | `DirectiveTest#testInterpolationAndMissingArg` |
 | AC-INC-04 | 无 lang 走当前页面/请求 locale | `DirectiveSupport#effectivePageLang` → `LocaleResolver.resolve(null)` | `DirectiveTest#testNoLangUsesEffectiveLocale` |
@@ -1680,6 +1710,7 @@ allowed = allowed || (enjoyOnly && path.contains(DIRECTIVE_PACKAGE));
 - `DirectiveSupport.normalizeLang(Object)`：把 eval 结果转 String 后调 `LocaleNormalizer.normalize`（唯一定义点），非法转 IAE（本文 §8.3 消息）；**不自建** BCP47 校验。
 - `DirectiveSupport.effectivePageLang()`：§16.5.2 优先级链唯一落点。
 - `DirectivePageState`：页面级 lang/dir 的 ThreadLocal 唯一持有点 + `clear()`；不写 `LocaleContext`。
+- **Localizer 二次规范化幂等**：`I18nKit.local(effLang)` 已当场规范化，`Localizer` 持已规范化 tag；`I18nEngine#message` 内 `LocaleResolver.resolve` 再规范化一次，对已规范化 tag 结果不变（幂等）。指令层因此无第二套 locale 规则，重复规范化不产生副作用（§5.1.1）。
 - 三条指令与 demo 只能通过上述工具访问规则，**不得**直接 `setLanguageTag`、`ComponentOrientation`、自建方向/货币表（门禁⑨/⑩/⑪ 保证）。
 
 ### 16.9 文件清单与有序任务分解
@@ -1739,7 +1770,7 @@ aifei-i18n-demo/（新建示例工程）
 | 任务 | 文件（按写入顺序） | 依赖 | 优先级 | 批次验收 |
 | --- | --- | --- | --- | --- |
 | **T-I01** 基础设施（demo 构建/配置/入口 + 指令注册骨架 + 门禁例外） | demo:`pom.xml`·`app-config.txt`·`i18n.properties`·`DemoApp.java`·`DemoAppConfig.java`；库:`DirectiveRegistrar.java`·`ArchitectureBoundaryTest.java`（改） | — | P0 | demo `mvn -q -DskipTests compile` 过；门禁②仍全绿（enjoy 例外生效、其它未放宽） |
-| **T-I02** 三条指令实现 + 页面级 state | `DirectivePageState.java`·`DirectiveSupport.java`·`I18nDirective.java`·`LangDirective.java`·`DirDirective.java` | T-I01 | P0 | 库 `mvn -q -DskipTests compile` 过；公共面仍 9 类型；无新增依赖坐标 |
+| **T-I02** 三条指令实现 + 页面级 state | `DirectivePageState.java`·`DirectiveSupport.java`·`I18nDirective.java`·`LangDirective.java`·`DirDirective.java` | T-I01 | P0 | 库 `mvn -q -DskipTests compile` 过；公共面仍 10 类型；无新增依赖坐标 |
 | **T-I03** demo 架构件 + Service 端点 | demo:`arch/*`(8)·`console/*`(2)·`service/I18nDemoService.java` | T-I01、T-I02 | P0 | `/i18n/demo/page`、`/bundle`、`/rtl`、`/money` 可访问；render 前后 clear 就位 |
 | **T-I04** demo 真实 Enjoy 页面（P-01~P-06） | `view/i18n/index.html`·`view/i18n/rtl.html`·`assets/css/i18n-demo.css`·`assets/js/i18n-demo.js` | T-I03 | P0 | 浏览器逐条核对 P-01~P-06 与原型一致；零联网 |
 | **T-I05** 指令单测 | `enjoy/directive/DirectiveTest.java` | T-I02 | P0 | AC-INC-01~13 全覆盖；真实 Engine 渲染内存模板；同线程不串 |
@@ -1807,7 +1838,7 @@ sequenceDiagram
 | 2 | **门禁例外范围** | 仅放开 `cn.aifei.enjoy.*` 于 `enjoy/directive/`（§16.8.1）；若 QA 认为过宽，可进一步收紧到具体类，但不得放回「一律失败」导致指令无法编译。 |
 | 3 | **Enjoy 指令 exec 方法签名细节** | 以 `aifei-enjoy 1.1.2` 实际 API 为准（spike 已验证基类与注册入口）；本章伪码中 `setExprList`/`exec(Scope,Writer)` 为形态说明，编码期照实际签名对齐，不改契约语义。 |
 | 4 | **页面级 clear 的消费方责任** | 由 `enjoy.directive.DirectivePageState.clear()` 暴露，demo 已落地；消费方使用 `#lang`/`#dir` 须在渲染入口 try/finally 清理，`README.md` 显式声明（对齐 `I18nHandler` finally 口径）。 |
-| 5 | **localeName 展示来源** | 通过公共 `I18nKit.bundle(lang).localeName()` 放 model，不在指令层新增取 localeName 的指令（本期只三条指令），保持公共面 9 类型不变。 |
+| 5 | **localeName 展示来源** | 通过公共 `I18nKit.bundle(lang).localeName()` 放 model，不在指令层新增取 localeName 的指令（本期只三条指令），保持公共面 10 类型不变。 |
 | 6 | **版本与发布** | SDK 与 demo 均 `1.0.0` 不递增；demo 描述与 README 标注「示例工程，不发布」；库 pom 零改动。 |
 
 ---
@@ -1818,4 +1849,4 @@ sequenceDiagram
 
 ---
 
-> **一句话总览**：`io.github.gollyhu:aifei-i18n:1.0.0` 单模块 —— 根包 **6 公共类型**（`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`）+ `web` 2（`I18nHandler` / `LocaleExtractor`）+ `aifei` 1（`I18nPlugin`）+ `internal` 11 规则类 + `defaultSource` 3 默认来源；零第三方、4 配置键、开放来源 + 唯一回退链 + Locale 四级贯通 + 整包四字段稳定导出 + JDK 格式化薄门面；回退/排序/规范化/解析/dir/插值/格式化各有唯一定义点，双门禁（源码 13 例 + class major 52）强制收敛。
+> **一句话总览**：`io.github.gollyhu:aifei-i18n:1.0.0` 单模块 —— 根包 **7 公共类型**（`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`）+ `web` 2（`I18nHandler` / `LocaleExtractor`）+ `aifei` 1（`I18nPlugin`）+ `internal` 11 规则类 + `defaultSource` 3 默认来源；零第三方、4 配置键、开放来源 + 唯一回退链 + Locale 四级贯通 + 整包四字段稳定导出 + JDK 格式化薄门面；回退/排序/规范化/解析/dir/插值/格式化/key 校验各有唯一定义点，双门禁（源码 13 例 + class major 52）强制收敛。

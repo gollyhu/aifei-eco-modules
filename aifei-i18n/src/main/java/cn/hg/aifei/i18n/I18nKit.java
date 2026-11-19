@@ -6,16 +6,17 @@
 
 package cn.hg.aifei.i18n;
 
-import cn.hg.aifei.i18n.internal.I18nEngine;
 import cn.hg.aifei.i18n.internal.I18nHolder;
+import cn.hg.aifei.i18n.internal.I18nEngine;
+import cn.hg.aifei.i18n.internal.LocaleNormalizer;
 
 /**
- * 取文案 / 整包导出 / 刷新的公共静态门面。
+ * 显式 locale / 默认取文案 / 整包导出 / 刷新的公共静态门面。
  *
  * <p>有状态门面：{@code final} + 私有构造、零实例字段；全部方法经 {@link I18nHolder} 取当前引擎，
  * 未装配 / 已停止 → {@link I18nException}，不静默返回 {@code null}。</p>
  *
- * <p>本类只做参数校验 + 转发，不重复实现回退 / 解析 / 排序（设计 §6.3 唯一定义点纪律）。</p>
+ * <p>门面转发，{@code key} 校验与规则均在 engine/规则类唯一定义点（设计 §6.3），本类不重复实现。</p>
  */
 public final class I18nKit {
 
@@ -23,43 +24,26 @@ public final class I18nKit {
     }
 
     /**
-     * 取文案：locale 走 {@code LocaleResolver} 四级优先级解析（显式缺失时）。
+     * 显式 locale 的唯一入口：当场规范化 {@code localeTag} 并返回不可变 {@link Localizer}。
      *
-     * @param key 文案 key，非空 / 非空白
-     * @return 译文（未命中返回 key 原文）
-     * @throws IllegalArgumentException key 为空 / 空白
+     * @param localeTag BCP 47 locale（可下划线写法，先规范化）
+     * @return 绑定已规范化 tag 的链式载体
+     * @throws IllegalArgumentException {@code localeTag} 为 {@code null} / 空白 / 非法 BCP 47（§8.3 逐字）
      */
-    public static String message(String key) {
-        return message(key, null);
+    public static Localizer local(String localeTag) {
+        return new Localizer(LocaleNormalizer.normalize(localeTag));
     }
 
     /**
-     * 取文案。
+     * 默认 local 入口取文案：locale 走四级优先级解析；{@code {0}} 位置插值，缺参占位符原样保留、不抛；
+     * {@code args} 为 {@code null} 或空数组等价无参数。
      *
-     * @param key       文案 key，非空 / 非空白
-     * @param localeTag BCP 47 locale（可下划线写法，先规范化）；显式非法 → IAE
+     * @param key  文案 key，非空 / 非空白（校验由 {@link I18nEngine} 统一抛）
+     * @param args 插值参数，可为 {@code null} / 空数组
      * @return 译文（未命中返回 key 原文）
-     * @throws IllegalArgumentException key 为空 / 空白，或 localeTag 显式非法
      */
-    public static String message(String key, String localeTag) {
-        return message(key, localeTag, new Object[0]);
-    }
-
-    /**
-     * 取文案 + {@code {0}} 位置插值：缺参占位符原样保留、不抛；{@code args} 为 {@code null} 或空数组等价无参数。
-     *
-     * @param key       文案 key，非空 / 非空白
-     * @param localeTag BCP 47 locale（可下划线写法，先规范化）；显式非法 → IAE
-     * @param args      插值参数，可为 {@code null} / 空数组
-     * @return 译文（未命中返回 key 原文）
-     * @throws IllegalArgumentException key 为空 / 空白，或 localeTag 显式非法
-     */
-    public static String message(String key, String localeTag, Object... args) {
-        if (key == null || key.trim().isEmpty()) {
-            throw new IllegalArgumentException("key 不能为空");
-        }
-        I18nEngine engine = I18nHolder.engine();
-        return engine.message(key, localeTag, args);
+    public static String message(String key, Object... args) {
+        return I18nHolder.engine().message(key, null, args);
     }
 
     /**

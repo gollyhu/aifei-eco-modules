@@ -20,8 +20,8 @@ import java.util.Arrays;
 /**
  * {@code #i18n(...)} 取文案指令（非承诺 API）。
  *
- * <p>位置无关抽取唯一的具名参数 {@code lang=}，其余按原顺序切为 key + args，再分发到
- * {@link I18nKit} 既有重载；回退链 / 规范化 / 插值全部由 I18nKit 内部唯一定义点完成，本类零复制。</p>
+ * <p>位置无关抽取唯一的具名参数 {@code lang=}，其余按原顺序切为 key + args，选语言层后统一经
+ * {@link I18nKit#local(String)} 链式分发；回退链 / 规范化 / 插值全部由 I18nKit 内部唯一定义点完成，本类零复制。</p>
  *
  * <pre>
  * #i18n('hello', lang='zh-CN', 'Bob')
@@ -66,17 +66,10 @@ public class I18nDirective extends Directive {
         // ③ 选语言层：局部 lang > 页面级 #lang > 当前生效 locale（唯一落点）
         String effLang = langVal != null ? langVal : DirectiveSupport.effectivePageLang();
 
-        // ④ 薄封装分发到 I18nKit 既有重载
-        String out;
-        if (effLang != null && args.length > 0) {
-            out = I18nKit.message(key, effLang, args);
-        } else if (effLang != null) {
-            out = I18nKit.message(key, effLang);
-        } else if (args.length > 0) {
-            out = I18nKit.message(key, null, args);
-        } else {
-            out = I18nKit.message(key);
-        }
+        // ④ 两式分发到 I18nKit 链式 API
+        String out = (args.length > 0)
+                ? I18nKit.local(effLang).message(key, args)
+                : I18nKit.local(effLang).message(key);
         write(writer, out);
     }
 }

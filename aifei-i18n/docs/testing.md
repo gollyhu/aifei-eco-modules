@@ -32,7 +32,7 @@
 ## 一、测试分层与原则
 
 - **零联网 / 零外部服务**：单测不连真实数据库、KV、HTTP；测试源码 URL 仅允许回环地址（门禁 ⑬，QA 独立扫描确认无外网 URL 字面量）。
-- **零 Thread.sleep**：本轮 QA 自修了开发用例中唯一一处 `Thread.sleep(80L)`（TTL 到期用例），改为「极小 TTL + nanoTime 有界轮询」，连续 3 次重跑稳定，语义不变。当前测试源码 **0 处实际 sleep 调用**。
+- **零 Thread.sleep**：TTL 到期用例采用「极小 TTL + nanoTime 有界轮询」，连续 3 次重跑稳定。测试源码 **0 处实际 sleep 调用**。
 - **测试替身**：`support/FakeMessageSource`（可配置稳定名 / 数据 / 可列举开关 / get/list 故障开关 / 调用计数）覆盖存储型 / 快照型 / 代理型来源（AC-04-3）；`support/FakeDbAccessor`（db 访问替身）。
 - **QA 新增替身**：`support/RecordingLogFactory`（可插拔日志工厂，按「级别+首参」录制日志）——注入框架 `LogKit`，用于独立断言日志分级口径（AC-02-2/09-6/14-5/15-4）。`@After` 恢复原工厂，测试间无污染。
 - **跨 provider 稳定断言**：涉及 JDK 输出字面量的用例只断言「不相等 / 含本币种符号 / 月份名与日的相对位置 / 小数位」，不写死符号字符与完整日期串（设计 §9.8）。
@@ -70,8 +70,8 @@
 | --- | --- | --- | --- |
 | ① | `noThirdPartyReference` | 每条 import 以 `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.i18n.` 开头；`cn.hg.aifei.cache.` 仅 KvSource | PASS |
 | ② | `frameworkScopeRules` | Prop/Plugin/aop 仅 aifei 包；core 仅 web 包；log 仅三处 WARN 记录类 + aifei 包 | PASS |
-| ③ | `publicSurfaceExact` | 根 6 / web 2 / aifei 1 文件名集合精确相等 | PASS（变异探针已证有效） |
-| ④ | `publicSurfaceByReflection` | target/classes 顶层 public 类型 FQN 精确等于 9 个 | PASS（变异探针已证有效） |
+| ③ | `publicSurfaceExact` | 根 7 / web 2 / aifei 1 文件名集合精确相等 | PASS（变异探针已证有效） |
+| ④ | `publicSurfaceByReflection` | target/classes 顶层 public 类型 FQN 精确等于 10 个 | PASS（变异探针已证有效） |
 | ⑤ | `noSqlReference` | 全模块无 `import java.sql.` | PASS |
 | ⑥ | `noJvmGlobalPropertyWrite` | 无 `System.setProperty` / `getProperties().put` / `setOut` / `setErr` | PASS |
 | ⑦ | `noServiceProvider` | 无 ServiceLoader / `META-INF/services` | PASS |
@@ -299,7 +299,7 @@
 | 检查项 | 结论 | 证据 |
 | --- | --- | --- |
 | 零联网 | PASS | 门禁⑬ + QA 独立扫描 `src/test/java`：无外网 URL 字面量（gitee 版权头注释已剥离/排除） |
-| 零 Thread.sleep | PASS（本轮自修达成） | 原 `I18nKitTest` 1 处 `sleep(80L)` 已改为 nanoTime 有界轮询；当前 0 处实际 sleep 调用；3 次重跑稳定 |
+| 零 Thread.sleep | PASS | `I18nKitTest` 采用 nanoTime 有界轮询；当前 0 处实际 sleep 调用；3 次重跑稳定 |
 | kv 集成默认关闭 | PASS | 无真实 KV/DB/HTTP 集成测试；`kv` 命中语义以 FakeMessageSource 覆盖，依赖缺失以隔离 ClassLoader 探针覆盖 |
 | 依赖范围 | PASS | `mvn dependency:tree`：`aifei-all:provided` + `aifei-cache:provided,optional` + `junit:test`，零 compile 第三方 |
 

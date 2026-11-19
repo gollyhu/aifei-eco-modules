@@ -53,6 +53,9 @@ public final class I18nEngine {
      * @return 译文或 key 原文
      */
     public String message(String key, String localeTag, Object... args) {
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalArgumentException("key 不能为空");
+        }
         String locale = LocaleResolver.resolve(localeTag);
         String raw = FallbackChain.get(key, locale, sources, config.defaultLocale(), cache);
         return MessageInterpolator.format(raw, args);

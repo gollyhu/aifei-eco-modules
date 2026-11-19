@@ -117,7 +117,7 @@ public class BundleExportTest {
         FakeMessageSource nonListable = new FakeMessageSource("remote").listable(false).put("zh-CN", "only", "remote-value");
         export(nonListable);
         // 单点取文案仍可命中不可列举来源
-        assertEquals("remote-value", I18nKit.message("only", "zh-CN"));
+        assertEquals("remote-value", I18nKit.local("zh-CN").message("only"));
         // 整包不含该 key
         assertFalse(I18nKit.bundle("zh-CN").messages().containsKey("only"));
     }
@@ -137,7 +137,7 @@ public class BundleExportTest {
         LanguageBundle bundle = I18nKit.bundle("zh-CN");
         for (Map.Entry<String, String> entry : bundle.messages().entrySet()) {
             assertEquals("单点与整包取值应一致: " + entry.getKey(),
-                    entry.getValue(), I18nKit.message(entry.getKey(), "zh-CN"));
+                    entry.getValue(), I18nKit.local("zh-CN").message(entry.getKey()));
         }
     }
 

@@ -79,7 +79,7 @@ public class I18nPluginTest {
                 "i18n.sources", "remote"))
                 .addSource(custom);
         plugin.start();
-        assertEquals("remote-value", I18nKit.message("k", "zh-CN"));
+        assertEquals("remote-value", I18nKit.local("zh-CN").message("k"));
     }
 
     @Test
@@ -92,7 +92,7 @@ public class I18nPluginTest {
         } catch (I18nException e) {
             assertTrue("消息含稳定名与重复语义：" + e.getMessage(), e.getMessage().contains("properties"));
         }
-        org.junit.Assert.assertThrows(I18nException.class, () -> I18nKit.message("k", "en"));
+        org.junit.Assert.assertThrows(I18nException.class, () -> I18nKit.local("en").message("k"));
     }
 
     @Test
@@ -168,7 +168,7 @@ public class I18nPluginTest {
     public void unassembledCallFails() {
         I18nHolder.clear();
         try {
-            I18nKit.message("k", "en");
+            I18nKit.local("en").message("k");
             org.junit.Assert.fail("未装配应失败");
         } catch (I18nException e) {
             assertEquals("i18n 未装配或已停止，请先注册 I18nPlugin", e.getMessage());

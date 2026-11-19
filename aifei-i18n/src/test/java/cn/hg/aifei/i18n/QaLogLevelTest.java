@@ -70,7 +70,7 @@ public class QaLogLevelTest {
     public void missLogsDebugOnly() {
         install(60000, new FakeMessageSource("properties"));
         recorder.clear();
-        assertEquals("no.such.key", I18nKit.message("no.such.key", "zh-CN"));
+        assertEquals("no.such.key", I18nKit.local("zh-CN").message("no.such.key"));
         assertTrue("未命中应有 DEBUG 且含 key+locale，实际=" + recorder.events(),
                 recorder.has("DEBUG", "no.such.key", "zh-CN"));
         assertTrue("未命中不应有任何 WARN，实际=" + recorder.events(),
@@ -86,7 +86,7 @@ public class QaLogLevelTest {
                 new FakeMessageSource("db").failing(true),
                 new FakeMessageSource("properties").put("zh-CN", "k", "ok"));
         recorder.clear();
-        assertEquals("ok", I18nKit.message("k", "zh-CN"));
+        assertEquals("ok", I18nKit.local("zh-CN").message("k"));
         assertTrue("故障应产生 WARN 且含稳定名 db 与 key k，实际=" + recorder.events(),
                 recorder.has("WARN", "db", "k"));
     }
@@ -98,7 +98,7 @@ public class QaLogLevelTest {
                 new FakeMessageSource("db").failing(true),
                 new FakeMessageSource("kv").failing(true));
         recorder.clear();
-        assertEquals("k", I18nKit.message("k", "zh-CN"));
+        assertEquals("k", I18nKit.local("zh-CN").message("k"));
         assertTrue("db 故障应 WARN，实际=" + recorder.events(), recorder.has("WARN", "db", "k"));
         assertTrue("kv 故障应 WARN，实际=" + recorder.events(), recorder.has("WARN", "kv", "k"));
         assertTrue("运行期故障不应产生 ERROR，实际=" + recorder.events(),
@@ -150,7 +150,7 @@ public class QaLogLevelTest {
         // 场景 A：无故障的纯未命中
         install(60000, new FakeMessageSource("properties"));
         recorder.clear();
-        I18nKit.message("miss.only", "zh-CN");
+        I18nKit.local("zh-CN").message("miss.only");
         assertEquals("纯未命中：DEBUG>=1、WARN=0", 0, recorder.ofLevel("WARN").size());
         assertTrue("纯未命中应有 DEBUG", recorder.ofLevel("DEBUG").size() >= 1);
 
@@ -159,7 +159,7 @@ public class QaLogLevelTest {
                 new FakeMessageSource("db").failing(true),
                 new FakeMessageSource("properties").put("zh-CN", "k", "ok"));
         recorder.clear();
-        I18nKit.message("k", "zh-CN");
+        I18nKit.local("zh-CN").message("k");
         assertEquals("故障后命中：WARN>=1、DEBUG=0", 0, recorder.ofLevel("DEBUG").size());
         assertTrue("故障后命中应有 WARN", recorder.ofLevel("WARN").size() >= 1);
     }
