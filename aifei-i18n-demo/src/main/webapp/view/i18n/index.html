@@ -21,6 +21,7 @@
   <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></symbol>
   <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -93,8 +94,27 @@
         </span>
       </div>
       <div class="field">
-        <label for="f-date" data-i18n="form.date">日期</label>
-        <input id="f-date" type="date" aria-describedby="date-fmt">
+        <label for="f-date-display" data-i18n="form.date">日期</label>
+        <div class="datepicker" id="datepicker">
+          <input id="f-date" type="hidden" value="">
+          <button type="button" id="f-date-display" class="dp-display" aria-haspopup="dialog" aria-expanded="false" aria-describedby="date-fmt">
+            <span id="f-date-text" class="dp-value">#i18n('form.date.ph')</span>
+            <svg class="icon"><use href="#i-calendar"/></svg>
+          </button>
+          <div class="dp-panel" id="dp-panel" role="dialog">
+            <div class="dp-head">
+              <button type="button" class="dp-nav" id="dp-prev" title=""><svg class="icon"><use href="#i-chevron"/></svg></button>
+              <span class="dp-title" id="dp-title"></span>
+              <button type="button" class="dp-nav" id="dp-next" title=""><svg class="icon"><use href="#i-chevron"/></svg></button>
+            </div>
+            <div class="dp-week" id="dp-week"></div>
+            <div class="dp-grid" id="dp-grid"></div>
+            <div class="dp-foot">
+              <button type="button" class="dp-foot-btn" id="dp-clear"></button>
+              <button type="button" class="dp-foot-btn" id="dp-today"></button>
+            </div>
+          </div>
+        </div>
         <span class="field-hint" id="date-fmt" data-i18n="form.date.fmt">格式：年-月-日</span>
       </div>
       <div class="field">

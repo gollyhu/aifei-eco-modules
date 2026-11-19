@@ -41,6 +41,130 @@ function formatDate(iso, locale){
   return iso;
 }
 
+// 日历控件：隐藏 input 保留 ISO 值，显示框按 locale 呈现；面板文案全部经 tr 取自语言包。
+var dpState = {year:0, month:0};
+var dpOpened = false;
+
+function dpEl(id){ return document.getElementById(id); }
+function dpPad(n){ return n < 10 ? '0' + n : '' + n; }
+function dpIso(y, m, d){ return y + '-' + dpPad(m + 1) + '-' + dpPad(d); }
+function dpReadIso(){ return dpEl('f-date').value; }
+
+function dpRefreshDisplay(){
+  var iso = dpReadIso();
+  var text = dpEl('f-date-text');
+  text.textContent = iso ? formatDate(iso, currentLocale()) : tr('form.date.ph');
+  text.className = iso ? 'dp-value' : 'dp-value dp-placeholder';
+}
+
+function dpSyncLabels(){
+  var prev = dpEl('dp-prev'), next = dpEl('dp-next');
+  prev.title = tr('form.calendar.prev');
+  prev.setAttribute('aria-label', prev.title);
+  next.title = tr('form.calendar.next');
+  next.setAttribute('aria-label', next.title);
+  dpEl('dp-clear').textContent = tr('form.calendar.clear');
+  dpEl('dp-today').textContent = tr('form.calendar.today');
+  dpRefreshDisplay();
+}
+
+function dpRender(){
+  var y = dpState.year, m = dpState.month;
+  dpEl('dp-title').textContent = tr('form.calendar.title', [tr('form.calendar.month.' + (m + 1)), String(y)]);
+  var week = dpEl('dp-week');
+  week.textContent = '';
+  for(var w = 0; w < 7; w++){
+    var wc = document.createElement('span');
+    wc.className = 'dp-week-cell';
+    wc.textContent = tr('form.calendar.week.' + w);
+    week.appendChild(wc);
+  }
+  var grid = dpEl('dp-grid');
+  grid.textContent = '';
+  var firstDay = new Date(y, m, 1).getDay();
+  var days = new Date(y, m + 1, 0).getDate();
+  var iso = dpReadIso(), now = new Date();
+  var i, cell, btn, day;
+  for(i = 0; i < firstDay; i++){
+    cell = document.createElement('span');
+    cell.className = 'dp-cell dp-blank';
+    grid.appendChild(cell);
+  }
+  for(i = 1; i <= days; i++){
+    day = i;
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dp-cell';
+    btn.textContent = String(day);
+    if(dpIso(y, m, day) === iso){ btn.className += ' dp-selected'; }
+    if(y === now.getFullYear() && m === now.getMonth() && day === now.getDate()){ btn.className += ' dp-today'; }
+    btn.addEventListener('click', (function(d){ return function(){ dpSelect(dpIso(y, m, d)); }; })(day));
+    grid.appendChild(btn);
+  }
+}
+
+function dpSelect(iso){
+  dpEl('f-date').value = iso;
+  dpRefreshDisplay();
+  dpClosePanel();
+}
+
+function dpOpenPanel(){
+  var iso = dpReadIso(), base = iso ? iso.split('-') : null, now = new Date();
+  dpState.year = base ? Number(base[0]) : now.getFullYear();
+  dpState.month = base ? Number(base[1]) - 1 : now.getMonth();
+  dpRender();
+  dpEl('dp-panel').classList.add('open');
+  dpEl('f-date-display').setAttribute('aria-expanded', 'true');
+  dpOpened = true;
+}
+
+function dpClosePanel(){
+  dpEl('dp-panel').classList.remove('open');
+  dpEl('f-date-display').setAttribute('aria-expanded', 'false');
+  dpOpened = false;
+}
+
+function dpShift(delta){
+  dpState.month += delta;
+  if(dpState.month < 0){ dpState.month = 11; dpState.year--; }
+  else if(dpState.month > 11){ dpState.month = 0; dpState.year++; }
+  dpRender();
+}
+
+function dpClear(){
+  dpEl('f-date').value = '';
+  dpRefreshDisplay();
+  dpClosePanel();
+}
+
+function dpSetToday(){
+  var now = new Date();
+  dpSelect(dpIso(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
+function initDatePicker(){
+  dpEl('f-date-display').addEventListener('click', function(){
+    if(dpOpened){ dpClosePanel(); } else { dpOpenPanel(); }
+  });
+  dpEl('dp-prev').addEventListener('click', function(){ dpShift(-1); });
+  dpEl('dp-next').addEventListener('click', function(){ dpShift(1); });
+  dpEl('dp-clear').addEventListener('click', dpClear);
+  dpEl('dp-today').addEventListener('click', dpSetToday);
+  document.addEventListener('click', function(e){
+    if(!dpOpened){ return; }
+    var node = e.target;
+    while(node && node !== document){
+      if(node.id === 'datepicker'){ return; }
+      node = node.parentNode;
+    }
+    dpClosePanel();
+  });
+  document.addEventListener('keydown', function(e){
+    if(dpOpened && e.keyCode === 27){ dpClosePanel(); }
+  });
+}
+
 function clearTable(){
   var tbody = document.getElementById('listBody');
   tbody.textContent = '';
@@ -81,6 +205,7 @@ function applyBundle(bundle){
     el.setAttribute('placeholder', tr(el.getAttribute('data-i18n-placeholder')));
   });
   if(listShown){ renderTable(currentLocale()); } else { clearTable(); }
+  dpSyncLabels();
 }
 
 function loadBundle(locale){
@@ -100,9 +225,9 @@ function loadMoney(locale){
 }
 
 var toastTimer;
-function toast(key){
+function toast(key, args){
   var box = document.getElementById('toast');
-  document.getElementById('toast-text').textContent = tr(key);
+  document.getElementById('toast-text').textContent = tr(key, args);
   box.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ box.classList.remove('show'); }, 2600);
@@ -115,10 +240,12 @@ document.getElementById('langSelect').addEventListener('change', function(e){
 document.getElementById('btnSearch').addEventListener('click', function(){
   listShown = true;
   renderTable(currentLocale());
-  toast('toast.search');
+  var d = dpReadIso();
+  if(d){ toast('toast.search.date', [d]); } else { toast('toast.search'); }
 });
 document.getElementById('btnReset').addEventListener('click', function(){
   document.getElementById('demoForm').reset();
+  dpClear();
   listShown = false;
   clearTable();
   toast('toast.reset');
@@ -128,5 +255,6 @@ document.getElementById('btnReset').addEventListener('click', function(){
 var sel = document.getElementById('langSelect');
 if(sel){ sel.value = currentLocale(); }
 
+initDatePicker();
 var locale = currentLocale();
 loadBundle(locale).then(function(){ return loadMoney(locale); });
