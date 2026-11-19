@@ -27,7 +27,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | aifei-trace-demo | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
 | [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
 | [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
-| [aifei-i18n](aifei-i18n/README.md) | `io.github.gollyhu:aifei-i18n:1.0.0` | 国际化能力：开放来源扩展 + 3 默认来源（properties/db/kv）+ 单条取文案/整包导出 + Locale 上下文贯通 + JDK 格式化薄封装，零第三方 |
+| [aifei-i18n](aifei-i18n/README.md) | `io.github.gollyhu:aifei-i18n:1.0.0` | 国际化能力：开放来源扩展 + 3 默认来源（properties/db/kv）+ 单条取文案/整包导出 + Locale 上下文贯通 + JDK 格式化薄封装 + Enjoy 三条模板指令，零第三方 |
+| [aifei-i18n-demo](aifei-i18n-demo/README.md) | （示例工程，不发布） | aifei-i18n 的完整接入示例：真实 Enjoy 渲染演示 `#i18n`/`#lang`/`#dir` 三条指令与语言包下发（端口 18170，零外网） |
 | [aifei-excel](aifei-excel/README.md) | `io.github.gollyhu:aifei-excel:1.0.0` | Excel 读写统一门面：注解表头映射、一次性便捷读写、流式分批读写，唯一内核 easyexcel 可选引入 |
 | [aifei-excel-demo](aifei-excel-demo/README.md) | （示例工程，不发布） | aifei-excel 的完整接入示例：上传解析 / 一次性导出 / 流式导出演示（端口 18150） |
 | [aifei-audit](aifei-audit/README.md) | `io.github.gollyhu:aifei-audit:1.0.0` | 注解式操作审计：`@Audit` 声明式采集 + `AuditKit` 手动埋点，事件交 `AuditSink` SPI，零存储 / 零线程池 / 零生态依赖 |
