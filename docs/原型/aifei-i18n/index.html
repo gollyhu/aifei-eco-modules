@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="zh-CN" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>aifei-i18n · 指令演示原型</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root{
+  --color-primary:#1E293B;      --color-on-primary:#FFFFFF;
+  --color-secondary:#334155;    --color-accent:#22C55E;
+  --color-background:#0F172A;   --color-foreground:#F8FAFC;
+  --color-card:#1B2336;         --color-card-foreground:#F8FAFC;
+  --color-muted:#272F42;        --color-muted-foreground:#94A3B8;
+  --color-border:#475569;       --color-destructive:#EF4444;
+  --color-ring:#FFFFFF;
+  --font-mono:'JetBrains Mono',Consolas,'Liberation Mono',monospace;
+  --font-sans:'IBM Plex Sans','Segoe UI',Roboto,'Microsoft YaHei',sans-serif;
+  --radius:10px;
+  --glow:0 10px 34px rgba(0,0,0,.38);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--color-background);color:var(--color-foreground);
+  font:400 15px/1.55 var(--font-sans);-webkit-font-smoothing:antialiased;position:relative;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(620px 320px at 12% -12%,rgba(34,197,94,.09),transparent 70%),
+             radial-gradient(560px 300px at 100% 0%,rgba(56,189,248,.07),transparent 72%);
+}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:28px 24px 60px}
+.icon{width:18px;height:18px;flex:none;display:inline-block;vertical-align:-4px}
+:focus-visible{outline:2px solid var(--color-ring);outline-offset:2px;border-radius:4px}
+button,select,input{cursor:pointer}
+input[type=text],input[type=date]{cursor:text}
+
+/* 顶部 */
+header.top{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.brand .logo{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;
+  background:linear-gradient(145deg,var(--color-secondary),var(--color-primary));
+  border:1px solid var(--color-border);color:var(--color-accent);box-shadow:var(--glow)}
+.brand .logo .icon{width:24px;height:24px}
+.brand h1{margin:0;font:600 20px/1.25 var(--font-mono);letter-spacing:-.4px}
+.brand p{margin:3px 0 0;color:var(--color-muted-foreground);font-size:13px}
+.config-badge{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;
+  background:var(--color-card);border:1px solid var(--color-border);font:500 13px var(--font-mono);white-space:nowrap}
+.config-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--color-accent);box-shadow:0 0 10px var(--color-accent)}
+.config-badge b{color:var(--color-accent)}
+.config-badge .cl{color:var(--color-muted-foreground)}
+
+.notice{display:flex;gap:11px;align-items:flex-start;padding:12px 15px;margin-bottom:24px;
+  border-radius:var(--radius);background:var(--color-muted);border:1px solid var(--color-border);
+  color:var(--color-card-foreground);font-size:13.5px}
+.notice .icon{color:var(--color-accent);margin-top:2px}
+
+section.card{background:var(--color-card);border:1px solid var(--color-border);border-radius:14px;
+  padding:22px;margin-bottom:20px;box-shadow:var(--glow)}
+.sec-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+.sec-head .title{display:flex;align-items:center;gap:10px;font:600 16px/1.3 var(--font-mono)}
+.sec-head .title .icon{color:var(--color-accent)}
+.sec-head .tag{font:500 11px var(--font-mono);color:var(--color-muted-foreground);
+  border:1px solid var(--color-border);padding:3px 8px;border-radius:6px}
+
+/* P-02 状态卡 + P-03 切换 */
+.state-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.metric{background:var(--color-muted);border:1px solid var(--color-border);border-radius:10px;
+  padding:15px 16px;min-height:96px;display:flex;flex-direction:column;justify-content:center}
+.metric .k{font:500 11px var(--font-mono);letter-spacing:.7px;text-transform:uppercase;color:var(--color-muted-foreground)}
+.metric .v{font:600 23px/1.25 var(--font-mono);margin-top:7px;color:var(--color-foreground);min-height:30px;word-break:break-word}
+.metric .v.dir-v{color:var(--color-accent)}
+.lang-switch{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:14px 16px;
+  background:var(--color-muted);border:1px solid var(--color-border);border-radius:10px}
+.lang-switch label{font:500 13px var(--font-mono);color:var(--color-muted-foreground)}
+.select-wrap{position:relative;display:inline-flex;align-items:center}
+.select-wrap .icon{position:absolute;right:11px;color:var(--color-muted-foreground);pointer-events:none}
+select,input[type=text],input[type=date]{
+  font-family:var(--font-sans);font-size:14px;color:var(--color-card-foreground);
+  background:var(--color-primary);border:1px solid var(--color-border);border-radius:8px;padding:9px 12px;
+  transition:border-color 180ms ease,box-shadow 180ms ease,background 180ms ease}
+select:hover,input:hover{border-color:var(--color-muted-foreground)}
+select:focus,input:focus{border-color:var(--color-accent);box-shadow:0 0 0 3px rgba(34,197,94,.16);outline:none}
+select{padding-right:34px;appearance:none;min-width:190px}
+select option{background:var(--color-primary)}
+.lang-switch .hint{font-size:12px;color:var(--color-muted-foreground);margin-left:auto}
+
+/* P-04 iframe */
+.iframe-note{display:inline-flex;align-items:center;gap:7px;margin-bottom:12px;padding:6px 11px;border-radius:7px;
+  font:500 12px var(--font-mono);color:var(--color-accent);background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.35)}
+iframe{width:100%;height:230px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-background);display:block}
+
+/* P-05 表单 */
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 20px}
+.field{display:flex;flex-direction:column;gap:7px}
+.field > label{font:500 13px var(--font-mono);color:var(--color-muted-foreground)}
+.field input[type=text],.field input[type=date],.field select{width:100%}
+.field-hint{font:500 11.5px var(--font-mono);color:var(--color-muted-foreground)}
+.input-affix{display:flex;align-items:center;background:var(--color-primary);border:1px solid var(--color-border);
+  border-radius:8px;overflow:hidden;transition:border-color 180ms ease,box-shadow 180ms ease}
+.input-affix:focus-within{border-color:var(--color-accent);box-shadow:0 0 0 3px rgba(34,197,94,.16)}
+.input-affix .affix{font:600 15px var(--font-mono);color:var(--color-accent);padding:0 12px;border-right:1px solid var(--color-border);align-self:stretch;display:flex;align-items:center}
+.input-affix input{border:0;background:transparent;flex:1;min-width:0}
+.input-affix input:focus{box-shadow:none;border:0}
+.checks{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:24px 34px;padding:4px 0 2px}
+.check,.switch{display:inline-flex;align-items:center;gap:9px;font-size:14px;user-select:none}
+.check input{appearance:none;width:18px;height:18px;margin:0;flex:none;position:relative;cursor:pointer;
+  background:var(--color-primary);border:1.5px solid var(--color-border);transition:background 160ms,border-color 160ms,box-shadow 160ms}
+.check input:hover{border-color:var(--color-accent)}
+.check input:focus-visible{outline:2px solid var(--color-ring);outline-offset:2px}
+.check input[type=checkbox]{border-radius:5px}
+.check input[type=checkbox]:checked{background:var(--color-accent);border-color:var(--color-accent)}
+.check input[type=checkbox]:checked::after{content:'';position:absolute;left:5px;top:2px;width:5px;height:9px;
+  border:solid #062e17;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.check input[type=radio]{border-radius:50%}
+.check input[type=radio]:checked{border-color:var(--color-accent)}
+.check input[type=radio]:checked::after{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--color-accent)}
+.switch{gap:11px}
+.switch input{position:relative;width:40px;height:22px;appearance:none;background:var(--color-border);border:1.5px solid transparent;border-radius:999px;
+  margin:0;transition:background 180ms ease,border-color 180ms ease}
+.switch input::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:#fff;transition:transform 180ms ease}
+.switch input:hover{border-color:var(--color-muted-foreground)}
+.switch input:focus-visible{outline:2px solid var(--color-ring);outline-offset:2px}
+.switch input:checked{background:var(--color-accent);border-color:var(--color-accent)}
+.switch input:checked::after{transform:translateX(18px)}
+.form-actions{grid-column:1/-1;display:flex;gap:12px;padding-top:6px;border-top:1px solid var(--color-border)}
+.btn{border:0;border-radius:8px;padding:10px 22px;font:600 14px var(--font-sans);transition:transform 180ms ease,box-shadow 180ms ease,background 180ms ease}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--color-accent);color:#062e17;box-shadow:0 4px 16px rgba(34,197,94,.22)}
+.btn-primary:hover{background:#2ad564;box-shadow:0 6px 22px rgba(34,197,94,.34)}
+.btn-ghost{background:var(--color-secondary);color:var(--color-card-foreground);border:1px solid var(--color-border)}
+.btn-ghost:hover{background:#3d4a60}
+
+/* 表格 */
+.list-block{margin-top:22px;padding-top:18px;border-top:1px solid var(--color-border)}
+.list-subhead{display:flex;align-items:center;gap:8px;margin-bottom:12px;font:600 14px var(--font-mono);color:var(--color-card-foreground)}
+.list-subhead .icon{color:var(--color-accent)}
+table{width:100%;border-collapse:collapse;margin-top:6px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--color-border);font-size:14px}
+th{font:600 12px var(--font-mono);letter-spacing:.5px;text-transform:uppercase;color:var(--color-muted-foreground);background:var(--color-muted)}
+th:first-child{border-top-left-radius:8px}th:last-child{border-top-right-radius:8px}
+.empty-row td{text-align:center;color:var(--color-muted-foreground);height:104px;font-size:14px}
+.pager{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:14px;font:500 13px var(--font-mono);color:var(--color-muted-foreground)}
+.pager button{background:var(--color-secondary);color:var(--color-muted-foreground);border:1px solid var(--color-border);
+  border-radius:7px;padding:6px 12px;font:500 13px var(--font-mono);cursor:not-allowed}
+.pager button:disabled{opacity:.5}
+
+/* P-06 优先级 */
+.priority-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pcard{background:var(--color-muted);border:1px solid var(--color-border);border-left:3px solid var(--color-border);
+  border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:9px;min-height:172px}
+.pcard.lv1{border-left-color:var(--color-accent)}
+.pcard .rank{font:600 11px var(--font-mono);color:var(--color-muted-foreground)}
+.pcard h3{margin:0;font:600 14px/1.35 var(--font-mono)}
+.pcard .val{font:600 17px/1.4 var(--font-mono);padding:11px 12px;border-radius:7px;background:var(--color-background);
+  border:1px solid var(--color-border);min-height:46px;color:var(--color-card-foreground)}
+.pcard.lv1 .val{color:#fcd34d}
+.pcard .desc{margin:0;font-size:12.5px;color:var(--color-muted-foreground);line-height:1.5}
+.chain{margin:0 0 16px;padding:11px 14px;border-radius:8px;background:var(--color-background);
+  border:1px dashed var(--color-border);font:500 13px var(--font-mono);color:var(--color-accent);overflow-x:auto;white-space:nowrap}
+.code-block{margin:16px 0 0;border:1px solid var(--color-border);border-radius:10px;background:var(--color-background);overflow:hidden}
+.code-block .cb-head{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--color-border);
+  font:500 12px var(--font-mono);color:var(--color-muted-foreground)}
+.code-block .cb-head .icon{color:var(--color-accent)}
+pre{margin:0;padding:14px 16px;font:400 12.5px/1.85 var(--font-mono);color:#cbd5e1;overflow-x:auto}
+.code-line{display:block;white-space:pre}
+.code-expr{color:#7dd3fc}.code-note{color:var(--color-muted-foreground)}
+
+footer{text-align:center;color:var(--color-muted-foreground);font:500 12px var(--font-mono);padding-top:8px}
+
+/* toast */
+#toast{position:fixed;right:22px;bottom:22px;z-index:50;display:flex;align-items:center;gap:10px;max-width:340px;
+  padding:13px 17px;border-radius:10px;background:var(--color-primary);border:1px solid var(--color-accent);
+  box-shadow:var(--glow);font-size:13.5px;transform:translateY(24px);opacity:0;pointer-events:none;transition:transform 220ms ease,opacity 220ms ease}
+#toast.show{transform:translateY(0);opacity:1}
+#toast .icon{color:var(--color-accent)}
+
+@media(max-width:1024px){.state-grid,.priority-grid{grid-template-columns:1fr 1fr}.priority-grid .pcard:last-child{grid-column:1/-1}}
+@media(max-width:768px){.wrap{padding:20px 15px 44px}.form-grid{grid-template-columns:1fr}.state-grid,.priority-grid{grid-template-columns:1fr}.priority-grid .pcard:last-child{grid-column:auto}.lang-switch .hint{margin-left:0}.checks{gap:16px}}
+@media(max-width:480px){.brand h1{font-size:17px}.brand p{font-size:12px}.config-badge{font-size:11px;padding:7px 10px}.metric .v{font-size:20px}section.card{padding:16px}.select-wrap,select{width:100%}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></symbol>
+  <symbol id="i-frame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo"><svg class="icon"><use href="#i-globe"/></svg></div>
+      <div>
+        <h1 data-i18n="page.title">aifei-i18n 指令演示</h1>
+        <p data-i18n="page.subtitle">Enjoy 模板指令 · 阶段一页面原型</p>
+      </div>
+    </div>
+    <div class="config-badge" title="i18n.defaultLocale">
+      <span class="dot"></span><span class="cl" data-i18n="config.label">默认语言</span>
+      <span><b>i18n.defaultLocale</b> = zh-CN</span>
+    </div>
+  </header>
+
+  <div class="notice">
+    <svg class="icon"><use href="#i-info"/></svg>
+    <span data-i18n="proto.note">阶段一静态原型：文案由语言包 JSON 模拟；点击「查询」不会触发真实查询。</span>
+  </div>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-activity"/></svg><span data-i18n="status.title">页面元数据</span></div>
+      <span class="tag">#lang() / #dir()</span>
+    </div>
+
+    <div class="lang-switch">
+      <label for="langSelect" data-i18n="lang.label">界面语言（#lang('xxx')）</label>
+      <span class="select-wrap">
+        <select id="langSelect">
+          <option value="zh-CN">中文（简体）</option>
+          <option value="en-US">English</option>
+          <option value="ja-JP">日本語</option>
+        </select>
+        <svg class="icon"><use href="#i-chevron"/></svg>
+      </span>
+      <span class="hint" data-i18n="lang.hint">页面级默认语言 = 所选项</span>
+    </div>
+
+    <div class="state-grid">
+      <div class="metric"><span class="k">locale</span><span class="v" id="m-locale">zh-CN</span></div>
+      <div class="metric"><span class="k" data-i18n="status.localeName">语言名称</span><span class="v" id="m-localeName">中文（简体）</span></div>
+      <div class="metric"><span class="k" data-i18n="status.dir">页面方向</span><span class="v dir-v" id="m-dir">ltr</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-filter"/></svg><span data-i18n="list.title">查询与数据列表</span></div>
+      <span class="tag">语言包 JSON 文案 · 模拟数据</span>
+    </div>
+    <form id="demoForm" class="form-grid" onsubmit="return false">
+      <div class="field">
+        <label for="f-keyword" data-i18n="form.keyword">关键词</label>
+        <input id="f-keyword" type="text" data-i18n-placeholder="form.keyword.ph" placeholder="请输入关键词">
+      </div>
+      <div class="field">
+        <label for="f-type" data-i18n="form.type">类型</label>
+        <span class="select-wrap" style="width:100%">
+          <select id="f-type">
+            <option value="" data-i18n="form.type.ph">请选择</option>
+            <option value="book" data-i18n="form.type.opt1">图书</option>
+            <option value="article" data-i18n="form.type.opt2">文章</option>
+            <option value="video" data-i18n="form.type.opt3">视频</option>
+          </select>
+          <svg class="icon"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+      <div class="field">
+        <label for="f-date" data-i18n="form.date">日期</label>
+        <input id="f-date" type="date" aria-describedby="date-fmt">
+        <span class="field-hint" id="date-fmt" data-i18n="form.date.fmt">格式：年-月-日</span>
+      </div>
+      <div class="field">
+        <label for="f-currency" data-i18n="form.currency">金额</label>
+        <div class="input-affix">
+          <span class="affix" id="currency-symbol">¥</span>
+          <input id="f-currency" type="text" data-i18n-placeholder="form.currency.ph" placeholder="输入金额">
+        </div>
+      </div>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="f-archived"><span data-i18n="form.checkbox">包含已归档</span></label>
+        <div class="field" style="gap:8px">
+          <span style="font:500 13px var(--font-mono);color:var(--color-muted-foreground)" data-i18n="form.radio">排序</span>
+          <label class="check"><input type="radio" name="sort" value="asc" checked><span data-i18n="form.radio.asc">升序</span></label>
+          <label class="check"><input type="radio" name="sort" value="desc"><span data-i18n="form.radio.desc">降序</span></label>
+        </div>
+        <label class="switch"><input type="checkbox" id="f-exact"><span data-i18n="form.switch">精确匹配</span></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="btnSearch" data-i18n="form.search">查询</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" data-i18n="form.reset">重置</button>
+      </div>
+    </form>
+    <div class="list-block">
+      <div class="list-subhead"><svg class="icon"><use href="#i-table"/></svg><span data-i18n="table.title">数据列表</span></div>
+      <table>
+        <thead><tr>
+          <th data-i18n="table.col.name">名称</th>
+          <th data-i18n="table.col.region">区域</th>
+          <th data-i18n="table.col.status">状态</th>
+          <th data-i18n="table.col.date">日期</th>
+          <th data-i18n="table.col.amount">金额</th>
+        </tr></thead>
+        <tbody id="listBody"><tr class="empty-row"><td colspan="5" data-i18n="table.empty">暂无记录</td></tr></tbody>
+      </table>
+      <div class="pager">
+        <button type="button" disabled data-i18n="table.page.prev">上一页</button>
+        <span data-i18n="table.page.info" data-args-0="1" data-args-1="10">第 1 / 10 页</span>
+        <button type="button" disabled data-i18n="table.page.next">下一页</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-frame"/></svg><span data-i18n="iframe.title">中东文字 RTL 展示（iframe）</span></div>
+      <span class="tag">#lang('ar-SA') → #i18n(key)</span>
+    </div>
+    <div class="iframe-note"><svg class="icon"><use href="#i-info"/></svg><span data-i18n="iframe.note">RTL 实现方式待确认</span></div>
+    <iframe id="rtl-frame" sandbox="allow-same-origin" title="RTL iframe"></iframe>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-code"/></svg><span data-i18n="priority.title">语言取值优先级链</span></div>
+      <span class="tag">#i18n(lang=…) &gt; #lang('xxx') &gt; #lang()</span>
+    </div>
+    <p class="chain">#i18n(..., lang='xxx') &gt; #lang('xxx') &gt; #lang()</p>
+    <div class="priority-grid">
+      <div class="pcard lv1">
+        <span class="rank">01 · #i18n(..., lang='ar-SA')</span>
+        <h3 data-i18n="priority.local.title">① 局部覆盖</h3>
+        <div class="val" id="p6-local-value" dir="rtl" lang="ar-SA">مرحباً، Bob!</div>
+        <p class="desc" data-i18n="priority.local.desc">lang='ar-SA' 只影响该条文案；切换页面语言时本卡片保持不变。</p>
+      </div>
+      <div class="pcard">
+        <span class="rank">02 · #lang('xxx')</span>
+        <h3 data-i18n="priority.page.title">② 页面级 #lang('xxx')</h3>
+        <div class="val" id="p6-page-value">你好，Bob！</div>
+        <p class="desc" data-i18n="priority.page.desc">取页面级默认语言的文案；随页面语言切换。</p>
+      </div>
+      <div class="pcard">
+        <span class="rank">03 · #lang()</span>
+        <h3 data-i18n="priority.default.title">③ 无参 #lang()</h3>
+        <div class="val" id="p6-default-value">你好，Bob！</div>
+        <p class="desc" data-i18n="priority.default.desc">读当前生效 locale（含 defaultLocale）；随页面语言切换。</p>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="cb-head"><svg class="icon"><use href="#i-code"/></svg><span data-i18n="code.title">模板代码示例</span></div>
+<pre><code><span class="code-line"><span class="code-expr">#lang('en-US')</span>                       <span class="code-note" data-i18n="code.note1">设置页面级默认语言</span></span><span class="code-line"><span class="code-expr">#i18n('hello', lang='ar-SA', 'Bob')</span>  <span class="code-note" data-i18n="code.note2">① 局部覆盖：固定 ar-SA</span></span><span class="code-line"><span class="code-expr">#i18n('hello', 'Bob')</span>                <span class="code-note" data-i18n="code.note3">② 跟随页面级 #lang('xxx')</span></span><span class="code-line"><span class="code-expr">#lang()</span>                              <span class="code-note" data-i18n="code.note4">③ 读当前生效 locale</span></span></code></pre>
+    </div>
+  </section>
+
+  <footer data-i18n="footer.text">aifei-i18n · 阶段一静态原型 · 供确认使用</footer>
+</div>
+
+<div id="toast" role="status"><svg class="icon"><use href="#i-check"/></svg><span id="toast-text"></span></div>
+
+<script>
+// 语言包：zh-CN 为 i18n.defaultLocale 默认；ar-SA 仅用于局部覆盖与 iframe 展示。
+const I18N = {
+  'zh-CN': {
+    localeName:'中文（简体）', dir:'ltr', symbol:'¥',
+    m:{
+      'page.title':'aifei-i18n 指令演示',
+      'page.subtitle':'Enjoy 模板指令 · 阶段一页面原型',
+      'proto.note':'阶段一静态原型：文案由语言包 JSON 模拟；点击「查询」不会触发真实查询。',
+      'config.label':'默认语言',
+      'status.title':'页面元数据','status.localeName':'语言名称','status.dir':'页面方向',
+      'lang.label':"界面语言（#lang('xxx')）",'lang.hint':'页面级默认语言 = 所选项',
+      'hello':'你好，{0}！',
+      'iframe.title':'中东文字 RTL 展示（iframe）','iframe.note':'RTL 实现方式待确认',
+      'form.title':'查询条件','form.keyword':'关键词','form.keyword.ph':'请输入关键词',
+      'form.type':'类型','form.type.ph':'请选择','form.type.opt1':'图书','form.type.opt2':'文章','form.type.opt3':'视频',
+      'form.date':'日期','form.date.ph':'选择日期','form.date.fmt':'格式：年-月-日','form.checkbox':'包含已归档','form.radio':'排序',
+      'form.radio.asc':'升序','form.radio.desc':'降序','form.switch':'精确匹配','form.currency':'金额','form.currency.ph':'输入金额',
+      'form.search':'查询','form.reset':'重置',
+      'list.title':'查询与数据列表','table.title':'数据列表','table.col.name':'名称','table.col.region':'区域','table.col.status':'状态','table.col.date':'日期','table.col.amount':'金额',
+      'table.empty':'暂无记录','table.page.prev':'上一页','table.page.next':'下一页','table.page.info':'第 {0} / {1} 页',
+      'priority.title':'语言取值优先级链','priority.local.title':'① 局部覆盖',
+      'priority.local.desc':"lang='ar-SA' 只影响该条文案；切换页面语言时本卡片保持不变。",
+      'priority.page.title':"② 页面级 #lang('xxx')",'priority.page.desc':'取页面级默认语言的文案；随页面语言切换。',
+      'priority.default.title':'③ 无参 #lang()','priority.default.desc':'读当前生效 locale（含 defaultLocale）；随页面语言切换。',
+      'code.title':'模板代码示例','code.note1':'设置页面级默认语言','code.note2':'① 局部覆盖：固定 ar-SA',
+      'code.note3':"② 跟随页面级 #lang('xxx')",'code.note4':'③ 读当前生效 locale',
+      'toast.search':'已点击「查询」（原型演示，不请求后端）','toast.reset':'表单已重置（原型演示）',
+      'footer.text':'aifei-i18n · 阶段一静态原型 · 供确认使用'
+    }
+  },
+  'en-US': {
+    localeName:'English', dir:'ltr', symbol:'$',
+    m:{
+      'page.title':'aifei-i18n Directive Demo','page.subtitle':'Enjoy Template Directives · Phase 1 Prototype',
+      'proto.note':'Phase 1 static prototype: text is simulated by a language-pack JSON; clicking Search runs no real query.',
+      'config.label':'Default locale',
+      'status.title':'Page Metadata','status.localeName':'Locale name','status.dir':'Direction',
+      'lang.label':"Interface language (#lang('xxx'))",'lang.hint':'Page-level default = selected value',
+      'hello':'Hello, {0}!',
+      'iframe.title':'RTL Arabic Text (iframe)','iframe.note':'RTL approach pending confirmation',
+      'form.title':'Search Filters','form.keyword':'Keyword','form.keyword.ph':'Enter keyword',
+      'form.type':'Type','form.type.ph':'Please select','form.type.opt1':'Book','form.type.opt2':'Article','form.type.opt3':'Video',
+      'form.date':'Date','form.date.ph':'Select date','form.date.fmt':'Format: MM/DD/YYYY','form.checkbox':'Include archived','form.radio':'Sort order',
+      'form.radio.asc':'Ascending','form.radio.desc':'Descending','form.switch':'Exact match','form.currency':'Amount','form.currency.ph':'Enter amount',
+      'form.search':'Search','form.reset':'Reset',
+      'list.title':'Search & Results','table.title':'Results','table.col.name':'Name','table.col.region':'Region','table.col.status':'Status','table.col.date':'Date','table.col.amount':'Amount',
+      'table.empty':'No records found','table.page.prev':'Previous','table.page.next':'Next','table.page.info':'Page {0} of {1}',
+      'priority.title':'Locale Resolution Priority','priority.local.title':'① Local override',
+      'priority.local.desc':"lang='ar-SA' affects only this line; stays fixed when page language changes.",
+      'priority.page.title':"② Page-level #lang('xxx')",'priority.page.desc':'Uses the page-level default locale; follows the page switch.',
+      'priority.default.title':'③ No-arg #lang()','priority.default.desc':'Reads the current effective locale (defaultLocale etc.); follows the page switch.',
+      'code.title':'Template example','code.note1':'Set page-level default locale','code.note2':'① Local override: fixed ar-SA',
+      'code.note3':"② Follows page-level #lang('xxx')",'code.note4':'③ Read current effective locale',
+      'toast.search':'Search clicked (prototype demo, no backend call)','toast.reset':'Form reset (prototype demo)',
+      'footer.text':'aifei-i18n · Phase 1 static prototype · For confirmation'
+    }
+  },
+  'ja-JP': {
+    localeName:'日本語', dir:'ltr', symbol:'￥',
+    m:{
+      'page.title':'aifei-i18n ディレクティブデモ','page.subtitle':'Enjoy テンプレートディレクティブ · フェーズ1 プロトタイプ',
+      'proto.note':'フェーズ1静的プロトタイプ：テキストは言語パックJSONで模擬；「検索」をクリックしても実際のクエリは実行されません。',
+      'config.label':'デフォルト言語',
+      'status.title':'ページメタデータ','status.localeName':'言語名','status.dir':'方向',
+      'lang.label':"インターフェース言語（#lang('xxx')）",'lang.hint':'ページレベルのデフォルト = 選択値',
+      'hello':'こんにちは、{0}！',
+      'iframe.title':'中東テキスト RTL 表示（iframe）','iframe.note':'RTL実装方式は確認待ち',
+      'form.title':'検索条件','form.keyword':'キーワード','form.keyword.ph':'キーワードを入力',
+      'form.type':'種類','form.type.ph':'選択してください','form.type.opt1':'書籍','form.type.opt2':'記事','form.type.opt3':'動画',
+      'form.date':'日付','form.date.ph':'日付を選択','form.date.fmt':'形式：年月日','form.checkbox':'アーカイブを含む','form.radio':'並び順',
+      'form.radio.asc':'昇順','form.radio.desc':'降順','form.switch':'完全一致','form.currency':'金額','form.currency.ph':'金額を入力',
+      'form.search':'検索','form.reset':'リセット',
+      'list.title':'検索とデータ一覧','table.title':'データ一覧','table.col.name':'名前','table.col.region':'地域','table.col.status':'状態','table.col.date':'日付','table.col.amount':'金額',
+      'table.empty':'レコードがありません','table.page.prev':'前へ','table.page.next':'次へ','table.page.info':'{0} / {1} ページ',
+      'priority.title':'ロケール解決の優先順位','priority.local.title':'① ローカル上書き',
+      'priority.local.desc':"lang='ar-SA' はこの行のみに影響；ページ言語を変えても変化しません。",
+      'priority.page.title':"② ページレベル #lang('xxx')",'priority.page.desc':'ページレベルのデフォルト言語の文案；ページ言語に同期。',
+      'priority.default.title':'③ 引数なし #lang()','priority.default.desc':'現在の有効ロケールを読む（defaultLocale 等）；ページ言語に同期。',
+      'code.title':'テンプレート例','code.note1':'ページレベルのデフォルト言語を設定','code.note2':'① ローカル上書き：固定 ar-SA',
+      'code.note3':"② ページレベル #lang('xxx') に追従",'code.note4':'③ 現在の有効ロケールを読む',
+      'toast.search':'「検索」をクリック（プロトタイプ、バックエンド呼び出しなし）','toast.reset':'フォームをリセット（プロトタイプ）',
+      'footer.text':'aifei-i18n · フェーズ1静的プロトタイプ · 確認用'
+    }
+  },
+  'ar-SA': {
+    localeName:'العربية', dir:'rtl', symbol:'﷼',
+    m:{
+      'hello':'مرحباً، {0}!',
+      'page.title':'عرض توجيهات aifei-i18n','iframe.title':'عرض النص العربي من اليمين لليسار',
+      'table.empty':'لا توجد سجلات','form.search':'بحث'
+    }
+  }
+};
+
+function t(locale, key, args){
+  const m = (I18N[locale] && I18N[locale].m) || {};
+  let s = m[key];
+  if(s == null) s = (I18N['en-US'].m[key] != null ? I18N['en-US'].m[key] : key);
+  return s.replace(/\{(\d+)\}/g, (all, i) => (args && args[i] != null ? args[i] : all));
+}
+
+// 模拟数据：数据本身不随语言翻译，日期与金额按下述函数按 locale 呈现。
+const SAMPLE_ROWS = [
+  {name:'ORION-1001', region:'APAC', status:'Active',   date:'2026-11-19', amount:12800},
+  {name:'ORION-1002', region:'EMEA', status:'Active',   date:'2026-11-18', amount:9600},
+  {name:'ORION-1003', region:'NA',   status:'Pending',  date:'2026-11-17', amount:24500},
+  {name:'ORION-1004', region:'APAC', status:'Archived', date:'2026-11-16', amount:7300},
+  {name:'ORION-1005', region:'EMEA', status:'Active',   date:'2026-11-15', amount:15800},
+  {name:'ORION-1006', region:'NA',   status:'Active',   date:'2026-11-14', amount:4200}
+];
+let listShown = false;
+
+function formatDate(iso, locale){
+  const p = iso.split('-');
+  if(locale === 'en-US'){
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[Number(p[1]) - 1] + ' ' + Number(p[2]) + ', ' + p[0];
+  }
+  if(locale === 'ja-JP') return p[0] + '/' + p[1] + '/' + p[2];
+  return iso;
+}
+
+function renderTable(locale){
+  const symbol = (I18N[locale] && I18N[locale].symbol) || '$';
+  const tbody = document.getElementById('listBody');
+  tbody.textContent = '';
+  SAMPLE_ROWS.forEach(function(r){
+    const tr = document.createElement('tr');
+    const cells = [r.name, r.region, r.status, formatDate(r.date, locale), symbol + r.amount.toLocaleString('en-US')];
+    cells.forEach(function(v){
+      const td = document.createElement('td');
+      td.textContent = v;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+function clearTable(){
+  const tbody = document.getElementById('listBody');
+  tbody.textContent = '';
+  const tr = document.createElement('tr');
+  tr.className = 'empty-row';
+  const td = document.createElement('td');
+  td.colSpan = 5;
+  td.setAttribute('data-i18n', 'table.empty');
+  td.textContent = t(document.documentElement.lang, 'table.empty');
+  tr.appendChild(td);
+  tbody.appendChild(tr);
+}
+
+// P-04：srcdoc 内先用页面级语言设为 ar-SA，再用 #i18n(key) 取文案，整页 dir=rtl。
+const rtlDoc = `<!doctype html><html lang="ar-SA" dir="rtl"><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;height:100%;padding:18px 22px;background:#0F172A;color:#F8FAFC;font:400 15px/1.7 'IBM Plex Sans','Segoe UI',Tahoma,sans-serif}
+h2{margin:0 0 6px;font:600 21px/1.4 Tahoma,sans-serif;color:#22C55E}
+.dir{display:inline-block;margin-bottom:14px;padding:4px 10px;border:1px solid #475569;border-radius:6px;font:500 12px Consolas,monospace;color:#94A3B8}
+.line{margin:5px 0;font-size:15px}.meta{color:#94A3B8;font:500 12px Consolas,monospace}
+code{color:#7dd3fc}</style></head><body>
+<span class="dir">lang = ar-SA &nbsp;·&nbsp; dir = rtl</span>
+<div class="meta"><code>#lang('ar-SA')</code> &nbsp;→&nbsp; <code>#i18n(key)</code></div>
+<h2>مرحباً، بوب!</h2>
+<p class="line">عنوان الصفحة — عرض توضيحي لتوجيهات القوالب.</p>
+<p class="line">هذا النص العربي مرتب من اليمين إلى اليسار بشكل صحيح.</p>
+<p class="line">اللغة العربية &nbsp;·&nbsp; الاتجاه &nbsp;·&nbsp; من اليمين إلى اليسار</p>
+</body></html>`;
+
+function render(locale){
+  const cfg = I18N[locale];
+  document.documentElement.lang = locale;
+  document.documentElement.dir = cfg.dir;
+
+  document.getElementById('m-locale').textContent = locale;
+  document.getElementById('m-localeName').textContent = cfg.localeName;
+  document.getElementById('m-dir').textContent = cfg.dir;
+
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    const args = [el.getAttribute('data-args-0'), el.getAttribute('data-args-1')].filter(function(v){return v!=null;});
+    el.textContent = t(locale, el.getAttribute('data-i18n'), args);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el){
+    el.setAttribute('placeholder', t(locale, el.getAttribute('data-i18n-placeholder')));
+  });
+
+  document.getElementById('currency-symbol').textContent = cfg.symbol;
+
+  // P-06：局部覆盖卡片固定 ar-SA，不随页面语言切换；其余两张跟随当前 locale。
+  document.getElementById('p6-local-value').textContent = t('ar-SA','hello',['Bob']);
+  document.getElementById('p6-page-value').textContent = t(locale,'hello',['Bob']);
+  document.getElementById('p6-default-value').textContent = t(locale,'hello',['Bob']);
+  if(listShown) renderTable(locale); else clearTable();
+}
+
+let toastTimer;
+function toast(key){
+  const box = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = t(document.documentElement.lang, key);
+  box.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){box.classList.remove('show');}, 2600);
+}
+
+document.getElementById('langSelect').addEventListener('change', function(e){render(e.target.value);});
+document.getElementById('btnSearch').addEventListener('click', function(){
+  listShown = true;
+  renderTable(document.documentElement.lang);
+  toast('toast.search');
+});
+document.getElementById('btnReset').addEventListener('click', function(){
+  document.getElementById('demoForm').reset();
+  listShown = false;
+  clearTable();
+  toast('toast.reset');
+});
+
+document.getElementById('rtl-frame').srcdoc = rtlDoc;
+render('zh-CN'); // P-01：首屏取 i18n.defaultLocale = zh-CN
+</script>
+</body>
+</html>
