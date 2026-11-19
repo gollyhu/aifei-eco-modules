@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ar-SA" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>#i18n('iframe.title')</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;height:100%;padding:18px 22px;background:#0F172A;color:#F8FAFC;font:400 15px/1.7 'Segoe UI',Tahoma,sans-serif}
+h2{margin:0 0 6px;font:600 21px/1.4 Tahoma,sans-serif;color:#22C55E}
+.dir{display:inline-block;margin-bottom:14px;padding:4px 10px;border:1px solid #475569;border-radius:6px;font:500 12px Consolas,monospace;color:#94A3B8}
+.line{margin:5px 0;font-size:15px}.meta{color:#94A3B8;font:500 12px Consolas,monospace}
+code{color:#7dd3fc}
+</style>
+</head>
+<body>
+#lang('ar-SA')
+<span class="dir">lang = ar-SA &nbsp;·&nbsp; dir = #dir()</span>
+<div class="meta"><code>#('#')lang('ar-SA')</code> &nbsp;→&nbsp; <code>#('#')i18n(key)</code></div>
+<h2>#i18n('hello', 'بوب')</h2>
+<p class="line">#i18n('iframe.title')</p>
+<p class="line">#i18n('table.empty')</p>
+<p class="line">#i18n('form.search')</p>
+</body>
+</html>

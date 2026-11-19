@@ -350,3 +350,34 @@ for f in $(find target/classes -name '*.class'); do javap -verbose "$f" | grep -
 - 时间相关用例**禁用 `Thread.sleep`**，用「极小 TTL + nanoTime 有界轮询」替代，并多次重跑确认稳定。
 - 每条用例在方法注释或本文矩阵中标注覆盖的 AC 编号，保持本文件台账同步。
 - 变异探针一律在临时副本执行，交付源码前后 md5 校验；探针用毕即删，不留残留。
+
+---
+
+## 十一、Enjoy 指令用例清单（AC-INC-01~13，增量）
+
+> 指令实现位于 `internal/directive/`（非承诺 API），测试类
+> `src/test/java/cn/hg/aifei/i18n/internal/directive/DirectiveTest.java`（T-I05，测试工程师负责）。
+> 全部用例用**真实 Enjoy Engine** 渲染内存 / classpath 模板（`engine.getTemplateByString` 或内存 ISource），
+> URL host 仅 `localhost`，零联网、零 HTTP 依赖。
+
+| AC | 用例方法 | 判定要点 |
+| --- | --- | --- |
+| AC-INC-01 | `testLangPositionIndependence` | 三式写法（lang 置首/中/尾）输出逐字相等 |
+| AC-INC-02 | `testLangAnyPositionKeepsArgsOrder` | lang 置首/中/尾均提取，剩余参数顺序不变 |
+| AC-INC-03 | `testInterpolationAndMissingArg` | `{0}` 插值 + 缺参原样保留（复用 E-6） |
+| AC-INC-04 | `testNoLangUsesEffectiveLocale` | 无 lang 走 `effectivePageLang()` → `LocaleResolver.resolve(null)` |
+| AC-INC-05 | `testPageLangGoverns` | `#lang('zh-CN')` 后无 lang 文案跟随 zh-CN |
+| AC-INC-06 | `testLocalOverrideNotPollutePage` | 局部 ar-SA 为阿文、`#lang()` 仍 zh-CN（不污染） |
+| AC-INC-07 | `testDirReadWriteAndIllegal` | `#dir('rtl')` → `#dir()`=rtl；非法值 IAE |
+| AC-INC-08 | `testDirFallback` | dir 能力不可用 → ltr + WARN，不抛（`LocaleMeta` 替身隔离） |
+| AC-INC-09 | `testIllegalIae` | lang 重复 / 非法 / 缺 key → IAE，消息可定位 |
+| AC-INC-10 | `testStringLiteralNotNamedArg` | args 含字符串字面量 `"lang='x'"` 视为普通参数 |
+| AC-INC-11 | `testRealEngineEndToEnd` | 真实 Engine 渲染 §4 场景，逐字相等，零联网 |
+| AC-INC-12 | `testSameThreadNoLeak` | 同线程两次不同语言渲染各自正确、不串（`clear()` 隔离） |
+| AC-INC-13 | `testPriorityChainNoFallback` | 局部 ar-SA / 无 lang 与 `#lang()` 均 zh-CN（请求头 en-US），高优先级不回退 |
+
+**门禁例外自检**：`ArchitectureBoundaryTest#frameworkScopeRules` 仅放开 `cn.aifei.enjoy.` 于
+`cn/hg/aifei/i18n/internal/directive/`，其余框架包边界 / 公共面 9 类型 / 零自建规则数据等断言不变。
+`mvn clean verify` 需 0 failure / 0 error。
+
+—— 测试清单由开发工程师 寇戴码登记（用例实现归测试工程师 策市袁）

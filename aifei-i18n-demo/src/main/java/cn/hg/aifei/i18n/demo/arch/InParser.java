@@ -1,0 +1,167 @@
+/*
+ * Copyright 2014-2026 糊搞 (3722711@qq.com)
+ *
+ * https://gitee.com/gollyhu
+ * 开发工程师 寇戴码（Enjoy 指令增量）
+ */
+
+package cn.hg.aifei.i18n.demo.arch;
+
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.JSONFactory;
+import io.undertow.server.HttpServerExchange;
+import io.undertow.server.handlers.form.FormData;
+import io.undertow.server.handlers.form.FormDataParser;
+import io.undertow.server.handlers.form.FormEncodedDataDefinition;
+import io.undertow.server.handlers.form.FormParserFactory;
+import io.undertow.server.handlers.form.MultiPartParserDefinition;
+import io.undertow.util.Headers;
+import io.undertow.util.Methods;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Deque;
+import java.util.Map;
+
+/** InParser：请求参数解析（demo 简化版，query / json / form）。 */
+public class InParser {
+
+    static final FormParserFactory formParserFactory = FormParserFactory
+            .builder(false)
+            .withDefaultCharset("UTF-8")
+            .addParser(new FormEncodedDataDefinition())
+            .addParser(new MultiPartParserDefinition())
+            .build();
+
+    /** 解析数据，返回值必须非 null，避免重复解析。 */
+    public JSONObject parse(HttpServerExchange exchange, In in) {
+        JSONObject queryPara = parseQueryPara(exchange);
+        JSONObject bodyPara = parseBodyPara(exchange, in);
+        if (bodyPara != null) {
+            if (queryPara != null) {
+                bodyPara.putAll(queryPara);
+            }
+            return bodyPara;
+        }
+        return queryPara != null ? queryPara : new JSONObject();
+    }
+
+    JSONObject parseQueryPara(HttpServerExchange exchange) {
+        Map<String, Deque<String>> queryParas = exchange.getQueryParameters();
+        if (queryParas.isEmpty()) {
+            return null;
+        }
+        JSONObject ret = new JSONObject(queryParas.size());
+        for (Map.Entry<String, Deque<String>> e : queryParas.entrySet()) {
+            String first = e.getValue().getFirst();
+            ret.put(e.getKey(), getStringValue(first));
+        }
+        return ret;
+    }
+
+    String getStringValue(String str) {
+        return str == null || str.isEmpty() ? null : str;
+    }
+
+    JSONObject parseBodyPara(HttpServerExchange exchange, In in) {
+        if (Methods.GET.equals(exchange.getRequestMethod())) {
+            return null;
+        }
+        String contentType = exchange.getRequestHeaders().getFirst(Headers.CONTENT_TYPE);
+        if (contentType != null && contentType.contains("json")) {
+            return parseJsonPara(exchange, in);
+        }
+        return parseFormPara(exchange, in);
+    }
+
+    JSONObject parseJsonPara(HttpServerExchange exchange, In in) {
+        if (exchange.getRequestContentLength() == 0) {
+            return null;
+        }
+        Object json = JSON.parse(exchange.getInputStream(), JSONFactory.createReadContext());
+        if (json instanceof JSONObject) {
+            return (JSONObject) json;
+        }
+        if (json instanceof JSONArray) {
+            in.arrayData = (JSONArray) json;
+        }
+        return null;
+    }
+
+    JSONObject parseFormPara(HttpServerExchange exchange, In in) {
+        FormData formData;
+        try {
+            FormDataParser parser = formParserFactory.createParser(exchange);
+            if (parser == null) {
+                return null;
+            }
+            formData = parser.parseBlocking();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        JSONObject ret = new JSONObject();
+        for (String key : formData) {
+            Deque<FormData.FormValue> deque = formData.get(key);
+            if (deque == null) {
+                continue;
+            }
+            FormData.FormValue first = deque.getFirst();
+            if (first == null) {
+                ret.put(key, null);
+                continue;
+            }
+            if (first.isFileItem()) {
+                in.uploadFileName = first.getFileName();
+                try {
+                    in.uploadBytes = readAll(first.getFileItem().getInputStream());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                ret.put(key, first.getFileName());
+            } else {
+                ret.put(key, getStringValue(first.getValue()));
+            }
+        }
+        return ret;
+    }
+
+    private static byte[] readAll(InputStream in) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                out.write(buf, 0, n);
+            }
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    Boolean toBoolean(Object obj) {
+        if (obj instanceof String) {
+            String str = ((String) obj).trim();
+            if ("true".equals(str) || "1".equals(str)) {
+                return Boolean.TRUE;
+            } else if ("false".equals(str) || "0".equals(str)) {
+                return Boolean.FALSE;
+            } else if (str.isEmpty()) {
+                return null;
+            }
+            throw new IllegalArgumentException("Cannot convert String value \"" + str + "\" to Boolean.");
+        }
+        if (obj instanceof Number) {
+            int n = ((Number) obj).intValue();
+            if (n == 1) {
+                return Boolean.TRUE;
+            } else if (n == 0) {
+                return Boolean.FALSE;
+            }
+            throw new IllegalArgumentException("Cannot convert Number value " + n + " to Boolean.");
+        }
+        throw new IllegalArgumentException("Cannot convert type " + obj.getClass().getName() + " to Boolean.");
+    }
+}

@@ -1,0 +1,188 @@
+<!doctype html>
+#if(lang != null)
+#lang(lang)
+#end
+<html lang="#(lang)" dir="#(dir)">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>aifei-i18n · 指令实时演示</title>
+<link rel="stylesheet" href="/assets/css/i18n-demo.css">
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></symbol>
+  <symbol id="i-frame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></symbol>
+</svg>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo"><svg class="icon"><use href="#i-globe"/></svg></div>
+      <div>
+        <h1>#i18n('page.title')</h1>
+        <p>#i18n('page.subtitle')</p>
+      </div>
+    </div>
+    <div class="config-badge" title="i18n.defaultLocale">
+      <span class="dot"></span><span class="cl">#i18n('config.label')</span>
+      <span><b>i18n.defaultLocale</b> = #(defaultLocale)</span>
+    </div>
+  </header>
+
+  <div class="notice">
+    <svg class="icon"><use href="#i-info"/></svg>
+    <span>#i18n('proto.note')</span>
+  </div>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-activity"/></svg><span>#i18n('status.title')</span></div>
+      <span class="tag">#lang() / #dir()</span>
+    </div>
+
+    <div class="lang-switch">
+      <label for="langSelect">#i18n('lang.label')</label>
+      <span class="select-wrap">
+        <select id="langSelect">
+          <option value="zh-CN">中文（简体）</option>
+          <option value="en-US">English</option>
+          <option value="ja-JP">日本語</option>
+        </select>
+        <svg class="icon"><use href="#i-chevron"/></svg>
+      </span>
+      <span class="hint">#i18n('lang.hint')</span>
+    </div>
+
+    <div class="state-grid">
+      <div class="metric"><span class="k">locale</span><span class="v" id="m-locale">#lang()</span></div>
+      <div class="metric"><span class="k">#i18n('status.localeName')</span><span class="v" id="m-localeName">#(localeName)</span></div>
+      <div class="metric"><span class="k">#i18n('status.dir')</span><span class="v dir-v" id="m-dir">#dir()</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-filter"/></svg><span>#i18n('list.title')</span></div>
+      <span class="tag" data-i18n="list.title">语言包 JSON 文案 · 模拟数据</span>
+    </div>
+    <form id="demoForm" class="form-grid" onsubmit="return false">
+      <div class="field">
+        <label for="f-keyword" data-i18n="form.keyword">关键词</label>
+        <input id="f-keyword" type="text" data-i18n-placeholder="form.keyword.ph" placeholder="请输入关键词">
+      </div>
+      <div class="field">
+        <label for="f-type" data-i18n="form.type">类型</label>
+        <span class="select-wrap" style="width:100%">
+          <select id="f-type">
+            <option value="" data-i18n="form.type.ph">请选择</option>
+            <option value="book" data-i18n="form.type.opt1">图书</option>
+            <option value="article" data-i18n="form.type.opt2">文章</option>
+            <option value="video" data-i18n="form.type.opt3">视频</option>
+          </select>
+          <svg class="icon"><use href="#i-chevron"/></svg>
+        </span>
+      </div>
+      <div class="field">
+        <label for="f-date" data-i18n="form.date">日期</label>
+        <input id="f-date" type="date" aria-describedby="date-fmt">
+        <span class="field-hint" id="date-fmt" data-i18n="form.date.fmt">格式：年-月-日</span>
+      </div>
+      <div class="field">
+        <label for="f-currency" data-i18n="form.currency">金额</label>
+        <div class="input-affix">
+          <span class="affix" id="currency-symbol">¥</span>
+          <input id="f-currency" type="text" data-i18n-placeholder="form.currency.ph" placeholder="输入金额">
+        </div>
+      </div>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="f-archived"><span data-i18n="form.checkbox">包含已归档</span></label>
+        <div class="field" style="gap:8px">
+          <span style="font:500 13px var(--font-mono);color:var(--color-muted-foreground)" data-i18n="form.radio">排序</span>
+          <label class="check"><input type="radio" name="sort" value="asc" checked><span data-i18n="form.radio.asc">升序</span></label>
+          <label class="check"><input type="radio" name="sort" value="desc"><span data-i18n="form.radio.desc">降序</span></label>
+        </div>
+        <label class="switch"><input type="checkbox" id="f-exact"><span data-i18n="form.switch">精确匹配</span></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="btnSearch" data-i18n="form.search">查询</button>
+        <button type="button" class="btn btn-ghost" id="btnReset" data-i18n="form.reset">重置</button>
+      </div>
+    </form>
+    <div class="list-block">
+      <div class="list-subhead"><svg class="icon"><use href="#i-table"/></svg><span data-i18n="table.title">数据列表</span></div>
+      <table>
+        <thead><tr>
+          <th data-i18n="table.col.name">名称</th>
+          <th data-i18n="table.col.region">区域</th>
+          <th data-i18n="table.col.status">状态</th>
+          <th data-i18n="table.col.date">日期</th>
+          <th data-i18n="table.col.amount">金额</th>
+        </tr></thead>
+        <tbody id="listBody"><tr class="empty-row"><td colspan="5" data-i18n="table.empty">暂无记录</td></tr></tbody>
+      </table>
+      <div class="pager">
+        <button type="button" disabled data-i18n="table.page.prev">上一页</button>
+        <span data-i18n="table.page.info" data-args-0="1" data-args-1="10">第 1 / 10 页</span>
+        <button type="button" disabled data-i18n="table.page.next">下一页</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-frame"/></svg><span>#i18n('iframe.title')</span></div>
+      <span class="tag">#('#')lang('ar-SA') → #('#')i18n(key)</span>
+    </div>
+    <div class="iframe-note"><svg class="icon"><use href="#i-info"/></svg><span>#i18n('iframe.note')</span></div>
+    <iframe id="rtl-frame" src="/i18n/demo/rtl" sandbox="allow-same-origin" title="RTL iframe"></iframe>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-code"/></svg><span>#i18n('priority.title')</span></div>
+      <span class="tag">#('#')i18n(lang=…) &gt; #('#')lang('xxx') &gt; #('#')lang()</span>
+    </div>
+    <p class="chain">#('#')i18n(..., lang='xxx') &gt; #('#')lang('xxx') &gt; #('#')lang()</p>
+    <div class="priority-grid">
+      <div class="pcard lv1">
+        <span class="rank">01 · #('#')i18n(..., lang='ar-SA')</span>
+        <h3>#i18n('priority.local.title')</h3>
+        <div class="val" id="p6-local-value" dir="rtl" lang="ar-SA">#i18n('hello', lang='ar-SA', 'Bob')</div>
+        <p class="desc">#i18n('priority.local.desc')</p>
+      </div>
+      <div class="pcard">
+        <span class="rank">02 · #('#')lang('xxx')</span>
+        <h3>#i18n('priority.page.title')</h3>
+        <div class="val" id="p6-page-value">#i18n('hello', 'Bob')</div>
+        <p class="desc">#i18n('priority.page.desc')</p>
+      </div>
+      <div class="pcard">
+        <span class="rank">03 · #('#')lang()</span>
+        <h3>#i18n('priority.default.title')</h3>
+        <div class="val" id="p6-default-value">读值 <b>#lang()</b> · #i18n('hello', 'Bob')</div>
+        <p class="desc">#i18n('priority.default.desc')</p>
+      </div>
+    </div>
+    <div class="code-block">
+      <div class="cb-head"><svg class="icon"><use href="#i-code"/></svg><span>#i18n('code.title')</span></div>
+<pre><code><span class="code-line"><span class="code-expr">#('#')lang('en-US')</span>                       <span class="code-note">#i18n('code.note1')</span></span><span class="code-line"><span class="code-expr">#('#')i18n('hello', lang='ar-SA', 'Bob')</span>  <span class="code-note">#i18n('code.note2')</span></span><span class="code-line"><span class="code-expr">#('#')i18n('hello', 'Bob')</span>                <span class="code-note">#i18n('code.note3')</span></span><span class="code-line"><span class="code-expr">#('#')lang()</span>                              <span class="code-note">#i18n('code.note4')</span></span></code></pre>
+    </div>
+  </section>
+
+  <footer>#i18n('footer.text')</footer>
+</div>
+
+<div id="toast" role="status"><svg class="icon"><use href="#i-check"/></svg><span id="toast-text"></span></div>
+<script src="/assets/js/i18n-demo.js"></script>
+</body>
+</html>

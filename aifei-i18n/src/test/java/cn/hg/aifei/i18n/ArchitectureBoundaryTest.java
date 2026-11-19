@@ -60,6 +60,8 @@ public class ArchitectureBoundaryTest {
     private static final String AIFEI_PACKAGE = "cn/hg/aifei/i18n/aifei/";
     private static final String INTERNAL_PACKAGE = "cn/hg/aifei/i18n/internal/";
     private static final String DEFAULT_SRC = "cn/hg/aifei/i18n/defaultSource/";
+    /** 唯一新增门禁例外：Enjoy 类型仅允许出现在指令实现包（design-directive §7.1）。 */
+    private static final String DIRECTIVE_PACKAGE = "cn/hg/aifei/i18n/internal/directive/";
 
     private static final int EXPECTED_PUBLIC_TYPES = 6;
     private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Arrays.asList(
@@ -139,16 +141,19 @@ public class ArchitectureBoundaryTest {
                         || fqn.startsWith("cn.aifei.plugin.Plugin") || fqn.startsWith("cn.aifei.aop.");
                 boolean webOnly = fqn.startsWith("cn.aifei.core.");
                 boolean logOnly = fqn.startsWith("cn.aifei.log.");
+                // 唯一新增例外：Enjoy 类型仅允许 internal/directive/（design-directive §7.1）
+                boolean enjoyOnly = fqn.startsWith("cn.aifei.enjoy.");
                 boolean allowed = (aifeiOnly && path.contains(AIFEI_PACKAGE))
                         || (webOnly && path.contains(WEB_PACKAGE))
                         || (logOnly && path.contains(INTERNAL_PACKAGE) && isLogRecorder(path))
-                        || (logOnly && path.contains(AIFEI_PACKAGE));
+                        || (logOnly && path.contains(AIFEI_PACKAGE))
+                        || (enjoyOnly && path.contains(DIRECTIVE_PACKAGE));
                 if (!allowed) {
                     offenders.add(path + " -> " + fqn);
                 }
             }
         }
-        assertTrue("框架类型包边界违规：" + offenders, offenders.isEmpty());
+        assertTrue("框架类型包边界违规（enjoy 仅允许 internal/directive）：" + offenders, offenders.isEmpty());
     }
 
     @Test

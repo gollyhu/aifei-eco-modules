@@ -175,15 +175,53 @@ CREATE TABLE IF NOT EXISTS i18n_message (
   Java 9+ 用 jlink 裁剪运行时镜像时**须保留 `java.desktop`**，否则 `dir` 判定不可用，模块会降级为 `ltr` + WARN，
   不阻断导出；Java 8 无模块系统不受影响。
 
-## 六、公开 API
+## 六、Enjoy 模板指令（可选，非承诺 API）
+
+面向使用 Enjoy 做服务端渲染的应用，模块在 `internal/directive/` 提供三条指令。它们依赖
+`aifei-all` 已内含的 `cn.aifei:aifei-enjoy`，**零新增依赖坐标**；Enjoy 类型不进入任何公共签名。
+构造引擎后注册一次即可：
+
+```java
+DirectiveRegistrar.register(engine);   // 一次注册 i18n / lang / dir，keepLineBlank=true
+```
+
+| 指令 | 用法 | 语义 |
+| --- | --- | --- |
+| `#i18n(...)` | `#i18n('hello', lang='ar-SA', 'Bob')` | 取文案；`lang=` 具名参数位置无关（可置首/中/尾），其余首个为 key、其后为 `{0}` 参数；lang 非法 / 重复 / 缺 key → IAE |
+| `#lang()` / `#lang('xxx')` | 无参读、单参写 | 读当前生效 locale；写页面级默认语言（其后无 `lang` 的 `#i18n` 跟随） |
+| `#dir()` / `#dir('xxx')` | 无参读、单参写 | 读页面方向（`ltr`/`rtl`）；显式写只接受 `ltr`/`rtl`，其它 → IAE；判定只走 JDK，无自建方向表 |
+
+**语言取值唯一优先级链**：`#i18n(..., lang='xxx')`（单条局部） > `#lang('xxx')`（页面级默认） > `#lang()`（当前生效 locale）。
+局部覆盖只影响该条文案、不改写页面默认值；三条指令最终都分发到 `I18nKit` 既有重载，回退 / 规范化 / 插值零复制。
+
+### ⚠ 页面级状态的 clear 责任（必须遵守）
+
+`#lang('xxx')` / `#dir('xxx')` 把页面级状态存在独立的 `DirectivePageState` ThreadLocal（**不动请求级
+`LocaleContext`**）。指令是散点调用、无统一结束点，因此**消费方必须在渲染入口负责清理**，否则线程池复用线程会串页：
+
+```java
+DirectivePageState.clear();                 // 渲染前先清，防上次残留
+try {
+    DirectivePageState.setPageLang(reqLang); // 或由模板顶部 #lang(lang) 设置
+    engine.getTemplate(view).render(data, out);
+} finally {
+    DirectivePageState.clear();              // 无条件清理，异常路径同样生效
+}
+```
+
+`DirectiveRegistrar` / `DirectivePageState` / `DirectiveSupport` 与三条指令类均为 `internal.directive`
+下的非承诺 API（可 public 供注册，不计入公共面 9 类型）。完整可运行示例见 `aifei-i18n-demo`。
+
+## 七、公开 API
 
 根包 6 个公共类型：`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；
 `web` 包 2 个：`I18nHandler` / `LocaleExtractor`；`aifei` 包 1 个：`I18nPlugin`。
-公共签名只出现 JDK 与本模块类型（框架类型仅出现在 `web` 接入与 `aifei` 装配包）。
+公共签名只出现 JDK 与本模块类型（框架类型仅出现在 `web` 接入与 `aifei` 装配包、以及 `internal.directive` 指令实现）。
 
-## 七、构建与验证
+## 八、构建与验证
 
 ```bash
 cd aifei-i18n
-mvn clean verify      # 0 failure / 0 error，含两套架构门禁测试
+mvn clean verify      # 0 failure / 0 error，含两套架构门禁测试（enjoy 仅允许 internal/directive）
 ```
+
