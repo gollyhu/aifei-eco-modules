@@ -41,7 +41,7 @@
 
 | 类别 | 文件 |
 | --- | --- |
-| 文档 | `README.md`（面向使用者）、`AGENTS.md`（模块开发约束）、`docs/design.md`（设计事实来源）、`docs/requirements-review.md`（75 条 AC 矩阵）、`docs/testing.md`（QA 独立复验报告）、`CHANGELOG.md`（本文件） |
+| 文档 | `README.md`（面向使用者）、`AGENTS.md`（模块开发约束）、`docs/design.md`（设计事实来源）、`docs/需求/aifei-i18n.md`（需求与 16 条 P0 / 75 条 AC 矩阵）、`docs/testing.md`（QA 独立复验报告）、`CHANGELOG.md`（本文件） |
 | 构建 | `pom.xml`（坐标 1.0.0，Java 8 编译目标，门禁 surefire 配置） |
 | 主源（25） | 根包 6：`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；`web` 2：`I18nHandler` / `LocaleExtractor`；`aifei` 1：`I18nPlugin`；`internal` 13：`I18nConfig` / `LocaleNormalizer` / `LocaleResolver` / `LocaleContext` / `FallbackChain` / `CacheLayer` / `MessageInterpolator` / `BundleExporter` / `LocaleMeta` / `FormatSupport` / `SourceRegistry` / `I18nHolder` / `I18nEngine`；`defaultSource` 3：`PropertiesSource` / `DbSource` / `KvSource` |
 | 测试（13） | `I18nKitTest` / `FormatKitTest` / `LocaleResolverTest` / `BundleExportTest` / `I18nPluginTest` / `I18nHandlerTest` / `ArchitectureBoundaryTest` / `ClassFileVersionTest` / `QaConsistencyTest` / `QaLogLevelTest`；`support`：`FakeMessageSource` / `FakeDbAccessor` / `RecordingLogFactory` |

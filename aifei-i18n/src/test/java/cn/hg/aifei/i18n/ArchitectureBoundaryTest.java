@@ -60,7 +60,7 @@ public class ArchitectureBoundaryTest {
     private static final String AIFEI_PACKAGE = "cn/hg/aifei/i18n/aifei/";
     private static final String INTERNAL_PACKAGE = "cn/hg/aifei/i18n/internal/";
     private static final String DEFAULT_SRC = "cn/hg/aifei/i18n/defaultSource/";
-    /** 唯一新增门禁例外：Enjoy 类型仅允许出现在指令实现包（design-directive §7.1）。 */
+    /** 唯一新增门禁例外：Enjoy 类型仅允许出现在指令实现包（design.md §16.8.1）。 */
     private static final String DIRECTIVE_PACKAGE = "cn/hg/aifei/i18n/internal/directive/";
 
     private static final int EXPECTED_PUBLIC_TYPES = 6;
@@ -141,7 +141,7 @@ public class ArchitectureBoundaryTest {
                         || fqn.startsWith("cn.aifei.plugin.Plugin") || fqn.startsWith("cn.aifei.aop.");
                 boolean webOnly = fqn.startsWith("cn.aifei.core.");
                 boolean logOnly = fqn.startsWith("cn.aifei.log.");
-                // 唯一新增例外：Enjoy 类型仅允许 internal/directive/（design-directive §7.1）
+                // 唯一新增例外：Enjoy 类型仅允许 internal/directive/（design.md §16.8.1）
                 boolean enjoyOnly = fqn.startsWith("cn.aifei.enjoy.");
                 boolean allowed = (aifeiOnly && path.contains(AIFEI_PACKAGE))
                         || (webOnly && path.contains(WEB_PACKAGE))

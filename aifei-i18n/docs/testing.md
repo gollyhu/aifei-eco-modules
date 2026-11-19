@@ -2,7 +2,7 @@
 
 > 复验人：策市袁（Yuan）· Aifei 开发专家团测试工程师（独立 QA，不采信实现侧自评）
 > 复验日期：2026-11-19
-> 事实来源：`docs/design.md`（§11 门禁、§15 AC↔实现映射）、`docs/requirements-review.md`（§二 75 条 AC 矩阵 / §五三处易混边界）、`docs/需求/aifei-i18n.md`
+> 事实来源：`docs/design.md`（§11 门禁、§15 AC↔实现映射、§8.1 三处易混边界）、`docs/需求/aifei-i18n.md`（§6.1 的 16 条 P0 / 75 条 AC 矩阵，§十一 Enjoy 模板指令增量）
 > 关卡依据：`.codebuddy/rules/quality-gates.md` §4 测试关 DoD
 > 环境：Windows / Git Bash，JDK 21（`source`/`target`=1.8，主 JAR class major = 52），Maven 3.x，surefire 3.2.5
 >

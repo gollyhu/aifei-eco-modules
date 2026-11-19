@@ -33,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * Enjoy 三条指令单测（T-I05，design-directive §5 AC-INC-01~13 ↔ 实现映射表逐条对应）。
+ * Enjoy 三条指令单测（T-I05，design.md §16.6 AC-INC-01~13 ↔ 实现映射表逐条对应）。
  *
  * <p>全部用例使用<strong>真实 Enjoy Engine</strong> 渲染内存模板（{@code getTemplateByString(...).renderToString(...)}），
  * 不靠模拟函数替代；零联网、零 HTTP 依赖。语言包由 {@link FakeMessageSource} 内存提供，引擎与门面每例重装，

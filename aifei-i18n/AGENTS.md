@@ -1,7 +1,7 @@
 # AGENTS.md — aifei-i18n 开发约束
 
 本文件面向在本模块内工作的开发 / 测试代理。事实来源：`docs/design.md`（公共 API 逐字签名、唯一定义点、
-异常逐字表、门禁断言、任务分解）、`docs/需求/aifei-i18n.md`（需求）、`docs/requirements-review.md`（AC 矩阵）。
+异常逐字表、门禁断言、任务分解）、`docs/需求/aifei-i18n.md`（需求，含 §6.1 的 16 条 P0 / 75 条 AC 矩阵与 §十一 Enjoy 模板指令增量）。
 本文件只列硬约束与操作纪律，不重复契约细节。
 
 ## 一、模块性质
