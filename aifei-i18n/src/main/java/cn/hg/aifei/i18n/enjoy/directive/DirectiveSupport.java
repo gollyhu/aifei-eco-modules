@@ -5,7 +5,7 @@
  * 开发工程师 寇戴码（Enjoy 指令增量）
  */
 
-package cn.hg.aifei.i18n.internal.directive;
+package cn.hg.aifei.i18n.enjoy.directive;
 
 import cn.aifei.enjoy.expr.ast.Assign;
 import cn.aifei.enjoy.expr.ast.Expr;

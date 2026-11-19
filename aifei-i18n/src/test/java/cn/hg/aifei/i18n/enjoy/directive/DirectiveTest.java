@@ -5,7 +5,7 @@
  * 测试工程师 策市袁（T-I05：Enjoy 三条指令单测，AC-INC-01~13）
  */
 
-package cn.hg.aifei.i18n.internal.directive;
+package cn.hg.aifei.i18n.enjoy.directive;
 
 import cn.aifei.enjoy.Engine;
 import cn.aifei.log.LogFactory;

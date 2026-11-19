@@ -1314,7 +1314,7 @@ aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1
 
 ```
 aifei-i18n（库模块 SDK，既有）
-└─ internal/directive/（新增，非承诺实现，public 供注册，不计入公共面 9 类型）
+└─ enjoy/directive/（新增，非承诺实现，public 供注册，不计入公共面 9 类型）
    ├─ I18nDirective   → #i18n(...)  取文案（薄封装分发）
    ├─ LangDirective   → #lang() / #lang('xxx')  页面语言读写
    ├─ DirDirective    → #dir() / #dir('xxx')   页面方向读写
@@ -1341,7 +1341,7 @@ aifei-i18n-demo（新建示例工程，不发布，端口 18170）
 | Demo 端口 | **18170** | 仓库现有 demo 实际占用：18080/18090/18092/18100/18110/18120/18130/18140/18150/18160（已读全部 `start-demo.bat` 实证），18170 空闲 |
 | 弃用默认栈 | **无弃用项** | Java 8 + Maven + Aifei + 静态页/AJAX 全部沿用；无「不可用/有缺陷」断言，无需弃用实证 |
 
-**唯一新增门禁例外（关键决策，留痕）**：实测 `ArchitectureBoundaryTest#frameworkScopeRules`（源码已读）为白名单制——任何 `cn.aifei.*` import 非 `Prop`/`Plugin`/`aop`/`core`/`log` 即判违规；指令类必须 `import cn.aifei.enjoy.*`，故**必须**为该包开例外。按 `AGENTS.md` §六「新增例外必须先改设计再改门禁」的纪律，**本章即该例外的设计载体**：仅允许 `cn.aifei.enjoy.*` 出现在 `internal/directive/`，其余包不变、门禁不放宽。详见 §16.8.1 与任务 T-I01。
+**唯一新增门禁例外（关键决策，留痕）**：实测 `ArchitectureBoundaryTest#frameworkScopeRules`（源码已读）为白名单制——任何 `cn.aifei.*` import 非 `Prop`/`Plugin`/`aop`/`core`/`log` 即判违规；指令类必须 `import cn.aifei.enjoy.*`，故**必须**为该包开例外。按 `AGENTS.md` §六「新增例外必须先改设计再改门禁」的纪律，**本章即该例外的设计载体**：仅允许 `cn.aifei.enjoy.*` 出现在 `enjoy/directive/`，其余包不变、门禁不放宽。详见 §16.8.1 与任务 T-I01。
 
 ### 16.2 增量目标与不变约束清单
 
@@ -1362,7 +1362,7 @@ aifei-i18n-demo（新建示例工程，不发布，端口 18170）
 
 #### 16.2.3 本增量唯一新增文件边界
 
-- **库模块**：只新增 `internal/directive/` 下 6 个非承诺类 + 1 个指令单测；修改 `ArchitectureBoundaryTest`（门禁例外）、`README.md`、`docs/testing.md`。**不改任何既有公共类型签名、不改配置键、不改 pom**。
+- **库模块**：只新增 `enjoy/directive/` 下 6 个非承诺类 + 1 个指令单测；修改 `ArchitectureBoundaryTest`（门禁例外）、`README.md`、`docs/testing.md`。**不改任何既有公共类型签名、不改配置键、不改 pom**。
 - **示例工程**：新建 `aifei-i18n-demo/`，独立 pom，不发布。
 
 ### 16.3 指令类清单
@@ -1371,13 +1371,13 @@ aifei-i18n-demo（新建示例工程，不发布，端口 18170）
 
 | 指令 | 类名 | 基类 | 所在包 | 可见性 | 注册入口 |
 | --- | --- | --- | --- | --- | --- |
-| `#i18n(...)` | `I18nDirective` | `cn.aifei.enjoy.Directive`（`extends Stat`） | `cn.hg.aifei.i18n.internal.directive` | `public`（供注册，非承诺 API） | `Engine.addDirective("i18n", I18nDirective.class, true)` |
+| `#i18n(...)` | `I18nDirective` | `cn.aifei.enjoy.Directive`（`extends Stat`） | `cn.hg.aifei.i18n.enjoy.directive` | `public`（供注册，非承诺 API） | `Engine.addDirective("i18n", I18nDirective.class, true)` |
 | `#lang()` / `#lang('xxx')` | `LangDirective` | 同上 | 同上 | 同上 | `Engine.addDirective("lang", LangDirective.class, true)` |
 | `#dir()` / `#dir('xxx')` | `DirDirective` | 同上 | 同上 | 同上 | `Engine.addDirective("dir", DirDirective.class, true)` |
 
-- **公共面安全**：三者位于 `internal/directive/` 子包，本文 §11 门禁③按「根/web/aifei 直接子级文件集合」断言、门禁④按 `tail.startsWith("web.")/("aifei.")` 过滤——`internal.directive.*` 均不计入，公共面仍精确 9 类型。
+- **公共面安全**：三者位于 `enjoy/directive/` 子包，本文 §11 门禁③按「根/web/aifei 直接子级文件集合」断言、门禁④按 `tail.startsWith("web.")/("aifei.")` 过滤——`enjoy.directive.*` 均不计入，公共面仍精确 9 类型。
 - **注册集中化**：`DirectiveRegistrar.register(Engine)` 一处完成三条 `addDirective`，demo 的 `IoHandler` 构造引擎后调用一次；`keepLineBlank=true` 保持页面排版（指令独占行时保留换行，避免文案粘连）。
-- **Enjoy 类型不外泄**：Enjoy 类型（`Directive`/`Stat`/`Expr`/`Assign`/`Scope`/`Writer`/`Engine`）只出现在 `internal/directive/*` 与 demo 工程，根/web/aifei 三包公共签名零 Enjoy 类型。
+- **Enjoy 类型不外泄**：Enjoy 类型（`Directive`/`Stat`/`Expr`/`Assign`/`Scope`/`Writer`/`Engine`）只出现在 `enjoy/directive/*` 与 demo 工程，根/web/aifei 三包公共签名零 Enjoy 类型。
 
 #### 16.3.2 具名参数判定与取值伪码（spike §11.7 口径）
 
@@ -1490,7 +1490,7 @@ exec(Scope scope, Writer writer):
 | **页面级 lang** | 新增 `DirectivePageState.pageLangTL` | `#lang('xxx')` 设置；影响本次页面渲染内无局部 lang 的 `#i18n` 与 `#lang()` 读值 | 一次模板渲染 |
 | **页面级 dir 覆盖** | 新增 `DirectivePageState.pageDirTL` | `#dir('xxx')` 设置；仅页面渲染元数据 | 一次模板渲染 |
 
-**为何不复用 `LocaleContext`**：`LocaleContext` 是「请求级生效 locale」的唯一定义点，由 `I18nHandler` 在 handler 链首绑定、`finally` 清理；`#lang('xxx')` 是**模板渲染期**的页面级默认值，二者作用域不同（demo 的 Service 渲染未必经过 `I18nHandler`）。写入 `LocaleContext` 会污染请求级语义并与 handler 清理耦合。故新增独立 ThreadLocal，**不动 `LocaleContext`、零回归**，同时保证"公共面/唯一定义点"约束不变（新增类在 `internal/directive/`，非承诺实现）。
+**为何不复用 `LocaleContext`**：`LocaleContext` 是「请求级生效 locale」的唯一定义点，由 `I18nHandler` 在 handler 链首绑定、`finally` 清理；`#lang('xxx')` 是**模板渲染期**的页面级默认值，二者作用域不同（demo 的 Service 渲染未必经过 `I18nHandler`）。写入 `LocaleContext` 会污染请求级语义并与 handler 清理耦合。故新增独立 ThreadLocal，**不动 `LocaleContext`、零回归**，同时保证"公共面/唯一定义点"约束不变（新增类在 `enjoy/directive/`，非承诺实现）。
 
 #### 16.5.2 优先级链唯一落点：`DirectiveSupport.effectivePageLang()`
 
@@ -1546,7 +1546,7 @@ String effectivePageLang():
 | AC-INC-12 | 同线程两次不同语言渲染不串 | `DirectivePageState.clear()` + demo `IoHandler` try/finally | `DirectiveTest#testSameThreadNoLeak`（连渲两次断言隔离） |
 | AC-INC-13 | 局部 ar-SA / 无 lang 与 #lang() 均 zh-CN（请求头 en-US），高优先级不回退 | `DirectiveSupport#effectivePageLang` + `I18nDirective`（langVal 优先）+ `LangDirective` | `DirectiveTest#testPriorityChainNoFallback` |
 
-> 覆盖：AC-INC-01~13 全部有一一实现点与验证通道，无遗漏；每条测试在 `aifei-i18n/src/test/java/cn/hg/aifei/i18n/internal/directive/DirectiveTest.java` 中实现，真实 Engine 渲染内存模板（零联网、零 HTTP 依赖），满足测试零联网纪律。
+> 覆盖：AC-INC-01~13 全部有一一实现点与验证通道，无遗漏；每条测试在 `aifei-i18n/src/test/java/cn/hg/aifei/i18n/enjoy/directive/DirectiveTest.java` 中实现，真实 Engine 渲染内存模板（零联网、零 HTTP 依赖），满足测试零联网纪律。
 
 ### 16.7 aifei-i18n-demo 工程方案
 
@@ -1643,22 +1643,22 @@ String shown = FormatKit.formatCurrency(12800.0, currencyCode, locale)   // 符�
 
 #### 16.8.1 门禁例外登记（唯一新增，必须落地）
 
-修改 `ArchitectureBoundaryTest#frameworkScopeRules`：新增常量与白名单分支，**只**放开 `cn.aifei.enjoy.*` 于 `internal/directive/`：
+修改 `ArchitectureBoundaryTest#frameworkScopeRules`：新增常量与白名单分支，**只**放开 `cn.aifei.enjoy.*` 于 `enjoy/directive/`：
 
 ```text
-private static final String DIRECTIVE_PACKAGE = "cn/hg/aifei/i18n/internal/directive/";
+private static final String DIRECTIVE_PACKAGE = "cn/hg/aifei/i18n/enjoy/directive/";
 // 在 allowed 计算中追加一项：
 boolean enjoyOnly = fqn.startsWith("cn.aifei.enjoy.");
 allowed = allowed || (enjoyOnly && path.contains(DIRECTIVE_PACKAGE));
 ```
-- 断言消息同步补充「enjoy 仅允许 internal/directive」；其余门禁①/③/④/⑧/⑨/⑩/⑪/⑫/⑬ 规则与常量**不变、不放宽**。
+- 断言消息同步补充「enjoy 仅允许 enjoy/directive」；其余门禁①/③/④/⑧/⑨/⑩/⑪/⑫/⑬ 规则与常量**不变、不放宽**。
 - 依据：`AGENTS.md` §六「新增例外先改设计再改门禁」——本章即设计载体；`docs/需求/aifei-i18n.md` §11.2 已明示 Q7 突破（引入 Enjoy 但零新增坐标、Enjoy 类型不进公共签名）。
 
 #### 16.8.2 命名与分包约定
 
 | 项 | 约定 |
 | --- | --- |
-| 指令类 | `XxxDirective`，`public`，`cn.hg.aifei.i18n.internal.directive`，继承 `cn.aifei.enjoy.Directive` |
+| 指令类 | `XxxDirective`，`public`，`cn.hg.aifei.i18n.enjoy.directive`，继承 `cn.aifei.enjoy.Directive` |
 | 共享工具 | `DirectiveSupport`（静态工具，非规则定义点）、`DirectivePageState`（页面级 state 唯一持有点）、`DirectiveRegistrar`（注册入口） |
 | 注册名 | `"i18n"` / `"lang"` / `"dir"`（模板用 `#名(...)`），`keepLineBlank=true` |
 | 注释语言 | 全部简体中文；类名/包名严格 `cn.hg.aifei.i18n`（demo 为 `cn.hg.aifei.i18n.demo`） |
@@ -1688,7 +1688,7 @@ allowed = allowed || (enjoyOnly && path.contains(DIRECTIVE_PACKAGE));
 
 ```text
 aifei-i18n/（库模块增量）
-├── src/main/java/cn/hg/aifei/i18n/internal/directive/
+├── src/main/java/cn/hg/aifei/i18n/enjoy/directive/
 │   ├── DirectiveRegistrar.java        [T-I01] 注册入口 register(Engine)
 │   ├── DirectivePageState.java        [T-I02] 页面级 lang/dir ThreadLocal + clear()
 │   ├── DirectiveSupport.java          [T-I02] effectivePageLang/normalizeLang/参数工具
@@ -1697,7 +1697,7 @@ aifei-i18n/（库模块增量）
 │   └── DirDirective.java              [T-I02] #dir
 ├── src/test/java/cn/hg/aifei/i18n/
 │   ├── ArchitectureBoundaryTest.java  [T-I01] 修改：enjoy 门禁例外登记
-│   └── internal/directive/
+│   └── enjoy/directive/
 │       └── DirectiveTest.java         [T-I05] 指令单测（AC-INC-01~13）
 ├── README.md                          [T-I06] 修改：指令用法 + 页面级 clear 责任声明
 └── docs/testing.md                    [T-I06] 修改：指令用例清单
@@ -1742,7 +1742,7 @@ aifei-i18n-demo/（新建示例工程）
 | **T-I02** 三条指令实现 + 页面级 state | `DirectivePageState.java`·`DirectiveSupport.java`·`I18nDirective.java`·`LangDirective.java`·`DirDirective.java` | T-I01 | P0 | 库 `mvn -q -DskipTests compile` 过；公共面仍 9 类型；无新增依赖坐标 |
 | **T-I03** demo 架构件 + Service 端点 | demo:`arch/*`(8)·`console/*`(2)·`service/I18nDemoService.java` | T-I01、T-I02 | P0 | `/i18n/demo/page`、`/bundle`、`/rtl`、`/money` 可访问；render 前后 clear 就位 |
 | **T-I04** demo 真实 Enjoy 页面（P-01~P-06） | `view/i18n/index.html`·`view/i18n/rtl.html`·`assets/css/i18n-demo.css`·`assets/js/i18n-demo.js` | T-I03 | P0 | 浏览器逐条核对 P-01~P-06 与原型一致；零联网 |
-| **T-I05** 指令单测 | `internal/directive/DirectiveTest.java` | T-I02 | P0 | AC-INC-01~13 全覆盖；真实 Engine 渲染内存模板；同线程不串 |
+| **T-I05** 指令单测 | `enjoy/directive/DirectiveTest.java` | T-I02 | P0 | AC-INC-01~13 全覆盖；真实 Engine 渲染内存模板；同线程不串 |
 | **T-I06** 文档与交付物 | 库:`README.md`（改）·`docs/testing.md`（改）；demo:`README.md`·`start-demo.bat`·`stop-demo.bat`；根 `README.md`（加一行） | T-I01~T-I05 | P1 | `cd aifei-i18n && mvn clean verify` 0 failure/0 error；demo 手工核对通过；版本仍 1.0.0 |
 
 **硬纪律**：T-I01~T-I05 每批不得改公共面签名/配置键/异常既有措辞；T-I06 回归未过不得交付。新增异常消息仅 §16.8.3 列明项。
@@ -1804,9 +1804,9 @@ sequenceDiagram
 | # | 事项 | 处理 / 假设 |
 | --- | --- | --- |
 | 1 | **P-04 iframe RTL 口径** | `docs/需求/aifei-i18n.md` §11.9 P-04 原文的表述差异已由阶段一原型确认：iframe 内「先 `#lang('ar-SA')` 设页面级语言、再 `#i18n(key)` 取文案」。本章按此落地，不修改 `docs/需求/aifei-i18n.md` §11.3 契约；原型已标「待确认」徽标，保留即可，不阻塞。 |
-| 2 | **门禁例外范围** | 仅放开 `cn.aifei.enjoy.*` 于 `internal/directive/`（§16.8.1）；若 QA 认为过宽，可进一步收紧到具体类，但不得放回「一律失败」导致指令无法编译。 |
+| 2 | **门禁例外范围** | 仅放开 `cn.aifei.enjoy.*` 于 `enjoy/directive/`（§16.8.1）；若 QA 认为过宽，可进一步收紧到具体类，但不得放回「一律失败」导致指令无法编译。 |
 | 3 | **Enjoy 指令 exec 方法签名细节** | 以 `aifei-enjoy 1.1.2` 实际 API 为准（spike 已验证基类与注册入口）；本章伪码中 `setExprList`/`exec(Scope,Writer)` 为形态说明，编码期照实际签名对齐，不改契约语义。 |
-| 4 | **页面级 clear 的消费方责任** | 由 `internal.DirectivePageState.clear()` 暴露，demo 已落地；消费方使用 `#lang`/`#dir` 须在渲染入口 try/finally 清理，`README.md` 显式声明（对齐 `I18nHandler` finally 口径）。 |
+| 4 | **页面级 clear 的消费方责任** | 由 `enjoy.directive.DirectivePageState.clear()` 暴露，demo 已落地；消费方使用 `#lang`/`#dir` 须在渲染入口 try/finally 清理，`README.md` 显式声明（对齐 `I18nHandler` finally 口径）。 |
 | 5 | **localeName 展示来源** | 通过公共 `I18nKit.bundle(lang).localeName()` 放 model，不在指令层新增取 localeName 的指令（本期只三条指令），保持公共面 9 类型不变。 |
 | 6 | **版本与发布** | SDK 与 demo 均 `1.0.0` 不递增；demo 描述与 README 标注「示例工程，不发布」；库 pom 零改动。 |
 

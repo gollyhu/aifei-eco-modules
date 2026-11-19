@@ -355,8 +355,8 @@ for f in $(find target/classes -name '*.class'); do javap -verbose "$f" | grep -
 
 ## 十一、Enjoy 指令用例清单（AC-INC-01~13，增量）
 
-> 指令实现位于 `internal/directive/`（非承诺 API），测试类
-> `src/test/java/cn/hg/aifei/i18n/internal/directive/DirectiveTest.java`（T-I05，测试工程师负责）。
+> 指令实现位于 `enjoy/directive/`（非承诺 API），测试类
+> `src/test/java/cn/hg/aifei/i18n/enjoy/directive/DirectiveTest.java`（T-I05，测试工程师负责）。
 > 全部用例用**真实 Enjoy Engine** 渲染内存 / classpath 模板（`engine.getTemplateByString` 或内存 ISource），
 > URL host 仅 `localhost`，零联网、零 HTTP 依赖。
 
@@ -377,7 +377,7 @@ for f in $(find target/classes -name '*.class'); do javap -verbose "$f" | grep -
 | AC-INC-13 | `testPriorityChainNoFallback` | 局部 ar-SA / 无 lang 与 `#lang()` 均 zh-CN（请求头 en-US），高优先级不回退 |
 
 **门禁例外自检**：`ArchitectureBoundaryTest#frameworkScopeRules` 仅放开 `cn.aifei.enjoy.` 于
-`cn/hg/aifei/i18n/internal/directive/`，其余框架包边界 / 公共面 9 类型 / 零自建规则数据等断言不变。
+`cn/hg/aifei/i18n/enjoy/directive/`，其余框架包边界 / 公共面 9 类型 / 零自建规则数据等断言不变。
 `mvn clean verify` 需 0 failure / 0 error。
 
 —— 测试清单由开发工程师 寇戴码登记（用例实现归测试工程师 策市袁）

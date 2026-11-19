@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS i18n_message (
 
 ## 六、Enjoy 模板指令（可选，非承诺 API）
 
-面向使用 Enjoy 做服务端渲染的应用，模块在 `internal/directive/` 提供三条指令。它们依赖
+面向使用 Enjoy 做服务端渲染的应用，模块在 `enjoy/directive/` 提供三条指令。它们依赖
 `aifei-all` 已内含的 `cn.aifei:aifei-enjoy`，**零新增依赖坐标**；Enjoy 类型不进入任何公共签名。
 构造引擎后注册一次即可：
 
@@ -209,19 +209,19 @@ try {
 }
 ```
 
-`DirectiveRegistrar` / `DirectivePageState` / `DirectiveSupport` 与三条指令类均为 `internal.directive`
+`DirectiveRegistrar` / `DirectivePageState` / `DirectiveSupport` 与三条指令类均为 `enjoy.directive`
 下的非承诺 API（可 public 供注册，不计入公共面 9 类型）。完整可运行示例见 `aifei-i18n-demo`。
 
 ## 七、公开 API
 
 根包 6 个公共类型：`I18nKit` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；
 `web` 包 2 个：`I18nHandler` / `LocaleExtractor`；`aifei` 包 1 个：`I18nPlugin`。
-公共签名只出现 JDK 与本模块类型（框架类型仅出现在 `web` 接入与 `aifei` 装配包、以及 `internal.directive` 指令实现）。
+公共签名只出现 JDK 与本模块类型（框架类型仅出现在 `web` 接入与 `aifei` 装配包、以及 `enjoy.directive` 指令实现）。
 
 ## 八、构建与验证
 
 ```bash
 cd aifei-i18n
-mvn clean verify      # 0 failure / 0 error，含两套架构门禁测试（enjoy 仅允许 internal/directive）
+mvn clean verify      # 0 failure / 0 error，含两套架构门禁测试（enjoy 仅允许 enjoy/directive）
 ```
 

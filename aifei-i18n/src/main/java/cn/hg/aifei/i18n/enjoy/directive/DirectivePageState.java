@@ -5,7 +5,7 @@
  * 开发工程师 寇戴码（Enjoy 指令增量）
  */
 
-package cn.hg.aifei.i18n.internal.directive;
+package cn.hg.aifei.i18n.enjoy.directive;
 
 /**
  * 页面级 lang / dir 覆盖的 ThreadLocal 唯一持有点（非承诺 API，设计 §4.1）。
