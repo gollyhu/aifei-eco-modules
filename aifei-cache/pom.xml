@@ -46,17 +46,6 @@
         <url>https://github.com/gollyhu/aifei-cache</url>
     </scm>
 
-    <!-- 只声明 snapshot 仓库：release 由 central-publishing-maven-plugin 以 bundle 方式提交，不经
-         maven-deploy-plugin，因此不声明 release 仓库 —— 声明它只会把不带 profile 的 mvn deploy
-         引向 Portal 的 releases 路径，而该路径不接受直接上传。
-         snapshot 仓库 id 需在 settings.xml 中有同名 server（发布 profile 用的是 aifei）。 -->
-    <distributionManagement>
-        <snapshotRepository>
-            <id>central-portal-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -194,46 +183,41 @@
                 </executions>
             </plugin>
 
+            <!-- GPG 签名插件，绑定到 verify 阶段 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>${maven-gpg-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <keyname>EEE1FB1248AE52DF</keyname>
+                    <!-- 加上这一行，替换为你实际的 gpg.exe 路径 -->
+                    <executable>D:\Program Files\GnuPG\bin\gpg.exe</executable>
+                </configuration>
+            </plugin>
+
+            <!-- Central Portal 官方发布插件 -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>${central-publishing-maven-plugin.version}</version> <!-- 注意：官方目前最新稳定版是 0.9.0 -->
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <deploymentName>aifei-cache-${project.version}</deploymentName>
+                    <autoPublish>false</autoPublish>
+                    <waitUntil>validated</waitUntil>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
-    <profiles>
-        <!-- mvn -Pcentral-release clean deploy -->
-        <profile>
-            <id>central-release</id>
-            <build>
-                <plugins>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>${maven-gpg-plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.sonatype.central</groupId>
-                        <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>${central-publishing-maven-plugin.version}</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <publishingServerId>aifei</publishingServerId>
-                            <deploymentName>aifei-cache-${project.version}</deploymentName>
-                            <autoPublish>false</autoPublish>
-                            <waitUntil>validated</waitUntil>
-                        </configuration>
-                    </plugin>
-
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
