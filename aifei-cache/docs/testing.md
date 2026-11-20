@@ -98,6 +98,8 @@ mvn verify -Dredis.integration=true -Dredis.uri=redis://127.0.0.1:6379/0
 
 > 基线随功能演进更新；提交前 `mvn clean verify` 必须 0 failure / 0 error，用例数不得减少。
 
+**基线锁定**：1.1.0 已真实 deploy 到 Maven 仓库并锁定为基线（2026-11-20），记录见 `CHANGELOG.md`「基线锁定」；上表用例数与冻结格式断言在锁定后不得下调。
+
 ## 7. 未覆盖项与作用边界
 
 - **回源单飞只覆盖单个 JVM**：跨实例不收敛，多实例部署时每个 JVM 各自装载一次（`docs/design.md` 附 B 已登记，非缺陷）。

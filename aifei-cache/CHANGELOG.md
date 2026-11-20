@@ -38,6 +38,11 @@
 - 新增 `RedisCacheCasTest`（离线，校验两条 Lua 常量与期望值字节装配）与 `RedisCacheIntegrationTest` 的 CAS 端到端用例（默认跳过）；`CacheContractTest`、`FuryRedisValueCodecTest`、`FacadeMirrorTest` 增补对应断言。
 - 发布前必须在真实 Redis 上跑一次 `mvn verify -Dredis.integration=true -Dredis.uri=...`，连不上必须失败。
 
+### 基线锁定
+
+- **1.1.0 已锁定为基线**：已真实 deploy 到 Maven 仓库，锁定日期 2026-11-20。
+- **口径**：锁定基线 := 已真实 deploy 到仓库；冻结数据格式（空值哨兵 / 物理 key / Fury 编码）与公共调用面不得变更。
+
 ## [1.0.0]
 
 基线版本（提交 `cf8df94`）：主缓存 `__MAIN__` 与扩展实例、Caffeine / Jedis 双后端、带 `loader` 的回源单飞、键分页与筛选、`cacheNull` 否定结果缓存。
