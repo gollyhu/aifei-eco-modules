@@ -1,7 +1,7 @@
 # aifei-tools 设计文档
 
 > 本文是 `aifei-tools` 模块的契约与设计决策事实来源，供开发 / 测试 / 发布共同遵守。
-> 关联需求：`../docs/需求/aifei-tools.md`（任务输入，含「七、待确认问题」——本文 §8 已逐项定档）。
+> 关联需求：`../docs/需求/aifei-tools.md`（任务输入，其第七节所列问题已在本文 §8 逐项定档）。
 > 模块坐标：`io.github.gollyhu:aifei-tools:1.0.0`，包名 `cn.hg.aifei.tools`，Java 8（class major 52）。
 
 ## 0. 选型实证记录（CRITICAL，先于一切设计）
@@ -35,10 +35,10 @@
 | --- | --- | --- |
 | Maven 坐标 | `com.google.zxing:core`（core 为纯编码/解码内核） | https://repo1.maven.org/maven2/com/google/zxing/core/3.5.3/ |
 | 3.5.3 POM 依赖 | POM 仅 `junit`(test)，对下游**零传递依赖** | https://repo1.maven.org/maven2/com/google/zxing/core/3.5.3/core-3.5.3.pom |
-| **Java 基线（未实证）** | POM 未显式声明 `source`/`target`/`release`，Java 基线由父 POM `zxing-parent:3.5.3` 决定；**实现期须当场下载 jar + `javap` 实测 class major 52**（不得凭记忆断言 Java 8 兼容）。列 §8 未实证项 | 同上 core POM |
+| **Java 基线（已实测 class major 52 ✓）** | POM 未显式声明 `source`/`target`/`release`，Java 基线由父 POM `zxing-parent:3.5.3` 决定；**实现期已 `javap` 实测 class major 52**（开发工程师回执，与 Java 8 硬基线一致），选型闭环 | 同上 core POM + 实现期 `javap` 实测回执 |
 | **javase 弃用实证** | `com.google.zxing:javase:3.5.3` 会拖入 `com.beust:jcommander:1.82`(compile) + `com.github.jai-imageio:jai-imageio-core:1.4.0`(runtime)，与「不引无关依赖」冲突，**不引**。PNG 渲染复用 captcha 的 `Graphics2D`/`ImageIO` 路线，自写 `BitMatrix`→`BufferedImage` | https://repo1.maven.org/maven2/com/google/zxing/javase/3.5.3/javase-3.5.3.pom |
 
-**版本决策**：选 **`com.google.zxing:core:3.5.3`**，`optional`，pom 用属性 `<zxing.version>3.5.3</zxing.version>` 管理（对齐 §0.1 ip2region 的写法）。Java 8 兼容**未实证**（class major 52 待实现期 `javap` 实测），若实测非 52 须回写本文重走设计决策。
+**版本决策**：选 **`com.google.zxing:core:3.5.3`**，`optional`，pom 用属性 `<zxing.version>3.5.3</zxing.version>` 管理（对齐 §0.1 ip2region 的写法）。Java 8 兼容性**已由实现期 `javap` 实测确认 class major 52 ✓**（开发工程师回执，§8-A6 关闭），与 Java 8 硬基线一致，选型闭环、无需重走决策。
 
 ## 1. 实现方案
 
@@ -53,6 +53,8 @@
 | `cn.hg.aifei.tools.mask` | `MaskUtil` / `MaskKit` / `MaskException`（N=3） | `MaskRegistry` / `MaskErrors` / `DefaultMasks` |
 
 无 Plugin、无配置键、无 SPI、无 `aifei` 接入包、零 `cn.aifei.*` 引用、零日志绑定、无 DB／Web 面（对齐 `aifei-excel`/`aifei-trace` 的不适用章节声明）。
+
+> **扩展指针**：后续追加第 5、第 6 … 个工具时，一律按 §10「后续工具扩展约定」执行——新增子包 + 门禁纯追加 + 不改既有签名 + 四文档同步；当前四子包 / 16 公共类型 / 17 例门禁不因此变动。
 
 ### 1.2 技术选型
 - 语言/构建：Java 8 + Maven（`source/target=1.8`、UTF-8、surefire `workingDirectory=${project.basedir}`）。
@@ -74,8 +76,9 @@ aifei-tools/
 ├── pom.xml                                   [T01] Java8；aifei-all provided；ip2region/aifei-cache/zxing optional（属性 ip2region.version/zxing.version）；junit test；零日志绑定
 ├── docs/
 │   ├── design.md                             [T01] ★本文（本轮产出，主理人汇编落盘）
-│   └── testing.md                            [T11] 测试策略与用例（素材见 §7）
-├── README.md                                 [T11] 用法/边界/optional 警告
+│   ├── testing.md                            [T11] 测试策略与用例（素材见 §7）
+│   └── THIRD_PARTY_NOTICES.md                [T11] 第三方许可署名声明（**发布工程师产出**；T11 文档四件套补充项；内容口径见 §8-A4，不列许可全文）
+├── README.md                                 [T11] 用法/边界/optional 警告；§6 双许可署名条目与 §7 文档索引指向 THIRD_PARTY_NOTICES.md（发布工程师落地，见 §8-A4）
 ├── AGENTS.md                                 [T11] 模块硬约束（素材见 §6 门禁）
 └── src/
     ├── main/java/cn/hg/aifei/tools/          [T01] 根包：空（不创建任何 .java）
@@ -141,7 +144,7 @@ aifei-tools/
         └── support/
             └── IpSampleData.java              [T08] 内嵌 base64 最小 v4/v6 xdb 样本常量（不提交二进制）
 
-（建议、非本轮立项）aifei-tools-demo/ [T12，端口 18160]：pom.xml · DemoApp · DemoAppConfig · demo/arch/**（自写 HIO）· service/ToolsDemoService · webapp/view/tools/index.html · assets/{js,css} · start-demo.bat · stop-demo.bat
+（**本轮不做**，后续可选）aifei-tools-demo/ [T12，端口 18160]：pom.xml · DemoApp · DemoAppConfig · demo/arch/**（自写 HIO）· service/ToolsDemoService · webapp/view/tools/index.html · assets/{js,css} · start-demo.bat · stop-demo.bat
 根目录 README.md 模块表新增 aifei-tools 条目 [T11]。
 ```
 
@@ -164,6 +167,7 @@ public final class IpKit {                                        // 便捷门�
     public static IpRegion search(String v4Xdb, String v6Xdb, String ip, IpQueryMode mode);
 }
 public final class IpRegion {                                     // 五段值对象，字段永不为 null
+    public static IpRegion of(String country, String province, String city, String isp, String isoCode); // 静态工厂：供 ipdb.internal 构造公共值对象；5 参 null 归一为 ""、空白串属合法内容原样保留，不暴露构造器（决策 §8-E1）
     public String getCountry();  public String getProvince(); public String getCity();
     public String getIsp();      public String getIsoCode();
 }
@@ -173,6 +177,8 @@ public final class IpException extends RuntimeException {
     public IpException(String message, Throwable cause);
 }
 ```
+> 公共面方法级补充（决策 §8-E1）：`IpRegion.of(...)` 是供 `ipdb.internal` 构造公共值对象的静态工厂，五个 getter 与「字段永不为 null」契约不变；公共类型数仍为 16，门禁②③⑮⑰ 判定口径不变。
+
 三模式→内核策略映射：**FILE_ONLY=NoCache**（每次磁盘 IO）、**VECTOR_INDEX=VIndexCache**（512KiB 索引缓存）、**CONTENT=FullCache**（全文件内存）。`IpSession` 负责 `ConfigBuilder`→`Config`→`Ip2Region.create(v4,v6)` 与 `close()` 幂等（`AtomicBoolean`）+ 内核 `IOException/InterruptedException` 包装。
 
 ### 3.2 captcha 子包（N=4）
@@ -197,7 +203,7 @@ public final class CaptchaException extends RuntimeException {
     public CaptchaException(String message, Throwable cause);
 }
 ```
-存储接口 `CaptchaStore`（internal）三方法：`save(token,answer,expireAt)` / `consume(token)` / `fail(token)`；`LruCaptchaStore`（LinkedHashMap+TTL+失败计数）为默认，`ClusterCaptchaStore` 经 `aifei-cache` 的 `Cache` 存 answers。token = `SecureRandom` 32 字节 → Base64 URL 无填充（不可从图片/token 反推）。
+存储接口 `CaptchaStore`（internal）四方法：`save(token,answer,expireAt)` / `consume(token)` / `fail(token)` / `default remove(token)`（默认空实现，两个真实存储均覆盖；决策 §8-E2）；`LruCaptchaStore`（LinkedHashMap+TTL+失败计数）为默认，`ClusterCaptchaStore` 经 `aifei-cache` 的 `Cache` 存 answers。token = `SecureRandom` 32 字节 → Base64 URL 无填充（不可从图片/token 反推）。
 
 ### 3.3 qr 子包（N=4）
 
@@ -239,7 +245,7 @@ public final class MaskUtil {                                     // 无状态�
     public static String maskFixedPhone(String value);            // ≡ use("fixedPhone")；保留区号(含 -)+后 4 位，中间等长 *，无 - 退化为前 4 后 4（0571-88886666→0571-****6666）
     public static String maskPassword(String value);              // ≡ use("password")；恒定 ******，不保留原长度、不泄露位数（abc123→******）
     public static String maskAddress(String value);               // ≡ use("address")；保留前 6 字符、其余等长 *，长度 ≤6 全打码（浙江省杭州市金城坊街2号→浙江省杭州市******）
-    public static String maskIp(String value);                    // ≡ use("ip")；保留首段、其余每段一个 *，IPv4 按 . / IPv6 按 : 分段（192.168.2.1→192.*.*.*；2001:db8:85a3::8a2e:370:7334→2001:*:*:*:*:*:*:*）
+    public static String maskIp(String value);                    // ≡ use("ip")；保留首段、其余每段一个 *；IPv4 按 . 分段，IPv6 按 : 分段且 :: 先展开为完整 8 段再打码；等价写法结果一致（压缩式 2001:db8:85a3::8a2e:370:7334 与展开式 2001:db8:85a3:0:0:8a2e:370:7334 均→2001:*:*:*:*:*:*:*，7 个 *）；展开对畸形输入健壮、不抛异常（按 §8-D14 宽松退化）；192.168.2.1→192.*.*.*
 }
 public final class MaskKit {                                      // 注册表门面（全 static）
     private MaskKit();
@@ -395,17 +401,17 @@ sequenceDiagram
 | T08 ip 测试 | `IpSearcherTest.java` · `IpRegionTest.java` · `IpKitTest.java` · `PublicApiContractIpTest.java` · `support/IpSampleData.java` | T04 | P0 | P0 验收覆盖；base64 样本解码到 target/；全离线 |
 | T09 captcha 测试 | `CaptchaKitTest.java` · `CaptchaStoreTest.java` · `PublicApiContractCaptchaTest.java` | T07 | P0 | §7 captcha 用例覆盖；token 不重复、不可反推 |
 | T10 门禁 | `ArchitectureBoundaryTest.java`（17 例） | T02–T09、T13–T18 | P0 | 17 例全绿；不得放宽；模块根执行 |
-| T11 文档四件套 | `README.md` · `AGENTS.md` · `docs/testing.md` + 根 README 模块表条目 | T10 | P1 | README 含本期不做/optional 警告；AGENTS 对齐 17 例门禁 |
-| T12 demo（建议，主理人拍板） | `aifei-tools-demo/**`（平级工程） | T04、T07 | P1 | 端口 18160；captcha 生成/校验、ip 查询（用内嵌样本）、state 端点真实可跑；零外网 |
+| T11 文档四件套（+署名补充） | `README.md` · `AGENTS.md` · `docs/testing.md` · `THIRD_PARTY_NOTICES.md`（发布工程师产出，口径见 §8-A4）+ 根 README 模块表条目 | T10 | P1 | README 含本期不做/optional 警告；AGENTS 对齐 17 例门禁；README §6 双许可署名条目与 §7 文档索引指向 `THIRD_PARTY_NOTICES.md`；署名声明覆盖两个第三方运行内核且不粘贴许可全文 |
+| T12 demo（**本轮不做**，后续可选） | `aifei-tools-demo/**`（平级工程） | T04、T07 | P1 | 本轮不纳入交付；如后续立项：端口 18160，captcha 生成/校验、ip 查询（用内嵌样本）、state 端点真实可跑，零外网 |
 | T13 qr 内核 | `QrDeps.java` · `QrErrors.java` · `ImageCodec.java` | T01 | P0 | ZXing 缺失可读 `QrException`；`BitMatrix`→PNG 正确；class major 52 实测（§0.3） |
 | T14 qr 公共面 | `QrKit.java` · `QrOptions.java` · `QrErrorCorrection.java` · `QrException.java` | T13 | P0 | §3.3 签名逐字一致；`defaults()`=300/4/M；`decode(InputStream)` 不关闭流；encode→decode 闭环 |
 | T15 mask 内核 | `MaskRegistry.java` · `MaskErrors.java` · `DefaultMasks.java` | T01 | P0 | `ConcurrentHashMap` 唯一持有；9 默认规则初始在册不可删；异常唯一构造点 |
 | T16 mask 公共面 | `MaskUtil.java` · `MaskKit.java` · `MaskException.java` | T15 | P0 | §3.4 签名逐字一致；register/replace/use 三态正确；`maskXxx≡use(...).apply`；replace 后跟随 |
-| T17 qr 测试 | `QrKitTest.java` · `PublicApiContractQrTest.java` | T14 | P0 | §9 qr 验收覆盖；全离线；decode 相关用例受 §8-C 分歧点 1/3 定档约束 |
+| T17 qr 测试 | `QrKitTest.java` · `PublicApiContractQrTest.java` | T14 | P0 | §9 qr 验收覆盖；全离线；decode 闭环与"不关闭调用方流"用例按 §8-C1/§8-C3 已定档口径实施 |
 | T18 mask 测试 | `MaskUtilTest.java` · `MaskKitTest.java` · `PublicApiContractMaskTest.java` | T16 | P0 | §9 mask 验收覆盖；默认规则在册与 replace 跟随 |
 
-> 实现期硬纪律：T02–T09、T13–T18 不得改公共面签名；发现签名不可行须先回写本文 §3 再改代码（根 AGENTS.md）。
-> qr 的 `decode` 相关实现与测试（T14/T17）受 §8-C 分歧点 1/3 定档约束，未定档前不得开工。
+> 实现期硬纪律：T02–T09、T13–T18 不得改公共面签名（§8-E1 已定档的 `IpRegion.of(...)` 方法级补充为唯一例外）；发现签名不可行须先回写本文 §3 再改代码（根 AGENTS.md）。
+> qr 的 `decode` 相关实现与测试（T14/T17）所依赖的行为口径已于 §8-C1/§8-C3 定档（保留 decode、失败抛 `QrException` 且保留 cause、不返回 null），按此开工；null/空输入语义见 §8-C2 与 §7.2。
 
 ## 6. 依赖与门禁
 
@@ -420,7 +426,7 @@ sequenceDiagram
 
 pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>3.5.3</zxing.version>` 并列管理。
 
-零日志绑定（禁 slf4j/logback/log4j）、零 DB、零 Web。**根 AGENTS.md 需登记清单为空**（公共面零框架/第三方类型、无 compile 例外），同 `aifei-excel`——请主理人确认。
+零日志绑定（禁 slf4j/logback/log4j）、零 DB、零 Web。**根 AGENTS.md 无需新增登记**（公共面零框架/第三方类型、无 compile 例外），同 `aifei-excel`。
 
 ### 6.2 门禁 `ArchitectureBoundaryTest` 断言清单（17 例，正式定档需求三推荐口径）
 
@@ -436,7 +442,7 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | ⑧ | `publicSignaturesNoThirdParty` | 四子包公共层（非 internal）源码不得出现 `org.lionsoul.`/`com.google.zxing.`/`cn.aifei.`/`cn.hg.aifei.cache.` 字面量 |
 | ⑨ | `java8Compatibility` | 禁 `List.of(`/`Map.of(`/`Set.of(`/`record `/`var `/`"""`/`sealed `/`instanceof` 模式匹配 |
 | ⑩ | `classForNameOnlyInDeps` | `Class.forName` 仅允许 `IpDeps.java`/`CaptchaDeps.java` |
-| ⑪ | `errorMessagesOnlyInErrors` | `ip: `/`captcha: ` 消息前缀仅允许 `IpErrors.java`/`CaptchaErrors.java`（测试断言与公共 javadoc 除外） |
+| ⑪ | `errorMessagesOnlyInErrors` | `ip: `/`captcha: `/`qr: `/`mask: ` 消息前缀仅允许 `IpErrors.java`/`CaptchaErrors.java`/`QrErrors.java`/`MaskErrors.java`（测试断言与公共 javadoc 除外）——本轮收紧：仅扩充覆盖范围，不删减原 14 例任何断言 |
 | ⑫ | `regionParsingOnlyInParser` | region 分隔符 `\|` 及 `"0"`/`"Reserved"` 归空串的唯一实现只在 `RegionParser.java` |
 | ⑬ | `noServiceProvider` | 禁 `ServiceLoader`/`META-INF/services`（无 SPI） |
 | ⑭ | `testSourcesOfflineOnly` | 测试源 URL host 仅 `127.0.0.1`/`localhost`；`IpSampleData` 的 base64 常量允许 |
@@ -480,8 +486,10 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | --- | --- | --- |
 | ZXing 依赖缺失 | `qr: com.google.zxing:core:3.5.3 is required, add it to your dependencies` | 链接错误 |
 | encode 失败（内容过长/EC 不匹配等） | `qr: failed to encode text, cause: {msg}` | 原异常 |
-| null/空输入语义 | 待定档（见 §8-C 分歧点 2） | — |
-| decode 失败语义 | 待定档（见 §8-C 分歧点 3） | — |
+| `encode(null)` | 抛可读 `QrException`：`qr: text must not be null`（`QrErrors` 唯一定义） | — |
+| `decode(null)` / `decode(空 byte[])` | 抛可读 `QrException`：`qr: image bytes must not be null or empty`（`QrErrors` 唯一定义） | — |
+| 空串 `""` 输入 | 合法内容：`encode("")` 正常出图，`decode` 还原为空串 `""`（不抛异常、不返回 null） | — |
+| decode 失败（无法识别/格式非法等） | 抛 `QrException` 并保留 cause，**不返回 null**（错误不静默吞，对齐 `aifei-excel` 收敛先例）；消息 `qr: failed to decode image, cause: {msg}` | 原异常 |
 
 **mask（前缀 `mask: `，消息措辞由 `MaskErrors` 唯一定义）**
 | 场景 | 行为/消息 |
@@ -490,6 +498,10 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | replace 同名不存在 | `mask: rule "{name}" is not registered` |
 | use 未注册 | `mask: rule "{name}" is not registered` |
 | name/fn 为 null | `mask: rule name must not be null` / `mask: mask function must not be null` |
+| value 为 null（通用 `mask` + 9 默认规则统一口径） | 返回 `null`（不抛异常） |
+| value 为空串 `""`（通用 `mask` + 9 默认规则统一口径） | 返回空串 `""` |
+| `keepLeft` / `keepRight` 为负数 | 抛可读 `MaskException`：`mask: keepLeft and keepRight must not be negative` |
+| `maskIp` 文本分段 | 按分隔符特征打码：含 `.` 按 `.` 分段；含 `:` 视为 IPv6，`::` 先展开为完整 8 段再分段（保留首段，其余每段一个 `*`）；**等价写法结果一致**——压缩式 `2001:db8:85a3::8a2e:370:7334` 与展开式 `2001:db8:85a3:0:0:8a2e:370:7334` 均 → `2001:*:*:*:*:*:*:*`（7 个 `*`）；**展开对畸形输入健壮、不抛异常**（多 `::`、段数越界、非法字符等按 §8-D14 宽松退化）；两者皆无则退化为"保留首字符 + 其余等长 `*`"。内容文本非法一律不抛异常，`MaskException` 仅用于规则注册与 `keepLeft`/`keepRight` 非法（见 §8-D14 澄清） |
 
 **region「0」语义（需求七-6 定档）**：五段字段**永不为 null**；raw 值为 `"0"` 或 `"Reserved"` → 归一为**空串 `""`**（不是 "0"、不是 null、不是占位符）；查不到 IP（内核返回 null/空串）→ 返回 `IpRegion` 五字段全 `""` 的非 null 对象，javadoc 写明。理由：对外语义干净，与内核 v3.14.0「查不到返回空串」一致，调用方无需识别内核哨兵。
 
@@ -498,36 +510,73 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 - **并发 = 实例独占 + 内核 `SearcherPool`**：每个 `IpSearcher` 会话独占一个 `Ip2Region`，线程安全由内核池保证（searchers = `availableProcessors()`、fairLock=false，internal 设定，不暴露公共配置项）。**不自建 ThreadLocal、不裸用 `xdb.Searcher`**——内核已是 v3.2.0+ 并发安全服务（实证 §0.2），这同时消解需求对「Searcher 非线程安全」的担忧。close 后查询抛 §7.2 的 `IpException`。
 
 ### 7.4 测试样本策略（需求七-4 定档）
-**定档：内嵌 base64 最小 xdb 样本 → 测试期解码到 `target/`**（`support/IpSampleData.java` 存 base64 字符串常量）。理由：完全离线、可重复、零外链生产数据、不提交二进制文件（根 AGENTS.md 安全条款）。样本须覆盖：境内 IPv4 段（中文五段）、境外 IPv4 段（英文）、保留段（`Reserved…0`）、一个 IPv6 段。样本一次性用 ip2region maker（版本对齐 3.3.7）生成后 base64 固化；maker 坐标见 §8 未实证项。退化方案（若 maker 不可用）：`RegionParser` 用固定字符串向量测试，真实 xdb 端到端用例改为默认关闭的集成测试（需外部提供 xdb，开启后连不上必须失败）。
+**定档：内嵌 base64 最小 xdb 样本 → 测试期解码到 `target/`**（`support/IpSampleData.java` 存 base64 字符串常量）。理由：完全离线、可重复、零外链生产数据、不提交二进制文件（根 AGENTS.md 安全条款）。样本须覆盖：境内 IPv4 段（中文五段）、境外 IPv4 段（英文）、保留段（`Reserved…0`）、一个 IPv6 段。样本一次性用 ip2region maker（版本对齐 3.3.7）生成后 base64 固化；maker 坐标见 §8-A1（处理路径已定档，实现期确认）。退化方案（若 maker 不可用）：`RegionParser` 用固定字符串向量测试，真实 xdb 端到端用例改为默认关闭的集成测试（需外部提供 xdb，开启后连不上必须失败）。
 
-## 8. 待明确事项（按要求分列）
+## 8. 已定档决策记录（主理人拍板 + 实现期确认路径）
 
-### A. 未实证项（实现期确认，不阻塞设计定档）
-1. **maker 生成最小 xdb 的 Maven 坐标与命令**（一次性，用于 base64 固化）——实现期确认；退化方案已在 §7.4 给出。
-2. **三模式返回一致性需样本实测**：设计契约要求 FILE_ONLY/VECTOR_INDEX/CONTENT 对同 IP 同 xdb 结果逐字一致；内核实现细节无法在设计层断言，实现期用样本验证。
+> 本章记录本轮全部决策的最终口径，均为**已定档**事实。标注「实现期确认」的条目只是把实证动作推迟到实现/测试期，处理路径已在此定死，不构成悬空项；任何人不得在未回写本文的前提下改动下列口径。
+
+### A. 实现期确认项（处理路径已定档，不阻塞设计与开工）
+1. **maker 生成最小 xdb 的 Maven 坐标与命令**（一次性，用于 base64 固化）——实现期确认；退化方案已在 §7.4 给出（region 固定向量测试 + 默认关闭的 xdb 集成测试），照此兜底。
+2. **三模式返回一致性**：设计契约要求 FILE_ONLY/VECTOR_INDEX/CONTENT 对同 IP 同 xdb 结果逐字一致；移到实现/测试期用 §7.4 样本实测验证，不阻塞设计定档。
 3. **`aifei-cache` 共享存储 API 确切签名**（`Cache.put(key,value,expire)`/`get`/`remove` 及 TTL 单位）——实现期读 `aifei-cache/AGENTS.md` 与 `docs/design.md` 确认，不臆造。
-4. **双许可署名留痕**：ip2region 为 Apache-2.0 OR MIT，署名与许可说明在 README/design 记录；具体 LICENSE 文本由主理人定。
-5. **3.3.8 弃用是「当前时点」结论**（Java 11 基线）；若将来放宽 Java 基线需重走设计决策，登记为非阻塞假设。
-6. **ZXing core:3.5.3 Java 基线未实证**：POM 未声明 `source`/`target`/`release`，须实现期下载 jar + `javap` 实测 class major 52，不得凭记忆断言 Java 8 兼容（与门禁⑨关联）；若非 52 须回写设计重走决策。
-7. **QrDeps 探测方式与门禁⑩的交互（非阻塞，建议方案）**：原门禁⑩「`Class.forName` 仅允许 `IpDeps.java`/`CaptchaDeps.java`」不改为前提下，qr 探测改用「方法内延迟符号解析 + `catch NoClassDefFoundError/LinkageError` → `QrException`」（探测逻辑放 `QrDeps`，不触碰⑩），**不得用 `Class.forName`**。请主理人确认此实现口径。
+4. **双许可署名 / 第三方许可署名声明（已定档，主理人拍板）**：「不复制许可全文」与「提供署名声明」是并存的两件事，**不矛盾**——
+   - **系统口径**：新增 `THIRD_PARTY_NOTICES.md`（发布工程师产出，T11 文档四件套补充项，见 §2），逐一记录每个**第三方运行内核**的①版权归属、②许可 **SPDX 标识**、③来源地址，以及④ ip2region 的 **Apache-2.0 OR MIT 双许可选择说明**（消费方可任选其一，按所选许可履行署名义务）；但**不粘贴 Apache-2.0 / MIT 许可全文**——全文随各依赖 jar 自带（`META-INF/LICENSE*`），本模块不复制、不镜像。消费方**正式分发时据此署名**。
+   - **署名覆盖范围（仅两个第三方运行内核）**：
+     | 依赖 | 许可 SPDX | 列入署名声明 |
+     | --- | --- | --- |
+     | `org.lionsoul:ip2region:3.3.7` | `Apache-2.0 OR MIT` | ✅ 列入（含双许可选择说明） |
+     | `com.google.zxing:core:3.5.3` | `Apache-2.0` | ✅ 列入 |
+     | `io.github.gollyhu:aifei-cache:1.1.0` | `Apache-2.0` | ❌ 不列入：本生态自家模块（同 `cn.aifei` 体系），非第三方 |
+     | `junit:junit:4.13.2` | 不适用（不列入） | ❌ 不列入：仅 `test` scope，不随发布产物分发 |
+   - **README 引用要求（发布工程师落地，本文只定要求）**：README §6「注意事项与技术难点」的**双许可署名条目**改为「口径摘要 + 指向 `THIRD_PARTY_NOTICES.md`」；README §7「参考 → 文档索引」新增一行指向 `THIRD_PARTY_NOTICES.md`。两处均由发布工程师在产出署名声明文件时同步落地，不在设计关改 README。
+5. **3.3.8 弃用是「当前时点」结论**（Java 11 基线）：登记为非阻塞假设；若将来放宽 Java 基线须重走设计决策。
+6. **ZXing core:3.5.3 Java 基线（已闭环）**：实现期 `javap` 实测 **class major 52 ✓**（开发工程师回执，与门禁⑨一致），Java 8 兼容性确认，§0.3 选型闭环，无需回写重走决策。
+7. **QrDeps 探测方式（已定档）**：用「方法内延迟符号解析 + `catch NoClassDefFoundError`/`LinkageError` → `QrException`」，探测逻辑放 `QrDeps`；**不得用 `Class.forName`**。门禁⑩保持原样（`Class.forName` 仅允许 `IpDeps`/`CaptchaDeps`），本方案不触碰⑩。
 
-### B. 需主理人拍板项（本设计只给建议，不擅自扩张）
-1. **是否配 `aifei-tools-demo`**：架构师**建议配**（仓库惯例：库模块原则配 demo），端口建议 18160，ip 演示用内嵌样本；最终立项请主理人定。
-2. **公共面精确 N 值**：ip N=5、captcha N=4 已定档，请确认后作为门禁常量（若调整须先改 design §3/§6）。
-3. **规划文档措辞**：§6.2/§3.3「首个工具／1 周」是否更新为「首批两个工具」——本设计不擅改规划文档，请主理人定。
-4. **默认值确认**：默认模式 `VECTOR_INDEX`、默认并发（实例独占 + 内核池化，searchers=CPU 核数，fairLock=false）——设计定档，请确认。
-5. **发布元数据**：本轮 pom 不含 Central 发布 profile；是否加入 licenses/developers/scm 由主理人定（仓库各模块不统一）。
-6. **门禁例数：16 vs 17**：需求/口述曾提「16 例」，本轮新增断言实为 3 条（`qrPublicSurfaceExact`/`zxingOnlyInQrInternal`/`maskPublicSurfaceExact`），14+3=**17**。本文按 17 例落盘，未删减任何断言凑 16——三条分别守 qr 公共面精确、ZXing 依赖边界、mask 公共面精确，缺一不可，不建议删减。请主理人裁决。
-7. **T10 任务扩展**：3 条断言追加到 T10 的 `ArchitectureBoundaryTest.java`（同文件纯追加、原 14 例不变、文件归属仍 T10、验收改 17 例），请确认。
-8. **门禁⑪未覆盖新前缀**：原⑪只守 `ip: `/`captcha: `，qr 的 `qr: `/mask 的 `mask: ` 前缀唯一性本轮未加门禁断言，仅靠 §7.1 约定 + `*Errors` 唯一定义点守护（依「原 14 例不改」）。是否扩充⑪，请主理人定。
+### B. 主理人拍板项（全部已裁决，按此执行）
+1. **demo（B1）**：**本轮不配 `aifei-tools-demo`**，T12 不纳入本轮交付；保留后续可选说明，不删 §2 附录段落。
+2. **公共面 N 值（B2）**：定档 **ipdb N=5 / captcha N=4 / qr N=4 / mask N=3，合计 16**，作为门禁常量（§6.2 门禁②③⑮⑰）。
+3. **规划文档措辞（B3）**：**不擅改** `docs/计划/` 规划文档的「首个工具／1 周」历史措辞；根 `README.md` 模块总览按 T11 新增 aifei-tools 条目即可。
+4. **默认值（B4）**：默认模式 **VECTOR_INDEX**；并发 = **实例独占 + 内核 `SearcherPool`**（searchers = `availableProcessors()`，fairLock=false，internal 设定、不暴露公共配置项），详见 §7.3。
+5. **发布元数据（B5）**：本轮 pom **不含 Central 发布 profile**（对齐除 `aifei-cache` 外各模块现状）。
+6. **门禁例数（B6）**：裁定 **17 例**，不删减任何断言（原 14 例 + `qrPublicSurfaceExact`/`zxingOnlyInQrInternal`/`maskPublicSurfaceExact` 三条）。
+7. **T10 扩展（B7）**：3 条新断言追加到 `ArchitectureBoundaryTest.java`（**纯追加、原 14 例不变**，文件归属仍 T10，验收 17 例）。
+8. **门禁⑪（B8）**：**收紧**——扩充覆盖 `qr: `/`mask: ` 前缀的消息唯一性断言（§6.2 门禁⑪），只收不放、不删减原断言。
 
-### C. 本轮新增未定档项（qr，原样列入，不裁决）
-qr 5 个行为分歧点，未定档前 T14/T17 的 decode 相关实现与测试不得开工：
-1. `decode` 是否保留（是否提供解码能力，还是只 encode）。
-2. null/空输入语义。
-3. decode 失败语义（抛 `QrException` vs 返回 null）。
-4. `QrOptions` 是否扩展（除 size/margin/EC 外是否加前景/背景色等）。
-5. 是否加流式输出（encode 到 `OutputStream`）。
+### C. qr 行为契约（原 5 项，全部已定档；T14/T17 据此开工）
+1. **decode 是否保留（C1）**：**保留**。需求 §六冻结公共面含 `decode(byte[])` 与 `decode(InputStream)`，验收要点要求 decode 闭环与"不关闭调用方流"；公共面不删减。
+2. **null/空输入语义（C2）**：`encode(null)` / `decode(null)` / `decode(空 byte[])` 抛可读 `QrException`（消息在 `QrErrors` 唯一点，见 §7.2）；空串 `""` 是合法内容，`encode("")` 正常出图、`decode` 还原为空串。
+   - **空串往返的实现手法（实现期实证，主理人裁定接受）**：`ImageCodec` 用 Unicode 私有区单字符 `\uE000`（U+E000）作内部哨兵——`encode` 时若 `text.isEmpty()` 则把内容替换为该哨兵再编码；`decode` 时仅当解码结果恰好等于该单字符时才归一为空串 `""`。据此空串可正常往返，C2 契约满足。
+   - **已知限制（设计契约未覆盖，不列入验收）**：若正常文本恰好是**单个 U+E000 字符**，`decode` 会将其误归一为空串。主理人裁定接受此边缘行为：U+E000 属 Unicode 私有区，按定义不作为常规文本内容；引入完整转义方案会显著增加复杂度、与极简工具定位相悖。故「单个 U+E000 字符的往返」不列入验收范围，QA 不对此落断言。
+3. **decode 失败语义（C3）**：抛 `QrException` 并**保留 cause**，**不返回 null**（错误不静默吞，对齐 `aifei-excel` 收敛先例）。
+4. **QrOptions 是否扩展（C4）**：**不扩展**，签名冻结为 size/margin/EC 三项 + `defaults()`/`of()`，不加前景/背景色等。
+5. **流式输出（C5）**：**不加**，公共面签名冻结（无 encode 到 `OutputStream` 的重载）。
+
+### D. mask 边界语义（原需求九-13/14，已定档）
+1. **null/空串（D13）**：9 个默认规则与通用 `mask` 统一口径——value 为 `null` 返回 `null`、空串返回空串；`keepLeft`/`keepRight` 为负数抛可读 `MaskException`（消息见 §7.2）。
+2. **maskIp 文本分段（D14，含实现期澄清与主理人裁决）**：按分隔符特征打码——含 `.` 按 `.` 分段；含 `:` 视为 IPv6，`::` 压缩形式**先展开为完整 8 段**再分段（保留首段，其余每段一个 `*`），故 `2001:db8:85a3::8a2e:370:7334` → `2001:*:*:*:*:*:*:*`（**7 个 `*`**）。**等价写法结果一致**：同一 IPv6 地址的压缩式与展开式展开后段数相同，打码结果必须相同——`2001:db8:85a3::8a2e:370:7334` 与 `2001:db8:85a3:0:0:8a2e:370:7334` 均 → `2001:*:*:*:*:*:*:*`（均为首段 + 7 个 `*`）。**畸形输入健壮**：展开逻辑对多 `::`、段数越界（超过 8 段）、非法字符等畸形文本不得抛异常，一律按本条宽松退化（无分隔符特征则退化为"保留首字符 + 其余等长 `*`"）。两者皆无的非法文本同样退化；**全场景不抛异常**（mask 是宽松文本脱敏工具：内容文本非法一律不抛异常；`MaskException` 用于规则注册及 `keepLeft`/`keepRight` 非法，见 D13）。
+   - **澄清依据（实现期实证）**：原措辞「含 `:` 按 `:` 分段」按字面 `split(":")` 得 7 段 → 6 个 `*`，与需求 §七「默认规则格式」及 §八「验收要点」两处冻结示例的 **7 个 `*`** 冲突。示例在需求文档中出现两次且是 QA 固定向量，为权威口径；「按 `:` 分段」只是设计转述、未覆盖 `::` 压缩。故确认以示例为准：先展开 `::` 为 8 段再打码。此澄清不改示例、不改公共 API、不改需求文档，仅收紧规则措辞使其与冻结示例逐字一致（开发已按 7 个 `*` 实现）。
+   - **实现期实测向量（开发回执，QA 可直接用作固定断言样本）**：
+     - 等价写法一致（均 → `2001:*:*:*:*:*:*:*`，7 个 `*`）：`2001:db8:85a3::8a2e:370:7334`（压缩式）、`2001:0db8:85a3:0000:0000:8a2e:0370:7334`（逐段补全式）。
+     - 畸形输入健壮（以下均正常返回脱敏串、零异常，验证「全场景不抛异常」）：`::`、`:::`、`:a::b`、`1:2:3:4:5:6:7:8:9::a`、`garbage`、`a.b.c`。
+     - 无分隔符特征者（如 `garbage`）按 §8-D14 宽松退化：保留首字符 + 其余等长 `*`。
+     - 本条仅固化已实测边界输入，不改变 D14 任何规则口径、公共面、门禁或示例串。
+
+### E. 实现期 API 细化（已定档，源码已落地；本节为设计同步回写）
+
+> 开发工程师在实现期遇到两处本文原稿未覆盖的构造/状态流转缺口。按「发现签名不可行须先回写本文 §3 再改代码」纪律补录如下决策。两项均为**方法级补充**：公共类型数仍为 16（门禁②③⑮⑰ 不变），签名只含 JDK 与本模块类型（门禁⑧不变），17 例门禁判定口径整体不变。
+
+1. **`IpRegion.of(...)` 静态工厂（E1，公共面方法级补充）**：
+   - **决策**：在既有公共值对象 `IpRegion` 上新增 `public static IpRegion of(String country, String province, String city, String isp, String isoCode)`；五个 getter 与「字段永不为 null」契约逐字不变。
+   - **理由**：`RegionParser` 位于 `ipdb.internal`，与 `IpRegion` 不同包，无法访问其包级构造器；门禁②禁止在 `ipdb/` 直接子级新增第 6 个 `.java`，无法靠「再建一个公共装配类」解决。工厂在唯一定义点内把 5 个入参的 null 归一为空串；空白串属合法内容、原样保留；兑现「字段永不为 null」（源码：`x == null ? "" : x` 五段同构）。
+   - **否决方案**：让 `RegionParser` 返回内部 DTO / `String[]` 再由 `IpSearcher` 转装——虽可不加公共方法，但额外引入数据载体与转装层；在「极简工具集」定位下，对值对象补一个惯用静态工厂更直接，且非 null 归一可集中一处。留痕备查。
+   - **QA 对接**：`PublicApiContractIpTest` 补断言——工厂存在、5 getter 签名为冻结形态、传入 null 时 5 字段均为 `""`、传入空白串（如 `" "`）时原样保留（不 trim、不归一）。
+
+2. **`CaptchaStore.remove(String token)` 默认方法（E2，internal 契约补口）**：
+   - **决策**：internal 接口 `CaptchaStore` 在 `save/consume/fail` 之外新增 `default void remove(String token)`（默认空实现）；`LruCaptchaStore` / `ClusterCaptchaStore` 均覆盖。
+   - **理由**：本文 §4.2 时序图原本就画了 `remove(token)`（成功即删、失败仅计数、超限删除）三态，但 §3.2 只列三方法，属设计文档自相矛盾；补 `remove` 是修复该缺口，不是新增能力。默认方法使匿名桩只需实现原三方法即可编译。
+   - **QA 对接**：`CaptchaStoreTest` 覆盖三态——校验成功删 token、失败不消费只计数、超限删除；`LruCaptchaStore` 与 `ClusterCaptchaStore` 各自验证。
 
 ## 9. P0 验收覆盖映射（需求六 → 设计/任务/门禁）
 | 需求验收要点 | 落点 |
@@ -536,26 +585,97 @@ qr 5 个行为分歧点，未定档前 T14/T17 的 decode 相关实现与测试�
 | TTL 到期、超错误次数失效、token 不可反推 | §7.2；T05/T09；`TokenGenerator`(SecureRandom) |
 | 未引 aifei-cache 单机可用、引入后集群校验 | §1.3/§6.1；T05 `LruCaptchaStore`/`ClusterCaptchaStore`；T09 |
 | 门禁：根包零类型 + 各子包精确 N | §6.2 门禁①③；T10 |
-| 文档四件套 + 根 README 补条目 | §2 T11 |
-| 三模式同 IP 同 xdb 结果一致 | §3.1/§7.3；T04；T08 `IpSearcherTest`；未实证项 2 |
+| 文档四件套 + 根 README 补条目 + 第三方许可署名声明 | §2 T11（`THIRD_PARTY_NOTICES.md` 发布工程师产出）/ §8-A4 |
+| 三模式同 IP 同 xdb 结果一致 | §3.1/§7.3；T04；T08 `IpSearcherTest`；样本实测见 §8-A2 |
 | v4/v6 双库命中、境内中文境外英文、未知段语义 | §3.1/§7.2；T08 `IpSearcherTest`/`IpRegionTest`/样本 |
 | 非法 IP/null/文件缺失/依赖缺失均抛可读 IpException | §7.2；T02/T03；T08 |
 | 并发无串扰 | §7.3；T04；T08 |
 | close 幂等 + 关闭后可读异常 | §3.1/§7.2/§7.3；T03；T08 |
 | 测试不提交 xdb 二进制、样本策略 | §7.4；T08 `support/IpSampleData.java` |
-| qr 生成→识别闭环（encode 文本→decode 还原一致） | §3.3/§4.3；T14/T17 `QrKitTest`；受 §8-C 分歧点 1/3 定档约束 |
+| qr 生成→识别闭环（encode 文本→decode 还原一致） | §3.3/§4.3；T14/T17 `QrKitTest`；decode 保留与失败语义见 §8-C1/§8-C3（已定档） |
 | QrOptions 默认值 size=300/margin=4/EC=M、UTF-8 内部固定 | §3.3；T14/T17 `PublicApiContractQrTest` |
 | decode(InputStream) 不关闭调用方流 | §3.3/§4.3；T14/T17 |
-| ZXing 缺失首次调用抛可读 QrException、不裸抛、不引 javase | §0.3/§6.1/§7.2；T13/T17；§8-A6 Java 基线实证 |
+| qr null/空输入语义：null 与空 byte[] 抛可读 QrException、空串 "" 合法且可 encode→decode 往返（哨兵实现与 U+E000 已知限制见 §8-C2，该边界不列入验收） | §7.2/§8-C2；T14/T17 `QrKitTest` |
+| ZXing 缺失首次调用抛可读 QrException、不裸抛、不引 javase | §0.3/§6.1/§7.2；T13/T17；§8-A6 Java 基线已实测 class major 52 ✓ |
 | qr 公共面精确 4、zxing 仅 internal | §6.2 门禁⑮⑯；T10/T14 |
 | mask 通用 mask + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip） | §3.4/§4.4；T15/T16/T18 |
 | 新增 maskFixedPhone：座机保留区号(含 -)+后 4 位、中间等长 *，无 - 退化为前 4 后 4 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；0571-88886666→0571-****6666 |
 | 新增 maskPassword：恒定 ******，不保留原长度、不泄露位数 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；abc123→****** |
 | 新增 maskAddress：保留前 6 字符、其余等长 *，长度 ≤6 全打码 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；浙江省杭州市金城坊街2号→浙江省杭州市****** |
-| 新增 maskIp：保留首段、其余每段一个 *，IPv4 按 . / IPv6 按 : 分段 | §3.4/§4.4；T15/T16/T18 `MaskUtilTest`；192.168.2.1→192.*.*.*；2001:db8:85a3::8a2e:370:7334→2001:*:*:*:*:*:*:* |
+| 新增 maskIp：保留首段、其余每段一个 *，IPv4 按 . / IPv6 按 : 分段（`::` 先展开为完整 8 段、等价写法结果一致、畸形输入健壮不抛异常，详见 §8-D14 澄清） | §3.4/§4.4/§8-D14；T15/T16/T18 `MaskUtilTest`；192.168.2.1→192.*.*.*；2001:db8:85a3::8a2e:370:7334→2001:*:*:*:*:*:*:*（7 个 `*`）；等价式 2001:db8:85a3:0:0:8a2e:370:7334 结果相同；畸形输入不抛异常 |
+| mask null/空串统一口径（null→null、空串→空串）与 keepLeft/keepRight 负数抛 MaskException | §7.2/§8-D13；T16/T18 `MaskUtilTest` |
+| maskIp 文本按分隔符特征打码（IPv6 `::` 展开后分段）、无分隔符退化为保留首字符+等长*且不抛异常 | §7.2/§8-D14；T16/T18 `MaskUtilTest` |
 | 默认规则初始在册不可删、maskPhone≡use("phone").apply、replace 后跟随 | §3.4/§7.1；T15/T16；`MaskKitTest` |
 | register 已存在抛 / replace 不存在抛 / use 未注册抛 | §3.4/§7.2；T16/T18 |
 | mask 公共面精确 3 | §6.2 门禁⑰；T10/T16 |
-| 两工具无 Plugin/配置键、公共签名零第三方/框架类型、零日志绑定、根包仍零类型 | §1.1/§3.3/§3.4；T10/T13–T18 |
+| 四工具无 Plugin/配置键、公共签名零第三方/框架类型、零日志绑定、根包仍零类型 | §1.1/§3.3/§3.4；T10/T13–T18 |
+| 实现期 API 细化：`IpRegion.of(...)` 工厂（5 getter 冻结、null→空串且空白串原样保留）+ `CaptchaStore.remove` 三态（成功删/失败计数/超限删） | §3.1/§3.2/§8-E；T04/T05/T08/T09 `PublicApiContractIpTest`/`CaptchaStoreTest` |
 
-> 一句话总览：`aifei-tools` 单模块——根包零公共类型，四子包共 16 公共类型（`ipdb` 5 / `captcha` 4 / `qr` 4 / `mask` 3）；ipdb 走实测锁定的 `ip2region:3.3.7`（Java 8 class 52，弃用 Java 11 的 3.3.8 有实证）双库自动路由、三模式映射内核四策略、默认 VECTOR_INDEX + 内核池化并发、region `"0"`→空串；captcha 纯 JDK 绘 PNG + 一次性消费 + LRU/可选 aifei-cache 双存储；qr 走 `zxing:core:3.5.3`（optional，Java 基线待实测）+ 自写 `BitMatrix`→PNG；mask 走 `ConcurrentHashMap` 注册表 + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）；四子包公共面零第三方/框架类型，17 例门禁守护。
+> 一句话总览：`aifei-tools` 单模块——根包零公共类型，四子包共 16 公共类型（`ipdb` 5 / `captcha` 4 / `qr` 4 / `mask` 3）；ipdb 走实测锁定的 `ip2region:3.3.7`（Java 8 class 52，弃用 Java 11 的 3.3.8 有实证）双库自动路由、三模式映射内核四策略、默认 VECTOR_INDEX + 内核池化并发、region `"0"`→空串；captcha 纯 JDK 绘 PNG + 一次性消费 + LRU/可选 aifei-cache 双存储；qr 走 `zxing:core:3.5.3`（optional，Java 基线已 javap 实测 class major 52 ✓）+ 自写 `BitMatrix`→PNG；mask 走 `ConcurrentHashMap` 注册表 + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）；四子包公共面零第三方/框架类型，17 例门禁守护。
+
+## 10. 后续工具扩展约定（追加第 5、第 6 … 个极简工具）
+
+> **本章性质**：这是**流程契约**，规定「将来如何安全追加新工具」，**不改变**当前四子包 / 16 公共类型 / 17 例门禁 / §8 已定档决策的任何口径，也不扩大现有公共 API。本轮不新增任何源文件、§2 文件清单条目或 §5 任务；下述动作在「新增某工具」的立项中执行。
+> **不变边界**：无论工具数量如何增长，「根包零公共类型 + 子包隔离 + 各自独立可用 + 无跨工具抽象」恒定（§1.1、AGENTS.md「交付性质」）；唯一承受变化的是**每个新工具自身**的公共面、internal 实现、依赖、门禁与测试。
+
+### 10.1 新增工具 = 新增子包（结构约定）
+
+- **落点**：新工具落 `cn.hg.aifei.tools.<新工具>` 子包（全小写、见名知义，沿用 `ipdb`/`qr` 的缩写风格）。**公共类型一律放子包直接子级**，**internal 实现一律放 `<子包>/internal/`**；根包 `cn.hg.aifei.tools/` 直接子级**永不创建 `.java`**（门禁①恒定，包括 `package-info.java`）。
+- **同构骨架**（模板示意，非本轮文件清单条目；`<Tool>` 为新工具代号）：
+
+| 层 | 类型 | 职责与约定 |
+| --- | --- | --- |
+| 公共层（子包直接子级） | `<Tool>Util` / `<Tool>Kit` | 无状态工具 / 有状态门面，按 §10.3 判定后缀 |
+| 公共层 | `<Tool>Exception` | 模块统一异常，`extends RuntimeException`，公共方法不写 `throws` |
+| 公共层 | 值对象 / 枚举（按需） | 名词性命名；签名只含 JDK + 本模块类型 |
+| internal（非承诺） | `<Tool>Deps` / `<Tool>Errors` / 核心实现类 | 依赖探测唯一入口、异常唯一构造点与消息、核心实现；对外不可见 |
+
+- 每个新子包自成闭环；`<新工具>/internal` 不得被其它子包 import（§10.6）。
+
+### 10.2 门禁同步扩展（纯追加，例数 17 → N）
+
+新增工具**必须**在 `ArchitectureBoundaryTest.java` 追加门禁断言（该文件在新增工具立项中的任务归属按 §2 ↔ §5 一一对应重新登记，门禁职责沿用 T10 口径）；**原 17 例的全部断言逐字保留、一律不删改、不放宽、不绕过**，只做纯追加：
+
+| 追加动作 | 门禁方法数 | 判定口径 |
+| --- | --- | --- |
+| 新子包公共面精确 N 断言 | **+1**（新方法 `<tool>PublicSurfaceExact`） | `<新工具>/` 直接子级 `.java` **精确 N** 且**集合相等**（防数量相同但同名替换）；N 为该工具公共类型数，在 §3/§6.2 定档为门禁常量，口径对齐门禁②③⑮⑰ |
+| 新内核 import 边界断言 | **+1**（仅当引入新第三方内核；新方法 `<kernel>OnlyIn<Tool>Internal`） | `import <新内核包前缀>.` 仅允许 `<新工具>/internal/` 下文件，口径对齐门禁④⑤⑯；纯 JDK 工具不加本条 |
+| 公共签名零第三方覆盖扩充 | **+0**（扩充既有 `publicSignaturesNoThirdParty`） | 将新子包公共层纳入门禁⑧扫描，原四子包断言不变 |
+| 消息前缀唯一性纳入门禁⑪ | **+0**（扩充既有 `errorMessagesOnlyInErrors`） | 在门禁⑪内追加新前缀 `<前缀>: ` 仅在 `<新工具>` 的 `<Tool>Errors` 出现的断言；原 `ip: `/`captcha: `/`qr: `/`mask: ` 四组断言及例外（测试断言、公共 javadoc）逐字保留——只收不放 |
+
+- **例数口径**：无新内核时 17 → 18；有新内核时 17 → 19；此后每加一工具按同规则累加，N 为累加后的方法总数。验证命令（`mvn clean verify` / `mvn test -Dtest=ArchitectureBoundaryTest`）的期望例数同步改写。
+- 新 `@Test` 方法与既有 17 例同风格（小驼峰、见名知义）；§6.2 门禁表与 AGENTS.md「包边界与门禁」表同步追加行并更新例数，**不得重排或改写既有 17 行**。
+
+### 10.3 公共面纪律
+
+- 新工具公共签名**只含 JDK + 本模块类型**，零第三方 / 零框架类型：公共层源码不得出现新内核包前缀，也不得出现 `org.lionsoul.`/`com.google.zxing.`/`cn.aifei.`/`cn.hg.aifei.cache.` 等字面量（门禁⑧覆盖随之扩充）。
+- 公共方法**不写 `throws` 子句**（受检与运行期异常均不声明），失败一律抛该工具的可读模块异常；公共类型与公共成员 javadoc 写全 `@param` / `@return`，运行期异常语义用 `@throws` 在 javadoc 内描述——对齐 §3、§7.1 与 AGENTS.md「注释规范」。
+- **命名后缀**遵循根 `AGENTS.md`「命名约定（类型后缀语义）」与本模块 §7.1：无状态工具类 → `XxxUtil`；有状态门面 → `XxxKit`；接口 / 实现类 / 值对象按 Java 名词性习惯，不另立 `XxxHelper` / `XxxSupport` / `XxxTool` 等语义重叠后缀。
+- 公共类型数 N 在 §3 逐字列签名、在 §6.2 定档；定档即冻结，改动须先回写设计再改门禁期望集合。
+
+### 10.4 依赖策略
+
+- 新能力内核一律 **`optional`**（阻断传递），版本用独立 pom 属性管理（对齐 `<ip2region.version>` / `<zxing.version>`）；第三方署名同步 `THIRD_PARTY_NOTICES.md`（对齐 §8-A4）。
+- 内核缺失时**首次调用**抛该工具的可读模块异常（如 `<Tool>Exception`），不得裸抛 `NoClassDefFoundError` / `LinkageError`；探测逻辑集中在该工具 internal 的 `<Tool>Deps`，对齐 §6.1 与 `aifei-excel` 的可选依赖先例。纯 JDK 工具不加任何新依赖。
+- `aifei-all` 仍 **provided**、源码零引用；**零日志绑定**（`slf4j` / `logback` / `log4j` 一律禁止，门禁⑦）；不得引入无关传递依赖（参照 ZXing 不引 javase 的实证，§0.3）。
+
+### 10.5 文档与测试同步（四同步，缺一不可）
+
+- **design.md**：§1.1 子包表追加一行（公共类型 + internal 清单）、§2 文件清单逐文件落位并归属任务、§3 追加逐字公共签名、§5 任务表追加对应任务、§6.2 门禁表追加新断言行并更新例数、§9 P0 映射追加需求→落点行；§1.3 / §7 / §8 仅在新工具引入新契约时补充，既有四工具的条目保持原样。
+- **README.md**：追加该工具的用法、边界与 optional 依赖缺失警告，文档索引同步。
+- **AGENTS.md**：「公共面收敛」清单追加该子包公共类型行、「包结构与依赖方向」追加子包行、「包边界与门禁」追加新门禁行与例数、「唯一定义点清单」追加该工具的探测/异常/核心实现点，「已定档行为契约红线」与「冻结契约 vs 可演进」按新契约补充。
+- **testing.md**：按四子包同构——`PublicApiContract<Tool>Test`（公共面形态与签名断言）+ 功能测试（成功/边界/失败路径与可读异常逐字消息）+ internal 单测（依赖探测、错误构造、核心实现）；断言消息照抄 §7.2 消息表与 `*Errors` 逐字措辞；测试零联网、可重复。
+
+> 同步纪律：一律「**先回写设计、后改门禁与代码**」；追加后 §2 文件清单 ↔ §5 任务表的一一对应关系仍须成立。
+
+### 10.6 不做跨工具抽象（设计边界）
+
+- **不为多工具引入统一 `Tool` 接口、公共基类、`common/` 抽象层或共享注册表**；工具之间零依赖、零互相引用，`<新工具>/internal` 亦不得被其它子包 import。
+- 允许复用的只有**约定与范式**（本章的结构、门禁、命名、异常、文档模板），不复用**代码抽象**；重复的骨架宁可各自同构，也不抽公共层——这是「极简工具集」的定位边界，遵循根 `AGENTS.md`「命名约定」反对语义重叠抽象的精神。
+- 若某需求确需跨工具能力（如两个工具共享同一内核），须作为**新设计决策**回写 §8 并过主理人，不得在追加中默认引入。
+
+### 10.7 版本策略
+
+- 新增工具属**能力扩展**，走版本号**递增（语义化 minor）**：当前坐标 `io.github.gollyhu:aifei-tools:1.0.0`，首次新增工具 → `1.1.0`（后续 `1.2.0`、`1.3.0`…）；仅修缺陷走 patch，破坏性变更走 major（本模块公共面冻结，原则上不发生）。
+- **CHANGELOG**：本模块当前无 CHANGELOG；约定**首次新增工具时建立** `aifei-tools/CHANGELOG.md`（沿用仓库文档语言与行尾规范），记录版本号、日期、新增工具与公共面、门禁例数变化、依赖变化；此后每次发布同步追加。
+- 版本与 CHANGELOG 由发布工程师落地，设计关只定口径；坐标版本变更同步 `pom.xml` 与 README/文档索引等引用处。

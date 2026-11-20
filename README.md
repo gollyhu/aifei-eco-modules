@@ -33,6 +33,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-excel-demo](aifei-excel-demo/README.md) | （示例工程，不发布） | aifei-excel 的完整接入示例：上传解析 / 一次性导出 / 流式导出演示（端口 18150） |
 | [aifei-audit](aifei-audit/README.md) | `io.github.gollyhu:aifei-audit:1.0.0` | 注解式操作审计：`@Audit` 声明式采集 + `AuditKit` 手动埋点，事件交 `AuditSink` SPI，零存储 / 零线程池 / 零生态依赖 |
 | [aifei-audit-demo](aifei-audit-demo/README.md) | （示例工程，不发布） | aifei-audit 的完整接入示例：8 场景单页演示——注解与未标注对照 / 手动埋点 / 脱敏对照 / sink 切换 / 业务异常 / traceId 关联 / 空态 / 失败隔离（端口 18160，零外网） |
+| [aifei-tools](aifei-tools/README.md) | `io.github.gollyhu:aifei-tools:1.0.0` | 极简工具集：captcha 验证码 / ip 归属地 / qr 二维码 / mask 脱敏，子包隔离各自独立可用，零强制第三方（内核 optional） |
 
 ### aifei-cache
 
@@ -217,6 +218,7 @@ cd aifei-http      && mvn clean install
 cd aifei-excel     && mvn clean install
 cd aifei-audit     && mvn clean install
 cd aifei-i18n      && mvn clean verify
+cd aifei-tools     && mvn clean verify
 ```
 
 发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
@@ -238,6 +240,7 @@ cd aifei-i18n      && mvn clean verify
 - `aifei-excel`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（**不向下游传递**，消费方要用读写能力必须显式引入，缺失时首次调用抛可读 `ExcelException` 而非裸 `NoClassDefFoundError`），POI 随其传递；零 DB、零 Web 面、无 Plugin、无配置键、不引任何日志绑定
 - `aifei-audit`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
 - `aifei-i18n`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` 为 `provided + optional`（**不向下游传递**，仅 `kv` 来源需要，用到时消费方须显式引入）；**零第三方 compile 依赖**（`junit` 仅 `test`），不引任何日志绑定；Java 8 / class major 52
+- `aifei-tools`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.1.0`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机与 mask 脱敏零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
 
 ## 许可证
 
