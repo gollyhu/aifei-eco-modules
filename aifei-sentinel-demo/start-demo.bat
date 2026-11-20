@@ -21,6 +21,6 @@ set "CP="
 for /f "usebackq delims=" %%i in ("target\cp.txt") do set "CP=%%i"
 
 echo [2/3] Mode: local (config: app-config.txt), start on port 18080, press Ctrl+C to stop...
-echo [3/3] Verify: http://localhost:18080/demo
+echo [3/3] Verify: http://localhost:18080/demo/index
 echo.
 java -Ddemo.config=app-config.txt -Dundertow.port=18080 -Dundertow.host=0.0.0.0 -cp ".\target\classes;%CP%" cn.hg.aifei.sentinel.demo.DemoApp

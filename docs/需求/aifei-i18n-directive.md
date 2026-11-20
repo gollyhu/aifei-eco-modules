@@ -1,6 +1,15 @@
 # aifei-i18n Enjoy 模板指令 增量需求文档
 
-> **文件定位**：本文是对 `aifei-i18n.md`（第四轮定档 PRD）的**增量需求**——新增三条 Enjoy 模板指令，并**显式突破原 Q7 定档边界**。原 PRD 的 Q1~Q9 裁决与 16 条 P0 / 75 条 AC 除本文明确变更处外全部继续有效。
+> ## ⛔ 已废弃归档声明（需求关，2026-11 修订）
+>
+> **本文已废弃，不再是需求事实来源，禁止作为设计/开发/测试依据。** 唯一现行版本为 [`aifei-i18n.md`](./aifei-i18n.md) **§十一「Enjoy 模板指令增量需求」**（2026-11-19 已并入）。本文件仅为历史留痕而保留，全文口径以合并版 §11 为准：
+> - 公共面门禁为**精确 10 类型**（本文残留的「9 类型」为过期值）；
+> - 取文案 API 为 `I18nKit.local(lang).message(key[, args...])` 链式入口与 `I18nKit.message(key[, args...])` 默认入口（本文残留的 `message(key, lang, args...)` 形态已随 2026-11-19 重构废弃，不存在该 public 重载）；
+> - Enjoy 指令 API spike **已完成**（2026-11-19），无「待实测/待逐字核对」事项。
+>
+> 下列正文为废弃原文，仅作审计追溯，请勿据此实现。
+
+> **文件定位（废弃原文）**：本文是对 `aifei-i18n.md`（第四轮定档 PRD）的**增量需求**——新增三条 Enjoy 模板指令，并**显式突破原 Q7 定档边界**。原 PRD 的 Q1~Q9 裁决与 16 条 P0 / 75 条 AC 除本文明确变更处外全部继续有效。
 > **关联**：基线 `docs/需求/aifei-i18n.md`；实现模块 `aifei-i18n/`；模板内核 `aifei-enjoy`（框架自身模块，已内含于 `aifei-all:1.1.2`）。
 > **状态**：Enjoy 指令 API spike **已实证成立**（2026-11-19，见 §七），方案不需回退；Demo 进入「先原型确认、后实现」两阶段（见 §九）。
 > **实证证据**：本地仓库 `C:/IDEs/apache-maven-repository/cn/aifei/aifei-enjoy/1.1.2/`（`jar` + `sources.jar`）+ Gitee 官方源码 `jfinal/aifei` 的 `aifei-enjoy/src/main/java/cn/aifei/enjoy/`。
@@ -16,7 +25,7 @@
 **成功标准**（3 条）：
 1. 三条指令在**真实 Enjoy 引擎**中跑通，`lang` 具名参数位置无关提取的规则单一、可测试；
 2. 指令层只做「抽 `lang` + 切位置 + 分发到 `I18nKit` 既有重载」，零新增解析逻辑；
-3. 模块公共面精确 9 类型与「公共签名零第三方类型」约束不变。
+3. 模块公共面精确 10 类型与「公共签名零第三方类型」约束不变（原文「9 类型」为加 Enjoy 指令前的过期值，已按合并版 §11 与源码统一为 10）。
 
 **本期做**：三条指令 + 参数解析规则 + 页面级/局部语言分层 + 真实 Enjoy 端到端用例（含 demo）。
 
@@ -26,7 +35,7 @@
 
 ## 二、Q7 定档边界突破声明（核心变更）
 
-原 PRD `Q7` / `D-02` 定档为「**不新建 demo 工程 + 不引入 Enjoy 依赖**」，以测试内模拟函数 `Function tpl = k -> I18nKit.message(k, locale)` 做等价输出断言。本增量**显式突破这两条**，理由与影响如下：
+原 PRD `Q7` / `D-02` 定档为「**不新建 demo 工程 + 不引入 Enjoy 依赖**」，以测试内模拟函数 `Function tpl = k -> I18nKit.local(locale).message(k)` 做等价输出断言（旧 `I18nKit.message(k, locale)` 形态已随 2026-11-19 重构废弃，不得再引用）。本增量**显式突破这两条**，理由与影响如下：
 
 | 原定档 | 本增量决策 | 突破理由 | 影响面 |
 | --- | --- | --- | --- |
@@ -57,12 +66,12 @@
 
 **分发映射**（薄封装，零新逻辑）：
 
-| 解析结果 | 分发到 |
+| 解析结果 | 分发到（现行 `I18nKit` 链式入口，旧 `message(key, lang, ...)` 形态已废弃） |
 | --- | --- |
-| 有 lang、有 args | `message(key, lang, args...)` |
-| 有 lang、无 args | `message(key, lang)` |
-| 无 lang、有 args | `message(key, null, args...)`（当前 locale） |
-| 无 lang、无 args | `message(key)` |
+| 有 lang | `I18nKit.local(lang).message(key[, args...])` |
+| 无 lang（当前 locale） | `I18nKit.local(effLang).message(key[, args...])`（`effLang` 为当前生效 locale） |
+
+> 说明：旧表四式 `message(key, lang, args...)` / `message(key, lang)` / `message(key, null, args...)` / `message(key)` 系 2026-11-19 重构前口径，public API 中并无 `message(key, lang, ...)` 重载（仅内部 `I18nEngine.message(key, localeTag, args...)`）；现行两入口为 `I18nKit.local(tag).message(key[, args...])` 与 `I18nKit.message(key[, args...])`（默认 local）。以合并版 §11.3.1 分发映射为准。
 
 **边界**：`lang` 重复 → IAE；`lang` 非法（`''` / `zh_CN_` 等）→ IAE（沿用 AC-08-7 口径），`zh_CN` 合法并规范化为 `zh-CN`；缺 key → IAE；字符串字面量中的 `lang=` 文本不得被误判为具名参数。
 
@@ -114,9 +123,9 @@
 
 ## 六、关键约束与唯一定义点
 
-- **薄封装**：指令只抽 `lang`、切位置、分发到 `I18nKit` 三重载；回退链、locale 规范化、locale 解析优先级、消息插值各仍只有原唯一定义点，指令层不得复制。
+- **薄封装**：指令只抽 `lang`、切位置、分发到 `I18nKit` 新 API（`local` 链式 / `message` 默认 local，旧「三重载」表述已废弃）；回退链、locale 规范化、locale 解析优先级、消息插值各仍只有原唯一定义点，指令层不得复制。
 - **dir 数据源**：只走 JDK `ComponentOrientation`，禁语言码→方向映射表；`#dir('xxx')` 的显式覆盖仅作用于本次页面渲染的元数据输出，**不改变** `I18nKit.bundle(...)` 导出语言包的 `dir` 值。
-- **公共面不变**：指令类置于 `internal/`（非承诺 API，可 public 供注册），不计入根/web/aifei 三包的公共面 9 类型门禁；Enjoy 类型不出现在任何公共签名。
+- **公共面不变**：指令类置于 `internal/`（非承诺 API，可 public 供注册），不计入根/web/aifei 三包的公共面 10 类型门禁（原文「9 类型」为过期值）；Enjoy 类型不出现在任何公共签名。
 - **依赖口径**：Enjoy 仅作指令实现与 demo 的依赖，不向消费方传递；不引非 aifei 生态第三方。
 - **异常语义**：全部沿用既有 IAE / WARN / DEBUG 口径，不为模板另设一套。
 
@@ -124,7 +133,7 @@
 
 ## 七、Enjoy 指令 API spike 实证结论（已完成，2026-11-19）
 
-> 取证方式：只读调研——本地 `aifei-enjoy-1.1.2-sources.jar` + Gitee 官方源码 `jfinal/aifei` 的 `aifei-enjoy` 模块。**结论：§3 契约全部成立，无需退回 `#i18nArgs` 方案。**（说明：Gitee 取的是 main 分支；`Assign.getId()` 需求源自 jfinal.com/share/379、`RenderDirective` 为长期标准指令，1.1.x 与 main 在此处一致。逐字确认 1.1.2 版本尚需解压本地 sources jar，属写操作，agent 模式下可做。）
+> 取证方式：只读调研——本地 `aifei-enjoy-1.1.2-sources.jar` + Gitee 官方源码 `jfinal/aifei` 的 `aifei-enjoy` 模块。**结论：§3 契约全部成立，无需退回 `#i18nArgs` 方案；spike 已完成（2026-11-19）。**（说明：Gitee 取的是 main 分支；`Assign.getId()` 需求源自 jfinal.com/share/379、`RenderDirective` 为长期标准指令，1.1.x 与 main 在此处一致。1.1.2 版本逐字核对已随合并版 §11.7 取证路径闭环——本地 `D:/Apache/MavenRepository/cn/aifei/aifei-enjoy/1.1.2/` 的 `sources.jar` + Gitee `jfinal/aifei`，不再列为待办。）
 
 | spike 问题 | 结论 | 源码证据 |
 | --- | --- | --- |
@@ -142,7 +151,7 @@
 
 1. **demo 端口与排期**：`aifei-i18n-demo` 端口、启动脚本，与仓库现有 demo 端口不冲突；按 §九先出原型、确认后再实现。
 2. **`#dir('xxx')` 与导出 dir 的一致性**：本文已定档「显式覆盖仅影响页面渲染、不影响 bundle 导出」；若需改变须显式裁决并回写。
-3. **1.1.2 版本逐字核对**：agent 模式下解压本地 `aifei-enjoy-1.1.2-sources.jar` 复核 `Assign.getId()` / `getRight()` 存在性（spike 已据官方源码确认逻辑成立，此为版本收口）。
+3. ~~**1.1.2 版本逐字核对**：agent 模式下解压本地 `aifei-enjoy-1.1.2-sources.jar` 复核 `Assign.getId()` / `getRight()` 存在性~~ **— 已闭环（2026-11-19，不再待办）**：spike 已据本地 1.1.2 sources jar（`D:/Apache/MavenRepository/cn/aifei/aifei-enjoy/1.1.2/`）+ Gitee `jfinal/aifei` 官方源码逐字确认逻辑成立；结论见合并版 §11.7。
 
 ---
 

@@ -9,7 +9,9 @@
 package cn.aifei.weixin.core.msg;
 
 /**
- * 群发结果事件（Event = MASSSENDJOBFINISH）
+ * 群发结果事件（Event = MASSSENDJOBFINISH）。
+ *
+ * <p>以下 getter / setter 均为对应字段的简单读写，语义同字段名，不逐方法重复说明。</p>
  */
 public class InMassEvent extends InEvent {
 

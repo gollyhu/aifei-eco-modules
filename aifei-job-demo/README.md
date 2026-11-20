@@ -33,11 +33,12 @@ start-demo.bat
 stop-demo.bat
 ```
 
-手工启动（等价）：
+手工启动（参数同 `start-demo.bat`，PowerShell 可直接执行）：
 
-```bat
+```powershell
 mvn -q compile dependency:build-classpath -Dmdep.outputFile=target\cp.txt
-java -Ddemo.config=app-config.txt -Dundertow.port=18110 -cp ".\target\classes;<cp.txt 内容>" cn.hg.aifei.job.demo.DemoApp
+$CP = Get-Content target\cp.txt -Raw
+java -Ddemo.config=app-config.txt -Dundertow.port=18110 -Dundertow.host=0.0.0.0 -cp ".\target\classes;$CP" cn.hg.aifei.job.demo.DemoApp
 ```
 
 | 项 | 值 |
@@ -172,7 +173,6 @@ aifei-job-demo/
 ## 10. 验收记录（2026-11-10 实测）
 
 > 本节为**验收小节**，记录最终验收的实测结论；观测点判据与模块侧计数见 `aifei-job/docs/testing.md` §9。
-> 说明：§2 末尾「当前页面是静态原型（浏览器内模拟数据）」一句描述的是**原型阶段**，已被本版真实数据页取代——
 > 现行页面每秒轮询 `/job/demo/**` 真实端点，无任何模拟调度引擎。
 
 ### 10.1 构建与启停

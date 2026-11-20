@@ -52,5 +52,3 @@ stop-demo.bat         :: 按端口 18170 结束进程
 - 日志工厂为 demo 自带 `ConsoleLogFactory`（System.out），零日志绑定。
 
 端口 18170 已避开仓库其它 demo。
-
-—— 开发工程师 寇戴码

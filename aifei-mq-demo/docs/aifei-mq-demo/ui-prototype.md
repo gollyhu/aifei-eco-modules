@@ -297,7 +297,7 @@
 | 日志区接收行 | `GET /mq/demo/messages?instance=` → `receivedAt` / `topic` / `text` / `payloadSize` / `subscriber` / `sequence` | ✔（接收侧无 `messageId`，已在 UI 中不显示） |
 | 清空记录 | `GET /mq/demo/messages/clear?instance=` | ✔ |
 | 入口页卡片 | `GET /mq/demo/instances` → `instanceName` / `type` / `main` / `configPrefix` / `ready` / `subscribedTopicCount` / `messageLogSize` / `messageLogCapacity` | ✔ |
-| 页面路由 | 入口 `GET /`、演示 `GET /mq/demo/page?instance=`；页内跳转一律**绝对路由**（`/`、`/mq/demo/page?instance=`） | ⚠ 待实测（`@Path("/")` 映射根路径的写法待架构师确认，见 PRD Q4）；`page()` 返回模板名 **`/mq/demo.html`**（须以 `/` 开头，否则被 targetPath 二次拼接成 `/mq/demo/mq/demo.html`，见 PRD §5.2） |
+| 页面路由 | 入口 `GET /`、演示 `GET /mq/demo/page?instance=`；页内跳转一律**绝对路由**（`/`、`/mq/demo/page?instance=`） | ✔ 已定档（`@Path("/")` + `MqPageService.index()` → `GET /`，实现期实测闭环，见 PRD Q4）；`page()` 返回模板名 **`/mq/demo.html`**（须以 `/` 开头，否则被 targetPath 二次拼接成 `/mq/demo/mq/demo.html`，见 PRD §5.2） |
 
 ---
 
@@ -449,3 +449,7 @@
 - 处置：**PASS**，可锁定基线（UI 原型 + PRD）并进入架构设计。
 
 `BASELINE: PASS`
+
+---
+
+> **Q4 后续闭环补记（2026-11 修订，需求关）**：上方「基线评审 / 基线复审」两节为当时的历史留痕，保持原样不篡改。其中遗留的「`@Path("/")` 能否直接映射 `GET /`」已于实现期闭环并回写：实现采用 `@Path("/")` 类级路径 + `MqPageService.index()` 无 `@Path` 方法直接映射 `GET /`（源码 `src/main/java/cn/hg/aifei/mq/demo/service/MqPageService.java`，同构先例为 websocket-demo 的 `DemoPageService`），`index()` 返回 `/mq/index.html`。对应地，本文件 §契约核对「页面路由」行（第 300 行）的 ⚠ 已改为 ✔ 已定档，`prd.md` Q4 / §5.2 路由约定第 4 条已同步回写。此遗留项不再需要架构师实现期实测。

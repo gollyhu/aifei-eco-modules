@@ -1,5 +1,7 @@
 # aifei-websocket 测试文档
 
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
+
 本文件说明 `aifei-websocket` 的测试分层、运行方式、契约测试机制、当前基线与新增测试约定。
 
 四份文档的分工：`README.md` 面向使用者；`docs/design.md` 是契约与设计决策的事实来源；`AGENTS.md` 面向开发代理；**本文件面向测试维护者**（测试结构、运行与新增约定）。
@@ -68,7 +70,7 @@ mvn test -Dtest=Rfc6455FrameCodecTest :: 单个测试类
 | --- | --- |
 | 可运行测试类 | 11（另 2 个抽象契约基类） |
 | 用例总数 | **116** |
-| 结果 | `Tests run: 115, Failures: 0, Errors: 0, Skipped: 0` |
+| 结果 | `Tests run: 116, Failures: 0, Errors: 0, Skipped: 0`（与 §2 分层表逐类相加及 11 份 surefire 报告实测求和一致） |
 | 编译目标 | Java 8（class major version = 52） |
 
 > 基线随功能演进更新；提交前 `mvn clean verify` 必须 0 failure / 0 error，且用例数不得减少。

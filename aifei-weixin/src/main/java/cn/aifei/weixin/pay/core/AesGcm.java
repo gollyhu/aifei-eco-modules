@@ -28,9 +28,17 @@ public class AesGcm {
     }
 
     /**
-     * 解密回调 resource 或平台证书 encrypt_certificate 的 ciphertext
+     * 解密回调 resource 或平台证书 encrypt_certificate 的 ciphertext。
      *
-     * @param associatedData 可为 null（官方回调解密常为 "transaction" / "refund" 等）
+     * <p>{@code nonce} 直接作为 GCM 的 IV，须为 12 字节 ASCII；长度不符、密文被篡改或密钥不一致
+     * 均走异常处理抛出 {@link WxApiException}，而非返回 {@code null}。</p>
+     *
+     * @param apiV3Key        32 字节的 APIv3 密钥字符串（商户平台设置的 APIv3 key）
+     * @param nonce           12 字节 ASCII 随机串，直接充当 GCM 的 IV
+     * @param ciphertextBase64 待解密的 Base64 密文（resource.ciphertext / encrypt_certificate.ciphertext）
+     * @param associatedData  附加认证数据 AAD，可为 null（官方回调解密常为 "transaction" / "refund" 等）
+     * @return 解密后的 UTF-8 明文
+     * @throws WxApiException 密钥 / nonce / associatedData 不匹配或密文被篡改时抛出
      */
     public static String decrypt(String apiV3Key, String nonce, String ciphertextBase64, String associatedData) {
         try {

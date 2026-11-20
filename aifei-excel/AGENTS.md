@@ -120,7 +120,7 @@ start-demo.bat        # 启动 demo
 stop-demo.bat         # 停止 demo
 ```
 
-demo 依赖 `aifei-excel:1.0.0`，需先在 `aifei-excel/` 执行 `mvn -q -DskipTests clean install` 安装到本地仓库（本机 `C:\IDEs\apache-maven-repository`）后才能构建。
+demo 依赖 `aifei-excel:1.0.0`，需先在 `aifei-excel/` 执行 `mvn -q -DskipTests clean install` 安装到本地仓库（默认 `~/.m2/repository`；如改过配置，以 `mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout` 的查询结果为准）后才能构建。
 
 > **零联网纪律**：全部单测离线；xlsx / xls 样本由测试在 `target/` 现场写出再读回，或固定极小样本，**不提交二进制到仓库**。
 

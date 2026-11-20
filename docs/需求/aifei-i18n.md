@@ -219,7 +219,7 @@ sequenceDiagram
 | 配置键 | 含义 | 必填 / 默认值 |
 | --- | --- | --- |
 | `i18n.defaultLocale` | 回退链的终点语种；也是无显式/上下文/请求头时的生效语种 | **必填**；缺失即启动失败 |
-| `i18n.locales` | 支持的语种列表（用于请求头匹配与导出合法性判断） | 可选；未配置 = 不做白名单限制（接受任意合法 BCP 47） |
+| `i18n.locales` | 支持的语种列表（用于请求头 `Accept-Language` 匹配；**不阻断显式 locale 的整包导出**） | 可选；未配置 = 不做白名单限制（接受任意合法 BCP 47） |
 | `i18n.sources` | 来源稳定名的有序清单，顺序即叠加与回退顺序 | 可选；未配置默认仅 `properties` |
 | `i18n.cache.ttlMillis` | 缓存 TTL | 可选；默认 60000；`≤ 0` 视为不缓存 |
 
@@ -490,6 +490,7 @@ flowchart LR
 **质量与交付**
 
 - **每类规则唯一定义点**：回退链、叠加顺序、locale 解析优先级、**locale 规范化**（`_`→`-`、语言码小写、地区码大写、脚本码首字母大写）、JSON 形状、缓存键拼装、错误消息构造、**格式化 locale 解析**（复用同一优先级，不得在格式化路径重写）、**币种 / 时区参数的校验与传递**，各只有一个定义点，实现类不得复制。
+- **`i18n.locales` 白名单作用域唯一定义点**：白名单**仅作用于请求头 `Accept-Language` 解析**（命中后按 §5.5 优先级参与生效 locale 选择），**不得用于整包导出路径的合法性判断**——导出入口显式传入的 locale 一律放行（AC-09-4 / AC-12-6），实现层不得复制或另设导出白名单，避免出现「单点可取、整包导不出」的路径分叉。
 - **交付物 D-01**：文档四件套齐备（`README.md` / `docs/design.md` / `AGENTS.md` / `docs/testing.md`），根 `README.md` 模块总览补条目；`db` 来源建表 SQL 随文档交付。
 - **交付物 D-02**：验收用例须覆盖两条消费路径各一例端到端用例——**服务层取文案**、**模板渲染（Enjoy）取文案**（已定档，Q7：不新建 demo 工程，用例落在模块测试内，以「模板渲染等价的输出断言」实现）；另须一例「同线程两次请求不串语言」的 Web 入口清理用例。
 - **交付物 D-03**：格式化验收用例须覆盖三参正交（分隔符随 locale、币种正交于 locale、时区正交于 locale）、百分比、风格四档与默认 MEDIUM（AC-16-1~16-9），以及「零自建规则数据」的源码审查断言；`dir` 的数据源审查与降级用例（AC-14-2 / AC-14-5）并入同一门禁。**断言口径约束**：涉及 JDK 输出字面量的用例只断言跨 provider 稳定的性质（不相等 / 含本币种符号 / 月份名与「日」的相对位置 / 小数位），不得写死符号字符与完整日期字符串。
@@ -596,6 +597,8 @@ flowchart LR
 
 语言取值经 `effectivePageLang()` 选出后统一走 `local(effLang)` 绑定；有 args 用 `message(key, args...)` 插值，无 args 用 `message(key)`。
 
+> **旧 API 形态已废弃（2026-11-19 重构）**：`message(key, lang, args...)` / `message(key, lang)` / `message(key, null, args...)` 这类「把 locale 作为独立入参」的签名**已随 I18nKit 重构为 `local` 链式入口而废弃，不得再引用**——`I18nKit` 的 public API 仅有 `local(String)` / `message(String, Object...)` / `bundle(String)` / `refresh()`，`Localizer` 仅有 `message(key)` / `message(key, args...)`；`message(key, localeTag, args...)` 仅存在于内部 `I18nEngine`，非承诺 API。指令实现与文档一律以本节两入口为准。
+
 **边界**：`lang` 重复 → IAE；`lang` 非法（`''` / `zh_CN_` 等）→ IAE（沿用 §6.1 AC-08-7 口径），`zh_CN` 合法并规范化为 `zh-CN`；缺 key → IAE；字符串字面量中的 `lang=` 文本不得被误判为具名参数。
 
 #### 11.3.2 `#lang()` / `#lang('xxx')` —— 页面语言（读写对称）
@@ -668,6 +671,8 @@ flowchart LR
 ### 11.7 Enjoy 指令 API 结论（spike 已完成，2026-11-19）
 
 结论：§11.3 契约在真实 Enjoy 1.1.2 中全部成立，无需退回 `#i18nArgs` 方案；下列 API 为实现依据。
+
+**取证路径（版本收口留痕，2026-11-19 逐字核对已完成）**：本地构件 sources jar `D:/Apache/MavenRepository/cn/aifei/aifei-enjoy/1.1.2/aifei-enjoy-1.1.2-sources.jar`（`Assign.getId()` / `Assign.getRight()` / `Directive` / `RenderDirective` 逐字确认）+ Gitee 官方源码 `jfinal/aifei` 的 `aifei-enjoy/src/main/java/cn/aifei/enjoy/`。原独立增量文档列为「待明确」的「1.1.2 版本逐字核对」由此闭环，不再列为待办。
 
 | 结论项 | 结论 |
 | --- | --- |

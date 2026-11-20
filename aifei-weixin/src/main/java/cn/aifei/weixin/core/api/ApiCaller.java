@@ -79,26 +79,76 @@ public class ApiCaller {
         }
     }
 
+    /**
+     * 取 access_token（{@link WeixinAccount} 版本，委托给 appId/secret 版本）。
+     *
+     * @param account 公众号账号凭据
+     * @return 有效的 access_token
+     */
     public static String accessToken(WeixinAccount account) {
         return accessToken(account.getAppId(), account.getSecret());
     }
 
+    /**
+     * GET 请求并自动注入 access_token，token 失效时清缓存重试一次。
+     *
+     * @param appId  公众号 appId
+     * @param secret 公众号 secret
+     * @param path   接口路径（相对 {@link #API_BASE}）
+     * @param params query 参数，值为 {@code null} 的项被忽略
+     * @return 接口返回封装；业务错误码需由调用方判断
+     */
     public static ApiResult get(String appId, String secret, String path, Map<String, Object> params) {
         return execute(appId, secret, path, params, null, true);
     }
 
+    /**
+     * GET 请求（{@link WeixinAccount} 版本，委托给 appId/secret 版本）。
+     *
+     * @param account 公众号账号凭据
+     * @param path    接口路径
+     * @param params  query 参数
+     * @return 接口返回封装
+     */
     public static ApiResult get(WeixinAccount account, String path, Map<String, Object> params) {
         return get(account.getAppId(), account.getSecret(), path, params);
     }
 
+    /**
+     * POST JSON 请求并自动注入 access_token，token 失效时清缓存重试一次。
+     *
+     * @param appId    公众号 appId
+     * @param secret   公众号 secret
+     * @param path     接口路径
+     * @param jsonBody JSON 请求体
+     * @return 接口返回封装；业务错误码需由调用方判断
+     */
     public static ApiResult post(String appId, String secret, String path, String jsonBody) {
         return execute(appId, secret, path, null, jsonBody, true);
     }
 
+    /**
+     * POST JSON 请求（{@link WeixinAccount} 版本，委托给 appId/secret 版本）。
+     *
+     * @param account  公众号账号凭据
+     * @param path     接口路径
+     * @param jsonBody JSON 请求体
+     * @return 接口返回封装
+     */
     public static ApiResult post(WeixinAccount account, String path, String jsonBody) {
         return post(account.getAppId(), account.getSecret(), path, jsonBody);
     }
 
+    /**
+     * multipart/form-data 上传（素材等接口），token 失效时清缓存重试一次。
+     *
+     * @param appId  公众号 appId
+     * @param secret 公众号 secret
+     * @param path   接口路径
+     * @param fields 普通表单字段
+     * @param files  文件字段
+     * @return 接口返回封装
+     */
     public static ApiResult postMultipart(String appId, String secret, String path,
                                           Map<String, String> fields, Map<String, File> files) {
         String url = buildUrl(path, accessToken(appId, secret), null);
@@ -112,11 +162,29 @@ public class ApiCaller {
         return ApiResult.parse(WxApiConfig.http().postMultipart(retryUrl, fields, files));
     }
 
+    /**
+     * multipart 上传（{@link WeixinAccount} 版本，委托给 appId/secret 版本）。
+     *
+     * @param account 公众号账号凭据
+     * @param path    接口路径
+     * @param fields  普通表单字段
+     * @param files   文件字段
+     * @return 接口返回封装
+     */
     public static ApiResult postMultipart(WeixinAccount account, String path,
                                           Map<String, String> fields, Map<String, File> files) {
         return postMultipart(account.getAppId(), account.getSecret(), path, fields, files);
     }
 
+    /**
+     * 下载二进制响应（素材等接口），token 失效时清缓存重试一次。
+     *
+     * @param appId  公众号 appId
+     * @param secret 公众号 secret
+     * @param path   接口路径
+     * @param params query 参数
+     * @return 响应字节；下载失败时微信以 JSON errcode 报错，需调用方用 {@link #isTokenInvalidJson(byte[])} 等判断
+     */
     public static byte[] download(String appId, String secret, String path, Map<String, Object> params) {
         byte[] bytes = WxApiConfig.http().download(buildUrl(path, accessToken(appId, secret), params));
         if (isTokenInvalidJson(bytes)) {
@@ -126,6 +194,14 @@ public class ApiCaller {
         return bytes;
     }
 
+    /**
+     * 下载二进制响应（{@link WeixinAccount} 版本，委托给 appId/secret 版本）。
+     *
+     * @param account 公众号账号凭据
+     * @param path    接口路径
+     * @param params  query 参数
+     * @return 响应字节
+     */
     public static byte[] download(WeixinAccount account, String path, Map<String, Object> params) {
         return download(account.getAppId(), account.getSecret(), path, params);
     }
@@ -142,6 +218,14 @@ public class ApiCaller {
         return bytes;
     }
 
+    /**
+     * POST JSON 下载二进制（{@link WeixinAccount} 版本，委托给 appId/secret 版本）。
+     *
+     * @param account  公众号账号凭据
+     * @param path     接口路径
+     * @param jsonBody JSON 请求体
+     * @return 响应字节
+     */
     public static byte[] postDownload(WeixinAccount account, String path, String jsonBody) {
         return postDownload(account.getAppId(), account.getSecret(), path, jsonBody);
     }
@@ -179,6 +263,12 @@ public class ApiCaller {
         }
     }
 
+    /**
+     * 判定响应是否为 access_token 失效错误（40001 / 42001）。
+     *
+     * @param result 接口返回封装
+     * @return token 失效返回 {@code true}
+     */
     public static boolean isTokenInvalid(ApiResult result) {
         int errorCode = result.getErrorCode();
         return errorCode == 40001 || errorCode == 42001;

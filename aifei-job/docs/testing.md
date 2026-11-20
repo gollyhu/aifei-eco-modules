@@ -1,5 +1,7 @@
 # aifei-job 测试策略
 
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
+
 本文面向测试维护者：说明测试结构、用例矩阵（与需求验收项逐项对齐）、表达式用例清单、语义用例构造方案、纪律与 demo 验收口径。契约以 `docs/design.md` 为准；开发约束见模块 `AGENTS.md`。
 
 ## 1. 运行方式
@@ -9,7 +11,7 @@
 ```bash
 mvn clean verify                              # 必须 0 failure / 0 error
 mvn test -Dtest=CronExpressionCasesTest       # 单类
-mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsPeriodWhenOnTime   # 单方法
+mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsBasedOnLastStart   # 单方法
 ```
 
 默认可执行测试**零外部依赖**：无中间件、无数据库、无网络、**无真实时钟等待**。测试依赖只有 JUnit 4.13.2（`test` 范围）。
@@ -19,7 +21,7 @@ mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsPeriodWhenOnTime   # 单�
 | 测试类 | 类型 | 覆盖 | 对应验收项 |
 | --- | --- | --- | --- |
 | `ArchitectureBoundaryTest` | 架构门禁（**6 例**） | 包边界、公共面 7 类型、`local` 包唯一 Quartz 触点、`cn.aifei.log.*` 例外、接入包存在（设计 §11） | A02 |
-| `QuartzCronSupportTest` | 单元（纯计算） | 表达式用例 **≥20**：合法（含月末 / 闰年 / 跨年 / `?` `L` `W` `#`）与非法（越界 / 段数不足 / 非法字符） | A03 |
+| `CronExpressionCasesTest` | 单元（纯计算） | 表达式用例 **≥20**：合法（含月末 / 闰年 / 跨年 / `?` `L` `W` `#`）与非法（越界 / 段数不足 / 非法字符） | A03 |
 | `JobConfigTest` | 单元 | 4 个配置键：缺必填、空项、默认值、越界、非整数；消息含键名与原值 | A11 |
 | `JobTriggerTest` | 单元 | 注解属性规则：`period` / `delay` ≥ 1、`initialDelay` ≥ 0、负数与非正数 | A11 |
 | `JobNamesTest` | 单元 | 任务名格式 `类全名#方法名` 与错误消息定位口径一致 | A12 |
@@ -31,12 +33,19 @@ mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsPeriodWhenOnTime   # 单�
 | `JobInstancesTest` | 单元（容器替身） | 取不到 → 任务实例失败 / 监听器为 `null`；多例 → 两者均失败（消息区分）；单例 → 正常 | A10 / A17 |
 | `JobEventsTest` | 单元 | 无监听器时 `dispatch` 静默；回调抛异常被隔离（不外抛、不改变事件）；同步执行在调用线程 | A14 / A16 |
 | `JobRunnerSemanticsTest` | 语义 | 「注册 → 触发 → 执行」闭环、同任务不重叠、异常隔离、fixedRate 超时跳过记账、错过不补跑 | A04 / A05 |
-| `JobWakeSeparationTest` | 语义 | 长任务不阻塞唤醒层：一个任务阻塞时其余任务照常到点触发 | A07 |
-| `JobRejectionTest` | 语义 | 队列占满时：唤醒线程不阻塞、本轮记 `SKIPPED`、不产生提交空转、队列腾空后该任务下一周期仍触发、拒绝信号确实以 `RejectedExecutionException` 到达唤醒层 | A08 / A19 |
-| `JobShutdownTest` | 语义 | 优雅停机等待、超时后 `shutdownNow` 剩余任务记 `SKIPPED`、在途任务续排被拒不外抛、`stop()` 幂等 | A09 |
-| `JobListenerTest` | 语义 | 监听器可选（无实现时任务照常）、多例启动失败、`start()` 只解析一次、`STARTED` 先于任务体、事件时间不晚于 `lastStart`、耗时不计入 fixedRate 判定、并发回调不冲突、`STARTED → 终态` 顺序 | A16 / A17 |
-| `JobStateObservationTest` | 语义 | 首次执行中不出现、再次执行中保留上一次终态、结束后终态覆盖、回调内 `state()` 已见本次终态（记账顺序） | A15 / A18 |
-| `JobPluginTest` | 单元（装配） | 装配生命周期、`start()` / `stop()` 幂等、启动期失败不留半装配、任务名契约端到端 | A12 / A17 |
+| `LongTaskDoesNotBlockWakeupTest` | 语义 | 长任务不阻塞唤醒层：一个任务阻塞时其余任务照常到点触发 | A07 |
+| `RejectionRescheduleTest` | 语义 | 队列占满时：唤醒线程不阻塞、本轮记 `SKIPPED`、不产生提交空转、队列腾空后该任务下一周期仍触发、拒绝信号确实以 `RejectedExecutionException` 到达唤醒层 | A08 / A19 |
+| `ShutdownTest` | 语义 | 优雅停机等待、超时后 `shutdownNow` 剩余任务记 `SKIPPED`、在途任务续排被拒不外抛、`stop()` 幂等 | A09 |
+| `ListenerContractTest` | 语义 | 监听器可选（无实现时任务照常）、多例启动失败、`start()` 只解析一次、`STARTED` 先于任务体、事件时间不晚于 `lastStart`、耗时不计入 fixedRate 判定、并发回调不冲突、`STARTED → 终态` 顺序 | A16 / A17 |
+| `StateViewTest` | 语义 | 首次执行中不出现、再次执行中保留上一次终态、结束后终态覆盖、回调内 `state()` 已见本次终态（记账顺序） | A15 / A18 |
+| `StartupExceptionContractTest`（装配/启动期断言）+ `ListenerContractTest` | 单元（装配） | 装配生命周期、`start()` / `stop()` 幂等、启动期失败不留半装配、任务名契约端到端 | A12 / A17 |
+
+> **设计名 → 实现名映射**（主表与 §3 矩阵已统一采用下表中的实测类名，可直接 `mvn test -Dtest=<类名>` 执行）：
+> `QuartzCronSupportTest` → `CronExpressionCasesTest`；`JobWakeSeparationTest` → `LongTaskDoesNotBlockWakeupTest`；
+> `JobRejectionTest` → `RejectionRescheduleTest`；`JobShutdownTest` → `ShutdownTest`；
+> `JobListenerTest` → `ListenerContractTest`；`JobStateObservationTest` → `StateViewTest`；
+> 原 `JobPluginTest` 的装配断言由 `StartupExceptionContractTest` + `ListenerContractTest` 承担；另有
+> `FixedRateSkipTest` / `InitialDelayTest` / `StartupExceptionContractTest` 三个按语义拆分的新增类。逐类计数见 §9.1。
 
 **测试替身（`src/test/java/cn/hg/aifei/job/support/`）**：
 
@@ -57,23 +66,23 @@ mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsPeriodWhenOnTime   # 单�
 | --- | --- | --- | --- |
 | A01 | 模块内 `mvn clean verify` 通过 | — | `Tests run` 无 failure / error（计数见 §7） |
 | A02 | `ArchitectureBoundaryTest` 全部断言 | `ArchitectureBoundaryTest` | 6 例全绿；根包公共类型**精确 7**、`org.quartz.*` 只在 `local`、无 `java.sql.*`、无 `org.slf4j.*`、`cn.aifei.log.*` 例外生效 |
-| A03 | 表达式用例 ≥20 条 | `QuartzCronSupportTest` | §4 清单共 **31 条**（合法 22 + 非法 9），期望值一律硬编码字面量 |
+| A03 | 表达式用例 ≥20 条 | `CronExpressionCasesTest` | §4 清单共 **31 条**（合法 22 + 非法 9），期望值一律硬编码字面量 |
 | A04 | 「注册 → 触发 → 执行」闭环 | `JobRunnerSemanticsTest` | `initialDelay = 0` + `period` 短 → `EventProbe` 在 5s 内收到 `STARTED` / `SUCCESS`，任务体副作用可见 |
-| A05 | 语义用例：不重叠 / 超时跳过 / 不补跑 / 异常隔离 / 优雅停机 / 多注解 / 非法表达式 | `JobRunnerSemanticsTest` + `JobShutdownTest` + `JobScannerTest` | 见 §5 构造方案 |
+| A05 | 语义用例：不重叠 / 超时跳过 / 不补跑 / 异常隔离 / 优雅停机 / 多注解 / 非法表达式 | `JobRunnerSemanticsTest` + `ShutdownTest` + `FixedRateSkipTest` + `JobScannerTest` | 见 §5 构造方案 |
 | A06 | `initialDelay` 只作用于首次 | `JobScheduleTest`（纯计算）+ `JobRunnerSemanticsTest` | `isFirst=true` 返回 `initialDelay`；`isFirst=false` 时把 `initialDelay` 改成任意值结果**完全不变**；语义层首次不早于 `initialDelay`、第二次起间隔 ≈ `period` |
-| A07 | 触发与执行分离 | `JobWakeSeparationTest` | `pool.size=2`：任务 A 阻塞期间任务 B 仍连续触发 ≥2 次 |
-| A08 | 执行池拒绝 | `JobRejectionTest` | 唤醒线程不阻塞、`SKIPPED` 事件到达、队列腾空后下一周期仍触发、拒绝确实以 `RejectedExecutionException` 到达唤醒层 |
-| A09 | 停机用例 | `JobShutdownTest` | 在途任务续排被拒时不外抛（`Thread.setDefaultUncaughtExceptionHandler` 收集器为空）、无未捕获堆栈 |
+| A07 | 触发与执行分离 | `LongTaskDoesNotBlockWakeupTest` | `pool.size=2`：任务 A 阻塞期间任务 B 仍连续触发 ≥2 次 |
+| A08 | 执行池拒绝 | `RejectionRescheduleTest` | 唤醒线程不阻塞、`SKIPPED` 事件到达、队列腾空后下一周期仍触发、拒绝确实以 `RejectedExecutionException` 到达唤醒层 |
+| A09 | 停机用例 | `ShutdownTest` | 在途任务续排被拒时不外抛（`Thread.setDefaultUncaughtExceptionHandler` 收集器为空）、无未捕获堆栈 |
 | A10 | 方法签名 / 多例 / 重复扫描 | `JobScannerTest` + `JobInstancesTest` | 各情形抛 `JobException` 且消息含方法全名或任务名 |
 | A11 | 启动期异常契约 | `JobConfigTest` + `JobTriggerTest` + `JobScannerTest` | 全部为 `JobException`（**不是** `IllegalArgumentException` / `IllegalStateException`），消息含定位信息，底层异常在 `getCause()` |
-| A12 | 任务名契约 | `JobNamesTest` + `JobPluginTest` | `names()` / `state()` 的 key 与 `JobEvent#taskName()` 一律 `类全名#方法名`，与错误消息定位一致 |
+| A12 | 任务名契约 | `JobNamesTest` + `StartupExceptionContractTest` | `names()` / `state()` 的 key 与 `JobEvent#taskName()` 一律 `类全名#方法名`，与错误消息定位一致 |
 | A13 | `JobKit` 未启动语义 | `JobKitTest` | 未启动 / 已停机时两方法返回空集合且**不抛** |
 | A14 | 不可变与监听器基础 | `JobEventTest` + `JobStateTest` + `JobEventsTest` | `Map` 与 value 均不可修改、每次返回新实例；同步执行于产生事件的线程；并发回调不冲突；回调抛异常不影响调度 |
-| A15 | `state()` 观测口径 | `JobStateObservationTest` | 首次执行中不出现；再次执行中保留上一次终态；结束后终态覆盖 |
-| A16 | 监听器耗时与异常隔离 | `JobListenerTest` | `STARTED` 先于任务体；事件时间 ≤ `lastStart`；耗时不计入 fixedRate 判定（纯计算）；终态回调抛异常后 `state()` 与续排不受影响 |
-| A17 | 监听器注册 | `JobListenerTest` + `JobPluginTest` | 无实现时正常启动并照常触发；有实现时事件全部送达；`start()` 只解析一次；多例 → 启动失败 |
-| A18 | 记账顺序 | `JobStateObservationTest` | 终态回调内 `state()` 已是本次终态；`STARTED` 回调内为上一次终态（首次执行时不在 `state()`） |
-| A19 | 被拒重排入参 | `JobRejectionTest` + `JobScheduleTest` | `isFirst` 已置 `false`（不重复消费 `initialDelay`、连续被拒不累加）；`lastStart` / `lastEnd` 取自同一 `now`（纯计算等价断言 `nextDelay(t, now, now, now, false)` 与 `nextDelay(t, now, now, now, true)` 差异仅在 `isFirst`）；`SKIPPED` 事件时间 = 原计划触发时刻 ≠ 重置基准 |
+| A15 | `state()` 观测口径 | `StateViewTest` | 首次执行中不出现；再次执行中保留上一次终态；结束后终态覆盖 |
+| A16 | 监听器耗时与异常隔离 | `ListenerContractTest` | `STARTED` 先于任务体；事件时间 ≤ `lastStart`；耗时不计入 fixedRate 判定（纯计算）；终态回调抛异常后 `state()` 与续排不受影响 |
+| A17 | 监听器注册 | `ListenerContractTest` + `StartupExceptionContractTest` | 无实现时正常启动并照常触发；有实现时事件全部送达；`start()` 只解析一次；多例 → 启动失败 |
+| A18 | 记账顺序 | `StateViewTest` | 终态回调内 `state()` 已是本次终态；`STARTED` 回调内为上一次终态（首次执行时不在 `state()`） |
+| A19 | 被拒重排入参 | `RejectionRescheduleTest` + `JobScheduleTest` | `isFirst` 已置 `false`（不重复消费 `initialDelay`、连续被拒不累加）；`lastStart` / `lastEnd` 取自同一 `now`（纯计算等价断言 `nextDelay(t, now, now, now, false)` 与 `nextDelay(t, now, now, now, true)` 差异仅在 `isFirst`）；`SKIPPED` 事件时间 = 原计划触发时刻 ≠ 重置基准 |
 | A20 | 公共面零框架 / 零第三方类型 + 依赖树 | `ArchitectureBoundaryTest` + 人工核对 | 门禁①–⑥ 通过；`mvn dependency:tree` 与设计 §10.3 允许清单一致，无日志绑定；`aifei-all` 为 `provided` |
 | A21 | 日志装配 | 全部测试 | 模块代码零 `org.slf4j.*`（门禁③）；用例 `@BeforeClass` 装配 Noop 工厂后无日志相关异常 |
 | A22 | README 七处声明 | 人工核对 | 语义表 / v1 不支持多实例互斥 / 参数由业务自行获取 / 慢监听器拖慢全部触发 / 监听器可选且单例须自行注册 / 日志经 aifei `Log` / **消费方须自带 `aifei-all`** |
@@ -154,14 +163,14 @@ TaskC（@FixedRate period=50, initialDelay=0，任务体立即返回）         
 2. 断言 `TaskC` 的 `SKIPPED` 事件时间 = 原计划触发时刻（`plannedTime ≤ SKIPPED.triggerTime` 且 `SKIPPED.triggerTime < 事件观测时刻`）——证明事件时间不是「重置基准的 now」；
 3. 断言唤醒线程未被阻塞：`TaskA` 仍阻塞时，`TaskB` 的 `STARTED` 计数持续增长（唤醒层在 1 个线程内连续投递）；
 4. `holdLatch.countDown()` 释放 `TaskA` → `probe.awaitStartedCount(C, +1, 5s)` 成功 → **队列腾空后 `TaskC` 下一周期仍被触发**（证明唤醒层已就地重排、未永久停摆）；
-5. 拒绝信号以 `RejectedExecutionException` 到达唤醒层：用 `JobScheduler` 的**可注入探针**断言——测试侧在 `Thread.setDefaultUncaughtExceptionHandler` 收集器之外，再断言「无任何 `SKIPPED` 由自定义 handler 产生」（**实现约束**：拒绝策略为 `AbortPolicy`、模块内**只有** `JobWakeTask` 一处 `catch RejectedExecutionException`，该点由代码评审 + `JobRejectionTest` 的「`SKIPPED` 恰好 1 条/次拒绝」间接锁定）。
+5. 拒绝信号以 `RejectedExecutionException` 到达唤醒层：用 `JobScheduler` 的**可注入探针**断言——测试侧在 `Thread.setDefaultUncaughtExceptionHandler` 收集器之外，再断言「无任何 `SKIPPED` 由自定义 handler 产生」（**实现约束**：拒绝策略为 `AbortPolicy`、模块内**只有** `JobWakeTask` 一处 `catch RejectedExecutionException`，该点由代码评审 + `RejectionRescheduleTest` 的「`SKIPPED` 恰好 1 条/次拒绝」间接锁定）。
 
 ### 5.2 被拒重排的入参（A19）
 
 分两层验证（避免为了可测性给生产代码加钩子）：
 
 - **纯计算层**（`JobScheduleTest`）：`nextDelay(task, now, now, now, false)` 对 fixedRate 返回 `period`、对 fixedDelay 返回 `delay`；同一 `task` 把 `initialDelay` 改成任意值，`isFirst=false` 的结果**完全不变**（证明「为假完全不读该值」）；`isFirst=true` 返回 `initialDelay`。
-- **语义层**（`JobRejectionTest`）：`TaskC` 的首次触发即被拒（`initialDelay = 300`、`period = 50`）。若 `isFirst` 未置 `false`，下次唤醒将再等 300ms 且累加；断言「连续被拒后下一次 `STARTED` 在 ≥1 个 `period` 且 **< 250ms** 内出现」即证明未重复消费 `initialDelay`（阈值取 `initialDelay/2` 与 `period` 的宽松区间，**不断言精确毫秒**）。
+- **语义层**（`RejectionRescheduleTest`）：`TaskC` 的首次触发即被拒（`initialDelay = 300`、`period = 50`）。若 `isFirst` 未置 `false`，下次唤醒将再等 300ms 且累加；断言「连续被拒后下一次 `STARTED` 在 ≥1 个 `period` 且 **< 250ms** 内出现」即证明未重复消费 `initialDelay`（阈值取 `initialDelay/2` 与 `period` 的宽松区间，**不断言精确毫秒**）。
 
 ### 5.3 长任务不阻塞唤醒层（A07）
 
@@ -296,12 +305,9 @@ cd aifei-job && mvn -B -DskipTests install   # BUILD SUCCESS（装入本地仓�
 | `JobNamesTest` | 6 | `StateViewTest` | 3 |
 | **合计** | | | **184** |
 
-> 类名以本表（实测）为准：§2 表格中的 `QuartzCronSupportTest` / `JobWakeSeparationTest` / `JobRejectionTest` /
-> `JobShutdownTest` / `JobListenerTest` / `JobStateObservationTest` 在实现期分别落为
-> `CronExpressionCasesTest` / `LongTaskDoesNotBlockWakeupTest` / `RejectionRescheduleTest` / `ShutdownTest` /
-> `ListenerContractTest` / `StateViewTest`，另有 `FixedRateSkipTest` / `InitialDelayTest` /
-> `StartupExceptionContractTest` 三个按语义拆分的新增类；`JobPluginTest` 的装配断言由
-> `StartupExceptionContractTest` + `ListenerContractTest` 承担。覆盖项与 §3 矩阵的对应关系不变。
+> 类名以本表（实测）为准，且 §2 结构表与 §3 矩阵已统一采用这些实测类名（设计期名称到实现名的映射见 §2 表下注释）。
+> 另有 `FixedRateSkipTest` / `InitialDelayTest` / `StartupExceptionContractTest` 三个按语义拆分的新增类；
+> 原 `JobPluginTest` 的装配断言由 `StartupExceptionContractTest` + `ListenerContractTest` 承担。覆盖项与 §3 矩阵的对应关系不变。
 
 ### 9.2 demo 构建与启停
 

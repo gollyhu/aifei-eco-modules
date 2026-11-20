@@ -10,21 +10,18 @@ import java.util.function.Supplier;
 import cn.aifei.log.Log;
 
 /**
- * TraceLog.
- *
- * <pre>
  * Log 装饰器：在打印时刻为每条消息拼装 "[traceId] " 前缀，使日志自动携带链路标识。
- * TraceId 缺失时不加前缀、不报错、不打警告，消息原样透出（高频路径零开销）。
  *
- * 前缀在调用线程上读取 TraceContext.getTraceId()：同一 Log 实例跨线程使用时，
- * 各自读到各自线程的 TraceId（本类无状态、只有 final delegate 字段，线程安全）。
+ * <p>TraceId 缺失时不加前缀、不报错、不打警告，消息原样透出（高频路径零开销）。</p>
  *
- * Supplier 参数变体采用懒求值：前缀在打印时刻读取链路上下文，
- * 保证异步日志场景取到的是打印时刻的链路上下文。
+ * <p>前缀在调用线程上读取 TraceContext.getTraceId()：同一 Log 实例跨线程使用时，
+ * 各自读到各自线程的 TraceId（本类无状态、只有 final delegate 字段，线程安全）。</p>
  *
- * 通常不直接 new，而是经 TraceLogFactory 装配：
- *   settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()));
- * </pre>
+ * <p>Supplier 参数变体采用懒求值：前缀在打印时刻读取链路上下文，
+ * 保证异步日志场景取到的是打印时刻的链路上下文。</p>
+ *
+ * <p>通常不直接 new，而是经 TraceLogFactory 装配：</p>
+ * <pre>{@code settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()));}</pre>
  */
 public class TraceLog implements Log {
 

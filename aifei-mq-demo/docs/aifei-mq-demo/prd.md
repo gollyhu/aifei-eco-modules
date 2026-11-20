@@ -130,7 +130,7 @@
 > 1. 页面路由只有两个：入口页 `GET /`、演示页 `GET /mq/demo/page?instance=`；实例由查询参数区分。
 > 2. **页内跳转一律写绝对路由**：入口页 → `location.href = '/mq/demo/page?instance=' + encodeURIComponent(instanceName)`；演示页 → `location.href = '/'`。**不得**写 `demo.html` / `index.html` 这类相对路径（会分别解析成 `/demo.html`、`/mq/demo/index.html`，两个 URL 都不存在 → 404）。
 > 3. **Service 返回的 view 模板名统一以 `/` 开头**（`/mq/index.html`、`/mq/demo.html`）：`IoHandler.handleEnjoyView` 在 view 不以 `/` 开头时会前置 action 的 targetPath（`@Path("/mq/demo")` 下会变成 `/mq/demo/mq/demo.html`）；模板根为 `webapp/view`，故不带 `view/` 前缀。
-> 4. 「入口页 `index` 是否直接映射到类前缀根 `/`」请架构师实测确认后落定（`aifei-websocket-demo` 的 `DemoPageService` 为同构先例）。
+> 4. 「入口页 `index` 是否直接映射到类前缀根 `/`」**已定档（实现期实测闭环，Q4）**：采用 `@Path("/")` 的类级路径 + 无 `@Path` 的 `index()` 方法直接映射 `GET /`（`aifei-mq-demo/src/main/java/cn/hg/aifei/mq/demo/service/MqPageService.java`，同构先例 `aifei-websocket-demo` 的 `DemoPageService`）；`index()` 返回模板名 `/mq/index.html`（须以 `/` 开头，模板根即 `webapp/view`）。原「请架构师实测确认后落定」表述不再适用。
 
 ## 6. 实例枚举来源与语义映射（★ 本章为门禁核对依据）
 
@@ -192,7 +192,7 @@
 | Q1 | 页面订阅用哪个 listener？若与装配期 `DemoMessageListener` 复用同一实例，会「取消掉装配期订阅」；若新建，则同主题重复记录、`delivered` 叠加 | **页面用独立 listener**（如 `PageDemoListener`，名称随登记表暴露给前端）；对已被装配期订阅的主题，页面在 chip 上标注「装配期已订阅」，并在订阅 succeess 提示里说明「同一消息可能被记录多次」 |
 | Q2 | `unsubscribe` 端点只传 `topic`（由后端查登记表取 listener），还是也允许传 listener 名？ | **只传 `instance` + `topic`**，后端按登记表取回同一实例；登记表无该项 → `code=10001`「未登记该主题的页面订阅」，不静默成功 |
 | Q3 | `delivered` 在多订阅者 + 多实例下的口径 | **该实例本次发送期间新增的接收记录条数**（发送前后 `receivedCount` 之差），与现有实现一致，只是分片到实例 |
-| Q4 | 页面路由写法（`index` 是否直接映射到类前缀根 `/`） | 入口页 `GET /`、演示页 `GET /mq/demo/page`；由架构师实测确认后落定 |
+| Q4 | 页面路由写法（`index` 是否直接映射到类前缀根 `/`） | **已定档**：入口页 `GET /` = `@Path("/")` + `MqPageService.index()`（返回 `/mq/index.html`），演示页 `GET /mq/demo/page` = `MqDemoService.page()`；实现期实测已闭环（`MqPageService.java`），同构先例 `DemoPageService` |
 | Q5 | 入口页是否需要「刷新实例清单」 | **需要**，P1，普通重新 GET `/mq/demo/instances` |
 | Q6 | 轮询间隔 | **2000ms**；连续 3 次失败降为 5000ms，成功即恢复 |
 | Q7 | QoS / retain 等不支持项：删除还是灰置「不支持」 | **删除**，仅在页脚用一句说明「无 QoS / retain / 通配符」 |

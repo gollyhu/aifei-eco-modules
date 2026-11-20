@@ -210,8 +210,8 @@
 | Q3 | 资源名的 `host` 是否包含非默认端口？ | **包含**（取 authority 语义，默认端口 80 / 443 省略）。理由：同机多端口服务否则无法区分。AC-R-12 用默认端口例子避开歧义 |
 | Q4 | 非 2xx 是否抛异常？ | **不抛**：返回 `HttpResponse`，由业务读 `statusCode` 判断；异常只覆盖传输层失败（连接 / 超时 / 解码）。理由：4xx / 5xx 的响应体常是业务数据，抛异常会迫使用异常做流程控制 |
 | Q5 | 重试触发条件与退避形态？ | 仅**网络层失败 + 5xx** 重试，4xx 不重试；退避 v1 为**可配固定间隔**，不做指数退避与抖动 |
-| Q6 | 拦截器注册通道与顺序依据？ | `HttpPlugin.start()` 从容器按类型取全部 `HttpInterceptor` 实现（与 `aifei-job` 决策 13 同一通道）；顺序须**可复现**——若容器返序不可靠，改为显式注册列表（有序 `add`）并在 `design.md` 定档。此点必须给结论，AC-R-10 依赖它 |
-| Q7 | 响应体上限默认值与超限语义？ | 默认 `8 MiB`，超限抛 `HttpException`（不截断返回半截）。另：`aifei-http-demo` 端口建议 `18120`（`aifei-job-demo` 已占 18110），待确认 |
+| Q6 | 拦截器注册通道与顺序依据？ | **已定档（2026-11-11，随模块交付回写）**：采用**显式有序注册列表**——`HttpPlugin#addInterceptor(HttpInterceptor)` 按 `add` 调用顺序累积、`start()` 快照为不可变 `List` 交给 `DefaultHttpClient`，**不从容器按类型取**（框架无「按类型取全部实现」通道、同类型重复注册抛异常、返序不可复现 → AC-R-10 无法机械断言）。业务若需复用容器内实例，自行 `Aop.get(MyInterceptor.class)` 后 `addInterceptor`。定档位置：`aifei-http/docs/design.md` 决策 7 / §6.3 与 §九 Q6；AC-R-10 已据此闭环 |
+| Q7 | 响应体上限默认值与超限语义？ | 默认 `8 MiB`（作用于解压后字节数），超限抛 `HttpException`（不截断返回半截），消息含实际生效上限值。**端口已定档**：`aifei-http-demo` = **18120**（`aifei-job-demo` 占 18110），见根 `README.md` 与 `aifei-http/docs/design.md` §九 Q7；原「建议 / 待确认」表述作废 |
 
 ## 十、参考资产
 

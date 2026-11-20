@@ -54,18 +54,32 @@ public class ApiResult {
         return !data.containsKey("errcode") || data.getIntValue("errcode", 0) == 0;
     }
 
+    /**
+     * @return 微信错误码 {@code errcode}；无该字段时返回 0（视为成功）
+     */
     public int getErrorCode() {
         return data.getIntValue("errcode", 0);
     }
 
+    /**
+     * @return 微信错误消息 {@code errmsg}；无该字段时为 {@code null}
+     */
     public String getErrorMsg() {
         return data.getString("errmsg");
     }
 
+    /**
+     * @return 微信接口返回的原始 JSON 文本
+     */
     public String getJson() {
         return json;
     }
 
+    /**
+     * 取结构化响应数据，用于读取接口业务字段（如 {@code access_token}、{@code openid}）。
+     *
+     * @return 恒为非空 JSON 对象（构造时已校验）；成功与否需另用 {@link #isSucceed()} 判断
+     */
     public JSONObject getData() {
         return data;
     }

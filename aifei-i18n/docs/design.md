@@ -376,7 +376,7 @@ public class I18nHandler<I extends Input, O extends Output> extends Handler<I, O
 | 链上位置 | **必须第一个 addHandler**（javadoc 与 README 写明） |
 | 静态资源 | undertow IO 线程拦截，不进 Handler 链，天然无绑定（trace 同口径） |
 
-> **框架类型例外登记**：`web.I18nHandler` / `web.LocaleExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`，与 `aifei-trace` 同构。本设计**提请交付负责人汇总时向根 `AGENTS.md`「已登记的公共面框架类型例外」补登本模块两处**（见 §13 待明确事项 1）；本模块文档不得单方面声明。
+> **框架类型例外登记**：`web.I18nHandler` / `web.LocaleExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`，与 `aifei-trace` 同构。**已完成登记**：根 `AGENTS.md`「已登记的公共面框架类型例外」清单已登记本模块两处（理由见本文 §2 决策 D-1 / §5.7 / §13 待明确事项 1）。
 
 ### 5.8 `web.LocaleExtractor`（公共函数式接口）
 
@@ -1147,7 +1147,7 @@ mvn dependency:tree                             # 断言：aifei-all(provided) +
 
 | # | 事项 | 处理 / 假设 |
 | --- | --- | --- |
-| 1 | **`web` 框架类型例外登记** | `I18nHandler` / `LocaleExtractor` 暴露 `cn.aifei.core.Handler`/`Input`/`Output`，与 trace 同构。**提请交付负责人在根 `AGENTS.md`「已登记的公共面框架类型例外」补登本模块两处**（理由引用本文 §2 D-1 / §5.7）。本设计不单方面声明；落地前若未登记，代码关须先完成登记 |
+| 1 | **`web` 框架类型例外登记** | **已完成**：`I18nHandler` / `LocaleExtractor` 暴露 `cn.aifei.core.Handler`/`Input`/`Output`（与 trace 同构），已在根 `AGENTS.md`「已登记的公共面框架类型例外」清单登记本模块两处（理由引用本文 §2 D-1 / §5.7） |
 | 2 | **A-5 `dir` API 可用性** | 已实证 Java 8 可用（E-1）；Java 9+ jlink 须保留 `java.desktop`，README 显式声明；降级 `ltr` + WARN 已实现于 `LocaleMeta#dir`（D-4） |
 | 3 | **D-3 档位策略** | 选枚举编译期检查 + `null`→IAE；**不定义字符串档位解析**，不给运行期「任意档位值」IAE 分支（编译期不可达） |
 | 4 | **D-2 key 排序** | `TreeMap` 自然序；对 ASCII/BMP key 等价码点序；代理对边界（supplementary 字符）按 Java `String.compareTo` 语义，i18n key 惯用 ASCII 无影响 |

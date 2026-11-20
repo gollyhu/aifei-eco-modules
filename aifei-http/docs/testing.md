@@ -1,5 +1,7 @@
 # aifei-http 测试策略
 
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
+
 本文面向测试维护者：说明测试结构、AC 覆盖台账、运行方式与新增约定。契约口径见 `docs/design.md`，开发约束见模块 `AGENTS.md`。
 
 ## 运行方式
@@ -71,7 +73,10 @@ mvn dependency:tree                                 # 断言：aifei-all(provide
 >
 > **变异探针实测**：临时插入 `String probe = "http://evil.example.com/steal";` 到测试源码 → ⑩ 报红并列出该文件 `-> http://evil.example.com`（同一文件版权头的 `gitee` 地址未被误报）；删除探针后恢复全绿。当前 `src/test/java` 代码内 URL 字面量全部为 `127.0.0.1` / `localhost`。
 
-## AC ↔ 用例 ↔ 结果
+## AC ↔ 用例 ↔ 结果（开发期用例映射，最终结论见 §4）
+
+> 本表承载「AC → 用例」的映射关系，「结果」列为**开发期占位快照（待 QA 复验）**，非最终判定；
+> QA 独立复验后的最终结果以 §4「AC ↔ 用例 ↔ 结果（独立复验后填写）」为准（26 条均已回填，含 AC-R-20 的 `PASS(降级)` 口径）。两表用例映射一致，勿以本表占位值作验收依据。
 
 | AC | 承载用例 | 结果 |
 | --- | --- | --- |
@@ -102,7 +107,7 @@ mvn dependency:tree                                 # 断言：aifei-all(provide
 | `AC-R-25` | `JdkHttpTransportTest#shouldFailWhenResponseExceedsLimit` | 待 QA 复验 |
 | `AC-R-26` | `ArchitectureBoundaryTest#noSqlReference` / `#bridgePackageExists` + `dependency:tree` | 待 QA 复验 |
 
-> 「结果」列由 QA 以独立上下文对照 `docs/design.md` 复验后填写；实现者自评不构成验收依据。
+> 上表「结果」列为开发期占位（待 QA 复验），仅承载 AC↔用例映射；QA 独立复验结果以 §4 同名表为准（已全部回填 PASS / PASS(降级)）。实现者自评不构成验收依据。
 
 ## 测试环境约定
 

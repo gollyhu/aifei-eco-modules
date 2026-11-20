@@ -353,7 +353,7 @@ public final class ConsumerKit {
 
 ### 4.10 `redisstream`（Redis Streams，实验性 · 不发布，`cn.hg.aifei.mq.redisstream`）
 
-恒为 `RedisStreamProvider`（`TYPE = "redisstream"`）＋ `RedisStreamMessageBus`；**Jedis 直连**（不依赖 `aifei-cache`，仅版本对齐，§9）。**配置键**以总线键名常量为准（§11.1）：必填 `host`；改变可观测行为的键为 `group`（默认 `aifei-mq`）/ `consumer-name` / `start-mode`（`new` 只读新消息、`pending` 先重读本消费者未确认消息）/ `claim-enabled` + `claim-idle-millis`（默认 `true` / `60000`）/ `maxlen`（近似裁剪）/ `auto-reconnect`；`port` / `database` / `count` / `block-ms` / 超时类键透传客户端默认值。
+恒为 `RedisStreamProvider`（`TYPE = "redisstream"`）＋ `RedisStreamMessageBus`；**Jedis 直连**——此为本模块**已登记的「Redis 出口」基线例外，见根 `AGENTS.md` 技术基线区**（stream / consumer-group / `XREADGROUP` 语义超出 `aifei-cache` 的 Cache / Counter 抽象；实验性、未真机验证，§9 / §10）。**配置键**以总线键名常量为准（§11.1）：必填 `host`；改变可观测行为的键为 `group`（默认 `aifei-mq`）/ `consumer-name` / `start-mode`（`new` 只读新消息、`pending` 先重读本消费者未确认消息）/ `claim-enabled` + `claim-idle-millis`（默认 `true` / `60000`）/ `maxlen`（近似裁剪）/ `auto-reconnect`；`port` / `database` / `count` / `block-ms` / 超时类键透传客户端默认值。
 
 - **建连时机**：**Jedis 连接池**在总线构造内创建但**池懒建连**，故构造期不校验连通性（「启动成功」≠「Redis 可达」，§5.6 B12）；**消费者延迟到首次 `subscribe`**——创建消费组并启动**拉取循环线程**（按 `block-ms` 阻塞读，`claim-enabled` 时空闲回收）。
 - **投递 / 消费映射**：`publish` 追加到流（`maxlen` 生效），`messageId` 取**流条目 ID**（`毫秒-序号`，broker 生成）；拉取按批（`count`）逐条按本地登记顺序回调（监听器异常就地隔离，A4）；位点 = 各消费者的 pending 列表；**流条目固定以单一字段 `payload` 承载原始字节**（常量 `PAYLOAD_FIELD` 在 `RedisStreamMessageBus`，投递与读取共用，不引入序列化层）；`unsubscribe` 只解除本地登记（不删消费者、不删流，§5.6 B10）。
@@ -930,8 +930,8 @@ src/test/java/cn/hg/aifei/mq/
 | `rabbitmq` | `RabbitMqProvider` ＋ `RabbitMqMessageBus` | `amqp-client:5.21.0` |
 | `mqtt` | `MqttProvider` ＋ `MqttMessageBus` | `org.eclipse.paho.client.mqttv3:1.2.5` |
 | `mqtt5` | `Mqtt5Provider` ＋ `Mqtt5MessageBus` | `org.eclipse.paho.mqttv5.client:1.2.5` |
-| `kafka` | `KafkaProvider` ＋ `KafkaMessageBus` | `kafka-clients:3.9.1`（**必须停 3.x**，4.x 要求 Java 11+） |
-| `redisstream` | `RedisStreamProvider` ＋ `RedisStreamMessageBus` | `jedis:8.0.1`（与 `aifei-cache` 对齐，Jedis 直连） |
+| `kafka` | `KafkaProvider` ＋ `KafkaMessageBus` | `kafka-clients:3.9.1`（**锁定 3.x**，4.x 要 Java 11+） |
+| `redisstream` | `RedisStreamProvider` ＋ `RedisStreamMessageBus` | `jedis:8.0.1`（Jedis 直连，**已登记的 Redis 出口例外，见根 `AGENTS.md`**） |
 
 ```text
 具体结构见 §8.2：主源码 `src/main/java/cn/hg/aifei/mq/<type>/` 各 2 类；
@@ -971,7 +971,7 @@ services 声明统一在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.in
 | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `optional` | `mqtt` 后端客户端 |
 | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `optional` | `mqtt5` 后端客户端 |
 | `com.rabbitmq:amqp-client:5.21.0` | `optional` | `rabbitmq` 后端客户端 |
-| `org.apache.kafka:kafka-clients:3.9.1` | `optional` | `kafka` 后端客户端（**必须停 3.x**） |
+| `org.apache.kafka:kafka-clients:3.9.1` | `optional` | `kafka` 后端客户端（**锁定 3.x**） |
 | `redis.clients:jedis:8.0.1` | `optional` | `redisstream` 后端客户端 |
 | `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
@@ -989,14 +989,14 @@ services 声明统一在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.in
 | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `optional` | **`mqtt`**（v3.1.1）客户端；仅 `mqtt` 实现包使用 |
 | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `optional` | **`mqtt5`**（v5.0）客户端——与 v3 客户端**互不替代**（两个独立后端，§1.3） |
 | `com.rabbitmq:amqp-client:5.21.0` | `optional` | **`rabbitmq`** 客户端；经 `commons-pool2` / `slf4j-api`（门面）带来传递依赖 |
-| `org.apache.kafka:kafka-clients:3.9.1` | `optional` | **`kafka`** 客户端；**必须停 3.x**（4.x 要求 Java 11+） |
-| `redis.clients:jedis:8.0.1` | `optional` | **`redisstream`** 客户端；**与 `aifei-cache` 版本对齐**，但**Jedis 直连、不依赖 `aifei-cache`** |
+| `org.apache.kafka:kafka-clients:3.9.1` | `optional` | **`kafka`** 客户端；**锁定 3.x**（4.x 要 Java 11+） |
+| `redis.clients:jedis:8.0.1` | `optional` | **`redisstream`** 客户端；**Jedis 直连、不经过 `aifei-cache`——已登记的 Redis 出口例外，见根 `AGENTS.md` 技术基线区**（与 `aifei-cache` 版本对齐；stream / consumer-group / `XREADGROUP` 语义超出 Cache / Counter 抽象；实验性、未真机验证） |
 | `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
 - **第三方依赖分层**：内存后端**零第三方运行依赖**；6 个客户端以 `optional` 统一声明在 `aifei-mq/pom.xml`、只被实现包使用。**契约层（根包 / `internal` / `aifei`）不得出现任何第三方类型**；`cn.aifei:aifei-all` 仅 `aifei` 接入包使用；**不引入日志绑定**（`slf4j-api` 只以门面身份随传递依赖出现）。
 - **`rocketmq-client:4.9.7` 关键传递依赖**（无需额外显式声明）：`rocketmq-common` / `rocketmq-remoting` / `rocketmq-logging`（皆 4.9.7）、`com.alibaba:fastjson:1.2.69_noneautotype`、`io.netty:netty-all:4.1.65.Final`、`commons-validator:1.7`、`com.github.luben:zstd-jni:1.5.2-2`、`org.lz4:lz4-java:1.8.0`、`org.apache.commons:commons-lang3:3.4`；`io.opentracing:opentracing-api` 为 `provided`，不进入运行时传递链。
 - **Java 8 兼容性**：`rocketmq-client:4.9.7` 以 `source/target 1.6` 编译，class major version = **50**（≤ 52），与本模块 Java 8 基线兼容。
-- **本轮 5 个客户端的 Java 8 兼容性（已实测）**：`org.eclipse.paho.client.mqttv3:1.2.5` / `org.eclipse.paho.mqttv5.client:1.2.5` / `amqp-client:5.21.0` / `kafka-clients:3.9.1` / `jedis:8.0.1` 的**全部 class major version = 52**（主会话对本机仓库内的这些 jar **逐类实测**），故在 **Java 8 下加载无障碍**。**`kafka-clients` 必须停 3.x**——4.x 以 Java 11+ 编译，会直接破坏本模块的 Java 8 基线。
+- **本轮 5 个客户端的 Java 8 兼容性（已实测）**：`org.eclipse.paho.client.mqttv3:1.2.5` / `org.eclipse.paho.mqttv5.client:1.2.5` / `amqp-client:5.21.0` / `kafka-clients:3.9.1` / `jedis:8.0.1` 的**全部 class major version = 52**（主会话对本机仓库内的这些 jar **逐类实测**），故在 **Java 8 下加载无障碍**。**`kafka-clients` 锁定 3.x**——4.x 以 Java 11+ 编译，会直接破坏本模块的 Java 8 基线。
 - **依赖边界硬约束**：**除上表客户端外不新增任何直接依赖**；**不得引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j` 等一律禁止）；传递依赖（`commons-pool2`、`slf4j-api` 门面等）可接受。
 - 构建插件：`maven-compiler-plugin:3.15.0`（`source`/`target` = `1.8`，UTF-8）、`maven-surefire-plugin:3.2.5`。与 `aifei-websocket/pom.xml` 一致。
 
@@ -1121,7 +1121,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | 25 | **`MqKit` 拆分 → `ProducerKit` + `ConsumerKit`（公共面 7 → 8，拍板）** | **已定档（项目所有者拍板）并落地**：删除 `MqKit`，替换为 `ProducerKit` + `ConsumerKit`，形态照 `aifei-cache` 的 `CacheKit` / `CounterKit`。根包公共类型 **8**（§3.8），门禁 `EXPECTED_PUBLIC_TYPES` / `EXPECTED_ROOT_TYPES` 同步为 8（§12.2）——属**有意的公共面扩张**，**不得**据此放宽或绕过门禁 |
 | 26 | **延迟消息：不做（决策落档）** | **决策：不做。** 理由链：不允许内存后端引入调度线程 → 内存后端无法「到点才投递」→ 延迟参数在内存后端下无意义 → 按 §5.7「只能被部分后端实现的概念不得进方法签名」⇒ **`delayMillis` / `delayLevel` 不得进公共 API**（`send` 维持恰好 3 个重载，§3.2 / §5.6 A2）。**替代**：调用方自调度后再 `send`，本模块不引入任何延迟相关键或能力。**重启条件**：① 放行内存后端引入调度线程（须先按 §5.7 修订 §5.1 与 §5.6 (B) B2，先改本文再改代码）；或 ② 需求明确「仅真实后端原生延迟、公共面不承诺跨后端一致」 |
 | 27 | （历史）文档与图谱收口已完成 | （历史）该轮只改文档、未改代码：时序图改写为双 Util + 命名实例、测试计数校准、`MqKit` 过时引用更正为 `ProducerKit` / `ConsumerKit`——均已完成，**契约实质未变**（§3 / §5.6 / §5.7 条款未改）。**计数以文首「文档状态」与 §8 为准**，历史计数不再保留 |
-| 28 | **7 个后端的实现约束** | ① **客户端与版本** — MQTT v3 `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`、MQTT v5 `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`、RabbitMQ `com.rabbitmq:amqp-client:5.21.0`、Kafka `org.apache.kafka:kafka-clients:3.9.1`（**必须停 3.x**，4.x 要 Java 11+）、Redis Streams `redis.clients:jedis:8.0.1`（与 `aifei-cache` 对齐、Jedis 直连）；**全部 class major = 52**，均以 `optional` 声明（§9.1）。② **MQTT 拆两个独立后端**（`mqtt` v3.1.1 / `mqtt5` v5.0，命名空间 `mq.mqtt.*` / `mq.mqtt5.*`），**不引入** `mq.mqtt.version` 键。③ **R1**：保留 A5「`messageId` 强制非空」，MQTT 由适配器本地生成，格式 `<type>:<token>:<seq>`（§5.6 (B)）。④ **R2**：`topic` 读作「主题标识（精确名或过滤器）」，`subscribe` 签名不变（§3.3 / B14）。⑤ **R3**：QoS / retain 等**只落配置域**，`send` 维持 3 个重载（B15）。⑥ **自动重连**不扩张公共面、provider 保持无状态（配置域键 + 客户端原生自愈，B13）；A9 / A6 不动。⑦ **凭据**只进配置域、不进公共 API（B16）；**异常消息只出现键名、绝不出现取值**（§11.2）。⑧ **依赖边界**：**不得引入任何日志绑定**，除 6 个客户端外**不新增直接依赖**，传递依赖可接受。⑨ **集成开关**：`-Dmqtt.integration` / `-Dmqtt5.integration` / `-Drabbitmq.integration` / `-Dkafka.integration` / `-Dredisstream.integration`，**默认关闭、开启后连不上必须失败**（**不得**用 `Assume` 掩盖），命令见 `docs/testing.md`。⑩ **位点 / 起始策略**：Kafka `auto-offset-reset` 默认 `earliest`；Redis Streams 用 `start-mode`（`new` / `pending`）+ `claim-enabled` / `claim-idle-millis`。⑪ **topic 映射**：RabbitMQ 默认队列名（可选 `exchange` / `exchange-type`）、Kafka topic（组取 `group-id`）、Redis Streams 流键（组取 `group`）。⑫ **落档位置**：§4.6–§4.10 / §5.5 / §5.6 (B) B7·B13–B16 与 (C) 续 5 张表 / §9 / §11.1；**运行期语义未经真机验证**（第 11 / 20 / 21 / 22 条）。**待补验证**：`mqtt` / `mqtt5` / `kafka` 运行期语义未经真机验证
+| 28 | **7 个后端的实现约束** | ① **客户端与版本** — MQTT v3 `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5`、MQTT v5 `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5`、RabbitMQ `com.rabbitmq:amqp-client:5.21.0`、Kafka `org.apache.kafka:kafka-clients:3.9.1`（**锁定 3.x**，4.x 要 Java 11+）、Redis Streams `redis.clients:jedis:8.0.1`（Jedis 直连、不经过 `aifei-cache`——**已登记的 Redis 出口例外，见根 `AGENTS.md` 技术基线区**；实验性、未真机验证）；**全部 class major = 52**，均以 `optional` 声明（§9.1）。② **MQTT 拆两个独立后端**（`mqtt` v3.1.1 / `mqtt5` v5.0，命名空间 `mq.mqtt.*` / `mq.mqtt5.*`），**不引入** `mq.mqtt.version` 键。③ **R1**：保留 A5「`messageId` 强制非空」，MQTT 由适配器本地生成，格式 `<type>:<token>:<seq>`（§5.6 (B)）。④ **R2**：`topic` 读作「主题标识（精确名或过滤器）」，`subscribe` 签名不变（§3.3 / B14）。⑤ **R3**：QoS / retain 等**只落配置域**，`send` 维持 3 个重载（B15）。⑥ **自动重连**不扩张公共面、provider 保持无状态（配置域键 + 客户端原生自愈，B13）；A9 / A6 不动。⑦ **凭据**只进配置域、不进公共 API（B16）；**异常消息只出现键名、绝不出现取值**（§11.2）。⑧ **依赖边界**：**不得引入任何日志绑定**，除 6 个客户端外**不新增直接依赖**，传递依赖可接受。⑨ **集成开关**：`-Dmqtt.integration` / `-Dmqtt5.integration` / `-Drabbitmq.integration` / `-Dkafka.integration` / `-Dredisstream.integration`，**默认关闭、开启后连不上必须失败**（**不得**用 `Assume` 掩盖），命令见 `docs/testing.md`。⑩ **位点 / 起始策略**：Kafka `auto-offset-reset` 默认 `earliest`；Redis Streams 用 `start-mode`（`new` / `pending`）+ `claim-enabled` / `claim-idle-millis`。⑪ **topic 映射**：RabbitMQ 默认队列名（可选 `exchange` / `exchange-type`）、Kafka topic（组取 `group-id`）、Redis Streams 流键（组取 `group`）。⑫ **落档位置**：§4.6–§4.10 / §5.5 / §5.6 (B) B7·B13–B16 与 (C) 续 5 张表 / §9 / §11.1；**运行期语义未经真机验证**（第 11 / 20 / 21 / 22 条）。**待补验证**：`mqtt` / `mqtt5` / `kafka` 运行期语义未经真机验证
 | 29 | （历史）文档计数口径与图谱状态 | 文件与用例计数**以 §8.5 与文首「文档状态」为准**（历史累计值不再保留）。**类图**：`docs/diagrams/class.mermaid` 为唯一来源，本文不内嵌副本。**时序图**：唯一副本为 §7 内嵌块（无独立文件），五段链路结构不变、不代表真实后端链路。**状态**：T09–T13 均已执行完毕（§10），但 4 个实验性后端的运行期语义**不得当作已验证事实**（第 28 条；`rabbitmq` 已于 2026-11-06 验证通过） |
 | 30 | **E2：固定少量 topic + payload 内路由键（零代码改动）** | **已拍板**：topic 表达稳定业务域、事件类型降级为 payload 业务字段、订阅侧本地分发、运行期不增减 topic——全文见 **§5.8**（含动态 topic 四条候选的否决理由、零改动论证、后端语义矩阵、风险与回退判据）。**无代码改动**（公共 API 8 类型、共同底线、生命周期均不变）。**约束**：`README.md` / `AGENTS.md` 与 §5.8 **同源同口径**，**不得**引入运行期动态 topic 机制。证据版本绑定 `aifei-mq:1.0.0`（§5.8.8） |
 | 31 | **命名约定收口：`ProducerUtil` / `ConsumerUtil` → `ProducerKit` / `ConsumerKit`（仅改后缀）** | **纯重命名**：`XxxUtil` = 无状态工具类，`XxxKit` = 有状态门面（仓库根 `AGENTS.md` 命名约定）；本模块两个静态门面需先从 `internal.MqHolder` 取运行期实例，故用 `Kit` 后缀。公共类型仍 8（§3.8），签名 / 异常口径 / 门禁断言结构不变（`EXPECTED_ROOT_TYPES` 仅换文件名）；本模块未发布，无兼容负担 |

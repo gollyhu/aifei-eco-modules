@@ -61,18 +61,30 @@ public class WeixinAccount {
         return aesKey != null;
     }
 
+    /**
+     * @return 公众号 appId（构造时已 trim）
+     */
     public String getAppId() {
         return appId;
     }
 
+    /**
+     * @return 公众号 secret（凭据，禁止写入日志）
+     */
     public String getSecret() {
         return secret;
     }
 
+    /**
+     * @return 用于验签的 token（构造时已 trim）
+     */
     public String getToken() {
         return token;
     }
 
+    /**
+     * @return 43 字符 EncodingAESKey；明文模式为 {@code null}
+     */
     public String getAesKey() {
         return aesKey;
     }
@@ -99,6 +111,7 @@ public class WeixinAccount {
 
     @Override
     public String toString() {
+        // 刻意只输出 appId 与 safeMode；secret / token / aesKey 属凭据，禁止加入 toString 以免随日志泄露。
         return "WeixinAccount{appId=" + appId + ", safeMode=" + isSafeMode() + "}";
     }
 }

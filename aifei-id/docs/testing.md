@@ -1,10 +1,12 @@
 # aifei-id 测试策略与用例清单
 
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
+
 本文面向**测试维护者**：说明测试分类、用例与设计契约场景的对照关系、验证命令、离线纪律与未覆盖项。行为契约、异常语义与门禁判定的完整定义见 `docs/design.md`（§5 公共 API 契约 / §7 行为契约与 §7.6 消息措辞 / §10 门禁 14 例 / §13 demo 契约 / §15 验收标准），本文不复制契约细节，只用指针引用。
 
 > **交付性质**：`aifei-id` 是库模块（SDK），零 DB、无入站 HTTP 面、无页面。因此**不设**表结构 / SQL / 事务 / HIO / 路由 / 前端基线门禁相关用例（design.md §1.2 不适用声明）；HTTP 与页面只在 `aifei-id-demo` 出现，按 §8 的命令行冒烟核验，不纳入 surefire 计数。
 >
-> **本文数字为 QA 独立复验口径**（`mvn -B clean verify`，2026-02 复验）：**88 例，0 failure / 0 error**。
+> **本文数字为 QA 独立复验口径**（`mvn -B clean verify`，2026-11 复验）：**89 例，0 failure / 0 error**。
 
 ---
 
@@ -18,10 +20,10 @@
 | **单测（号段）** | `SegmentIdGeneratorTest` | 8 | §7.4 段内连续 / 耗尽取段 / 取段参数下传、场景 9 取段失败包装、场景 11 回退拦截、`local` 按 key 独立与「重启重号」、并发唯一性 |
 | **单测（号段存储）** | `CacheSegmentStoreTest` | 4 | 保留分区 `__ID__` / 段键 `segment.<key>` / 段长 / TTL 如实下传、返回值即段末端、按 key 隔离、异常不重复包装 |
 | **单测（门面）** | `IdKitTest` | 6 | 场景 17 未装配（消息 O）、转发语义与十进制字符串精度、场景 1/18/19 的装配入口生命周期 |
-| **单测（装配）** | `IdPluginTest` | 14 | 场景 1/5/12/13/14/15/16/18/19/22/23：生命周期幂等与失败回滚、workerId 三来源、可选依赖缺失（J/K）、协同模块未装配（P） |
+| **单测（装配）** | `IdPluginTest` | 15 | 场景 1/5/12/13/14/15/16/18/19/22/23：生命周期幂等与失败回滚、workerId 三来源、可选依赖缺失（J/K）、协同模块未装配（P）、号段后端非共享 → 消息 H |
 | **测试桩** | `support/*`（9 个） | — | `FakeClock`（脚本化时钟）、`FakeCounter`、`FakeSegmentStore`（段末端脚本 + 故障注入）、`FakeWorkerIdSource`（`breakLease()`）、`FakeIdGenerator`、`FakeCache`（动态代理，`supportsCas=true`）、`FakeLockStore`（`LockStore` 的离线实现）、`HidingClassLoader`（伪装类缺失）、`NoopLog` / `NoopLogFactory`（不引入日志绑定） |
 
-合计 **88 例**（14 + 29 + 13 + 8 + 4 + 6 + 14），全部 JUnit 4 + Java 8。
+合计 **89 例**（14 + 29 + 13 + 8 + 4 + 6 + 15），全部 JUnit 4 + Java 8。
 
 ### 1.1 为什么某些用例必须落在特定包
 
@@ -54,7 +56,7 @@
 | 7 | 同一毫秒 4096 格耗尽 → 等下一毫秒继续 | `SnowflakeIdGeneratorTest.sequenceExhaustionWaitsForNextMillisecond`（4097 个号，第 4097 个落到 `T0+1` 且序列归零） |
 | 8 | 回拨 ≤ 5ms → 等待追上后继续 | `SnowflakeIdGeneratorTest.shortBackwardsWaitsThenContinues`（序列 +1 不重置） |
 | 9 | 号段取段失败 → 消息 G + cause | `SegmentIdGeneratorTest.storeFailureWrappedWithCause`（`assertSame` 根因） |
-| 10 | 号段后端非共享（`supportsCas=false`）→ 消息 H | **未覆盖**（见 §7 第 1 条） |
+| 10 | 号段后端非共享（`supportsCas=false`）→ 消息 H | **已覆盖**：`IdPluginTest#notSharedBackendFailsWithMessageH`（`FakeCache.notShared(new FakeCounter())` 令 `supportsCas()==false`，逐字断言消息 H 且不留半装配） |
 | 11 | 号段回退 → 消息 I | `SegmentIdGeneratorTest.rollbackRejected` |
 | 12 | `snowflake` + `source=cache` 缺 `aifei-cache` → 消息 J | `IdPluginTest.missingCacheDependencyFailsWithMessageJ`（`HidingClassLoader` 隐藏 `CounterKit`，并反向断言不出现 `NoClassDefFoundError`） |
 | 13 | `segment` + `store=cache` 缺 `aifei-cache` → 消息 J | 同上（同一用例的第二组断言） |
@@ -137,16 +139,16 @@
 
 ### 4.1 QA 独立「非空转」探针记录
 
-复核门禁是否真的会红（**探针用完即删，删除后重跑 verify 回到 88 例全绿**）：
+复核门禁是否真的会红（**探针用完即删，删除后重跑 verify 回到 89 例全绿**）：
 
 | 步骤 | 动作 | 结果 |
 | --- | --- | --- |
 | 1 | 新增主源码探针 `src/main/java/cn/hg/aifei/id/IdGateProbe.java`（含 `import java.sql.Connection` / `com.alibaba.fastjson2.JSON` / `cn.hg.aifei.cache.CacheKit` / `cn.aifei.plugin.Plugin` / `System.currentTimeMillis()` / `"__ID__"` / `"segment."` / `"worker"` / `"id.strategy"` / `Class.forName` / `new Thread()` / `System.setProperty` / `List.of(` / `ServiceLoader`） | — |
 | 2 | 新增测试源码探针 `OfflineProbeTest`（含 `http://example.com` 字面量） | — |
 | 3 | `mvn -B test -Dtest=ArchitectureBoundaryTest` | **Tests run: 14, Failures: 14** —— ①–⑭ 逐条命中预期违规（④ 报 `expected:<3> but was:<4>`，⑭ 报 `http://example.com`），**证明 14 条断言均非空转** |
-| 4 | 删除两个探针文件 → `mvn -B clean verify` | **Tests run: 88, Failures: 0, Errors: 0**，`BUILD SUCCESS`（无残留） |
+| 4 | 删除两个探针文件 → `mvn -B clean verify` | **Tests run: 89, Failures: 0, Errors: 0**，`BUILD SUCCESS`（无残留） |
 
-维护要求：任何临时探针**必须**以 `*ProbeTest` 命名或放独立临时文件，**不得**计入正式用例数，且用完必须删除并重跑 `verify` 确认用例数回到 88。
+维护要求：任何临时探针**必须**以 `*ProbeTest` 命名或放独立临时文件，**不得**计入正式用例数，且用完必须删除并重跑 `verify` 确认用例数回到 89。
 
 ---
 
@@ -155,11 +157,11 @@
 **全部命令在 `aifei-id/` 模块根目录执行**（门禁依赖相对路径 `src/main/java`）：
 
 ```bash
-mvn -B clean verify                        # 全量 88 例，必须 0 failure / 0 error
+mvn -B clean verify                        # 全量 89 例，必须 0 failure / 0 error
 mvn -B test -Dtest=ArchitectureBoundaryTest # 仅架构门禁（14 例）
 mvn -B test -Dtest=SnowflakeIdGeneratorTest # 单类；亦可 类名#方法名
 mvn -B dependency:tree                      # 依赖面核对（见 design.md §11.2）
-javap -verbose target/classes/cn/hg/aifei/id/IdKit.class | findstr "major version"   # 应为 52
+javap -verbose target/classes/cn/hg/aifei/id/IdKit.class | findstr "major version"   # 应为 52（Windows；Linux/Git Bash 用 grep）
 ```
 
 预期依赖树（design.md §11.2 允许清单，实测一致）：
@@ -177,7 +179,7 @@ io.github.gollyhu:aifei-id:jar:1.0.0
 
 ### 5.1 Redis 集成测试口径（默认关闭，当前未落地）
 
-- **默认关闭**：`mvn clean verify` 不含任何外部服务依赖，88 例全部离线通过。
+- **默认关闭**：`mvn clean verify` 不含任何外部服务依赖，89 例全部离线通过。
 - **开启方式（口径，尚未实现）**：需真实 Redis + `aifei-cache` + `aifei-lock` 后端，用 `-Dredis.integration=true` 门控；**连不上必须失败，不得静默跳过**（design.md §12 事项 13）。
 - **当前状态**：本批次**未落地**集成用例（无 `*IntegrationTest` 类、pom 无 `redis.integration` 开关），故 `-Dredis.integration=true` 目前无效。受影响的能力见 §7 第 5 条。
 - 若后续落地，建议命令：
@@ -227,10 +229,10 @@ stop-demo.bat
 
 | # | 未覆盖项 | 理由 | 影响 / 建议 |
 | --- | --- | --- | --- |
-| 1 | **§7.5 场景 10 / 消息 H**（号段 `store=cache` 但后端 `supportsCas=false`） | `support/FakeCache` 固定返回 `supportsCas=true`，无「非共享后端」桩；`internal.CacheAccess#notSharedBackend` 分支**无任何用例调用** | 属「启动期拒绝重号配置」的安全网，建议补 1 例：给 `FakeCache` 增加 `localOnly(counter)`（`supportsCas=false`），断言 `id.strategy=segment` 装配抛**消息 H** 且不留半装配 |
+| 1 | ~~§7.5 场景 10 / 消息 H（号段 `store=cache` 但后端 `supportsCas=false`）~~ —— **已于本轮固化，不再是缺口** | 原缺口已补齐：`support/FakeCache.notShared()`（`supportsCas()==false`）与 `IdPluginTest#notSharedBackendFailsWithMessageH` 均已存在并纳入测试 | 现由 §2 场景 10 的 `IdPluginTest#notSharedBackendFailsWithMessageH` 覆盖，逐字断言消息 H 且不留半装配；保留本行仅为变更留痕 |
 | 2 | `LockWorkerIdSource` 内部「续期失败 → `healthy=false`」与线程名 / 周期 / `close()` join 逻辑 | 真实续期周期下限 1000ms，离线纪律不允许秒级等待；`FakeLockStore.renew` 恒成功 | 「拒发号」语义已由 `FakeWorkerIdSource#breakLease()`（消息 E）覆盖，但**置位逻辑本身**未被断言。建议给 `FakeLockStore` 增加 `renewFails()` 并把租约配置到 1000ms 上界内可控验证（或用可注入时钟的线程替代），否则该分支靠评审保证 |
 | 3 | **§7.5 场景 20**（`close()` 时 `Lock#release()` 抛异常被 `log.error` 后吞掉） | `FakeLockStore.release` 恒返回 `true`，无法注入释放失败 | 停机路径容错，风险低；建议随第 2 条一并补（`FakeLockStore.releaseThrows()`） |
-| 4 | `internal.CacheAccess`（`CounterKit.use()` + `supportsCas()` 校验）无独立用例 | 仅经 `IdPluginTest` 的 `cache` 来源 / 号段 `cache` 分支间接执行；`CacheKit` / `CounterKit` 的真实装配错误路径（消息 P）已由装配用例覆盖 | 与第 1 条同源，补第 1 条时可顺带覆盖 |
+| 4 | `internal.CacheAccess`（`CounterKit.use()` + `supportsCas()` 校验）无独立用例 | 仅经 `IdPluginTest` 的 `cache` 来源 / 号段 `cache` 分支间接执行；`CacheKit` / `CounterKit` 的真实装配错误路径（消息 P）已由装配用例覆盖 | 与第 1 条同源；第 1 条已由 `IdPluginTest#notSharedBackendFailsWithMessageH` 固化（含 `supportsCas()` 校验路径），本条仅保留说明，不单列用例 |
 | 5 | **真 Redis 的端到端路径**（`CacheSegmentStore` 真实 `INCRBY`、`LockWorkerIdSource` 真实抢占 + 续期、TTL 过期触发的号段回退） | 无集成用例、pom 无 `redis.integration` 开关（见 §5.1）；离线单测用 `FakeCounter` / `FakeLockStore` / `FakeSegmentStore` | 单元层已覆盖「参数下传 + 返回值语义 + 失败包装 + 回退检测」；真后端语义（原子性、TTL 续期、跨实例空洞）**未验证**，属 v1 已知缺口 |
 | 6 | `IdDeps` 的 `LinkageError` 分支 | `HidingClassLoader` 只伪装 `ClassNotFoundException` | 防「类存在但依赖缺失」的场景，风险极低 |
 | 7 | 断网 `mvn clean verify`（AC-14 的断网口径） | 复验环境未切网；旁证为门禁 ⑭（测试源码无外网 URL）+ 测试桩零外部服务 + 依赖树无网络客户端 | 建议在发布前于断网 / `-o` 离线模式再跑一次全量确认 |

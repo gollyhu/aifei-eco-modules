@@ -1,11 +1,11 @@
 # aifei-mq-demo 演示页面 · 契约与集成验收测试报告
 
-> **归档状态：历史验收快照，不再维护**（2026-11-03 归档）。本文记录当轮验收结论，其中「文档收口缺口 T04」等缺陷后续已修复，**不应据此判断当前状态**。
+> **归档状态：历史验收快照，不再维护**（2026-11-03 归档）。本文缺陷台账为 D-01（P1）、D-02（P2）、D-03（P2）：截至第 2 轮复审，**D-01、D-03 已闭环**，**D-02 依据设计 §9 A2 预授权保留为已知偏差**（详见文末复审结论）。本文仅记录当轮结论，**不应据此判断当前状态**（「文档收口缺口 T04」属另一份 `test-report-e2.md`，与本文无关）。
 
 > 验收标尺：`docs/archive/aifei-mq-demo-baseline.md`（BASELINE: PASS）+ `docs/aifei-mq-demo/prd.md` §5/§6/§7 + `docs/aifei-mq-demo/ui-prototype.md` + `docs/aifei-mq-demo/design.md` §0/§4/§7.3/§9
 > 被测范围：`aifei-mq-demo/src/main/java/cn/hg/aifei/mq/demo/**`（9 文件）+ `src/main/webapp/**`（6 文件）+ `src/main/resources/app-config.txt`
 > 测试类型：契约测试（HTTP 端点矩阵）+ 静态硬约束检查 + 端到端冒烟（无头 Edge）
-> 轮次：第 1 轮（上限 2 轮，本次为最后一轮验收）
+> 轮次：第 1 轮（上限 2 轮；另有第 2 轮复审，见文末「复审（第 2 轮）」）
 
 ---
 
@@ -176,7 +176,7 @@ IS_PASS: NO（复审前）
 
 ## 复审（第 2 轮）
 
-> 复审范围：仅验证第 1 轮遗留缺陷 **D-01（P1）**、**D-03（P2）** 的修复闭环 + 回归底线最小集；**未重跑**全量 38 用例。
+> 复审范围：验证第 1 轮遗留缺陷 **D-01（P1）**、**D-03（P2）** 的修复闭环，并对 **D-02（P2）** 给出最终定性 + 回归底线最小集；**未重跑**全量 38 用例。
 > 执行时间：2026-10-17（复审轮）；环境同第 1 轮（Windows / Edge headless via Puppeteer / `start-demo.bat`，18100）。
 
 ### R-1 缺陷闭环表
@@ -185,6 +185,7 @@ IS_PASS: NO（复审前）
 | --- | --- | --- | --- | --- |
 | **D-01（P1）** 空 topic/text 静默改发默认主题 | 代码走查 + 无头浏览器实测（含网络层请求计数） | `mq-demo.js:481-501`：`send()` 内、`requestEnvelope`（`:503`）**之前**的前置校验；topic `:481` `trim()` 后判空（`:487-488`），text `:489` `trim()` 后判空（`:490`）；失败分支 `:492-500` 置 `receipt.cls = "is-fail"`、文案 `code=10001 发送失败：topic 不能为空` / `text 不能为空`，随后 `return` **不发请求**。双入口收敛：发送按钮 `demo.html:161` `@click="send"`；消息体 `demo.html:157` `@keydown="onTextKeydown"` → `mq-demo.js:555-560` Ctrl/⌘+Enter → `send()` | 安装 fetch 间谍统计 `/mq/demo/send*` 请求后实测 4 项：① 空 Topic 点发送 → 红框「code=10001 发送失败：topic 不能为空」，请求 0 次；② 空 text 点发送 → 红框「code=10001 发送失败：text 不能为空」，请求 0 次；③ Ctrl+Enter 空 Topic → 红框「topic 不能为空」，请求 0 次；④ Ctrl+Enter 正常内容（topic=t-recheck）→ 绿框「code=0 已发送到主题 t-recheck」含 messageId=2，恰 1 次真实请求 | **CLOSED** |
 | **D-03（P2）** demo.html 写死「上限 200 条」 | grep 源码 + 逐条判读 | `demo.html:266` 已改为「消息记录（最新在前，上限读接口的 `<code>messageLogCapacity</code>`）」；全文件 grep `200` 仅剩 `:274`「HTTP 恒 200，业务结果看响应里的 code」（接口说明注释，属正常命中），运行时动态值与 CSS 数值无异常命中 | 文案口径与 PRD Q8 / 设计 R9 一致 | **CLOSED** |
+| **D-02（P2）** `?instance=` 空串回退主实例 | 契约定性（不修代码） | 设计 `design.md` §9 A2 已预授权该退化：「若框架把空串折叠为默认值，则空串行为退化为 `__MAIN__`（宽松），不影响其它契约」；实测行为（`state?instance=` → `code=0`、`__MAIN__`）与此一致 | 属「实现遵从设计、设计偏离 PRD §5 / 基线 §3.3」的已知偏差；按 A2 预授权保留宽松行为，**不判定为待修缺陷**。后续若需严格对齐 PRD，按 D-02 修正建议改 `instance` 判空并同步 prd/baseline 登记 | **已知偏差（A2 预授权，关闭跟踪）** |
 
 > 复审过程说明（诚实记录）：初次用 Puppeteer `fill` 清空 Topic 后点发送曾出现绿色回执（code=0），核查确认系**测试工装问题**——`fill` 未触发 Vue `v-model` 的 `input` 事件（输入框实际值仍为默认主题），该次误发不计缺陷；改用原生 value setter + `dispatchEvent(new Event('input'))` 后复测，上述 4 项全部符合预期。
 
@@ -205,7 +206,8 @@ IS_PASS: NO（复审前）
 
 - D-01（P1）：**闭环**（前端前置校验拦截于请求之前，双入口收敛，网络层 0 请求取证）。
 - D-03（P2）：**闭环**（写死文案已改为「上限读接口的 messageLogCapacity」口径）。
+- D-02（P2）：**已知偏差，关闭跟踪**（设计 §9 A2 预授权的宽松退化：`?instance=` 空串回退 `__MAIN__`，不返回 10001；不影响其它契约，故不判定为待修缺陷）。
 - 回归底线 4 项全部 PASS。
-- 路由判定：**NoOne**（全部通过，无需再派发）。
+- 路由判定：**NoOne**（D-01/D-03 已闭环、D-02 定性为已知偏差，无待修缺陷，无需再派发）。
 
-IS_PASS: YES
+IS_PASS: YES（D-01/D-03 闭环 + D-02 已在本报告定性为已知偏差；存档快照，详见文首归档状态）

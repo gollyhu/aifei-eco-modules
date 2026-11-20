@@ -10,18 +10,16 @@ import cn.aifei.log.Log;
 import cn.aifei.log.LogFactory;
 
 /**
- * TraceLogFactory.
- *
- * <pre>
  * LogFactory 装饰器：将任意 LogFactory 产出的 Log 包装为携带 "[traceId] " 前缀的 TraceLog。
  *
- * 用法（与 aifei-log 各工厂天然兼容，适配器由消费方经 aifei-all 自带，本模块不造日志）：
- *   settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()));
- *   settings.setLogFactory(new TraceLogFactory(new Log4jLogFactory()));
+ * <p>用法（与 aifei-log 各工厂天然兼容，适配器由消费方经 aifei-all 自带，本模块不造日志）：</p>
+ * <pre>{@code
+ * settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()));
+ * settings.setLogFactory(new TraceLogFactory(new Log4jLogFactory()));
+ * }</pre>
  *
- * delegate 必须显式给定，避免自包装造成的无限递归：
- * new TraceLogFactory(new TraceLogFactory(...)) 或包装自身工厂属使用方错误，模块不检测不防护。
- * </pre>
+ * <p>delegate 必须显式给定，避免自包装造成的无限递归：
+ * {@code new TraceLogFactory(new TraceLogFactory(...))} 或包装自身工厂属使用方错误，模块不检测不防护。</p>
  */
 public class TraceLogFactory implements LogFactory {
 

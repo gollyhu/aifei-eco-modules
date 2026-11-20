@@ -7,27 +7,20 @@
 package cn.hg.aifei.trace;
 
 /**
- * TraceKit.
- *
- * <pre>
  * 链路追踪语义门面：init 的 trim 与空白回退生成、生成器替换入口、startSpan 覆盖语义均由本类唯一定义。
  *
- * 命名例外说明：本类无装配生命周期、任何时刻调用都成立（未做任何配置时 getTraceId() 返回 null、
- * init() 直接生成），永不抛「未装配」类异常；属 Kit 判据的显式例外（有状态门面，对齐 LogKit 形态）。
+ * <p>命名例外说明：本类无装配生命周期、任何时刻调用都成立（未做任何配置时 getTraceId() 返回 null、
+ * init() 直接生成），永不抛「未装配」类异常；属 Kit 判据的显式例外（有状态门面，对齐 LogKit 形态）。</p>
  *
- * 常用用法：
- *  1: 请求进入时绑定 TraceId（由 web.TraceHandler 自动完成，业务一般无需手动调用）：
- *     TraceKit.init(extractedTraceId);      // 提取为 null / 空白时自动生成
- *
- *  2: 业务代码获取当前 TraceId：
- *     String traceId = TraceKit.getTraceId();
- *
- *  3: 线程池 / 异步场景在子线程恢复链路（处理完务必 try/finally clear）：
- *     TraceKit.init(parentTraceId);
- *
- *  4: 请求结束清理（由 web.TraceHandler 在 finally 中保证）：
- *     TraceKit.clear();
- * </pre>
+ * <p>常用用法：</p>
+ * <ol>
+ *   <li>请求进入时绑定 TraceId（由 web.TraceHandler 自动完成，业务一般无需手动调用）：
+ *       {@code TraceKit.init(extractedTraceId);}（提取为 null / 空白时自动生成）</li>
+ *   <li>业务代码获取当前 TraceId：{@code String traceId = TraceKit.getTraceId();}</li>
+ *   <li>线程池 / 异步场景在子线程恢复链路（处理完务必 try/finally clear）：
+ *       {@code TraceKit.init(parentTraceId);}</li>
+ *   <li>请求结束清理（由 web.TraceHandler 在 finally 中保证）：{@code TraceKit.clear();}</li>
+ * </ol>
  */
 public final class TraceKit {
 

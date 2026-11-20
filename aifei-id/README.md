@@ -33,7 +33,7 @@ id.workerId=1
 装配一行（写在应用自己的 `AppConfig` 里）：
 
 ```java
-public class OrderAppConfig implements AifeiConfig {
+public class OrderAppConfig implements AifeiConfig<In, Out> {
     @Override
     public void config(Plugins plugins) {
         // 只引 aifei-id 一个 jar 就能跑：默认雪花 + 静态 workerId
@@ -133,7 +133,7 @@ id.workerId=${INSTANCE_INDEX}
 ```
 
 ```java
-public class DemoAppConfig implements AifeiConfig {
+public class DemoAppConfig implements AifeiConfig<In, Out> {
     @Override
     public void config(Plugins plugins) {
         Prop prop = new Prop();
@@ -282,7 +282,7 @@ id.segment.key=payment-flow
 
 ### 5.4 组合生态模块做可观测
 
-模块自身只记录一条启动 INFO（策略 + workerId），不做指标上报。需要 QPS、失败率、号段切换次数等观测时，在业务侧包装 `IdGenerator` 或对 `IdKit` 调用埋点，接入 `aifei-metrics` 等模块自行实现——ID 生成在整条链路上本就不是瓶颈。
+模块自身只记录一条启动 INFO（策略 + workerId），不做指标上报。需要 QPS、失败率、号段切换次数等观测时，在业务侧包装 `IdGenerator` 或对 `IdKit` 调用埋点，接入消费方已有的指标 / 监控系统（如 Micrometer、日志埋点）自行实现——ID 生成在整条链路上本就不是瓶颈。
 
 ## 6. 注意事项与技术难点
 

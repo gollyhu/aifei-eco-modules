@@ -2,7 +2,6 @@
  * Copyright 2014-2026 糊搞 (3722711@qq.com)
  *
  * https://gitee.com/gollyhu
- * 开发工程师 寇戴码（Enjoy 指令增量）
  */
 
 package cn.hg.aifei.i18n.demo.arch;

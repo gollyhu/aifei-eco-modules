@@ -36,13 +36,13 @@ stop-demo.bat         :: 按 18150 找监听进程并结束
 | `/excel/demo/export-once` | 一次性导出：`ExcelKit.write` 写 12 行示例 | 下载二进制 `aifei-excel-once.xlsx` |
 | `/excel/demo/export-stream` | 流式导出：`Excel.writer` 会话分批 `write`（批 5000）后 `finish` | `rows`（缺省 50000，上限 500000）；下载二进制 `aifei-excel-stream.xlsx` |
 
-快速验证（页面未就绪时可直接 curl，`target\export-once.xlsx` 可作上传样例）：
+快速验证（页面未就绪时可直接 curl；先用第二条命令把导出结果保存为当前目录的 `once.xlsx`，再作为上传样例）：
 
 ```bash
 curl "http://localhost:18150/excel/demo/state"
 curl "http://localhost:18150/excel/demo/export-once" -o once.xlsx
 curl "http://localhost:18150/excel/demo/export-stream?rows=1000" -o stream.xlsx
-curl -F "file=@target/export-once.xlsx" "http://localhost:18150/excel/demo/parse?batchSize=500"
+curl -F "file=@once.xlsx" "http://localhost:18150/excel/demo/parse?batchSize=500"
 ```
 
 ## 依赖引入（pom.xml 节选）

@@ -1,7 +1,7 @@
 # aifei-eco-modules
 Aifei 项目的生态补充，提供多种生态能力模块。
 
-本仓库是多个独立发布的 aifei 生态组件集合，各模块单独构建、单独发版，无父级聚合 pom，按需引入。
+本仓库是多个 aifei 生态组件集合，各模块独立构建、按需引入，发布状态见各模块说明；无父级聚合 pom。
 
 ## 模块总览
 
@@ -15,16 +15,16 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，内建 JDK 自实现 RFC6455 |
 | [aifei-websocket-demo](aifei-websocket-demo/README.md) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
 | [aifei-mq](aifei-mq/README.md) | `io.github.gollyhu:aifei-mq:1.0.0` | 异步消息能力：生产者发送 + 消费者订阅，内存后端开箱即用，真实 MQ 后端可扩展 |
-| [aifei-mq-demo](aifei-mq-demo/README.md) | （示例工程，不发布） | aifei-mq 的完整接入示例：内存后端的发送 / 订阅消费闭环演示 |
+| [aifei-mq-demo](aifei-mq-demo/README.md) | （示例工程，不发布） | aifei-mq 的完整接入示例：发送 / 订阅消费闭环演示（默认同时启用 memory 主实例与 mqtt / mqtt5 / redisstream 命名实例，需公网 broker 与本机 Redis；离线时先精简 `mq.names`，详见 demo README） |
 | [aifei-oss](aifei-oss/README.md) | `io.github.gollyhu:aifei-oss:1.0.0` | 多平台对象 / 文件存储能力：基于 X File Storage（覆盖 30+ 平台）二次封装，本模块类型白名单 20 项 |
 | [aifei-oss-demo](aifei-oss-demo/README.md) | （示例工程，不发布） | aifei-oss 的完整接入示例：本地存储的上传 / 下载 / 列举 / 复制 / 删除演示 |
 | [aifei-lock](aifei-lock/README.md) | `io.github.gollyhu:aifei-lock:1.0.0` | 分布式锁：基于共享缓存的原子加锁、CAS 释放与 CAS 续期 |
 | [aifei-job](aifei-job/README.md) | `io.github.gollyhu:aifei-job:1.0.0` | 应用内定时任务：cron / 固定频率 / 固定延迟，单飞自续排、拒绝记账、优雅停机 |
 | [aifei-job-demo](aifei-job-demo/README.md) | （示例工程，不发布） | aifei-job 的完整接入示例：任务列表 / 到点触发 / 跳过 / 异常隔离 / 停机收敛演示（端口 18110） |
 | [aifei-id](aifei-id/README.md) | `io.github.gollyhu:aifei-id:1.0.0` | 分布式 ID：雪花（`1+41+10+12`）与号段双策略，workerId 三来源，零第三方 |
-| aifei-id-demo | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140） |
+| [aifei-id-demo](aifei-id-demo/README.md) | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140，雪花与号段两脚本互斥） |
 | [aifei-trace](aifei-trace/README.md) | `io.github.gollyhu:aifei-trace:1.0.0` | 请求链路贯通：`TraceKit` 链路上下文 + 日志 `[traceId] ` 前缀贯通 + Web 入口绑定清理，零第三方 |
-| aifei-trace-demo | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
+| [aifei-trace-demo](aifei-trace-demo/README.md) | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
 | [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
 | [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
 | [aifei-i18n](aifei-i18n/README.md) | `io.github.gollyhu:aifei-i18n:1.0.0` | 国际化能力：开放来源扩展 + 3 默认来源（properties/db/kv）+ 单条取文案/整包导出 + Locale 上下文贯通 + JDK 格式化薄封装 + Enjoy 三条模板指令，零第三方 |
@@ -200,7 +200,9 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 
 ## 构建
 
-所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建：
+所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建，仓库根无聚合 pom。
+
+**命令口径**：`mvn clean install` 把库安装到本地仓库（**运行 demo 前必须先执行**）；`mvn clean verify` / `mvn clean test` 只做本地编译与门禁验证、**不安装到本地仓库**。下表两个模块沿用其 `AGENTS.md` 的门禁验收命令 `verify`，若要运行依赖它们的 demo，请改用 `mvn -q -DskipTests clean install` 安装。
 
 ```bash
 cd aifei-cache     && mvn clean install
@@ -217,13 +219,35 @@ cd aifei-trace     && mvn clean install
 cd aifei-http      && mvn clean install
 cd aifei-excel     && mvn clean install
 cd aifei-audit     && mvn clean install
-cd aifei-i18n      && mvn clean verify
-cd aifei-tools     && mvn clean verify
+cd aifei-i18n      && mvn clean verify      # 门禁验收命令
+cd aifei-tools     && mvn clean verify      # 门禁验收命令
 ```
 
-发布 Maven Central 的模块使用 `mvn -Pcentral-release clean deploy`（见各模块 pom 的 profile）。
+**发布能力**：当前仅 `aifei-cache`、`aifei-oss`、`aifei-tools` 三个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 13 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。
+
+## 运行示例
+
+仓库含 11 个可运行 demo（均为**示例工程，不发布**），统一在各 demo 目录下用脚本启停：脚本先 `mvn compile dependency:build-classpath` 生成 classpath，再以 `java -cp ... cn.hg.aifei.<模块>.demo.DemoApp` 启动。运行前须先安装被演示的库模块（见上节"构建"，各 demo README 的"前置"小节亦有说明）。
+
+| demo 目录 | 启动 / 停止脚本 | 端口 | 验证地址 | 外部依赖 |
+| --- | --- | --- | --- | --- |
+| `aifei-sentinel-demo` | `start-demo.bat` / `stop-demo.bat` | 18080 | `http://localhost:18080/demo/index` | 无（本地模式）；Dashboard 模式另需自备 sentinel-dashboard jar（8858） |
+| `aifei-oss-demo` | `start-demo.bat` / `stop-demo.bat` | 18092 | `http://localhost:18092/oss/demo/state` | 无（本地存储） |
+| `aifei-websocket-demo` | `start-demo.bat` / `stop-demo.bat` | 18090（WS 18091） | `http://localhost:18090/ws/demo/state` | 无（本地回环） |
+| `aifei-mq-demo` | `start-demo.bat` / `stop-demo.bat` | 18100 | `http://localhost:18100/mq/demo/state` | 默认需公网 MQTT broker（emqx / hivemq）与本机 Redis，离线时先精简 `mq.names` |
+| `aifei-job-demo` | `start-demo.bat` / `stop-demo.bat` | 18110 | `http://localhost:18110/job/demo/page` | 无 |
+| `aifei-http-demo` | `start-demo.bat` / `stop-demo.bat` | 18120 | `http://localhost:18120/http/demo/state` | 无（全程回环） |
+| `aifei-trace-demo` | `start-demo.bat` / `stop-demo.bat` | 18130 | `http://localhost:18130/trace/demo/page` | 无 |
+| `aifei-id-demo` | `start-demo.bat`（雪花）/ `start-demo-segment.bat`（号段）/ `stop-demo.bat` | 18140 | `http://localhost:18140/id/demo/page` | 无（两脚本互斥，勿同时运行） |
+| `aifei-excel-demo` | `start-demo.bat` / `stop-demo.bat` | 18150 | `http://localhost:18150/excel/demo/page` | 无 |
+| `aifei-audit-demo` | `start-demo.bat` / `stop-demo.bat` | 18160 | `http://localhost:18160/audit/demo/page` | 无 |
+| `aifei-i18n-demo` | `start-demo.bat` / `stop-demo.bat` | 18170 | `http://localhost:18170/i18n/demo/page` | 无 |
+
+**正式部署**：库模块以 Maven 依赖方式集成进消费方应用，由消费方自行打包启动；本仓库不提供 `aifei-*.sh` / `aifei-*.bat` 的 `start` / `stop` / `restart` 部署脚本，示例工程也不作为部署形态。
 
 ## 依赖说明
+
+**框架内核**：本生态绝大多数模块以 `provided` 声明框架内核 `cn.aifei:aifei-all:1.1.2`（`aifei-cache` 例外，用 `cn.aifei:aifei`），由 aifei 框架提供、消费方须自带。该依赖不在本仓库产物内，请通过 aifei 官方渠道（<https://aifei.cn>）按其文档获取坐标与仓库配置；本仓库未内置其下载地址，故不在此臆造仓库 URL 或 `settings.xml` server 配置。各模块下文的"`aifei-all` 为 `provided`"均指此内核。
 
 - `aifei-cache`：强依赖 `cn.aifei:aifei`；Caffeine、Jedis、Fury 为可选依赖，用哪个后端加哪个
 - `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带；`sentinel-core` / `sentinel-parameter-flow-control` / `sentinel-datasource-extension` 为 `compile`，随 SDK 传递；`sentinel-transport-simple-http` 为 `provided + optional`，仅 Dashboard 模式由消费方提供
@@ -241,6 +265,8 @@ cd aifei-tools     && mvn clean verify
 - `aifei-audit`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
 - `aifei-i18n`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` 为 `provided + optional`（**不向下游传递**，仅 `kv` 来源需要，用到时消费方须显式引入）；**零第三方 compile 依赖**（`junit` 仅 `test`），不引任何日志绑定；Java 8 / class major 52
 - `aifei-tools`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.1.0`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机与 mask 脱敏零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
+
+**装配类写法约定**：下文及所有 demo 中，应用装配类统一声明为 `implements AifeiConfig<In, Out>`（`In` / `Out` 为应用自身的输入 / 输出类型，可替换为具体类型如 `AifeiConfig<OrderRequest, Result>`）；不使用裸类型 `implements AifeiConfig`（会产生编译警告），也不使用 `extends AppConfig`。各模块在 `config(Plugins)` / `config(Settings)` 中按自身需要装配插件或接入构件。
 
 ## 许可证
 

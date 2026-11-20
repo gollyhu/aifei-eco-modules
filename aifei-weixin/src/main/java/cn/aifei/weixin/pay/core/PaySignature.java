@@ -22,6 +22,9 @@ import java.util.Base64;
  */
 public class PaySignature {
 
+    /**
+     * V3 Authorization 头的认证方案标识，作为头值的第一个 token（其后为 mchid / nonce_str 等参数）。
+     */
     public static final String AUTH_SCHEME = "WECHATPAY2-SHA256-RSA2048";
 
     private PaySignature() {
@@ -74,14 +77,22 @@ public class PaySignature {
     }
 
     /**
-     * 拉起支付参数（字段名与 wx.requestPayment 入参一致）
+     * 拉起支付参数（字段名与 wx.requestPayment 入参一致）。
+     *
+     * <p>以下 getter 语义同字段名；{@link #toJson()} 输出的 JSON 键与小程序 / 公众号
+     * {@code wx.requestPayment} 的入参一一对应，可直接透传给前端。</p>
      */
     public static class JsapiPayParams {
 
+        /** 对应 wx.requestPayment 的 appId。 */
         private final String appId;
+        /** 对应 wx.requestPayment 的 timeStamp（秒级时间戳字符串）。 */
         private final String timeStamp;
+        /** 对应 wx.requestPayment 的 nonceStr。 */
         private final String nonceStr;
+        /** 对应 wx.requestPayment 的 package，形如 {@code prepay_id=xxx}。 */
         private final String packageValue;
+        /** 对应 wx.requestPayment 的 paySign。 */
         private final String paySign;
 
         private JsapiPayParams(String appId, String timeStamp, String nonceStr, String packageValue, String paySign) {
@@ -92,26 +103,36 @@ public class PaySignature {
             this.paySign = paySign;
         }
 
+        /** @return 公众号 appId */
         public String getAppId() {
             return appId;
         }
 
+        /** @return 秒级时间戳字符串 */
         public String getTimeStamp() {
             return timeStamp;
         }
 
+        /** @return 随机串 */
         public String getNonceStr() {
             return nonceStr;
         }
 
+        /** @return 形如 {@code prepay_id=xxx} 的 package 值 */
         public String getPackageValue() {
             return packageValue;
         }
 
+        /** @return 二次签名 paySign */
         public String getPaySign() {
             return paySign;
         }
 
+        /**
+         * 序列化为 wx.requestPayment 可直接消费的 JSON（键名同入参）。
+         *
+         * @return 含 appId / timeStamp / nonceStr / package / paySign 的 JSON 字符串
+         */
         public String toJson() {
             return JSON.toJSONString(this);
         }

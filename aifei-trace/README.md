@@ -28,7 +28,7 @@
 两条装配主线，各一行，全部写在应用自己的 `AppConfig` 里：
 
 ```java
-public class OrderAppConfig implements AifeiConfig {
+public class OrderAppConfig implements AifeiConfig<InputImpl, OutputImpl> {
     @Override
     public void config(Settings settings) {
         // 主线一：日志贯通——全应用所有日志自动带 "[traceId] " 前缀
@@ -117,7 +117,7 @@ public class OrderRequestInput implements Input {
 
 ```java
 // 装配：构造提取模式的 TraceHandler
-public class OrderAppConfig implements AifeiConfig {
+public class OrderAppConfig implements AifeiConfig<OrderRequestInput, OutputImpl> {
     @Override
     public void config(Settings settings) {
         settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()));

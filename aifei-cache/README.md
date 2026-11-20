@@ -33,7 +33,9 @@ Caffeine、Jedis、Fury 是**可选依赖**，用哪个后端就加哪个，只�
 | 后端 | 再添加这些依赖 |
 | --- | --- |
 | `caffeine`（进程内） | `com.github.ben-manes.caffeine:caffeine:2.9.3` |
-| `jedis`（Redis） | `redis.clients:jedis` + `org.apache.fury:fury-core`（值默认用 Fury 编解码） |
+| `jedis`（Redis） | `redis.clients:jedis:8.0.1` + `org.apache.fury:fury-core:0.10.3`（值默认用 Fury 编解码） |
+
+上表版本必须与本模块 pom 对齐；`caffeine` 固定 `2.9.3`（更高版本不支持 JDK 8）。
 
 ### 第二步：写配置
 

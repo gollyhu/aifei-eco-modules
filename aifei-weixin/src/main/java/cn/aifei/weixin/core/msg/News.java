@@ -9,7 +9,9 @@
 package cn.aifei.weixin.core.msg;
 
 /**
- * 图文回复条目（对应 XML 中的 item 节点）
+ * 图文回复条目（对应 XML 中的 item 节点）。
+ *
+ * <p>以下 getter / setter 均为对应字段的简单读写，语义同字段名，不逐方法重复说明。</p>
  */
 public class News {
 

@@ -267,7 +267,7 @@ public class CustomerExportService {
 - 验证码单机模式、脱敏不依赖任何内核，引了本模块即可用。
 - `zxing` 只引 `core`，**不引 `javase`**（后者会额外拖入命令行与图像 IO 库）；二维码 PNG 由模块内部绘制。
 - 缺失内核时抛的是本模块异常、消息里写明需要补齐的坐标，且保留底层 cause——这是“能力按需引入”，不是“功能降级”。
-- 三种内核版本由本模块 pom 的属性管理，消费方需与上表坐标一致。
+- 版本口径：`ip2region` / `zxing` 版本由本模块 pom 的属性（`ip2region.version` / `zxing.version`）管理；`aifei-cache` 版本在 pom 中直接写死为 `1.1.0`（无对应属性）。消费方需与上表坐标一致。
 
 ### IP 数据文件
 

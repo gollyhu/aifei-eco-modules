@@ -1,5 +1,7 @@
 # aifei-excel 测试策略
 
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
+
 本文面向测试维护者：说明测试结构、覆盖清单、AC 覆盖台账、运行方式与新增约定。契约口径见 `docs/design.md`，开发约束见模块 `AGENTS.md`，使用者用法见 `README.md`。
 
 ## 运行方式
@@ -11,7 +13,7 @@ mvn clean verify                                    # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest            # 仅跑架构门禁（14 例）
 mvn test -Dtest=ExcelReadTest#shouldCallbackInBatches  # 单方法
 mvn dependency:tree                                 # 断言：aifei-all(provided) + easyexcel(optional) + junit(test)
-javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major version"   # 期望 52
+javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major version"   # 期望 52（Windows；Linux/Git Bash 用 grep）
 ```
 
 **零外部依赖 / 零联网**：全部用例离线可跑。xlsx / xls 样本由测试在 `target/` 现场用 EasyExcel 写出再读回（自洽闭环），不提交二进制样本到仓库；门禁 ⑭ 扫描 `src/test/java` 断言 URL 字面量 host 只能是 `127.0.0.1` / `localhost`。EasyExcel 传递的 `slf4j-api` 无绑定时打印一条 NOP 提示，不影响结果。

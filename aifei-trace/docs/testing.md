@@ -1,5 +1,7 @@
 # aifei-trace 测试策略与用例清单
 
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
+
 本文面向**测试维护者**：说明测试分类、用例与设计契约场景的对照关系、验证命令与离线纪律。行为契约与异常语义的完整定义见 `docs/design.md`（§5 公共 API 契约 / §7.2 异常语义表 / §7.3 消息措辞 / §10 门禁清单 / §15 验收标准），本文不复制契约细节，仅用指针引用。
 
 ---
@@ -60,7 +62,7 @@ mvn dependency:tree -Dverbose          # 依赖面：根 + aifei-all(provided) +
 class 版本抽验（AC-03）：
 
 ```bash
-javap -verbose target/classes/cn/hg/aifei/trace/TraceKit.class | grep "major version"
+javap -verbose target/classes/cn/hg/aifei/trace/TraceKit.class | grep "major version"   # Git Bash/Linux；Windows cmd 用 findstr "major version"
 # 全部主 class 应输出 major version: 52
 ```
 

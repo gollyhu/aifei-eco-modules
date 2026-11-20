@@ -28,7 +28,7 @@ import java.util.Objects;
  *  1: 必须注册在 FrontHandler 之前。微信首验 GET 不带 Content-Type，否则会被判定为
  *     浏览器刷新并渲染首页 HTML，导致首验静默失败（由 G4 顺序断言测试守护）。
  *  2: 匹配到微信路径即闭环（自行读 body、写 text/xml 并结束交换），不再调用 next。
- *  3: 本类是 SDK 中唯一 import aifei 内核（cn.aifei.core.*）的包。
+ *  3: 本类所在的 cn.aifei.weixin.aifei 包是 SDK 中唯一 import aifei 内核（cn.aifei.core.*）的包。
  * </pre>
  *
  * @param <I> 内核 Input 实现

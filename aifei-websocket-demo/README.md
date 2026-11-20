@@ -17,6 +17,16 @@
 
 两个端口都与 `aifei-sentinel-demo` 的 18080 错开。客户端地址为 `ws://127.0.0.1:18091/ws`。
 
+## 前置：先把 aifei-websocket 装入本地仓库
+
+`aifei-websocket` 是库模块，需先安装到本地仓库（或按 [根 README 构建小节](../README.md#构建) 安装全部模块）：
+
+```bat
+cd ../aifei-websocket
+mvn -q -DskipTests clean install
+cd ../aifei-websocket-demo
+```
+
 ## 运行
 
 ```bat
@@ -28,7 +38,7 @@ stop-demo.bat     :: 按端口 18090 找到监听进程并结束
 
 ## Web 演示页面
 
-浏览器打开 <http://localhost/> 即进入演示页面。
+浏览器打开 <http://localhost:18090/> 即进入演示页面（若页面 404，确认静态目录 `src/main/webapp` 在启动前已存在）。
 
 ![演示页面](demo.png)
 

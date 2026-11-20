@@ -1,8 +1,8 @@
 # aifei-eco-modules 模块规划与排期
 
 > 状态：**滚动更新的规划基线**，事实随仓库现状校准，不是一次性建议稿。
-> 编制：2026-11-10　|　最近校准：2026-11-18　|　工期口径：单人估算（人周），不含需求评审与外部联调等待。
-> 事实来源：各模块 `pom.xml`、源码引用、架构门禁测试、`需求` 任务输入；现状口径截至 2026-11-18。
+> 编制：2026-11-10　|　最近校准：2026-11-20　|　工期口径：单人估算（人周），不含需求评审与外部联调等待。
+> 事实来源：各模块 `pom.xml`、源码引用、架构门禁测试、`需求` 任务输入；现状口径截至 2026-11-20（i18n / audit / tools 已交付，校准计数见 §2.1 / §2.2）。
 
 ## 一、编制依据
 
@@ -15,7 +15,7 @@
 
 ### 2.1 已交付模块
 
-13 个库模块、9 个 demo，均独立构建、独立发版，仓库根无聚合 pom。
+16 个库模块、11 个 demo，均独立构建、独立发版，仓库根无聚合 pom。
 
 | 模块 | 版本 | 首次入库 | 定位 |
 | --- | --- | --- | --- |
@@ -32,16 +32,19 @@
 | `aifei-id` | 1.0.0 | 2026-11-11 | 雪花 / 号段分布式 ID |
 | `aifei-trace` | 1.0.0 | 2026-11-11 | traceId 链路上下文 + 日志贯通 + Web 入口绑定清理 |
 | `aifei-excel` | 1.0.0 | 2026-11-18 | Excel 注解映射与流式读写，EasyExcel 为 `optional` |
+| `aifei-audit` | 1.0.0 | 2026-11-18 | 注解式操作审计：结构化事件 + `AuditSink` SPI，零生态依赖 |
+| `aifei-i18n` | 1.0.0 | 2026-11-19 | 国际化：开放来源扩展 + 3 默认来源 + 单条取文案/整包导出 + Enjoy 三条模板指令 |
+| `aifei-tools` | 1.0.0 | 2026-11-20 | 极简工具集：IP 归属地（`ipdb`）/ 验证码 / 二维码 / 脱敏，子包隔离、内核 `optional` |
 
-9 个 demo（不发布）：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-http-demo` / `aifei-trace-demo` / `aifei-excel-demo`。`aifei-cache` / `aifei-lock` / `aifei-sa-token` / `aifei-weixin` 无独立 demo。
+11 个 demo（不发布）：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-http-demo` / `aifei-trace-demo` / `aifei-excel-demo` / `aifei-i18n-demo` / `aifei-audit-demo`。`aifei-cache` / `aifei-lock` / `aifei-sa-token` / `aifei-weixin` / `aifei-tools` 无独立 demo。
 
 框架内核基线：`aifei-cache` 依赖 `cn.aifei:aifei:1.1.2`（无 scope），其余库模块依赖 `cn.aifei:aifei-all:1.1.2`（`provided`）。
 
 ### 2.2 需求输入与文档规范
 
-- `需求` 下任务输入：`../需求/aifei-cache-1.1.0.md`、`aifei-http.md`、`aifei-job.md`、`aifei-lock.md`、`aifei-i18n.md`、`aifei-tools.md`、`archive/aifei-mq.md`、`archive/aifei-excel.md`，以及本文件。
-- 文档四件套：13 个库模块均具备 `../../README.md` / `docs/design.md` / `AGENTS.md`；`docs/testing.md` 仅 `aifei-lock` 缺失，其余 12 个齐备；9 个 demo 均有 `README.md`。
-- 已登记例外见根 `../../AGENTS.md`：4 项 `compile`（`aifei-oss` 的 x-file-storage-core、`aifei-sa-token` 的 sa-token-core、`aifei-job` 的 quartz 与 slf4j-api）、1 项公共面框架类型（`aifei-trace`）。`aifei-sentinel` 的 sentinel-core / parameter-flow-control / datasource-extension 三项为 `compile`，根 `AGENTS.md` 未收录，登记情况见其自身 `docs/design.md`。
+- `需求` 下任务输入：`../需求/aifei-cache-1.1.0.md`、`aifei-http.md`、`aifei-job.md`、`aifei-lock.md`、`aifei-audit.md`、`aifei-i18n.md`、`aifei-tools.md`、`archive/aifei-mq.md`、`archive/aifei-excel.md`，以及本文件（`aifei-i18n-directive.md` 已废弃归档，唯一现行版本为 `aifei-i18n.md` §11）。
+- 文档四件套：16 个库模块均具备 `../../README.md` / `docs/design.md` / `AGENTS.md` / `docs/testing.md`（`aifei-lock` 的 testing.md 已于 2026-11-20 补齐，16 个齐备）；11 个 demo 均有 `README.md`。
+- 已登记例外见根 `../../AGENTS.md`：4 项 `compile`（`aifei-oss` 的 x-file-storage-core、`aifei-sa-token` 的 sa-token-core、`aifei-job` 的 quartz 与 slf4j-api）、1 项公共面框架类型（`aifei-trace`）。`aifei-sentinel` 的 sentinel-core / parameter-flow-control / datasource-extension 三项为 `compile`，**已作为例外登记于根 `AGENTS.md`**（随 SDK 传递，与根 `README.md`「依赖说明」口径一致），理由见 `aifei-sentinel/docs/design.md` §3.3。
 
 ### 2.3 能力缺口盘点
 
@@ -57,12 +60,13 @@
 | 异步消息 | `aifei-mq`（7 后端） | 已覆盖 |
 | 调度 | `aifei-job` 1.0.0 已交付；v1.1 集群互斥未启动 | 应用内调度已覆盖 |
 | 认证鉴权 | `aifei-sa-token` | 已覆盖 |
-| 多语言 | 无；业务侧仅裸 `ResourceBundle`（编译期打包、来源单一） | 待建 `aifei-i18n` |
-| 运维小工具 | 无 | 待建 `aifei-tools`（captcha 为首个工具），门禁口径先定档 |
+| 操作审计 | `aifei-audit` 1.0.0 已交付（注解式事件 + `AuditSink` SPI） | 已覆盖 |
+| 多语言 | `aifei-i18n` 1.0.0 已交付（开放来源 + 3 默认来源 + 整包导出 + Enjoy 三条指令） | 已覆盖 |
+| 运维小工具 | `aifei-tools` 1.0.0 已交付（ipdb / captcha / qr / mask 四子包） | 已覆盖 |
 
 ## 三、建设结论与模块清单
 
-### 3.1 第一档：已交付（2026-11-10 ~ 11-18）
+### 3.1 第一档：已交付（2026-11-10 ~ 11-20）
 
 | 模块 | 坐标 | 补的缺口 | 公共面（实际） | 依赖策略 |
 | --- | --- | --- | --- | --- |
@@ -71,6 +75,9 @@
 | `aifei-id` | `io.github.gollyhu:aifei-id:1.0.0` | 分布式 ID：雪花 + 号段 | 4 类：`IdGenerator` / `IdKit` / `IdException` + `aifei.IdPlugin` | 零第三方；`aifei-cache` / `aifei-lock` 均 `optional` |
 | `aifei-trace` | `io.github.gollyhu:aifei-trace:1.0.0` | traceId 全链路贯穿 | 8 类：根包 6 类 + `web` 2 类（`TraceHandler` / `TraceIdExtractor`） | 零第三方；依赖 `aifei-log` 门面（已登记例外） |
 | `aifei-job` | `io.github.gollyhu:aifei-job:1.0.0` | 应用内定时任务 | 根包 7 类 | quartz + slf4j-api `compile`（已登记例外） |
+| `aifei-audit` | `io.github.gollyhu:aifei-audit:1.0.0` | 注解式操作审计：结构化事件 + 落点 SPI | 根包 + `spi` 3 类 + `aifei` 插件 | 零第三方 compile/runtime（junit 仅 test） |
+| `aifei-i18n` | `io.github.gollyhu:aifei-i18n:1.0.0` | 多语言：后端取文案 + 前端语言包下发 + Enjoy 三指令 | 根包 7 + `web` 2 + `aifei` 1 = 精确 10 类 | 零第三方；`aifei-cache` 为 `optional`（KV 来源） |
+| `aifei-tools` | `io.github.gollyhu:aifei-tools:1.0.0` | 极简工具集：IP 归属地 / 验证码 / 二维码 / 脱敏 | 根包零类型，公共 API 全在 `ipdb`/`captcha`/`qr`/`mask` 子包 | ip2region `3.3.7` / ZXing core `3.5.3` / aifei-cache 均 `optional` |
 
 > **`aifei-http` 依赖口径已定档（2026-11-10）**：零第三方纯 JDK，不引入 okhttp、不设 provider 扩展点；同路线经验参考 `aifei-weixin` 的 `core.http.JdkHttpClient` / `pay.JdkPayHttpClient`（multipart、文件下载、mTLS），非代码复用。四条能力边界：① 不支持 HTTP/2；② 连接池受 JVM 全局属性 `http.maxConnections` / `http.keepAlive` 约束、不可按实例调参，模块不得改写；③ 超时仅 connect / read 两段，无整体 deadline、不可取消在途请求；④ gzip、Cookie、重定向自行实现。资源名唯一拼装点 `internal.HttpResource`，模块零 `aifei-sentinel` 依赖。
 
@@ -81,17 +88,16 @@
 | `aifei-metrics` | `io.github.gollyhu:aifei-metrics:1.0.0` | 运行指标采集 + Prometheus 文本端点 | `MetricsKit` / `Metric` / `MetricsException` | 零第三方（自实现文本格式） | 2 周 |
 | `aifei-sms` | `io.github.gollyhu:aifei-sms:1.0.0` | 短信通道：模板化发送 + 回执 | `SmsClient` / `SmsKit` / `SmsMessage` / `SmsException` | 阿里云/腾讯云/华为云 SDK 均 `optional` | 2 周 |
 | `aifei-pay` | `io.github.gollyhu:aifei-pay:1.0.0` | 支付宝支付：下单/查单/退款/回调验签 | `AliPayClient` / `AliPayKit` / `AliPayNotifyUtil` / `AliPayException` | 纯 JDK 签名，零第三方 | 3 周 |
-| `aifei-i18n` | `io.github.gollyhu:aifei-i18n:1.0.0` | 多语言：后端文案取用 + 前端语言包下发；来源 properties / DB / KV 可叠加 | `I18nKit` / `MessageSource` / `I18nException`（预估，须过设计决策） | 零第三方；`aifei-cache` 为 `optional`（KV 来源） | 2 周 |
 
-> `aifei-i18n` 不属通道接入型，排在本档仅因共用「先写需求再排期」的流程；其范式对齐 `aifei-cache` 的 provider 扩展点，而非 `aifei-weixin` 的通道接入。具体排期槽位待在 5.2 定（待 `aifei-pay` 之后评估）。
+> 原列本档的 `aifei-i18n` 已于 2026-11-19 交付，移入 §3.1 已交付清单；其范式对齐 `aifei-cache` 的 provider 扩展点，而非 `aifei-weixin` 的通道接入。
 
 ### 3.3 第三档：待定（需先验证或设计决策，不预先承诺）
 
 | 模块 | 价值 | 前置风险 | 结论 |
 | --- | --- | --- | --- |
-| `aifei-audit` | 注解式操作审计 | 与业务日志边界模糊，落库 / 落 MQ 的职责切分需定档 | 定档后 1.5 周 |
 | `aifei-openapi` | 接口文档生成 | 依赖 aifei 路由反射元数据是否足够，未验证 | **先做 3 天可行性验证**，通过才立项 |
-| `aifei-tools` | 极简工具集（captcha 为首个工具，子包隔离、各自独立可用） | 杂项模块与「根包公共类型精确 N 个」门禁口径冲突，需先定档 | 口径定档后 1 周 |
+
+> 原列本档的 `aifei-audit`（2026-11-18 交付）与 `aifei-tools`（2026-11-20 交付）均已落地，移入 §3.1 已交付清单。
 
 ## 四、依赖关系与关联分析
 
@@ -99,8 +105,8 @@
 
 | 层级 | 模块 |
 | --- | --- |
-| 库模块（SDK，13 个） | `aifei-cache` `aifei-lock` `aifei-sentinel` `aifei-weixin` `aifei-sa-token` `aifei-websocket` `aifei-mq` `aifei-oss` `aifei-job` `aifei-http` `aifei-excel` `aifei-id` `aifei-trace` |
-| 示例工程（9 个，不发布） | `aifei-sentinel-demo` `aifei-websocket-demo` `aifei-mq-demo` `aifei-oss-demo` `aifei-job-demo` `aifei-id-demo` `aifei-http-demo` `aifei-trace-demo` `aifei-excel-demo` |
+| 库模块（SDK，16 个） | `aifei-cache` `aifei-lock` `aifei-sentinel` `aifei-weixin` `aifei-sa-token` `aifei-websocket` `aifei-mq` `aifei-oss` `aifei-job` `aifei-http` `aifei-excel` `aifei-id` `aifei-trace` `aifei-audit` `aifei-i18n` `aifei-tools` |
+| 示例工程（11 个，不发布） | `aifei-sentinel-demo` `aifei-websocket-demo` `aifei-mq-demo` `aifei-oss-demo` `aifei-job-demo` `aifei-id-demo` `aifei-http-demo` `aifei-trace-demo` `aifei-excel-demo` `aifei-i18n-demo` `aifei-audit-demo` |
 
 ### 4.2 已落地的代码级依赖（3 条，全部 `optional`）
 
@@ -148,11 +154,11 @@ graph TD
 1. **方向只能自底向上**：`cache` → `lock` → `job` / `id` / `sa-token` 这条链单向。任何让 `cache` 反向引用上层模块的改动都会引入循环依赖，破坏其基座定位。
 2. **`optional` + 探测是刻意取舍**：跨模块依赖不向下传递，消费者必须显式声明所需坐标。"能形成依赖"不等于"自动获得依赖"——例如 `aifei-id-demo` 只声明 `aifei-id`，雪花模式可跑，号段模式还需引入 `aifei-cache`，否则启动期给出可读错误，属于契约式关联而非隐式耦合。
 3. **能力协同不应升级为代码依赖**：`trace` 贯通 `mq` / `ws` / `job`、`http` 对齐 `sentinel`，正确做法是通过公共数据契约（消息头 / 帧头 / 资源名字符串）解耦，而非库模块互相 `import`——否则会撞上「公共 API 零第三方类型、零框架类型、根包公共类型数量精确」的门禁。
-4. **版本管理风险**：`aifei-cache` 已是 `1.1.0`，其余 12 个库模块为 `1.0.0`；`lock` / `sa-token` / `id` 的 pom 各自写死 `<aifei-cache.version>1.1.0</aifei-cache.version>`，仓库根无聚合 pom，后续升级 cache 需逐个同步，存在遗漏风险。
+4. **版本管理风险**：`aifei-cache` 已是 `1.1.0`，其余 15 个库模块为 `1.0.0`；`lock` / `sa-token` / `id` 的 pom 各自写死 `<aifei-cache.version>1.1.0</aifei-cache.version>`，仓库根无聚合 pom，后续升级 cache 需逐个同步，存在遗漏风险。
 
 ## 五、排期
 
-### 5.1 已完成（2026-11-10 ~ 11-18）
+### 5.1 已完成（2026-11-10 ~ 11-20）
 
 | 模块 | 入库日期 | 交付情况 |
 | --- | --- | --- |
@@ -160,7 +166,10 @@ graph TD
 | `aifei-http` | 11-11 | 库模块 + demo + 设计文档 + 门禁测试 |
 | `aifei-id` | 11-11 | 库模块 + demo + 设计文档 + 门禁测试 |
 | `aifei-trace` | 11-11 | 库模块 + demo + 设计文档 + 门禁测试 |
+| `aifei-audit` | 11-18 | 库模块 + demo + 设计文档 + 门禁测试 |
 | `aifei-excel` | 11-18 | 库模块 + demo + 设计文档 + 门禁测试 |
+| `aifei-i18n` | 11-19 | 库模块 + demo（指令 3 条）+ 设计文档 + 门禁测试 |
+| `aifei-tools` | 11-20 | 库模块（ipdb/captcha/qr/mask 四子包）+ 设计文档 + 门禁测试 |
 
 原 P0 前置验证已随交付闭环：`aifei-log` 上下文能力由 `TraceLogFactory` 包装解决（不注入 MDC）；`aifei-http` 资源名规则已定档落地，余下 `aifei-openapi` 可行性验证仍未启动。
 
@@ -173,7 +182,9 @@ graph TD
 | P1 通道 | W3 – W4 | 12/07 – 12/18 | `aifei-sms` 全量交付（先落地 1 家通道，其余按 provider 追加） | 同上 |
 | P1 通道 | W5 – W7 | 12/21 – 01/08 | `aifei-pay`（支付宝）全量交付，跨元旦 | 同上；回调验签与证书轮换用例齐全 |
 | — 假期 — | — | 02/06 – 02/14 | 春节，不排期 | — |
-| 待定 | — | 视 P0 与设计决策 | `aifei-openapi`（通过后 3 周）、`aifei-audit`（定档后 1.5 周）、`aifei-job:1.1.0` 集群互斥 | — |
+| 待定 | — | 视 P0 与设计决策 | `aifei-openapi`（通过后 3 周）、`aifei-job:1.1.0` 集群互斥 | — |
+
+> `aifei-audit` / `aifei-i18n` / `aifei-tools` 已交付（见 §5.1），不再属本表待推进项。
 
 ### 5.3 待推进依赖关系
 
@@ -213,3 +224,5 @@ aifei-log ─→ aifei-trace（已交付，后续跨模块传播由消费模块�
 2. **`aifei-captcha` 并入工具集**：图片生成 + 答案校验的单体能力过薄，独立成模块的固定成本（公共面 + 门禁 + 文档四件套 + demo）不划算。并入 `aifei-tools`（极简工具集），作为首个工具落 `cn.hg.aifei.tools.captcha` 子包，不独立发布、不独立版本号，需求见 `../需求/aifei-tools.md`。
 3. **`aifei-tools` 的障碍在纪律而非能力**：仓库要求「根包公共类型数量精确且由架构门禁断言」，杂项模块的公共面必然随工具增加而变动。须先定档门禁口径（推荐「根包零类型，公共 API 全部在工具子包，门禁按子包分别断言」）才可启动，故只入第三档待定。
 4. **`aifei-state` 维持不建**：业务以枚举 + 迁移表表达状态流转已足够，且易与已排除的工作流 DAG 边界纠缠。
+
+> **交付状态更新（截至 2026-11-20）**：本节为 2026-11-18 的历史复评留痕。其中 `aifei-i18n` 已于 11-19 交付、`aifei-tools`（含 captcha）已于 11-20 交付，均已移入 §2.1 / §3.1 / §5.1 已交付清单；门禁口径按「根包零公共类型、公共 API 全部落工具子包」定档落地。`aifei-state` 维持不建结论不变。

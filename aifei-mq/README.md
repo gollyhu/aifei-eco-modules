@@ -223,7 +223,7 @@ SendResult send(String topic, String text);   // 文本以 UTF-8 编码为字节
 | `rabbitmq` | **稳定** | `host` | 建连即校验 | `queueDeclare(topic)`；配置 `exchange` 时再声明交换机并绑定 | `com.rabbitmq:amqp-client:5.21.0` |
 | `mqtt` | 随包提供 · 不承诺语义 | `broker-url` | 建连即校验 | 向客户端登记该 topic 过滤器（同过滤器只登记一次） | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` |
 | `mqtt5` | 随包提供 · 不承诺语义 | `broker-url` | 建连即校验 | 同上 | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` |
-| `kafka` | 随包提供 · 不承诺语义 | `bootstrap-servers` | 懒连接 | 首个主题时创建消费者、订阅并启动拉取循环 | `org.apache.kafka:kafka-clients:3.9.1`（**必须停 3.x**） |
+| `kafka` | 随包提供 · 不承诺语义 | `bootstrap-servers` | 懒连接 | 首个主题时创建消费者、订阅并启动拉取循环 | `org.apache.kafka:kafka-clients:3.9.1`（**版本锁定在 3.x，勿升 4.x**） |
 | `redisstream` | 随包提供 · 不承诺语义 | `host` | 懒连接 | 建消费组并启动拉取循环 | `redis.clients:jedis:8.0.1` |
 
 > 「建连即校验」= broker 不可达则**应用启动失败**；「懒连接」= 应用能启动，故障延迟到首次收发才以 `MqException` 暴露。详见 [6.1](#61-启动成功不等于后端可达)。
@@ -363,7 +363,7 @@ mq.kafka.auto-offset-reset = latest                          # 新组从最新�
 - 公共面**不暴露 message key**，无法控制分区：需要按业务键保序时只能拆 topic。
 - `auto-offset-reset` 只在消费组无位点 / 位点越界时生效，已有位点时不回退。
 - **懒连接**：启动成功 ≠ broker 可达（见 [6.1](#61-启动成功不等于后端可达)）。
-- 客户端**必须停 3.x**：4.x 要求 Java 11+，会破坏本模块的 Java 8 基线。
+- 客户端**锁定 3.x**（勿升 4.x）：4.x 要求 Java 11+，会破坏本模块的 Java 8 基线。
 
 ### 4.7 redisstream
 

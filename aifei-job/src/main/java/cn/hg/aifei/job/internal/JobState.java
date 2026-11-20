@@ -27,9 +27,9 @@ public final class JobState {
     private final Map<String, JobEvent> terminal = new TreeMap<>();
 
     /**
-     * 记录一次终态；{@code STARTED} 与非终态输入被忽略。
+     * 记录一次终态；{@code event} 为 {@code null}、{@code phase} 为 {@code null} 或 {@code Phase.STARTED} 时忽略。
      *
-     * @param event 事件快照；为 {@code null} 时忽略
+     * @param event 事件快照；为 {@code null} 或 {@code phase} 为 {@code null} 时忽略
      */
     public synchronized void record(JobEvent event) {
         if (event == null || event.phase() == null) {

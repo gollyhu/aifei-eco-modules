@@ -108,62 +108,77 @@ public final class AuditEvent {
         this.client = client;
     }
 
+    /** @return 事件号 */
     public String getEventId() {
         return eventId;
     }
 
+    /** @return 发生时刻（epoch 毫秒） */
     public long getOccurredAt() {
         return occurredAt;
     }
 
+    /** @return 动作码 */
     public String getAction() {
         return action;
     }
 
+    /** @return 业务模块，可空 */
     public String getModule() {
         return module;
     }
 
+    /** @return 描述，可空 */
     public String getDesc() {
         return desc;
     }
 
+    /** @return 操作人 id，可空 */
     public String getActorId() {
         return actorId;
     }
 
+    /** @return 操作人名，可空 */
     public String getActorName() {
         return actorName;
     }
 
+    /** @return 目标对象标识，可空 */
     public String getTarget() {
         return target;
     }
 
+    /** @return 脱敏后的入参摘要，可空 */
     public String getArgsSummary() {
         return argsSummary;
     }
 
+    /** @return 结果（SUCCESS / FAILURE） */
     public Result getResult() {
         return result;
     }
 
+    /** @return 错误码，可空 */
     public String getErrorCode() {
         return errorCode;
     }
 
+    /** @return 错误消息，可空 */
     public String getErrorMessage() {
         return errorMessage;
     }
 
+    /** @return 耗时毫秒 */
     public long getElapsedMillis() {
         return elapsedMillis;
     }
 
+    /** @return 链路标识，可空 */
     public String getTraceId() {
         return traceId;
     }
 
+    /** @return 客户端标识，可空 */
     public String getClient() {
         return client;
     }

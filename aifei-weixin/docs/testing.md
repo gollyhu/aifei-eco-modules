@@ -188,8 +188,8 @@
 
 ```shell
 # 模块根目录（aifei-weixin）执行
-mvn test           # 全部 109 个用例
-mvn clean test     # 干净构建下重跑
+mvn clean verify   # 主验证命令：全部 109 个用例 + 打包，必须 0 failure / 0 error（架构门禁为 surefire 用例，test 阶段即执行）
+mvn test           # 快速迭代：仅跑 test 阶段（本模块无 verify 专属门禁）
 ```
 
 - `KernelBindingTest` 依赖相对路径 `src/main/java`，**必须在模块根目录执行**。
@@ -213,4 +213,4 @@ mvn clean test     # 干净构建下重跑
 - 新增或改变公共行为（消息类型、响应体语义、签名格式、token 策略、支付流程）时，同步更新本文件的用例清单与 `docs/design.md`。
 - 触及协议数据格式（加解密布局、签名串、XML 结构、`WxConsts` 常量值）时，必须补齐或更新固定向量用例。
 - 触及内核绑定边界（`cn.aifei.core.*` 引用位置、新增 arch / undertow / sql 引用）时，必须先让 `KernelBindingTest` 通过。
-- 改动后 `mvn clean test` 必须 0 failure / 0 error。
+- 改动后 `mvn clean verify` 必须 0 failure / 0 error。

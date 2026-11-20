@@ -11,7 +11,9 @@ package cn.aifei.weixin.core.msg;
 import cn.aifei.weixin.WxConsts;
 
 /**
- * 音乐回复
+ * 音乐回复。
+ *
+ * <p>以下 getter / setter 均为对应字段的简单读写，语义同字段名，不逐方法重复说明。</p>
  */
 public class OutMusicMsg extends OutMsg {
 

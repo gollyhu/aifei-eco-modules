@@ -10,14 +10,14 @@
 
 本模块定位为**极简工具集**：一个 JAR 收纳多个互不相关的工具，按子包隔离、各自独立可用，不做跨工具抽象。
 
-第二个工具候选是 IP 归属地查询（ip）：把「引入 ip2region 客户端、准备 xdb 数据文件、选择查询模式、处理 Searcher 线程安全、解析五段 region 字符串」这套每个应用都要重复处理的样板收口。与 captcha 并列，同属「单体能力薄、独立立项固定成本不划算」的极简工具，并入本模块落 `cn.hg.aifei.tools.ip` 子包，共享「子包隔离、各自独立可用、不做跨工具抽象」的定位。
+第二个工具候选是 IP 归属地查询（ipdb）：把「引入 ip2region 客户端、准备 xdb 数据文件、选择查询模式、处理 Searcher 线程安全、解析五段 region 字符串」这套每个应用都要重复处理的样板收口。与 captcha 并列，同属「单体能力薄、独立立项固定成本不划算」的极简工具，并入本模块落 `cn.hg.aifei.tools.ipdb` 子包（与实现一致；早期需求稿的 `cn.hg.aifei.tools.ip` 为过期包名），共享「子包隔离、各自独立可用、不做跨工具抽象」的定位。
 
 ## 二、范围
 
 - 交付 `io.github.gollyhu:aifei-tools:1.0.0`，包名 `cn.hg.aifei.tools`，Java 8（class major 52）
-- 首批工具（4 个，各自独立可用）：验证码落 `cn.hg.aifei.tools.captcha` 子包；IP 归属地查询落 `cn.hg.aifei.tools.ip` 子包；二维码落 `cn.hg.aifei.tools.qr` 子包；脱敏落 `cn.hg.aifei.tools.mask` 子包
+- 首批工具（4 个，各自独立可用）：验证码落 `cn.hg.aifei.tools.captcha` 子包；IP 归属地查询落 `cn.hg.aifei.tools.ipdb` 子包；二维码落 `cn.hg.aifei.tools.qr` 子包；脱敏落 `cn.hg.aifei.tools.mask` 子包
 - 后续工具按需追加（候选：其它极简工具），本版不预置空壳、不留占位类
-- 零**强制**第三方运行依赖；`aifei-all` 为 `provided`；第三方能力内核为 `optional`（captcha 的 `aifei-cache`、ip 的 `org.lionsoul:ip2region`、qr 的 `com.google.zxing:core:3.5.3`），缺失时首次调用抛可读异常，对齐 `aifei-excel` 的 EasyExcel 先例
+- 零**强制**第三方运行依赖；`aifei-all` 为 `provided`；第三方能力内核为 `optional`（captcha 的 `aifei-cache`、ipdb 的 `org.lionsoul:ip2region:3.3.7`、qr 的 `com.google.zxing:core:3.5.3`），缺失时首次调用抛可读异常，对齐 `aifei-excel` 的 EasyExcel 先例
 
 **不做**（边界）：
 
@@ -47,8 +47,8 @@
 ## 五、ip 工具要求
 
 - **定位与场景**：离线 IP 归属地查询（城市级），输入 IPv4 / IPv6 文本，返回「国家|省份|城市|ISP|ISO 国家码」五段结果（境内中文、境外英文）。典型场景：日志/审计标注来源地域、请求地域统计、内容地域化。无 Plugin、无配置键、随取随用（对齐 `aifei-excel` / `aifei-trace` 的无装配门面型）。
-- **依赖策略**：唯一第三方内核 `org.lionsoul:ip2region:3.x`（版本待设计决策实证，不得写死小版本；仓库 tag v3.19.0 仅作线索）为 `optional`、阻断传递；`aifei-all` 为 `provided`；库模块零 `cn.aifei.*` 引用、零日志绑定。依赖缺失时首次调用抛可读 `IpException`（收敛 `NoClassDefFoundError` / `ClassNotFoundException`），不得裸抛。双许可 Apache-2.0 OR MIT，署名与许可说明按设计决策在文档留痕。
-- **公共面候选**（须过设计决策，非冻结）：落 `cn.hg.aifei.tools.ip` 子包，候选 `Ip`（有状态会话/工厂）、`IpKit`（便捷门面）、`IpRegion`（结果值对象）、`IpException`（统一异常）及查询模式枚举。公共签名零第三方、零框架类型，不得暴露 ip2region 的 `Searcher`。region 五段解析（含「0」/未知值语义）唯一定义点放 `internal`，公共层与实现层不得复制。
+- **依赖策略**：唯一第三方内核 `org.lionsoul:ip2region:3.3.7`（版本已定档——2026-11-20 随实现回写，与 `aifei-tools/pom.xml` 的 `<ip2region.version>3.3.7</ip2region.version>` 及根 `README.md` 依赖说明一致；早期「3.x 待定 / tag v3.19.0 仅线索」为设计前口径，已废止）为 `optional`、阻断传递；`aifei-all` 为 `provided`；库模块零 `cn.aifei.*` 引用、零日志绑定。依赖缺失时首次调用抛可读 `IpException`（收敛 `NoClassDefFoundError` / `ClassNotFoundException`），不得裸抛。双许可 Apache-2.0 OR MIT，署名与许可说明按设计决策在文档留痕。
+- **公共面（已按实现定稿）**：落 `cn.hg.aifei.tools.ipdb` 子包，精确 5 个类型——`IpKit`（便捷门面，`search(v4Xdb, v6Xdb, ip[, mode])`）、`IpRegion`（结果值对象）、`IpQueryMode`（查询模式枚举）、`IpException`（统一异常）、`IpSearcher`（`AutoCloseable` 会话）。**当前无 `Ip` 顶层类**（早期候选 `Ip` 未落地，已废止）。公共签名零第三方、零框架类型，不得暴露 ip2region 的 `Searcher`。region 五段解析（含「0」/未知值语义）唯一定义点放 `internal`，公共层与实现层不得复制。
 - **数据文件策略**：xdb 为独立二进制数据文件、不打包进 jar，由消费方自带并经入参显式传入路径（不设配置键、不内置默认文件、不联网下载）。IPv4 / IPv6 分别对应 `ip2region_v4.xdb` / `ip2region_v6.xdb`。
 - **查询模式**：fileOnly（内存最低、每次磁盘 IO）、vectorIndex（固定 512 KiB 索引缓存，约 100µs）、content（全文件内存，约 10µs）三选一，由入参指定；三种模式对同一 IP 与同一 xdb 的归属地结果须一致，差异只在性能/内存占用。
 - **并发与生命周期契约**：`Searcher` 非线程安全，并发策略按模式定档（每次查询新建 / ThreadLocal / 实例独占等），不得在无保护下单实例共享；三种模式均持有需关闭的资源，`close()` 须幂等，关闭后查询抛可读异常（具体异常类型与消息待设计决策）。
@@ -134,7 +134,7 @@ public final class MaskException extends RuntimeException {
 - 非法 IP 文本 / null 入参、xdb 文件不存在或不可读、未引入 ip2region 依赖 → 首次调用均抛 `IpException` 且消息可读，无裸 `NoClassDefFoundError` / `NullPointerException`
 - 多线程并发查询（按定档并发策略）无结果串扰、无 `Searcher` 共享异常
 - `close()` 连续调用幂等；关闭后查询抛可读异常（符合定档语义）
-- 门禁按定档口径断言：根包公共类型为零、`ip` 子包公共类型精确 N 个（N 由设计决策确定）
+- 门禁按定档口径断言：根包公共类型为零、`ipdb` 子包公共类型精确 5 个（`IpKit` / `IpRegion` / `IpQueryMode` / `IpException` / `IpSearcher`，N=5 已随实现定档）
 - 测试不提交 xdb 二进制；测试样本策略（现场生成小样本 / 测试期拉取）由设计决策确定后落地
 - qr：`encode` 产出可被 `decode` 还原的 PNG。
 - qr：四档纠错等级与 `size`/`margin` 选项生效。
@@ -157,9 +157,9 @@ public final class MaskException extends RuntimeException {
 
 ## 九、待确认问题（ip / qr / mask 工具）
 
-1. `ip2region` 具体版本：仅写「3.x，版本待设计决策实证」，须由设计阶段实测 Maven 坐标可用版本后定档（tag v3.19.0 仅线索）。
+1. ~~`ip2region` 具体版本：仅写「3.x，版本待设计决策实证」~~ **— 已定档（2026-11-20）**：`org.lionsoul:ip2region:3.3.7`，出处 `aifei-tools/pom.xml` 与根 `README.md` 依赖说明（原「tag v3.19.0 仅线索」作废）。
 2. IPv4 / IPv6 路由：单实例绑单库，还是按 IP 版本自动路由双库（影响公共面形态与 `IpRegion` 来源）——待设计决策，不冻结。
-3. 公共面精确命名与数量：候选 `Ip` / `IpKit` / `IpRegion` / `IpException` + 模式枚举，最终类型清单与个数由设计决策定档后作为门禁 N 值；命名后缀须符合「`XxxUtil` 无状态 / `XxxKit` 有状态门面」约定。
+3. ~~公共面精确命名与数量（待设计决策）~~ **— 已按实现定档（2026-11-20）**：`ipdb` 子包精确 5 个类型 `IpKit` / `IpRegion` / `IpQueryMode` / `IpException` / `IpSearcher`（门禁 N=5）；无 `Ip` 顶层类；命名后缀符合「`XxxUtil` 无状态 / `XxxKit` 有状态门面」约定。
 4. 测试样本策略：不提交 xdb 二进制前提下，采用现场生成最小样本还是测试期拉取（拉取需可重复、不外链生产数据）——待设计决策。
 5. 查询模式默认值与并发默认值：未显式指定模式时的默认选择、并发策略默认项（每次新建 / ThreadLocal / 实例独占）——待设计决策。
 6. region 五段中「0」/未知值的对外语义（空串 / 特定占位 / 可选字段）与 `close()` 后异常类型、消息——按仓库纪律「未经设计决策不得自定空值/异常语义」，须先定档。

@@ -60,6 +60,12 @@ public class SaTokenDaoForCache implements SaTokenDao {
         this.delegate = delegate;
     }
 
+    /**
+     * 读字符串值：命中缓存直接返回；未命中且配置了权威持久层时回源并回填。
+     *
+     * @param key 键
+     * @return 值，不存在返回 {@code null}
+     */
     @Override
     public String get(String key) {
         String hit = cache.get(CACHE_NAME, key);
@@ -73,6 +79,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         return value;
     }
 
+    /** 写入字符串值并同步到权威持久层（若配置）；有效期按 Sa-Token 秒级约定换算。 */
     @Override
     public void set(String key, String value, long timeout) {
         if (delegate != null) {
@@ -81,6 +88,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         store(key, value, timeout);
     }
 
+    /** 更新字符串值并保持原有有效期；有权威持久层时以其有效期为准。 */
     @Override
     public void update(String key, String value) {
         if (delegate != null) {
@@ -91,6 +99,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         rewrite(key, value);
     }
 
+    /** 删除字符串键（同时删除权威持久层中的对应项，若配置）。 */
     @Override
     public void delete(String key) {
         if (delegate != null) {
@@ -99,11 +108,13 @@ public class SaTokenDaoForCache implements SaTokenDao {
         cache.remove(CACHE_NAME, key);
     }
 
+    /** 查询剩余有效期（秒）；Sa-Token 以 -1 表示永久。 */
     @Override
     public long getTimeout(String key) {
         return delegate != null ? delegate.getTimeout(key) : remainSeconds(cache.getTtl(CACHE_NAME, key));
     }
 
+    /** 重设有效期（秒），有权威持久层时同步更新。 */
     @Override
     public void updateTimeout(String key, long timeout) {
         if (delegate != null) {
@@ -112,6 +123,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         resetTtl(key, timeout);
     }
 
+    /** 读对象值：命中缓存直接返回；未命中且配置了权威持久层时回源并回填。 */
     @Override
     public Object getObject(String key) {
         Object hit = cache.get(CACHE_NAME, key);
@@ -125,6 +137,13 @@ public class SaTokenDaoForCache implements SaTokenDao {
         return value;
     }
 
+    /**
+     * 读对象值并按类型转型。
+     *
+     * @param key       键
+     * @param classType 目标类型；为 {@code null} 时不做转型直接返回
+     * @return 转型后的对象，不存在返回 {@code null}
+     */
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getObject(String key, Class<T> classType) {
@@ -132,6 +151,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         return classType == null ? (T) value : classType.cast(value);
     }
 
+    /** 写入对象值并同步到权威持久层（若配置）。 */
     @Override
     public void setObject(String key, Object object, long timeout) {
         if (delegate != null) {
@@ -140,6 +160,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         store(key, object, timeout);
     }
 
+    /** 更新对象值并保持原有有效期；有权威持久层时以其有效期为准。 */
     @Override
     public void updateObject(String key, Object object) {
         if (delegate != null) {
@@ -150,6 +171,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         rewrite(key, object);
     }
 
+    /** 删除对象键（同时删除权威持久层中的对应项，若配置）。 */
     @Override
     public void deleteObject(String key) {
         if (delegate != null) {
@@ -158,11 +180,13 @@ public class SaTokenDaoForCache implements SaTokenDao {
         cache.remove(CACHE_NAME, key);
     }
 
+    /** 查询对象值的剩余有效期（秒）；Sa-Token 以 -1 表示永久。 */
     @Override
     public long getObjectTimeout(String key) {
         return delegate != null ? delegate.getObjectTimeout(key) : remainSeconds(cache.getTtl(CACHE_NAME, key));
     }
 
+    /** 重设对象值的有效期（秒），有权威持久层时同步更新。 */
     @Override
     public void updateObjectTimeout(String key, long timeout) {
         if (delegate != null) {
@@ -171,6 +195,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         resetTtl(key, timeout);
     }
 
+    /** 读会话：命中缓存直接返回；未命中且配置了权威持久层时回源并回填。 */
     @Override
     public SaSession getSession(String sessionId) {
         SaSession hit = cache.get(CACHE_NAME, sessionId);
@@ -184,6 +209,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         return session;
     }
 
+    /** 写入会话并同步到权威持久层（若配置）。 */
     @Override
     public void setSession(SaSession session, long timeout) {
         if (delegate != null) {
@@ -192,6 +218,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         store(session.getId(), session, timeout);
     }
 
+    /** 更新会话并保持原有有效期；有权威持久层时以其有效期为准。 */
     @Override
     public void updateSession(SaSession session) {
         if (delegate != null) {
@@ -202,6 +229,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         rewrite(session.getId(), session);
     }
 
+    /** 删除会话（同时删除权威持久层中的对应项，若配置）。 */
     @Override
     public void deleteSession(String sessionId) {
         if (delegate != null) {
@@ -210,6 +238,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
         cache.remove(CACHE_NAME, sessionId);
     }
 
+    /** 查询会话的剩余有效期（秒）；Sa-Token 以 -1 表示永久。 */
     @Override
     public long getSessionTimeout(String sessionId) {
         return delegate != null
@@ -217,6 +246,7 @@ public class SaTokenDaoForCache implements SaTokenDao {
                 : remainSeconds(cache.getTtl(CACHE_NAME, sessionId));
     }
 
+    /** 重设会话的有效期（秒），有权威持久层时同步更新。 */
     @Override
     public void updateSessionTimeout(String sessionId, long timeout) {
         if (delegate != null) {

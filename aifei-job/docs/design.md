@@ -962,9 +962,9 @@ io.github.gollyhu:aifei-job:jar:1.0.0
 - 若消费方已有其它 Quartz 版本，请自行 `exclusion` 或对齐版本；
 - 消费方**不得**依赖本模块带来的 slf4j-api 作为自身日志门面（本模块不承诺其日志语义）。
 
-### 10.5 根 `AGENTS.md` 的 `compile` 例外登记（**待执行动作**）
+### 10.5 根 `AGENTS.md` 的 `compile` 例外登记（**已完成**）
 
-仓库根 `AGENTS.md` 规定「第三方依赖一律 `optional` 或 `provided`；新增 `compile` 例外一律须先在该文件登记」。本模块的 Quartz 与 slf4j-api 为 `compile`，**须在根 `AGENTS.md` 的「已登记的 `compile` 例外」清单中新增两条**（口径照 `aifei-oss` / `aifei-sa-token` 的两条；理由指向本文 §10.1）。该登记动作归调度人 / 实现成员，**本文不修改根 `AGENTS.md`**。
+仓库根 `AGENTS.md` 规定「第三方依赖一律 `optional` 或 `provided`；新增 `compile` 例外一律须先在该文件登记」。本模块的 Quartz 与 slf4j-api 为 `compile`，两条例外**已在根 `AGENTS.md`「已登记的 `compile` 例外」清单完成登记**（口径照 `aifei-oss` / `aifei-sa-token`；理由指向本文 §10.1 / §3.1）：`org.quartz-scheduler:quartz`（cron 表达式校验与下次触发计算的实现内核）与 `org.slf4j:slf4j-api`（Quartz 内部日志门面）。
 
 ### 10.6 构建插件
 
@@ -1125,7 +1125,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | 1 | **`JobException` 构造器可见性** | 已拍板 `public`（§12 D1）；门禁口径不变 |
 | 2 | **`JobKit` 未启动语义** | 已拍板返回空集合（§12 D2） |
 | 3 | **Quartz 传递依赖实测** | **已实测回填**（§10.2 / §10.3，2026-11-10）：3 条 exclusion（`c3p0` / `mchange-commons-java` / `HikariCP-java7`）均为有效排除，零日志绑定；`c3p0:c3p0` 旧变体实测不存在，故未写 exclusion |
-| 4 | **根 `AGENTS.md` 的 `compile` 例外登记** | 本模块的 Quartz / slf4j-api 为 `compile`，**须在根 `AGENTS.md` 登记两条**（§10.5）。文档归属根文件，本设计不修改它；**未登记前实现成员可先落地代码，但提交前必须完成登记** |
+| 4 | **根 `AGENTS.md` 的 `compile` 例外登记** | **已完成**：本模块的 Quartz / slf4j-api 两条例外已在根 `AGENTS.md`「已登记的 `compile` 例外」清单登记（§10.5），理由指向本文 §10.1 / §3.1 |
 | 5 | **表达式「无下次触发时刻」** | 极端表达式（如年份已过）`getNextValidTimeAfter` 返回 `null`。实现口径：`CronCalculator#nextAfter` 返回 `-1`，`JobSchedule#nextDelay` 返回 `-1`，`JobScheduler#reschedule` **放弃续排并 `log.warn` 一次**（不抛、不记账）。需求未覆盖此场景，故列为实现期口径 |
 | 6 | **daemon 线程** | 两层线程设为 daemon（§3.1 实现口径）。若不设，插件未 `stop()` 会拖住 JVM 退出；设为 daemon 后「进程退出即停」符合「不保证强制终止」声明。**属实现口径，可评审但不改契约** |
 | 7 | **方法发现范围** | 只扫被扫到类**自身声明**的方法（`getDeclaredMethods()`）；继承而来的注解方法不注册（避免父子类各自注册触发任务名判重误报）。需求未明确，按此实现并写入 README 注意事项 |

@@ -30,6 +30,9 @@ import java.util.Map;
  *  1: GET 与 POST 分流由 WeixinHandler 负责（依 io.isGet(in)）
  *  2: 被动回复的 ToUserName / FromUserName 反转、CreateTime 生成由本类统一承担
  *  3: 验签失败回 "fail"；消息解析 / 业务处理异常回 "success"（避免微信无谓重试）
+ *  4: 安全模式的判定源两处不同：首验（verify）按 encrypt_type=AES 或账号 isSafeMode() 判定，
+ *     回复是否加密（handle）只由 WeixinAccount.isSafeMode() 决定，encrypt_type 不参与回复判定。
+ *     自行实现 WeixinIo 的接入方需注意这一差异。
  * </pre>
  */
 public class MsgUtil {
@@ -77,7 +80,10 @@ public class MsgUtil {
     }
 
     /**
-     * POST：消息链路。验签 →（解密）→ 解析 → 分发 → 渲染 →（加密）→ 返回响应体字符串
+     * POST：消息链路。验签 →（解密）→ 解析 → 分发 → 渲染 →（加密）→ 返回响应体字符串。
+     *
+     * <p>返回分类：XML / 消息解析失败、无回复消息（含不支持的消息类型）、业务处理异常返回
+     * {@code success}；验签失败、解密失败返回 {@code fail}。</p>
      */
     public static <I> String handle(WeixinIo<I> io, I in, WeixinAccount account, MsgHandler handler) {
         String signature = io.query(in, "signature");
@@ -160,10 +166,31 @@ public class MsgUtil {
         return expect.equals(signature.toLowerCase());
     }
 
+    /**
+     * 加密明文消息（直接委托 {@link WxCrypt#encrypt}）。
+     *
+     * <p>语法约定：AESKey = Base64(EncodingAESKey + "=") 解码后的 32 字节密钥，IV 取前 16 字节；
+     * 明文结构 = 16 字节随机串 + 4 字节大端消息长度 + 消息体 + appId。</p>
+     *
+     * @param aesKey 43 字符的 EncodingAESKey
+     * @param appId  公众号 appId，参与明文封装并在解密时校验
+     * @param plain  待加密的 UTF-8 明文
+     * @return Base64 编码的密文
+     * @throws IllegalArgumentException aesKey 非法时由 {@link WxCrypt} 抛出
+     */
     public static String encrypt(String aesKey, String appId, String plain) {
         return WxCrypt.encrypt(aesKey, appId, plain);
     }
 
+    /**
+     * 解密密文消息（直接委托 {@link WxCrypt#decrypt}），校验封装中的 appId 后截取消息体。
+     *
+     * @param aesKey         43 字符的 EncodingAESKey
+     * @param appId          期望的公众号 appId，与封装内的 appId 不符时视为失败
+     * @param encryptBase64  待解密的 Base64 密文
+     * @return 解密后的 UTF-8 明文
+     * @throws IllegalArgumentException 密文非合法 Base64、AESKey 非法、结果长度 / 消息长度非法或 appId 校验失败时由 {@link WxCrypt} 抛出
+     */
     public static String decrypt(String aesKey, String appId, String encryptBase64) {
         return WxCrypt.decrypt(aesKey, appId, encryptBase64);
     }

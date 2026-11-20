@@ -6,7 +6,7 @@
 >
 > **坐标**：`io.github.gollyhu:aifei-http:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.http`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（compile / runtime / optional 全为零）。
 >
-> **文档状态**：本文是 1.0.0 的**设计定稿**，代码尚未落地。§5 的 6 个公共类型签名与 §7 的配置键名是编码角色的**唯一依据**，变更前必须先改本文。
+> **文档状态**：本文是 1.0.0 的**设计定稿，已按本文实现交付**（模块 + `aifei-http-demo` 已落地并过 `mvn clean verify`，`docs/testing.md` 已产出）。§5 的 6 个公共类型签名与 §7 的配置键名仍是公共契约的**唯一依据**，变更前必须先改本文。
 
 ---
 
@@ -917,7 +917,7 @@ aifei-http/                                    io.github.gollyhu:aifei-http:1.0.
 | **B2** 纯规则三件（3） | `internal/HttpResource.java` · `internal/HttpRetry.java` · `internal/HttpTimeouts.java` | B1 | P0 | `aifei-service-engineer` | 资源名对 AC-R-12 / R-13 字面量正确；`requireIdempotent("POST")` 抛 `IllegalArgumentException` |
 | **B3** 公共值对象与拦截器（4） | `HttpRequest.java` · `HttpResponse.java` · `HttpInterceptor.java` · `HttpClient.java` | B1、B2 | P0 | `aifei-service-engineer` | 根包 6 文件中的 4 个到位；`retry()` 守卫与 `url()` 拼接自测通过 |
 | **B4** 传输与编排（4） | `internal/HttpTransport.java` · `internal/HttpIoException.java` · `internal/HttpGzip.java` · `internal/JdkHttpTransport.java` | B1、B2、B3 | P0 | `aifei-service-engineer` | 回环端点可完成一次 GET / POST；超时 → `HttpIoException`（cause 为 `IOException`）；超限 → `HttpException` |
-| **B5** 门面与装配（3） | `internal/DefaultHttpClient.java` · `internal/HttpHolder.java` · `HttpKit.java` · `aifei/HttpPlugin.java`（4 文件） | B3、B4 | P0 | `aifei-service-engineer` | 链顺序正进逆出；重试计数正确；`HttpPlugin.start/stop` 幂等；`@Inject HttpClient` 非 null |
+| **B5** 门面与装配（4） | `internal/DefaultHttpClient.java` · `internal/HttpHolder.java` · `HttpKit.java` · `aifei/HttpPlugin.java`（4 文件） | B3、B4 | P0 | `aifei-service-engineer` | 链顺序正进逆出；重试计数正确；`HttpPlugin.start/stop` 幂等；`@Inject HttpClient` 非 null |
 | **B6** 门禁 + 纯规则单测（4） | `ArchitectureBoundaryTest.java` · `internal/HttpResourceTest.java` · `internal/HttpConfigTest.java` · `internal/HttpRetryTest.java` | B1–B5 | P0 | `aifei-service-engineer` | 门禁 10 例全绿（AC-R-01/02/03/14/19/20/26） |
 | **B7** 编排与集成单测（4） | `internal/TransportStub.java` · `internal/DefaultHttpClientTest.java` · `HttpPluginTest.java` · `HttpKitTest.java` | B5、B6 | P0 | `aifei-service-engineer` | AC-R-04/05/06/10/11/12/13/14/17/18/19 通过 |
 | **B8** 回环集成（3） | `support/LoopbackServer.java` · `internal/JdkHttpTransportTest.java` · `internal/HttpCodecTest.java`（+ 需要时 `HttpGzipTest` / `HttpTimeoutsTest`） | B4、B7 | P0 | `aifei-service-engineer` | AC-R-07/08/09/15/16/21/22/23/24/25 通过；断网可跑全绿 |

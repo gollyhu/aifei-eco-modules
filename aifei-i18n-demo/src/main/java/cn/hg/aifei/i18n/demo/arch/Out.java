@@ -2,7 +2,6 @@
  * Copyright 2014-2026 糊搞 (3722711@qq.com)
  *
  * https://gitee.com/gollyhu
- * 开发工程师 寇戴码（Enjoy 指令增量）
  */
 
 package cn.hg.aifei.i18n.demo.arch;
@@ -15,10 +14,13 @@ import java.util.Map;
 /**
  * Out：统一响应对象（demo 简化版）。
  *
- * <pre>
- * 1: HTTP 恒 200，业务语义由 code 承载，0 为成功。
- * 2: 支持 view(...) 渲染 enjoy 模板，或 data(...) 输出 json。
- * </pre>
+ * <p>本类属从其它 demo 复制的通用脚手架，职责是以信封 {@code code} 承载业务语义、统一输出
+ * view（enjoy 模板）或 json；仅供 demo 演示，不含生产级错误处理。以下链式设置方法语义同方法名。</p>
+ *
+ * <ol>
+ *   <li>HTTP 恒 200，业务语义由 code 承载，0 为成功。</li>
+ *   <li>支持 view(...) 渲染 enjoy 模板，或 data(...) 输出 json。</li>
+ * </ol>
  */
 public class Out implements Output {
 

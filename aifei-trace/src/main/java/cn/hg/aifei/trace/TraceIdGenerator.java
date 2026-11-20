@@ -7,18 +7,16 @@
 package cn.hg.aifei.trace;
 
 /**
- * TraceIdGenerator.
- *
- * <pre>
  * TraceId 生成策略接口，可通过 TraceKit.setTraceIdGenerator(...) 替换默认实现。
  *
- * generate() 的格式契约（javadoc 强约束，模块运行期不校验产出，替换方自担）：
- *  1: 返回值非空，不得返回 null；
- *  2: 全局趋势唯一；
- *  3: 仅含 [0-9a-f]，固定 32 位小写十六进制——保证日志检索、grep 与跨服务对齐有确定格式。
+ * <p>generate() 的格式契约（javadoc 强约束，模块运行期不校验产出，替换方自担）：</p>
+ * <ol>
+ *   <li>返回值非空，不得返回 null；</li>
+ *   <li>全局趋势唯一；</li>
+ *   <li>仅含 [0-9a-f]，固定 32 位小写十六进制——保证日志检索、grep 与跨服务对齐有确定格式。</li>
+ * </ol>
  *
- * 实现应无状态，或自行保证线程安全（默认实现 DefaultTraceIdGenerator 无状态）。
- * </pre>
+ * <p>实现应无状态，或自行保证线程安全（默认实现 DefaultTraceIdGenerator 无状态）。</p>
  */
 public interface TraceIdGenerator {
 

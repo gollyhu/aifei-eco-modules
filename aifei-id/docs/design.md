@@ -6,7 +6,7 @@
 >
 > **坐标**：`io.github.gollyhu:aifei-id:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.id`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方依赖**（`aifei-cache` / `aifei-lock` 均 `optional`，`aifei-all` 为 `provided`）。
 >
-> **文档状态**：1.0.0 设计定稿；**代码已落地**（模块单测 + 架构门禁全绿，`aifei-id-demo` 双策略实测通过），本文已按实现期既成事实回写 §7.1 / §7.5 / §7.6 / §10 / §11 / §13 / §14（均为记录与订正，公共契约不变）。§5 的 4 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
+> **文档状态**：1.0.0 设计定稿；**代码已落地**（模块单测 + 架构门禁全绿，`aifei-id-demo` 双策略实测通过），本文已按实现期既成事实回写 §7.1 / §7.5 / §7.6 / §10 / §11 / §12 / §13 / §14（均为记录与订正，公共契约不变）。§5 的 4 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
 >
 > **底稿说明**：本模块为**原创设计**，无官方同名模块可对齐。参考的是仓库既有范式：`aifei-trace`（公共面收敛 + 门禁范式）、`aifei-job`（Plugin / 配置域 / `internal` 分层 / 错误单点）、`aifei-lock`（可选依赖 + 共享后端能力校验）、`aifei-cache`（`Cache` / `Counter` 真实原语）。文中所有 `cn.hg.aifei.cache.*` / `cn.hg.aifei.lock.*` 的调用签名均按**已实现源码逐一核对**，不臆造 API。
 
@@ -861,13 +861,13 @@ mvn dependency:tree                               # 断言：仅 11.2 允许清�
 | # | 事项 | 处理 / 假设 | 归属 |
 | --- | --- | --- | --- |
 | 1 | **依赖坐标与需求文档不一致** | 需求与派发说明写 `cn.hg.aifei:aifei-cache` / `aifei-lock`，仓库**实际坐标为 `io.github.gollyhu:aifei-cache:1.1.0` / `io.github.gollyhu:aifei-lock:1.0.0`**（`cn.hg.aifei.*` 只是包名前缀，已核对两个模块的 `pom.xml`）。本文按实际坐标，README 与 pom 一律使用 `io.github.gollyhu` | 已定档（如需改回，请指示） |
-| 2 | **根 `AGENTS.md` 需登记的类型清单** | 经核对先例：`aifei-job` 的 `aifei.JobPlugin` 暴露 `Plugin` / `Prop` / `Scanner`，因其位于**装配包（非承诺 API）**、根包零框架类型，**未**在根 `AGENTS.md` 登记。本模块照此处理 → **需登记清单为空**（无 `compile` 例外：`aifei-cache` / `aifei-lock` 均 `optional`；根包零框架类型）。**若评审要求把 `IdPlugin` 计入公共面**，则需在根 `AGENTS.md` 登记两条：`cn.aifei.plugin.Plugin`（`IdPlugin implements`）与 `cn.aifei.util.Prop`（`IdPlugin` 构造参数）。本设计**不修改根 `AGENTS.md`** | 需拍板（默认按 job 先例不登记） |
+| 2 | **根 `AGENTS.md` 需登记的类型清单** | 经核对先例：`aifei-job` 的 `aifei.JobPlugin` 暴露 `Plugin` / `Prop` / `Scanner`，因其位于**装配包（非承诺 API）**、根包零框架类型，**未**在根 `AGENTS.md` 登记。本模块照此处理 → **需登记清单为空**（无 `compile` 例外：`aifei-cache` / `aifei-lock` 均 `optional`；根包零框架类型）。**若评审要求把 `IdPlugin` 计入公共面**，则需在根 `AGENTS.md` 登记两条：`cn.aifei.plugin.Plugin`（`IdPlugin implements`）与 `cn.aifei.util.Prop`（`IdPlugin` 构造参数）。本设计**不修改根 `AGENTS.md`** | **已定档：按 job 先例不登记**——根 `AGENTS.md` 无 `aifei-id` 条目，经落地复核确认 |
 | 3 | **`cn.aifei.log.*` 的模块内白名单** | 门禁 ③ 定档：`cn.aifei.log.*` 允许在 `internal` 与 `aifei` 包，根包禁止。属模块级白名单（同 `aifei-job` 做法），无需根登记 | 已定档 |
-| 4 | ⚠ **`id.worker.source=lock` 的后台续期线程是否纳入 v1** | 纳入：该模式下 workerId 按进程生命周期持有，不续期则租约到期后被他人抢走 → 重号，功能不完整。复杂度已隔离在单文件 `LockWorkerIdSource`（门禁 ⑫ 断言线程只在此处）。**若判定 v1 风险过高**，削减方案为：v1 只保留 `config` / `cache` 两来源，`lock` 推迟到 1.1（此时 `id.worker.source` 的合法值改为 `[config, cache]`，`aifei-lock` 依赖一并移除） | 需拍板 |
-| 5 | ⚠ **号段「单 buffer + 同步取段、无预取」** | 见 §2 D6：以「每 `step` 个 ID 一次存储往返」换「无常驻线程、无预取状态机」。若业务侧要求 Leaf 式异步双 buffer 预取，须重写 §2 D6 / §7.4 并新增预取线程与「未就绪等待」语义（门禁 ⑫ 的白名单也要同步放宽） | 需拍板 |
-| 6 | **号段计数器 TTL 默认 365 天 + 回退检测 fail-fast** | 过期后计数器归零，回退检测会把它变成**显式失败**（消息 I）而不是静默重号；运维处置：换 `id.segment.key` 或手工把计数器置回高位。若业务要求「永不过期」，可把 TTL 调到 `aifei-cache` 上限（`Integer.MAX_VALUE` 秒） | 需确认默认值 |
+| 4 | ⚠ **`id.worker.source=lock` 的后台续期线程是否纳入 v1** | 纳入：该模式下 workerId 按进程生命周期持有，不续期则租约到期后被他人抢走 → 重号，功能不完整。复杂度已隔离在单文件 `LockWorkerIdSource`（门禁 ⑫ 断言线程只在此处）。**若判定 v1 风险过高**，削减方案为：v1 只保留 `config` / `cache` 两来源，`lock` 推迟到 1.1（此时 `id.worker.source` 的合法值改为 `[config, cache]`，`aifei-lock` 依赖一并移除） | **已定档：v1 纳入 `lock` 来源及后台续期**，实现见 `LockWorkerIdSource`，合法值为 `[config, cache, lock]`；削减方案未采用 |
+| 5 | ⚠ **号段「单 buffer + 同步取段、无预取」** | 见 §2 D6：以「每 `step` 个 ID 一次存储往返」换「无常驻线程、无预取状态机」。若业务侧要求 Leaf 式异步双 buffer 预取，须重写 §2 D6 / §7.4 并新增预取线程与「未就绪等待」语义（门禁 ⑫ 的白名单也要同步放宽） | **已定档：单 buffer 同步取段、无预取**，实现见 `SegmentIdGenerator`；Leaf 式双 buffer 未采用 |
+| 6 | **号段计数器 TTL 默认 365 天 + 回退检测 fail-fast** | 过期后计数器归零，回退检测会把它变成**显式失败**（消息 I）而不是静默重号；运维处置：换 `id.segment.key` 或手工把计数器置回高位。若业务要求「永不过期」，可把 TTL 调到 `aifei-cache` 上限（`Integer.MAX_VALUE` 秒） | **已定档：默认 365 天**（`DEFAULT_STATE_TTL_MILLIS`）+ 回退检测 fail-fast，已落地 |
 | 7 | **demo 单页不经原型与 QA 基线门禁** | `aifei-id-demo` 单页由前端直接实装（同 `aifei-trace-demo` / `aifei-job-demo` 定档）；**不得**因页面需求回头要求模块新增公共 API（尤其状态查询 API） | 已定档 |
-| 8 | **demo 双策略需两个启动脚本** | `start-demo.bat`（雪花，端口 18140）与 `start-demo-segment.bat`（号段 + `local` 存储，同端口，二者不能同时启动）。同端口是有意的（顺序演示），文档与脚本注释必须写明不可并存 | 需确认 |
+| 8 | **demo 双策略需两个启动脚本** | `start-demo.bat`（雪花，端口 18140）与 `start-demo-segment.bat`（号段 + `local` 存储，同端口，二者不能同时启动）。同端口是有意的（顺序演示），文档与脚本注释必须写明不可并存 | **已定档：两个脚本均已落地**（`start-demo.bat` / `start-demo-segment.bat`） |
 | 9 | **`source=config` 的重复 workerId 无法检测** | 模块在 `config` 模式下无共享状态，同一 workerId 被两个实例使用必然重号，**启动期检测不到**。README 必须显著警告，并建议多实例场景改用 `cache` / `lock` | 已定档（文档责任） |
 | 10 | **`source=cache` 的取模回绕** | 累计冷启动 > 1024 次会与存活实例撞号；TTL 365 天窗口内概率低但真实存在。README 警告 + 启动 INFO 记录取得的 workerId 便于对账 | 已定档（文档责任） |
 | 11 | **`@Inject IdGenerator` 在停机后残留** | 框架无单例注销 API（`CachePlugin` 同款既有行为）。README 声明「停机后请改用 `IdKit`，其会抛 `IllegalStateException`」 | 已定档 |

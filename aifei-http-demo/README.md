@@ -16,6 +16,16 @@
 3. `/http/demo/send` 只接收**相对路径** `path`，传入含 `://` 的外部地址会被当场拒绝（`code=1`）；
 4. 源码与页面中不存在任何外部域名，断网环境下功能完整可用。
 
+## 前置：先把 aifei-http 装入本地仓库
+
+`aifei-http` 是库模块，需先安装到本地仓库（或按 [根 README 构建小节](../README.md#构建) 安装全部模块）：
+
+```bat
+cd ../aifei-http
+mvn -q -DskipTests clean install
+cd ../aifei-http-demo
+```
+
 ## 启动 / 停止
 
 ```bat
@@ -23,11 +33,12 @@ start-demo.bat        :: 编译 + 打包 classpath + 启动（-Dundertow.port=18
 stop-demo.bat         :: 按 18120 找监听进程并结束
 ```
 
-手工启动（等价）：
+手工启动（参数同 `start-demo.bat`，PowerShell 可直接执行）：
 
-```bat
+```powershell
 mvn -q compile dependency:build-classpath -Dmdep.outputFile=target\cp.txt
-java -Ddemo.config=app-config.txt -Dundertow.port=18120 -cp ".\target\classes;<cp.txt 内容>" cn.hg.aifei.http.demo.DemoApp
+$CP = Get-Content target\cp.txt -Raw
+java -Ddemo.config=app-config.txt -Dundertow.port=18120 -Dundertow.host=0.0.0.0 -cp ".\target\classes;$CP" cn.hg.aifei.http.demo.DemoApp
 ```
 
 构建自验：`mvn -B clean verify`（当前无测试源码，编译打包通过即 BUILD SUCCESS）。

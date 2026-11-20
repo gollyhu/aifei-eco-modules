@@ -8,10 +8,15 @@
 ## 运行
 
 ```bat
-cd aifei-audit && mvn -o clean install      :: 先把被演示的库装进本地仓库
-cd ..\aifei-audit-demo
-start-demo.bat                               :: 编译 + 启动，18160
+cd aifei-audit      && mvn -q -DskipTests clean install   :: 先把 4 个被演示的库依次装进本地仓库
+cd ../aifei-trace   && mvn -q -DskipTests clean install
+cd ../aifei-sa-token && mvn -q -DskipTests clean install
+cd ../aifei-mq      && mvn -q -DskipTests clean install
+cd ../aifei-audit-demo
+start-demo.bat                                           :: 编译 + 启动，18160
 ```
+
+也可先在仓库根按 [根 README 构建小节](../README.md#构建) 安装全部模块，再回到本目录启动。
 
 页面：`http://localhost:18160/audit/demo/page`｜停服：`stop-demo.bat`
 

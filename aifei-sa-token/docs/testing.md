@@ -1,6 +1,6 @@
 # aifei-sa-token 测试文档
 
-> 关联：`docs/design.md`（设计契约）、`README.md`（用法）
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计契约）、`README.md`（用法）
 
 ## 1. 测试策略
 
@@ -23,7 +23,8 @@
 
 ```bat
 cd aifei-sa-token
-mvn clean test
+mvn clean verify         # 主验证命令，必须 0 failure / 0 error（架构门禁为 surefire 用例，test 阶段即执行）
+mvn test                 # 快速迭代可只跑 test 阶段（本模块无 verify 专属门禁）
 ```
 
 **必须 0 failure / 0 error**。

@@ -2,7 +2,6 @@
  * Copyright 2014-2026 糊搞 (3722711@qq.com)
  *
  * https://gitee.com/gollyhu
- * 开发工程师 寇戴码（Enjoy 指令增量）
  */
 
 package cn.hg.aifei.i18n.demo.arch;
@@ -21,7 +20,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-/** In：请求输入（demo 简化版，参照 excel-demo）。 */
+/**
+ * In：请求输入（demo 简化版，参照 excel-demo）。
+ *
+ * <p>本类属从其它 demo 复制的通用脚手架，职责是把 Undertow 的 {@code HttpServerExchange} 适配为
+ * 内核 {@code Input}，提供参数 / 路径参数的便捷读取；仅供 demo 演示，不含生产级校验与错误处理。
+ * 以下 getter 类方法语义同方法名，不逐方法重复说明。</p>
+ */
 public class In implements Input {
 
     static final InParser IN_PARSER = new InParser();

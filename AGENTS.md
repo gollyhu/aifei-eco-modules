@@ -66,6 +66,9 @@
 - **已登记的公共面框架类型例外**（须先在此登记，模块文档不得单方面声明）：
   - `aifei-trace` 的 `TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `cn.aifei.log.LogFactory`——日志门面接口即框架公共契约，包装实现收进 `internal` 会使使用方 `settings.setLogFactory(new TraceLogFactory(...))` 这一核心用法失效；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链；理由见 `aifei-trace/docs/design.md` §2 决策 2 / 3。
   - `aifei-i18n` 的 `web.I18nHandler` / `web.LocaleExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链（与 `aifei-trace` 同构）；理由见 `aifei-i18n/docs/design.md` §2 决策 D-1 / §5.7 / §13 待明确事项 1。
+- **缓存 / Redis 出口基线**：缓存与 Redis 场景一律优先自研库 `aifei-cache`，不得直接引入 Jedis / Redisson / Lettuce / Spring Data Redis（`aifei-cache` 自身的实现内核除外）。
+- **已登记的 Redis 出口例外**（模块须先在此登记，模块文档不得单方面声明；除此之外 Redis 场景仍一律优先 `aifei-cache`）：
+  - `aifei-mq` 的 `redisstream` 后端使用 `redis.clients:jedis:8.0.1` 直连 Redis，**不经过 `aifei-cache`**——Redis Streams 的 stream / consumer-group / `XREADGROUP` 语义超出 `aifei-cache` 的 Cache / Counter 抽象，无法经其门面表达；该后端标注**实验性、未真机验证**，随包提供但不承诺运行期语义；理由见 `aifei-mq/docs/design.md` §4.10 / §9 / §10。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。
 
 ### 命名约定（类型后缀语义）
@@ -151,6 +154,7 @@
 - [ ] 每类规则仍只有唯一定义点，实现类未复制规则；多实现模块已遵循共同契约底线，允许差异已在模块 `docs/design.md` 逐项列明（单实现模块不适用）。
 - [ ] 架构门禁测试未被放宽；公共 API 未暴露具体实现类型。
 - [ ] 公共行为变化已同步 `docs/design.md` 与 `README.md`（及其他相关文档），并有测试覆盖。
+- [ ] 实现或根例外登记完成后，已将设计文档 §文档状态 与 §待明确事项 的相关条目从「待落地 / 待执行 / 需拍板 / 提请补登」更新为已定档结论，并引用对应代码或根 `AGENTS.md` 条目。
 - [ ] 新增/改动的注释符合「注释规范」，文件头版权块未被改写。
 - [ ] 新增类型的后缀符合「命名约定」：无状态工具类用 `Util`，有状态门面用 `Kit`。
 - [ ] `git status` 无 `AD` 残留；未提交构建产物、IDE 文件、日志与凭据。

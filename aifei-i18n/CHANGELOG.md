@@ -44,7 +44,7 @@
 | 文档 | `README.md`（面向使用者）、`AGENTS.md`（模块开发约束）、`docs/design.md`（设计事实来源）、`docs/需求/aifei-i18n.md`（需求与 16 条 P0 / 75 条 AC 矩阵）、`docs/testing.md`（QA 独立复验报告）、`CHANGELOG.md`（本文件） |
 | 构建 | `pom.xml`（坐标 1.0.0，Java 8 编译目标，门禁 surefire 配置） |
 | 主源（32） | 根包 7：`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；`web` 2：`I18nHandler` / `LocaleExtractor`；`aifei` 1：`I18nPlugin`；`internal` 13：`I18nConfig` / `LocaleNormalizer` / `LocaleResolver` / `LocaleContext` / `FallbackChain` / `CacheLayer` / `MessageInterpolator` / `BundleExporter` / `LocaleMeta` / `FormatSupport` / `SourceRegistry` / `I18nHolder` / `I18nEngine`；`defaultSource` 3：`PropertiesSource` / `DbSource` / `KvSource`；`enjoy/directive` 6（非承诺）：`I18nDirective` / `LangDirective` / `DirDirective` / `DirectivePageState` / `DirectiveSupport` / `DirectiveRegistrar` |
-| 测试（13） | `I18nKitTest` / `FormatKitTest` / `LocaleResolverTest` / `BundleExportTest` / `I18nPluginTest` / `I18nHandlerTest` / `ArchitectureBoundaryTest` / `ClassFileVersionTest` / `QaConsistencyTest` / `QaLogLevelTest`；`support`：`FakeMessageSource` / `FakeDbAccessor` / `RecordingLogFactory` |
+| 测试（14：11 个测试类 + 3 个测试替身） | `I18nKitTest` / `FormatKitTest` / `LocaleResolverTest` / `BundleExportTest` / `I18nPluginTest` / `I18nHandlerTest` / `ArchitectureBoundaryTest` / `ClassFileVersionTest` / `QaConsistencyTest` / `QaLogLevelTest` / `enjoy/directive/DirectiveTest`；`support`：`FakeMessageSource` / `FakeDbAccessor` / `RecordingLogFactory` |
 | 产物 | `target/aifei-i18n-1.0.0.jar` |
 | 仓库根同步 | `README.md`（模块总览表 / 构建清单 / 依赖说明各 1 行）、`AGENTS.md`（适用范围模块清单 1 处 + 公共面框架类型例外 1 处） |
 

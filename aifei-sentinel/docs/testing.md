@@ -63,10 +63,8 @@
 
 ```shell
 # 模块根目录（aifei-sentinel）执行
-mvn test
-
-# 发布前验证：打包 + 检查实际 JAR、源码包与 Java 8 字节码
-mvn clean verify
+mvn clean verify   # 主验证命令：测试 + 打包 + 检查实际 JAR、源码包与 Java 8 字节码，必须 0 failure / 0 error
+mvn test           # 快速迭代：仅跑测试阶段（架构门禁 KernelBindingTest 为 surefire 用例，test 阶段即执行；本模块无 verify 专属门禁）
 ```
 
 - `KernelBindingTest` 依赖相对路径 `src/main/java`，**必须在模块根目录执行**。

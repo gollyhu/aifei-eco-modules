@@ -372,7 +372,8 @@ sequenceDiagram
     MS->>SUB: detachPage("demoA","demo.extra")
     SUB-->>MS: PageDemoListener 实例
     MS->>K: unsubscribe("demo.extra", listener)（按实例身份移除）
-    MS-->>J: {code:0, msg:"已取消订阅 demo.extra（影响该实例的所有浏览器会话）", data:{subscribedTopics:[]}}
+    MS-->>J: {code:0, msg:"已取消订阅 demo.extra（影响该实例的所有浏览器会话）", data:{subscribedTopics:["order-events","pay-events"]}}
+    Note over J: 仅移除 page 订阅 demo.extra，E2 startup 主题 order-events / pay-events 保留（design-e2.md §8.1）
     end
 
     rect rgb(245,245,245)
@@ -634,7 +635,7 @@ mq.demoB.type = memory
 - **文件**：`src/main/java/cn/hg/aifei/mq/demo/common/DemoAppConfig.java`（改）
 - **要点**：
   - `config(Settings)`：`PropKit.use(...)` 之后加 `MqInstanceCatalog.init(p.getProperties());`（注解装配阶段即就绪，Service 首次调用即可用）。
-  - `onStart()`：保留 `ConsumerKit.use().subscribe(DEMO_TOPIC, startupListener)`（**装配期仍只订阅主实例**——基线原型 `demoA`/`demoB` 订阅数为 0，且 §7.14 的「装配期订阅」专指主实例）；随后 `DemoSubscriptions.registerStartup(MqInstanceCatalog.MAIN, DEMO_TOPIC, DemoMessageListener.NAME);`；**删除** `DemoMessageLog.markStartup(...)`；启动日志打印 `mq.names` 与全部实例名（`MqInstanceCatalog.names()`）。
+  - `onStart()`：`ConsumerKit.use().subscribe(DEMO_TOPIC, startupListener)` 仍**只对自由 demo 主题**订阅主实例（保住 `demoA`/`demoB` 消息流从 0 起算）；随后 `DemoSubscriptions.registerStartup(MqInstanceCatalog.MAIN, DEMO_TOPIC, DemoMessageListener.NAME);`；**另按 E2 增量**遍历每个已就绪实例订阅 2 个 E2 域 topic（`order-events` / `pay-events`），故 `demoA`/`demoB` 的装配期订阅数为 2（依据 `design-e2.md` §8.1）；**删除** `DemoMessageLog.markStartup(...)`；启动日志打印 `mq.names` 与全部实例名（`MqInstanceCatalog.names()`）。
   - 字段 `final MessageListener listener = new DemoMessageListener();` 保留（无参构造即主实例分片）。
   - `onStop()` 不变（总线关闭仍由 `MqPlugin.stop()` 负责）；可选：`DemoSubscriptions.clear(MqInstanceCatalog.MAIN)`（示例工程可留，注释说明重启即清空）。
 - **依赖**：T03、T04（`registerStartup`、`MqInstanceCatalog.init/MAIN/names`）
@@ -728,17 +729,17 @@ mvn -q -B compile
 | --- | --- | --- |
 | 1 | `curl -s %BASE%/mq/demo/instances` | `code:0`，`count:3`，`instances[0].instanceName="__MAIN__"`、`main:true`、`ready:true`、`configPrefix:"mq"` |
 | 2 | `curl -s %BASE%/mq/demo/state` （**不带 instance**） | `code:0`，`instance:"__MAIN__"`，`subscribedTopics` 含 `aifei.mq.demo.topic`，`subscribers[0].source="startup"` |
-| 3 | `curl -s "%BASE%/mq/demo/state?instance=demoA"` | `code:0`，`instance:"demoA"`，`subscribedTopics:[]`，`messageLogSize:0` |
+| 3 | `curl -s "%BASE%/mq/demo/state?instance=demoA"` | `code:0`，`instance:"demoA"`，`subscribedTopics:["order-events","pay-events"]`（E2 域 startup 订阅，见 `design-e2.md` §8.1），`subscribedTopicCount:2`，`messageLogSize:0` |
 | 4 | `curl -s "%BASE%/mq/demo/state?instance=nope"` | `code:10001`，`msg` 含 `未知实例` 与 `[__MAIN__, demoA, demoB]` |
 | 5 | `curl -s "%BASE%/mq/demo/state?instance="` | `code:10001`（空串非法） |
 | 6 | `curl -s "%BASE%/mq/demo/state?instance=a.b"` | `code:10001`（含 `.`） |
-| 7 | `curl -s "%BASE%/mq/demo/subscribe?instance=demoA&topic=demo.extra"` | `code:0`，`subscribedTopics:["demo.extra"]`，`subscribers[0].source="page"` |
-| 8 | `curl -s "%BASE%/mq/demo/subscribe?instance=demoA&topic=demo.extra"`（重复） | `code:0`，`alreadySubscribed:true`，`subscribedTopicCount` 仍为 1 |
+| 7 | `curl -s "%BASE%/mq/demo/subscribe?instance=demoA&topic=demo.extra"` | `code:0`，`subscribedTopics` 含 `demo.extra`（连同 2 个 E2 startup 主题共 3 个），`demo.extra` 的 `subscribers[].source="page"` |
+| 8 | `curl -s "%BASE%/mq/demo/subscribe?instance=demoA&topic=demo.extra"`（重复） | `code:0`，`alreadySubscribed:true`，`subscribedTopicCount` 仍为 3 |
 | 9 | `curl -s "%BASE%/mq/demo/send?instance=demoA&topic=demo.extra&text=hi"` | `code:0`，`delivered:1`，`receivedCount:1` |
 | 10 | `curl -s "%BASE%/mq/demo/messages?instance=demoA"` | `count:1`，`maxEntries:200`，`messages[0].text="hi"`、`subscriber="PageDemoListener"` |
 | 11 | `curl -s "%BASE%/mq/demo/messages?instance=demoB"` | `count:0`（**隔离验证**） |
 | 12 | `curl -s "%BASE%/mq/demo/unsubscribe?instance=__MAIN__&topic=aifei.mq.demo.topic"` | `code:10001`，`msg="未登记该主题的页面订阅: aifei.mq.demo.topic"` |
-| 13 | `curl -s "%BASE%/mq/demo/unsubscribe?instance=demoA&topic=demo.extra"` | `code:0`，`subscribedTopics:[]` |
+| 13 | `curl -s "%BASE%/mq/demo/unsubscribe?instance=demoA&topic=demo.extra"` | `code:0`，`subscribedTopics` 仅移除 page 订阅 `demo.extra`，保留 2 个 E2 startup 主题 `[order-events, pay-events]`，`subscribedTopicCount:2` |
 | 14 | `curl -s "%BASE%/mq/demo/send?instance=demoA&topic=demo.extra&text=x"` | `code:0`，`delivered:0`（取消后无订阅者） |
 | 15 | `curl -s "%BASE%/mq/demo/messages/clear?instance=demoA"` | `code:0`，`data.messageLogSize:0`、`sentCount:0`、`receivedCount:0` |
 | 16 | `curl -s -o NUL -w "%{http_code}" %BASE%/` | `200`（根路径映射验证；404 见 §0 替代方案） |
@@ -760,7 +761,7 @@ mvn -q -B compile
 | R7 | **Enjoy 渲染与前端模板语法冲突** | 页面经 Enjoy 渲染（不是静态直出），`#(` / 行首 `#if` 会被当指令。**处置**：T11 的「模板陷阱」条款 + 自检时 `findstr "#(" 无命中；`{{ }}`/`@click`/`:class` 已验证安全（`ws-demo` 先例）。 |
 | R8 | **`internal` 依赖的稳定性** | `MqInstanceCatalog` 依赖 `cn.hg.aifei.mq.internal.{MqConfig, MqProviderRegistry}`：`MqConfig#prefixOf` 是 private，故 demo 侧镜像了「`mq` / `mq.<name>`」这条三字符规则。**处置**：镜像只允许出现在 `prefixOf` 一个私有方法内并加注释「契约以 `MqConfig` 为准」；库侧升级若改前缀规则，只需改这一处。 |
 | R9 | **每实例 200 条带来的口径变化** | 改造前「全体共享 200」，改造后「每实例各 200」；页面**必须**读接口返回的 `messageLogCapacity`，不得硬编码 200（PRD Q8）。**处置**：T09/T11/T12 一律用 `state.messageLogCapacity` / `instances[].messageLogCapacity` 渲染。 |
-| R10 | **装配期订阅只覆盖主实例** | 基线原型明确 `demoA`/`demoB` 的「订阅主题」为 0，且 §7.14 的「装配期订阅」专指主实例；本设计**不做**多实例装配期订阅。任务说明里的「DemoAppConfig 多实例订阅」按「`onStart()` 按实例接线（当前仅主实例有装配期订阅，登记表与 catalog 已按实例就绪）」实现。若产品后续要求每实例都有装配期订阅，只需把 `onStart()` 的订阅与 `registerStartup` 包进 `for (name : MqInstanceCatalog.names())` 并为每个实例 `new DemoMessageListener(name)`——**其它文件零改动**。 |
+| R10 | **自由 demo 主题的装配期订阅只覆盖主实例** | 基线原型明确 `demoA`/`demoB` 的**自由 demo 主题**订阅数为 0，§7.14 的「装配期订阅」对自由 demo 主题专指主实例；**E2 增量对此作有意偏差**：E2 域 topic（`order-events`/`pay-events`）改为覆盖每个已就绪实例，`demoA`/`demoB` 装配期订阅数 0 → 2（依据 `design-e2.md` §8.1），两套演示互不污染。若产品后续要求自由 demo 主题也每实例订阅，只需把 `onStart()` 的该订阅与 `registerStartup` 包进 `for (name : MqInstanceCatalog.names())` 并为每个实例 `new DemoMessageListener(name)`——**其它文件零改动**。 |
 
 ---
 

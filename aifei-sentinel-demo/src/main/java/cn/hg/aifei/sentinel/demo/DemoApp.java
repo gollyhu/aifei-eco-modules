@@ -11,6 +11,12 @@ import cn.hg.aifei.sentinel.demo.common.DemoAppConfig;
 
 /** 启动入口 */
 public class DemoApp {
+
+    /**
+     * 启动 demo 应用；HTTP 端口经 {@code -Dundertow.port} 传入（见 start-demo.bat 的 18080）。
+     *
+     * @param args 命令行参数，原样交给 aifei 内核
+     */
     public static void main(String[] args) {
         Aifei.start(new DemoAppConfig(), args);
     }

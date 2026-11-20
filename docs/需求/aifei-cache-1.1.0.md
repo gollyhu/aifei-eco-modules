@@ -139,7 +139,7 @@ Redis 实现必须保持单条 `SET key value PX ttl NX`，不得拆成「无 TT
 - **不新增第三方依赖**（不引入 Mockito：`RedisClient` 是具体类、`eval` 是实例方法，没有可替身的接口；`RedisCache` 的构造器亦不对外暴露可注入的客户端，测试缝只允许「包私有纯函数 + 真实 Redis 集成」两种）。
 - **文档同步**：`docs/design.md`（「跨实现契约：共同底线与允许差异」一节**已存在**（第 304 行起，`design.md` 第 19 行与 `docs/testing.md` 的两处引用已指向它），本版本只复核并补 CAS 两行，不再新建；另记参数校验顺序、二进制 `eval`、Lua 返回值语义、TTL 边界、字节确定性限制、哨兵无 CAS 路径、兼容性口径、校验方法计数 13、门面白名单两项）、`README.md`（CAS 用法 + 「升级到 1.1.0」兼容性小节）、`AGENTS.md`（计数 13、门面镜像例外、CAS ARGV 约束）、`docs/testing.md`（新增离线用例与集成用例基线、发布门禁命令）。
 
-  **注意**：这四份文档已按 1.1.0 目标态预写（`design.md` 第 14 行的「13 个校验方法（含 1.1.0 新增 `requireExpectedValue`）」、`AGENTS.md` 第 16 行的「已内联…含 1.1.0 新增的 `requireExpectedValue`」、`README.md` 的「1.1.0 变更」小节、`docs/testing.md` 的版本行），**代码落地前这些现在时陈述并不成立**（当前 `Cache` 无 3 个新方法、`CacheValidator` 仍是 10 个 `require*`）。实现完成后须逐处复核其真实性；在此之前不得据这些描述判断能力已存在。
+  **注意（已复核，2026-11 修订）**：这四份文档按 1.1.0 目标态预写（`design.md` 第 14 行的「13 个校验方法（含 1.1.0 新增 `requireExpectedValue`）」、`AGENTS.md` 第 16 行的「已内联…含 1.1.0 新增的 `requireExpectedValue`」、`README.md` 的「1.1.0 变更」小节、`docs/testing.md` 的版本行）。**已按本文要求逐处复核：源码中 `Cache` 的 3 个新方法（`removeIfEquals` / `expireIfEquals` / `supportsCas`）与 `CacheValidator.requireExpectedValue` 均已落地，`CacheValidator` 现为 13 个校验方法（2 个布尔判定 + 11 个 `require*`），四份文档现在时陈述成立**；`design.md` / `AGENTS.md` 的计数 13 与 `CacheKit` 门面白名单口径已同步。原先「代码落地前这些陈述不成立」的预警前提已消失，不再适用。
 - 模块内 `mvn clean verify` 0 failure / 0 error；涉及 Redis 的改动发布前实际跑通 `-Dredis.integration=true`。
 
 ## 六、交付配套

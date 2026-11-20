@@ -1,5 +1,6 @@
 # aifei-i18n 测试策略与用例清单（QA 独立复验版）
 
+> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
 > 复验人：策市袁（Yuan）· Aifei 开发专家团测试工程师（独立 QA，不采信实现侧自评）
 > 复验日期：2026-11-19
 > 事实来源：`docs/design.md`（§11 门禁、§15 AC↔实现映射、§8.1 三处易混边界）、`docs/需求/aifei-i18n.md`（§6.1 的 16 条 P0 / 75 条 AC 矩阵，§十一 Enjoy 模板指令增量）
@@ -18,7 +19,7 @@
 | 构建 | `mvn clean verify` → **BUILD SUCCESS**，`Tests run: 126, Failures: 0, Errors: 0, Skipped: 0` |
 | AC 覆盖 | **75 / 75** 条 AC 每条至少一条**已执行**用例（含本轮 QA 新增补强用例） |
 | 架构门禁 | 13 例全绿；变异探针证明公共面门禁真能拦住「多一个 public 类」 |
-| 字节码 | 独立 javap 核验：target/classes 全部 33 个 class **major = 52** |
+| 字节码 | 独立 javap 核验：target/classes 全部 **40 个 class**（32 顶层 + 8 个 `$` 嵌套类，对应 32 个主源文件）**major = 52** |
 | 智能路由 | 发现 **3 处测试自身缺陷**（日志级别断言缺失×1 类、一致性边界缺失×1 类、Thread.sleep×1 处）→ **全部自修**；**源码缺陷 0** → 无需退回寇戴码 |
 | 变异/边界探针 | 5 个（3 个源码变异 + 1 个日志分级边界 + 1 个一致性边界），全部按预期命中 |
 | 离线纪律 | 零联网、零 Thread.sleep、kv 无真实集成测试（默认关闭） |
@@ -84,7 +85,7 @@
 | ⑫ | `cacheDependencyOnlyInKvSource` | cache 类型不出现在 KvSource 字段 / 签名（仅方法体） | PASS |
 | ⑬ | `testSourcesOfflineOnly` | 测试源码 URL host 仅回环地址；五态状态机剥离注释后扫描（沿用 aifei-http DEF-01 修复形态），`CASE_INSENSITIVE` | PASS |
 
-> **门禁强度实证**：③④ 经变异探针验证——向根包注入 `public class QaExtraPublic{}` 后，`publicSurfaceExact`（文件名集合）与 `publicSurfaceByReflection`（反射 9 类型）**双双失败**（当轮 `Tests run: 13, Failures: 2`），删除探针后恢复全绿。证明门禁真能拦住「多一个 public 类」，非摆设。
+> **门禁强度实证**：③④ 经变异探针验证——向根包注入 `public class QaExtraPublic{}` 后，`publicSurfaceExact`（文件名集合）与 `publicSurfaceByReflection`（反射 10 类型）**双双失败**（当轮 `Tests run: 13, Failures: 2`），删除探针后恢复全绿。证明门禁真能拦住「多一个 public 类」，非摆设。
 
 ---
 
@@ -294,8 +295,8 @@
 | 6 | D-02 两条消费路径 | `I18nKitTest#serviceAndTemplateRenderShareSameEntry`：服务层 `I18nKit.message` 与模板函数 `Function` 包装逐字等价断言；不引入 Enjoy 依赖（Q7）。PASS。 |
 | 7 | D-03 格式化 | 三参正交（16-1/2/3）+ 百分比（16-7）+ 四档（16-8 默认 MEDIUM + `fourStylesAreAvailable`）+ 门禁⑪零自建规则 + 门禁⑩ dir 唯一定义点 + `dirDegradationLogsWarn`（16-5 降级 WARN）；断言遵守 §9.8 跨 provider 稳定口径（不写死符号/完整日期串）。 |
 | 8 | 单点/整包一致性 | 原有 `singleAndBundleConsistent`（AC-10-1）；QA 新增缓存下 / refresh 后 / 不可列举例外三态（AC-10-2/3/4）→ 全 PASS。 |
-| 9 | 公共面门禁 | 门禁③④ + 变异探针 2：注入额外 public 类后双失败 → **真能拦住多一个 public 类**。反射精确 9 类型。 |
-| 10 | class major 52 | 门禁⑧ + `ClassFileVersionTest` + QA 独立 javap：`target/classes` 全部 **33 个 class major=52**（直方图 `33 → 52`，无其它值）。 |
+| 9 | 公共面门禁 | 门禁③④ + 变异探针 2：注入额外 public 类后双失败 → **真能拦住多一个 public 类**。反射精确 10 类型（与 §三 门禁④及 `ArchitectureBoundaryTest#EXPECTED_PUBLIC_FQNS` 断言一致）。 |
+| 10 | class major 52 | 门禁⑧ + `ClassFileVersionTest` + QA 独立 javap：`target/classes` 全部 **40 个 class major=52**（32 顶层 + 8 个 `$` 嵌套类；直方图 `40 → 52`，无其它值；顶层 32 个与 `src/main/java` 32 个主源文件、CHANGELOG「32 个主源文件编译产物」一致）。实测命令：`find target/classes -name '*.class' \| wc -l` → 40；`find target/classes -name '*.class' ! -name '*$*' \| wc -l` → 32。 |
 
 ### 3. 离线纪律与依赖
 
@@ -390,7 +391,7 @@ for f in $(find target/classes -name '*.class'); do javap -verbose "$f" | grep -
 | AC-INC-13 | `testPriorityChainNoFallback` | 局部 ar-SA / 无 lang 与 `#lang()` 均 zh-CN（请求头 en-US），高优先级不回退 |
 
 **门禁例外自检**：`ArchitectureBoundaryTest#frameworkScopeRules` 仅放开 `cn.aifei.enjoy.` 于
-`cn/hg/aifei/i18n/enjoy/directive/`，其余框架包边界 / 公共面 9 类型 / 零自建规则数据等断言不变。
+`cn/hg/aifei/i18n/enjoy/directive/`，其余框架包边界 / 公共面 10 类型 / 零自建规则数据等断言不变。
 `mvn clean verify` 需 0 failure / 0 error。
 
 —— 测试清单由开发工程师 寇戴码登记（用例实现归测试工程师 策市袁）

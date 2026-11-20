@@ -276,7 +276,7 @@ mvn test
 
 `aifei-sentinel-demo` 是自写 HIO 的最小示例，脚本均在该目录下：
 
-- 本地模式：`start-demo.bat` → 访问 http://localhost:18080/demo；改该目录下的 `sentinel-rules.json` 秒级热生效。
+- 本地模式：`start-demo.bat` → 访问 http://localhost:18080/demo/index；改该目录下的 `sentinel-rules.json` 秒级热生效。
 - Dashboard 模式：先 `start-dashboard.bat` 起本地控制台（http://localhost:8858，账号 sentinel/sentinel），再 `start-demo-dashboard.bat`（控制台未起时该脚本会自动拉起并等待就绪）。
 - 停止：`stop-demo.bat`（或在运行窗口按 Ctrl+C）。
 

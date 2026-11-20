@@ -7,22 +7,21 @@
 package cn.hg.aifei.trace;
 
 /**
- * TraceContext.
- *
- * <pre>
  * 链路上下文持有器，以普通 ThreadLocal 承载当前线程的 TraceId 与 SpanId。
- * 只做 set（null = 移除）/ get / clear，零业务语义；trim、回退、生成等语义由 TraceKit 承担，
- * 业务日常使用 TraceKit 即可。
  *
- * 设计：
- *  1: 使用普通 ThreadLocal 而非 InheritableThreadLocal，避免线程池复用线程导致的 TraceId 串号。
- *     请求结束必须调用 clear() 清理，通常由 web.TraceHandler 在 finally 中保证；
- *     手动 init 的场景（如异步任务）由业务自行 try/finally 清理。
- *  2: ThreadLocal 不跨线程自动传播，线程池 / 异步场景需业务手动传递 TraceId，
- *     在子线程通过 TraceKit.init(traceId) 恢复。
+ * <p>只做 set（null = 移除）/ get / clear，零业务语义；trim、回退、生成等语义由 TraceKit 承担，
+ * 业务日常使用 TraceKit 即可。</p>
  *
- * 本类型是全模块 ThreadLocal 的唯一持有点，不得在别处复制 ThreadLocal 状态。
- * </pre>
+ * <p>设计：</p>
+ * <ol>
+ *   <li>使用普通 ThreadLocal 而非 InheritableThreadLocal，避免线程池复用线程导致的 TraceId 串号。
+ *       请求结束必须调用 clear() 清理，通常由 web.TraceHandler 在 finally 中保证；
+ *       手动 init 的场景（如异步任务）由业务自行 try/finally 清理。</li>
+ *   <li>ThreadLocal 不跨线程自动传播，线程池 / 异步场景需业务手动传递 TraceId，
+ *       在子线程通过 TraceKit.init(traceId) 恢复。</li>
+ * </ol>
+ *
+ * <p>本类型是全模块 ThreadLocal 的唯一持有点，不得在别处复制 ThreadLocal 状态。</p>
  */
 public final class TraceContext {
 

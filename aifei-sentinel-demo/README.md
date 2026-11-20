@@ -12,10 +12,20 @@
 | --- | --- | --- |
 | HTTP（演示端点） | **18080** | `start-demo.bat` 的 `-Dundertow.port=18080` |
 
+## 前置：先把 aifei-sentinel 装入本地仓库
+
+`aifei-sentinel` 是库模块，需先安装到本地仓库（或按 [根 README 构建小节](../README.md#构建) 安装全部模块）：
+
+```bat
+cd ../aifei-sentinel
+mvn -q -DskipTests clean install
+cd ../aifei-sentinel-demo
+```
+
 ## 运行
 
 ```bat
-start-demo.bat              :: 本地模式启动 demo（端口 18080），验证地址 http://localhost:18080/demo
+start-demo.bat              :: 本地模式启动 demo（端口 18080），验证地址 http://localhost:18080/demo/index
 start-dashboard.bat         :: 启动本地 Sentinel 控制台（端口 8858，账号 sentinel/sentinel），需自备 sentinel-dashboard jar
 start-demo-dashboard.bat    :: Dashboard 模式启动 demo（控制台未起时会自动拉起并等待就绪）
 stop-demo.bat               :: 按端口 18080 找到监听进程并结束
