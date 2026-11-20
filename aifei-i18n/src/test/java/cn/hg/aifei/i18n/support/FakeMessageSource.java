@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 测试替身来源：可配置稳定名、数据、是否可列举、是否在 get/list 抛异常，并录制调用次数。
+ * 测试替身来源：可配置稳定名、数据、是否可列举、是否在 get/list/refresh 抛异常，并录制调用次数。
  *
  * <p>用于覆盖 AC-02/03/04/05/09/10/15 等回退、叠加、故障与导出场景；与来源形态无关（AC-04-3）。</p>
  */
@@ -23,8 +23,10 @@ public final class FakeMessageSource implements MessageSource {
     private boolean listable = true;
     private boolean failing;
     private boolean listFailing;
+    private boolean refreshFailing;
     private int getCalls;
     private int listCalls;
+    private int refreshCalls;
 
     /**
      * @param name 稳定名
@@ -79,6 +81,17 @@ public final class FakeMessageSource implements MessageSource {
         return this;
     }
 
+    /**
+     * 设置运行期刷新是否抛运行时异常（默认否）。
+     *
+     * @param refreshFailing 是否故障
+     * @return 自身
+     */
+    public FakeMessageSource refreshFailing(boolean refreshFailing) {
+        this.refreshFailing = refreshFailing;
+        return this;
+    }
+
     @Override
     public String name() {
         return name;
@@ -112,6 +125,14 @@ public final class FakeMessageSource implements MessageSource {
         return Collections.unmodifiableMap(result);
     }
 
+    @Override
+    public void refresh() {
+        refreshCalls++;
+        if (refreshFailing) {
+            throw new RuntimeException("模拟刷新故障: " + name);
+        }
+    }
+
     /**
      * @return 单点命中调用次数
      */
@@ -127,10 +148,18 @@ public final class FakeMessageSource implements MessageSource {
     }
 
     /**
+     * @return 运行期刷新调用次数
+     */
+    public int refreshCalls() {
+        return refreshCalls;
+    }
+
+    /**
      * 重置调用计数。
      */
     public void resetCalls() {
         getCalls = 0;
         listCalls = 0;
+        refreshCalls = 0;
     }
 }

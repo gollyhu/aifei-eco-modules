@@ -56,6 +56,8 @@ I18nKit.refresh();                                                // 后台改�
 
 未命中返回 key 原文（DEBUG 日志），不抛异常；来源运行期故障（DB 超时 / KV 不可用）WARN 后继续回退。
 
+> **单引号陷阱**：插值走 JDK `MessageFormat`，文案原文中的单引号 `'` 是转义符——`don't` 会输出 `dont`、`{0}'s` 会丢掉 `'s`。需保留单引号时写双单引号 `''` 转义（如 `don''t`、`{0}''s`）。
+
 ### 4. Web 入口绑定（必须第一个 addHandler）
 
 框架 `Input` 无 header 访问 API，消费方自定义 Input 暴露 header 后以 lambda 提供：

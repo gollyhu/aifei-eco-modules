@@ -84,7 +84,8 @@ public class ArchitectureBoundaryTest {
             "cn.hg.aifei.i18n.aifei.I18nPlugin"));
 
     private static final Set<String> LOG_RECORDERS = new LinkedHashSet<>(Arrays.asList(
-            "FallbackChain.java", "BundleExporter.java", "LocaleMeta.java"));
+            "FallbackChain.java", "BundleExporter.java", "LocaleMeta.java",
+            "I18nEngine.java", "PropertiesSource.java"));
 
     private static final Set<String> LOOPBACK_HOSTS = new LinkedHashSet<>(Arrays.asList("127.0.0.1", "localhost"));
     private static final Pattern URL_PATTERN = Pattern.compile("https?://([^/\\s\"'<>]+)", Pattern.CASE_INSENSITIVE);
@@ -147,6 +148,7 @@ public class ArchitectureBoundaryTest {
                 boolean allowed = (aifeiOnly && path.contains(AIFEI_PACKAGE))
                         || (webOnly && path.contains(WEB_PACKAGE))
                         || (logOnly && path.contains(INTERNAL_PACKAGE) && isLogRecorder(path))
+                        || (logOnly && path.contains(DEFAULT_SRC) && isLogRecorder(path))
                         || (logOnly && path.contains(AIFEI_PACKAGE))
                         || (enjoyOnly && path.contains(DIRECTIVE_PACKAGE));
                 if (!allowed) {
@@ -178,7 +180,7 @@ public class ArchitectureBoundaryTest {
                     && !p.getFileName().toString().contains("$"))::iterator) {
                 String rel = CLASSES_ROOT.relativize(path).toString().replace('\\', '/');
                 String fqn = rel.substring(0, rel.length() - ".class".length()).replace('/', '.');
-                // 公共面只含根包 / web / aifei 三包的顶层类型；internal 与 defaultSource 为非承诺实现，不计入。
+                // 公共面只含根包 / web / aifei 三包的顶层类型；internal / defaultSource / enjoy.directive 为非承诺实现，不计入。
                 String prefix = "cn.hg.aifei.i18n.";
                 if (!fqn.startsWith(prefix)) {
                     continue;

@@ -6,6 +6,7 @@
 
 package cn.hg.aifei.i18n.defaultSource;
 
+import cn.aifei.log.Log;
 import cn.hg.aifei.i18n.MessageSource;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -137,8 +138,18 @@ public final class PropertiesSource implements MessageSource {
                 reader.close();
             }
         } catch (IOException e) {
+            warn(resourceName, e);
             return result;
         }
         return result;
+    }
+
+    private static void warn(String resourceName, IOException cause) {
+        try {
+            Log log = Log.get(PropertiesSource.class);
+            log.warn("i18n properties 资源读取失败，已按空来源处理: resource=" + resourceName + ", 原因=" + cause);
+        } catch (Throwable ignored) {
+            // 日志通道不可用不影响启动
+        }
     }
 }

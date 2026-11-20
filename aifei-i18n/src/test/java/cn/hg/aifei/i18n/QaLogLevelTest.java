@@ -8,6 +8,7 @@ package cn.hg.aifei.i18n;
 
 import cn.aifei.log.LogFactory;
 import cn.aifei.log.LogKit;
+import cn.hg.aifei.i18n.defaultSource.PropertiesSource;
 import cn.hg.aifei.i18n.internal.I18nConfig;
 import cn.hg.aifei.i18n.internal.I18nEngine;
 import cn.hg.aifei.i18n.internal.I18nHolder;
@@ -15,6 +16,8 @@ import cn.hg.aifei.i18n.internal.LocaleContext;
 import cn.hg.aifei.i18n.internal.LocaleMeta;
 import cn.hg.aifei.i18n.support.FakeMessageSource;
 import cn.hg.aifei.i18n.support.RecordingLogFactory;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,6 +28,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -38,10 +42,12 @@ public class QaLogLevelTest {
 
     private LogFactory original;
     private RecordingLogFactory recorder;
+    private ClassLoader originalLoader;
 
     @Before
     public void setUp() {
         original = LogKit.get().getLogFactory();
+        originalLoader = Thread.currentThread().getContextClassLoader();
         recorder = new RecordingLogFactory();
         LogKit.get().setLogFactory(recorder);
         LocaleContext.clear();
@@ -50,6 +56,7 @@ public class QaLogLevelTest {
     @After
     public void tearDown() {
         LogKit.get().setLogFactory(original);
+        Thread.currentThread().setContextClassLoader(originalLoader);
         LocaleMeta.setDirectionResolver(null);
         LocaleContext.clear();
         I18nHolder.clear();
@@ -162,5 +169,68 @@ public class QaLogLevelTest {
         I18nKit.local("zh-CN").message("k");
         assertEquals("故障后命中：WARN>=1、DEBUG=0", 0, recorder.ofLevel("DEBUG").size());
         assertTrue("故障后命中应有 WARN", recorder.ofLevel("WARN").size() >= 1);
+    }
+
+    /** 本轮优化：来源 refresh 抛 RuntimeException → WARN 含稳定名，不中断其它来源，未命中仍 DEBUG。 */
+    @Test
+    public void refreshFailureLogsWarnAndContinuesOtherSources() {
+        FakeMessageSource broken = new FakeMessageSource("db").refreshFailing(true);
+        FakeMessageSource healthy = new FakeMessageSource("properties").put("zh-CN", "k", "v");
+        install(60000, broken, healthy);
+        broken.resetCalls();
+        healthy.resetCalls();
+        recorder.clear();
+
+        I18nKit.refresh();
+
+        assertEquals("故障来源 refresh 应被调用 1 次", 1, broken.refreshCalls());
+        assertEquals("健康来源 refresh 不被中断，仍应调用 1 次", 1, healthy.refreshCalls());
+        assertTrue("refresh 故障应 WARN 且含稳定名 db，实际=" + recorder.events(),
+                recorder.has("WARN", "db", "刷新失败"));
+        assertTrue("refresh 故障不应产生 ERROR，实际=" + recorder.events(),
+                recorder.ofLevel("ERROR").isEmpty());
+
+        recorder.clear();
+        assertEquals("未命中返回 key", "missing.key", I18nKit.local("zh-CN").message("missing.key"));
+        assertTrue("未命中仍应 DEBUG 含 key+locale，实际=" + recorder.events(),
+                recorder.has("DEBUG", "missing.key", "zh-CN"));
+        assertTrue("未命中不应产生 WARN，实际=" + recorder.events(),
+                recorder.ofLevel("WARN").isEmpty());
+    }
+
+    /** 本轮优化：properties 资源读取 IOException → WARN 含资源名，返回空来源，不启动失败、不抛。 */
+    @Test
+    public void propertiesReadFailureLogsWarnAndYieldsEmptySource() {
+        final String resource = "qa-broken-i18n.properties";
+        Thread.currentThread().setContextClassLoader(new ClassLoader(originalLoader) {
+            @Override
+            public InputStream getResourceAsStream(String name) {
+                if (!resource.equals(name)) {
+                    return super.getResourceAsStream(name);
+                }
+                return new InputStream() {
+                    @Override
+                    public int read() throws IOException {
+                        throw new IOException("模拟资源读取故障");
+                    }
+
+                    @Override
+                    public int read(byte[] b, int off, int len) throws IOException {
+                        throw new IOException("模拟资源读取故障");
+                    }
+                };
+            }
+        });
+        recorder.clear();
+
+        PropertiesSource source = new PropertiesSource(resource);
+
+        assertEquals("properties", source.name());
+        assertNull("读取失败应为空来源：get 返回 null", source.get("k", "zh-CN"));
+        assertTrue("读取失败应为空来源：list 返回空", source.list("zh-CN").isEmpty());
+        assertTrue("读取失败应 WARN 且含资源名，实际=" + recorder.events(),
+                recorder.has("WARN", resource, "资源读取失败"));
+        assertTrue("读取失败不应产生 ERROR，实际=" + recorder.events(),
+                recorder.ofLevel("ERROR").isEmpty());
     }
 }

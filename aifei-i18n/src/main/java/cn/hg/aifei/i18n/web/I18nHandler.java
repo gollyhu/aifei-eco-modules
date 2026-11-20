@@ -26,7 +26,7 @@ import cn.hg.aifei.i18n.internal.LocaleResolver;
  */
 public class I18nHandler<I extends Input, O extends Output> extends Handler<I, O> {
 
-    private LocaleExtractor<I> extractor;
+    private volatile LocaleExtractor<I> extractor;
 
     /**
      * 无参构造：不提取请求头，落默认 locale。

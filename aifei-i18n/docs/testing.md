@@ -15,7 +15,7 @@
 
 | 项 | 结论 |
 | --- | --- |
-| 构建 | `mvn clean verify` → **BUILD SUCCESS**，`Tests run: 107, Failures: 0, Errors: 0, Skipped: 0` |
+| 构建 | `mvn clean verify` → **BUILD SUCCESS**，`Tests run: 126, Failures: 0, Errors: 0, Skipped: 0` |
 | AC 覆盖 | **75 / 75** 条 AC 每条至少一条**已执行**用例（含本轮 QA 新增补强用例） |
 | 架构门禁 | 13 例全绿；变异探针证明公共面门禁真能拦住「多一个 public 类」 |
 | 字节码 | 独立 javap 核验：target/classes 全部 33 个 class **major = 52** |
@@ -25,7 +25,7 @@
 | **放行判定** | **放行（PASS）** — 无 P0/P1 遗留，质量关卡 §4 五项 DoD 全部达标 |
 
 > 基线对照：开发声称 97 用例 / 0-0；交付负责人独立重跑 97 / 0-0。本人复验基线同样为 97 / 0-0（见 §六 QA 复验记录），
-> 随后**新增 10 条补强用例**（日志分级 7 + 一致性边界 3）→ 最终 107 / 0-0。
+> 随后**新增 12 条补强用例**（日志分级 9 + 一致性边界 3）→ 最终 126 / 0-0（含 DirectiveTest 13 例、I18nKitTest 后续补强 4 例与本轮优化 WARN 路径 2 例）。
 
 ---
 
@@ -37,28 +37,30 @@
 - **QA 新增替身**：`support/RecordingLogFactory`（可插拔日志工厂，按「级别+首参」录制日志）——注入框架 `LogKit`，用于独立断言日志分级口径（AC-02-2/09-6/14-5/15-4）。`@After` 恢复原工厂，测试间无污染。
 - **跨 provider 稳定断言**：涉及 JDK 输出字面量的用例只断言「不相等 / 含本币种符号 / 月份名与日的相对位置 / 小数位」，不写死符号字符与完整日期串（设计 §9.8）。
 - **状态隔离**：`@After` 清理 `I18nHolder` / `LocaleContext` / `LocaleMeta` 判定器 / 日志工厂，用例无顺序依赖。
+- **Demo 分工**：Q7 已于 §十一 突破，新建 `aifei-i18n-demo` 做真实 Enjoy 渲染端到端核对；模块内测试零联网、零 HTTP 依赖。
 
 ---
 
-## 二、测试文件（12 个：原 10 + QA 新增 2 测试类 / 1 替身）
+## 二、测试文件（14 个：11 个测试类 + 3 个测试替身）
 
 | 文件 | 职责 | 主要覆盖 AC | 例数 |
 | --- | --- | --- | --- |
 | `ArchitectureBoundaryTest` | 源码文本 + 反射双门禁（13 例） | AC-13 / AC-16-6 / AC-14-2 / Q9 | 13 |
 | `ClassFileVersionTest` | 全部 class major = 52 | AC-13-3 | 1 |
-| `I18nKitTest` | 取文案 / 回退 / 叠加 / 缓存 / 故障 / 插值 / 并发；D-02 服务层 + 模板渲染 | AC-01/02/03/05/07/15 | 18 |
+| `I18nKitTest` | 取文案 / 回退 / 叠加 / 缓存 / 故障 / 插值 / 并发；D-02 服务层 + 模板渲染 | AC-01/02/03/05/07/15 | 22 |
 | `FormatKitTest` | 三参正交 / 百分比 / 四档 / 默认 MEDIUM / IAE；D-03 | AC-16 | 18 |
 | `BundleExportTest` | 四字段 / 排序 / 一致性 / dir 降级 / 不可列举跳过 | AC-09/10/14/15 | 13 |
 | `LocaleResolverTest` | 四级优先级 / 规范化 / 请求头容错 | AC-08 / AC-14-3 / AC-12-6 | 13 |
 | `web/I18nHandlerTest` | 绑定 / 异常路径清理 / 同线程不串语言 | AC-08-3/05/06 | 6 |
 | `aifei/I18nPluginTest` | 装配幂等 / 重名 / 依赖探测 / 配置校验 / 未装配调用 | AC-04/11/12 | 15 |
-| **`QaLogLevelTest`**（QA 新增） | 日志分级独立断言：未命中 DEBUG / 故障·跳过·降级 WARN | AC-02-2 / 09-6 / 14-5 / 15-1/15-4/15-5 | 7 |
+| **`QaLogLevelTest`**（QA 新增） | 日志分级独立断言：未命中 DEBUG / 故障·跳过·降级 WARN；本轮优化补测 refresh/load 的 WARN 路径 | AC-02-2 / 09-6 / 14-5 / 15-1/15-4/15-5 + 优化项 1/2 | 9 |
 | **`QaConsistencyTest`**（QA 新增） | 一致性边界：缓存下 / refresh 后 / 不可列举例外 | AC-10-1/10-2/10-3/10-4 | 3 |
+| `enjoy/directive/DirectiveTest` | 三条 Enjoy 指令：lang 位置无关 / 优先级链 / dir / IAE / 真实 Engine 渲染（AC-INC-01~13，§十一） | AC-INC-01~13 | 13 |
 | `support/FakeMessageSource` | 测试替身（非测试类） | — | — |
 | `support/FakeDbAccessor` | db 访问替身（非测试类） | — | — |
 | `support/RecordingLogFactory`（QA 新增） | 日志录制替身（非测试类） | — | — |
 
-> 合计 `@Test` = 13+1+18+18+13+13+6+15+7+3 = **107**，与实测一致。
+> 合计 `@Test` = 13+1+22(I18nKitTest)+18+13+13+6+15+9+3+13(DirectiveTest) = **126**，与实测一致。
 
 ---
 
@@ -275,9 +277,10 @@
 | 阶段 | 命令 | 真实输出 | 结论 |
 | --- | --- | --- | --- |
 | 基线复验 | `mvn clean verify`（副本前，交付原样） | `Tests run: 97, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`（8.971 s） | PASS：与开发/交付负责人基线一致，但**未采信**，继续深查 |
-| 补强后 | `mvn clean verify`（新增 QaLogLevelTest / QaConsistencyTest + 自修 sleep 后） | `Tests run: 107, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS` | PASS |
+| 补强后 | `mvn clean verify`（新增 QaLogLevelTest / QaConsistencyTest + 自修 sleep 后） | `Tests run: 124, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS` | PASS（历史阶段值） |
+| 本轮优化补测后 | `mvn clean verify`（QaLogLevelTest 新增 refresh/load WARN 2 例） | `Tests run: 126, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS` | PASS（最终值） |
 
-逐类实测（最终 107）：`I18nPluginTest` 15 / `ArchitectureBoundaryTest` 13 / `BundleExportTest` 13 / `ClassFileVersionTest` 1 / `FormatKitTest` 18 / `I18nKitTest` 18 / `LocaleResolverTest` 13 / `QaConsistencyTest` 3 / `QaLogLevelTest` 7 / `I18nHandlerTest` 6 = **107**。
+逐类实测（最终 126）：`I18nPluginTest` 15 / `ArchitectureBoundaryTest` 13 / `BundleExportTest` 13 / `ClassFileVersionTest` 1 / `FormatKitTest` 18 / `I18nKitTest` 22 / `LocaleResolverTest` 13 / `QaConsistencyTest` 3 / `QaLogLevelTest` 9 / `I18nHandlerTest` 6 / `DirectiveTest` 13 = **126**。
 
 ### 2. 重点核查清单逐项独立验证（team-lead 派单 10 项）
 
@@ -286,7 +289,7 @@
 | 1 | E-3 时区坑 | 源码审查：`FormatSupport#dateTime` 确用 `ZoneId.of(zoneId)` + `catch DateTimeException→IAE`；测试 `illegalZoneThrows` 用 `SimpleTimeZone(0,"Mars/Base")` 保留非法 ID（`TimeZone.getTimeZone("Mars/Base")` 会静默变 GMT，故不能用它构造）。变异探针 1 移除校验后用例立刻 FAIL → **真能抓到**。 |
 | 2 | 三处易混边界 | (a) `zh_CN_`→IAE（`explicitIllegalLocaleThrows` / `explicitIllegalThrows` / `illegalLocaleThrows`） vs `zh_CN`→命中（`normalizedLocaleHit` / `normalizedLocaleExportConsistent`）逐条区分 ✓；(b) 缺参占位符原样保留（`messagePlaceholderMissingArgKeptAsIs`）vs null 值 IAE（`nullDateThrows` 等）✓；(c) locale 缺省落默认（`localeFallsBackToDefaultWhenNoContext`）vs null 币种/时区 IAE ✓。 |
 | 3 | 回退链 AC-03-1 | `fallbackToDefaultLocaleAcrossSources` 精确场景：db/properties 均无 zh-CN、properties 有 en → 命中 en 值；变异探针 3 删除回退段后 FAIL → **真能抓到**。 |
-| 4 | 故障 vs 未命中日志分级 | 源码：未命中 `debug()`、故障/跳过/降级 `warn()` 分级正确；**原测试无日志级别断言**（缺口）→ QA 新增 `QaLogLevelTest` 7 例补全，DEBUG/WARN 分明且含稳定名+key。 |
+| 4 | 故障 vs 未命中日志分级 | 源码：未命中 `debug()`、故障/跳过/降级 `warn()` 分级正确；**原测试无日志级别断言**（缺口）→ QA 新增 `QaLogLevelTest` 补全（现 9 例，含本轮 refresh/load WARN 2 例），DEBUG/WARN 分明且含稳定名+key。 |
 | 5 | Web finally 清理 | `clearsLocaleAfterRequest` / `sameThreadTwoRequestsDoNotBleed`（AC-08-5）/ `clearsOnDownstreamException`（AC-08-6，异常原样抛出 + 清理）：D-02 端到端用例存在且 PASS。 |
 | 6 | D-02 两条消费路径 | `I18nKitTest#serviceAndTemplateRenderShareSameEntry`：服务层 `I18nKit.message` 与模板函数 `Function` 包装逐字等价断言；不引入 Enjoy 依赖（Q7）。PASS。 |
 | 7 | D-03 格式化 | 三参正交（16-1/2/3）+ 百分比（16-7）+ 四档（16-8 默认 MEDIUM + `fourStylesAreAvailable`）+ 门禁⑪零自建规则 + 门禁⑩ dir 唯一定义点 + `dirDegradationLogsWarn`（16-5 降级 WARN）；断言遵守 §9.8 跨 provider 稳定口径（不写死符号/完整日期串）。 |
@@ -302,6 +305,16 @@
 | 零 Thread.sleep | PASS | `I18nKitTest` 采用 nanoTime 有界轮询；当前 0 处实际 sleep 调用；3 次重跑稳定 |
 | kv 集成默认关闭 | PASS | 无真实 KV/DB/HTTP 集成测试；`kv` 命中语义以 FakeMessageSource 覆盖，依赖缺失以隔离 ClassLoader 探针覆盖 |
 | 依赖范围 | PASS | `mvn dependency:tree`：`aifei-all:provided` + `aifei-cache:provided,optional` + `junit:test`，零 compile 第三方 |
+
+### 4. 本轮优化补测（5 项优化中的 2 条 WARN 路径）
+
+| 用例 | 触发方式 | 实测断言 | 结果 |
+| --- | --- | --- | --- |
+| `QaLogLevelTest#refreshFailureLogsWarnAndContinuesOtherSources` | `FakeMessageSource.refreshFailing(true)` + `I18nKit.refresh()` | WARN 含稳定名 db；故障源与健康源 refresh 各 1 次（不中断）；无 ERROR；随后未命中仍 DEBUG 且无 WARN | PASS |
+| `QaLogLevelTest#propertiesReadFailureLogsWarnAndYieldsEmptySource` | TCCL 替换为「读即抛 IOException」InputStream 的 ClassLoader + `new PropertiesSource(name)` | WARN 含资源名；空来源（get=null / list 空）；无 ERROR；构造不抛、不启动失败 | PASS |
+
+> 两条均按 `RecordingLogFactory` 口径只断言级别 + 关键片段，不写死完整消息；`@After` 恢复原日志工厂与 TCCL，状态隔离。替身 `FakeMessageSource` 仅新增 refresh 故障开关与调用计数，未改产品源码。
+> 本轮智能路由：源码缺陷 0、测试自身缺陷 0，无需回流；门禁 13 例断言零放宽、全绿。
 
 ---
 
@@ -325,16 +338,16 @@
 1. **AC-06-2 / AC-07-4 依赖源码与文档审查**（非运行时用例）：db 只读不执行 DDL、properties 改值须重启，这两条以「门禁⑤ + 源码审查 + README 声明」为证据，无独立运行时用例（db 真实交互需外部数据库，违反零外部依赖）。属设计允许的审查通道，不构成覆盖缺口。建议：如后续引入内存 db 替身，可补一条只读语义用例。
 2. **日志 WARN 消息中 locale 用 `Locale.toString()`（`zh_CN`）而非规范化 tag（`zh-CN`）**：符合 AC「含 locale」要求，但跨 locale 格式不统一。P3 建议（非缺陷）：统一用规范化 tag 更利于日志检索。
 3. **ClassFileVersionTest 在 target/classes 不存在时跳过**：纯 IDE 环境可能跳过字节码断言；`mvn clean verify` 下 target/classes 必然存在，本次已独立 javap 全量核验兜底。
-4. **物理断网未做**：离线性结论来自「门禁⑬ + 零外网 URL + 零真实集成测试 + 107 例全绿」的组合证据，未做物理断网跑（本机回环可用，外部网络未隔离）。与 aifei-http 同口径。
+4. **物理断网未做**：离线性结论来自「门禁⑬ + 零外网 URL + 零真实集成测试 + 126 例全绿」的组合证据，未做物理断网跑（本机回环可用，外部网络未隔离）。与 aifei-http 同口径。
 
 ---
 
 ## 九、验证命令（均在模块根 `aifei-i18n/` 执行）
 
 ```bash
-mvn clean verify                                          # 主验证：必须 0 failure / 0 error（实测 107/0/0）
+mvn clean verify                                          # 主验证：必须 0 failure / 0 error（实测 126/0/0）
 mvn test -Dtest=ArchitectureBoundaryTest,ClassFileVersionTest   # 仅跑双门禁（13+1 例）
-mvn test -Dtest=QaLogLevelTest,QaConsistencyTest           # 仅跑 QA 新增补强用例（7+3 例）
+mvn test -Dtest=QaLogLevelTest,QaConsistencyTest           # 仅跑 QA 新增补强用例（9+3 例）
 mvn test -Dtest=FormatKitTest#illegalZoneThrows            # E-3 时区坑单方法
 mvn dependency:tree                                       # 依赖范围核对（provided/optional/test）
 # class major 独立核验

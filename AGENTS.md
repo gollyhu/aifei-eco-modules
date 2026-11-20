@@ -1,6 +1,6 @@
 # aifei-eco-modules 开发约束（全体模块共同遵守）
 
-本文件适用于仓库内全部模块（发布模块：`aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-trace` / `aifei-http` / `aifei-excel` / `aifei-i18n`；示例工程：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-excel-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
+本文件适用于仓库内全部模块（发布模块：`aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-trace` / `aifei-http` / `aifei-excel` / `aifei-i18n`；示例工程：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-excel-demo` / `aifei-i18n-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
 
 各模块的专属约束与验证命令见其自身 `AGENTS.md`。模块文件可**补充、收紧**本文件，但不得**放宽**；两者不一致时以更严格者为执行标准，并应及时消除不一致。
 

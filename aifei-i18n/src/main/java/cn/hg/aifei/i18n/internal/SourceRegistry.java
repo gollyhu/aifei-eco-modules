@@ -87,13 +87,6 @@ public final class SourceRegistry {
         return sources;
     }
 
-    /**
-     * 清空注册表持有的来源引用；幂等。
-     */
-    public void clear() {
-        // sources 为不可变列表，清空语义由持有者释放引用实现；本方法保留以满足生命周期契约
-    }
-
     private static void ensureCacheDependency() {
         try {
             Class.forName(CACHE_FQN, false, Thread.currentThread().getContextClassLoader());

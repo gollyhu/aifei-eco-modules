@@ -96,8 +96,8 @@
 | **D-7** | **locale 规范化 + 严格 BCP 47 校验的唯一定义点 = `internal.LocaleNormalizer`，实现基于 `Locale.Builder().setLanguageTag()`（Java 8 API）**，前置 `_`→`-` 归一 | ① **实证**：`Locale.Builder` 严格拒绝 `zh-CN-`/`''`（抛 `IllformedLocaleException`），并把 `zh_CN`→`zh-CN`、`zh-hant-tw`→script `Hant`、地区大写——一条 API 同时满足需求 §5.5 的全部规范化规则与 Q8 的非法处置；② `Locale.forLanguageTag` 是宽松解析（`zh_CN` 直接得空 locale），**不可**用于校验，必须先归一再走 Builder；③ 一处实现供「取文案 / 导出 / 缓存 key / 格式化 / 请求头」全部复用，杜绝第二定义点 | ① 手写正则 + `String.toUpperCase`：脚本码/地区码规则易错，且非严格 BCP47；② 用 `Locale.forLanguageTag` 校验：宽松，无法识别 `zh_CN_` 非法；③ 各入口各自规范化：违反唯一定义点 |
 | **D-8** | **非法时区校验用 `java.time.ZoneId.of()`（抛 `ZoneRulesException`）并转 `IllegalArgumentException`；不得用 `TimeZone.getTimeZone` 的返回值判非法** | ① **实证（关键）**：`TimeZone.getTimeZone("Mars/Base")` **不抛异常**，静默返回 `GMT`——直接用它会使 AC-16-5「非法时区→IAE」失效；② `ZoneId.of("Mars/Base")` 抛 `ZoneRulesException`（Java 8 `java.time`，`--release 8` 编译可用），捕获后转 IAE，消息含原值；③ `Asia/Shanghai` 等合法 ID 正常通过 | ① `TimeZone.getAvailableIDs()` 线性比对：可用但另造一份「合法 ID 集合」语义，且 `ZoneId.of` 更准；② 不校验：违反 AC-16-5 且静默错误；③ 用 `TimeZone.getTimeZone(...).getID().equals(input)` 判定：对 `GMT+8` 等别名误判 |
 | **D-9** | **异常分类**：启动期失败（配置非法 / 来源重名 / 来源未注册 / 已声明来源依赖缺失 / `defaultLocale` 缺失）统一 `I18nException extends RuntimeException`（消息含稳定名或键名，逐字表 §8.3）；**调用方当场写错**（显式非法 locale、null 值/币种/时区、非法档位 null）用 `IllegalArgumentException`；**运行期来源故障**不抛异常、WARN 后继续回退（Q4）；**整包导出**不可用来源跳过 + WARN（Q2） | ① A-3 预估 `I18nException`，启动失败横跨配置/来源/依赖三类，单一异常让消费方一次捕获；② IAE 对齐仓库口径（trace/http/lock 一致）；③ Q2/Q4 已裁决「不中断取文案」，与 IAE 的「调用方写错」性质分明；④ 格式化非法币种 `Currency.getInstance("XYZ")` 实测即抛 `IllegalArgumentException`，直接透传不包装 | ① 全部 `I18nException`：违反 AC-08-7/14-3/16-5/16-9 的 IAE 要求；② 运行期故障也抛：违反 Q4「不得让业务接口 500」；③ 细分多异常子类：公共面扩张，业务只需一个 catch 点 |
-| **D-10** | **装配形态采用 `aifei.I18nPlugin implements cn.aifei.plugin.Plugin` + 构造收 `cn.aifei.util.Prop` + `internal.I18nConfig.parse(Properties)`**；`start()` 解析配置、建注册表、装门面、失败回滚 `catch (RuntimeException\|Error){ holder.clear(); registry.clear(); throw e; }`（防半装配，对齐 `HttpPlugin` / `CachePlugin`） | ① 需求有 4 个配置键（trace 无配置键且禁 Plugin，不适用）；http/cache 同构形态已在本仓库验证；② `Prop` 仅出现在 `aifei` 包，`internal` 只收 `Properties`（与 http 决策同纪律）；③ `catch(RuntimeException\|Error)` 双抓回滚已在 `CachePlugin.start()` 实测形态（§参考源码） | ① 无 Plugin、消费方手工装配：4 配置键无统一解析点，且无法做到「缺失即启动失败」；② `internal` import `Prop`：违反分层门禁；③ 失败只清门面不清注册表：留下半装配状态 |
-| **D-11** | **模块自身日志经 `cn.aifei.log.Log`，方法内惰性取用（`Log.get(Xxx.class)`），禁 `static` 字段、禁 `System.err`、禁第三方绑定**；唯一 WARN 点集合固定：来源故障（§8.2）、不可列举/导出故障、dir 降级 | ① `LogFactory` 装配晚于类初始化，`static` 字段会固化空实现（http 决策 16 已实证）；② 日志绑定一律不引入（零第三方）；③ DEBUG 仅「未命中」，WARN 仅「故障/降级」，级别语义分明（Q4） | ① `static final Log`：装配前固化；② `System.err`：违反根 AGENTS.md；③ 每次取文案都打日志：高频路径噪声与成本不可接受 |
+| **D-10** | **装配形态采用 `aifei.I18nPlugin implements cn.aifei.plugin.Plugin` + 构造收 `cn.aifei.util.Prop` + `internal.I18nConfig.parse(Properties)`**；`start()` 解析配置、建注册表、装门面、失败回滚 `catch (RuntimeException\|Error){ holder.clear(); throw e; }`（防半装配，对齐 `HttpPlugin` / `CachePlugin`） | ① 需求有 4 个配置键（trace 无配置键且禁 Plugin，不适用）；http/cache 同构形态已在本仓库验证；② `Prop` 仅出现在 `aifei` 包，`internal` 只收 `Properties`（与 http 决策同纪律）；③ `catch(RuntimeException\|Error)` 双抓回滚已在 `CachePlugin.start()` 实测形态（§参考源码） | ① 无 Plugin、消费方手工装配：4 配置键无统一解析点，且无法做到「缺失即启动失败」；② `internal` import `Prop`：违反分层门禁；③ 失败只清门面不清注册表：留下半装配状态 |
+| **D-11** | **模块自身日志经 `cn.aifei.log.Log`，方法内惰性取用（`Log.get(Xxx.class)`），禁 `static` 字段、禁 `System.err`、禁第三方绑定**；唯一 WARN 点集合固定：来源故障（§8.2）、不可列举/导出故障、dir 降级、来源刷新故障（I18nEngine）、properties 资源读故障（PropertiesSource） | ① `LogFactory` 装配晚于类初始化，`static` 字段会固化空实现（http 决策 16 已实证）；② 日志绑定一律不引入（零第三方）；③ DEBUG 仅「未命中」，WARN 仅「故障/降级」，级别语义分明（Q4） | ① `static final Log`：装配前固化；② `System.err`：违反根 AGENTS.md；③ 每次取文案都打日志：高频路径噪声与成本不可接受 |
 | **D-12** | **Web 上下文用普通 `ThreadLocal`（非 `InheritableThreadLocal`）**，唯一持有点 `internal.LocaleContext`；`I18nHandler#handle` 执行序 = `try{解析 locale→绑定→next}finally{clear()}`；下游异常原样传播；**必须第一个 addHandler** | ① 对齐 aifei-trace 同构（需求 §5.5 点名）；线程池复用线程下 `InheritableThreadLocal` 会串语言（trace 已否决）；② finally 保证异常路径清理（AC-08-6）；③ 首个 addHandler 才能覆盖全部下游 | ① `InheritableThreadLocal`：池线程串号；② 业务手动清理：遗漏即串语言；③ Handler 捕获下游异常：违反「原样传播」语义 |
 | **D-13** | **`Accept-Language` 解析放在 `web` 入口**：`LocaleExtractor<I>` 返回原始 header 字符串（因框架 `Input` 无 header API，见下），`I18nHandler` 调 `internal.LocaleResolver#parseAcceptLanguage` 解析「首个受支持语种」并绑定；P0 忽略 q 权重（P1） | ① `cn.aifei.core.Input` 公开接口只有参数读取、**无 header 访问**（trace design §6 已核实），Handler 无法自取 header，需消费方从自定义 Input 暴露（函数式接口承担）；② 把「读 header」留消费方、「解析规则」留模块内部，职责边界干净且解析仍是唯一定义点；③ 四级优先级的「请求头级」在 Web 入口落地，非 Web 场景该级不存在（落默认），符合 AC-08-3/08-4 | ① 内部另设 ThreadLocal 存原始 header：第二状态源；② 让业务传 header 字符串到每个入口：污染公共签名；③ 用 `Input` 直接读 header：框架无此 API |
 | **D-14** | **`MessageSource` 的「未命中」用 `null` 表示、空串是合法命中；`list()` 用 `null` 表示「不支持整包列举」**；均写进接口 javadoc（唯一契约定义点） | ① 需求必修要素③要求「无译文 ≠ 空串」可区分；`null` 是唯一自然的哨兵；② `list()==null` 天然表达选修要素④缺失，配合 Q2 跳过 + WARN；③ 不引入 `Optional`（公共面只用 JDK 常用类型，且 Java 8 Optional 作为返回值在框架生态不普遍） | ① 用空串表示未命中：AC-02-3 空串命中无法表达；② 用 `Optional`：公共面风格不统一，且 `null` 哨兵更贴合缓存/来源生态；③ 自定义 Result 类型：公共面扩张 |
@@ -479,7 +479,7 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 | `internal.LocaleResolver` | **★ 生效 locale 四级优先级唯一定义点**：`resolve(String explicit)`（显式>上下文>默认）；**★ Accept-Language 解析唯一定义点**：`parseAcceptLanguage(String raw)`（首个受支持语种，非法片段静默忽略） |
 | `internal.LocaleContext` | **★ ThreadLocal 持有唯一定义点**：`set(String)` / `get()` / `clear()`；普通 `ThreadLocal<String>`（非 Inheritable） |
 | `internal.I18nHolder` | **★ 运行期引擎持有唯一定义点**：`install(I18nEngine)` / `engine()`（未装配 → I18nException）/ `clear()` |
-| `internal.SourceRegistry` | **★ 稳定名注册与重名判定唯一定义点**：`build(config, List<MessageSource>)`（按 `i18n.sources` 顺序解析、重名/未注册/依赖缺失 → I18nException）、`orderedSources()`、`clear()` |
+| `internal.SourceRegistry` | **★ 稳定名注册与重名判定唯一定义点**：`build(config, List<MessageSource>)`（按 `i18n.sources` 顺序解析、重名/未注册/依赖缺失 → I18nException）、`orderedSources()` |
 | `internal.FallbackChain` | **★ 回退链唯一定义点**：`get(key, localeTag, sources, defaultLocale, cache)`——两轮（生效 locale 逐来源 → 默认 locale 逐来源）+ 未命中 DEBUG + 故障 WARN + 返回 key 原文 |
 | `internal.CacheLayer` | **★ 缓存键拼装 + TTL 判定 + 全清唯一定义点**：`get(key, localeTag, loader)` / `clearAll()`；TTL≤0 直接回源；空串命中与未命中哨兵区分 |
 | `internal.MessageInterpolator` | **★ `{0}` 占位插值唯一定义点**：`format(pattern, args)` 委派 `java.text.MessageFormat`（缺参原样保留，E-6） |
@@ -511,7 +511,7 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 | 运行期实例持有与「未装配」消息 | `internal.I18nHolder` |
 | 默认档位 MEDIUM（省略重载的唯一转发） | `internal.FormatSupport#DEFAULT_STYLE` |
 | `I18nException` / `IllegalArgumentException` 消息措辞 | §8.3 逐字表（各抛出点按表实现，不各写措辞） |
-| 模块日志获取（`Log.get(本类.class)`，禁 static/System.err） | `internal.FallbackChain` / `internal.BundleExporter` / `internal.LocaleMeta` 三个 WARN 点 |
+| 模块日志获取（`Log.get(本类.class)`，禁 static/System.err） | `internal.FallbackChain` / `internal.BundleExporter` / `internal.LocaleMeta` / `internal.I18nEngine` / `defaultSource.PropertiesSource` 五个 WARN 点 |
 
 ---
 
@@ -576,6 +576,8 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
 | 20 | `I18nHandler` 下游抛异常 | 原样向上传播，finally 清理 | 原异常 |
 | 21 | extractor 抛异常 | 吞掉，不绑定，落 default | 无（被吞） |
 | 22 | 重复 `I18nKit.refresh()` / 空来源刷新 | 幂等 | 无 |
+| 23 | `refresh()` 某来源抛异常 | 跳过该来源，继续刷新其余；不向上抛 | WARN（含稳定名） |
+| 24 | `properties` 资源读取抛 `IOException` | 按已读结果继续（资源缺失即空来源），不启动失败 | WARN（含资源名） |
 
 ### 8.3 `IllegalArgumentException` / 启动失败消息（唯一措辞来源）
 
@@ -857,7 +859,6 @@ classDiagram
         <<internal, final>>
         +build(I18nConfig, List)$ SourceRegistry
         +orderedSources() List~MessageSource~
-        +clear()$ void
     }
 
     class I18nEngine {
@@ -1095,7 +1096,7 @@ private static final Set<String> EXPECTED_AIFEI_TYPES = new LinkedHashSet<>(Arra
 | # | 测试方法 | 判定口径 | 覆盖 AC |
 | --- | --- | --- | --- |
 | ① | `noThirdPartyReference` | 每个 `.java` 的每条 `import`：FQN 必须以 `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.i18n.` / `cn.hg.aifei.cache.`（仅 `KvSource`）之一开头，否则失败 | AC-13-1 |
-| ② | `frameworkScopeRules` | `cn.aifei.util.Prop` / `cn.aifei.plugin.Plugin` / `cn.aifei.aop.*` 只允许在 `AIFEI_PACKAGE`；`cn.aifei.core.*` 只允许在 `WEB_PACKAGE`；`cn.aifei.log.*` 只允许在 `INTERNAL_PACKAGE` 的三个 WARN 记录类与 `AIFEI_PACKAGE`；其余 `cn.aifei.*` 一律失败 | AC-13-1 |
+| ② | `frameworkScopeRules` | `cn.aifei.util.Prop` / `cn.aifei.plugin.Plugin` / `cn.aifei.aop.*` 只允许在 `AIFEI_PACKAGE`；`cn.aifei.core.*` 只允许在 `WEB_PACKAGE`；`cn.aifei.log.*` 只允许在 `INTERNAL_PACKAGE` 的 WARN 记录类、`DEFAULT_SRC` 的 WARN 记录类与 `AIFEI_PACKAGE`；其余 `cn.aifei.*` 一律失败 | AC-13-1 |
 | ③ | `publicSurfaceExact` | 根包直接子文件数精确 = 7 且集合 = `EXPECTED_ROOT_TYPES`；web 包 = 2 且集合 = `EXPECTED_WEB_TYPES`；aifei 包 = 1 且集合 = `EXPECTED_AIFEI_TYPES`（文件名精确相等，防同名替换/增删） | AC-13-2 |
 | ④ | `publicSurfaceByReflection` | 编译产物存在时，扫描 `target/classes` 顶层 `.class`（过滤 `$`），`Modifier.isPublic` 的类型 FQN 集合**精确等于**根 7 + web 2 + aifei 1 的 10 个 FQN（防源码扫描漏报） | AC-13-2 |
 | ⑤ | `noSqlReference` | 全模块任何 `.java` 不得 `import java.sql.`（零 DB 依赖，db 来源走框架 `cn.aifei.db` 且仅在方法体） | REQ-P0-06 |

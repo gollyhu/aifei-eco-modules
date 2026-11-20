@@ -14,7 +14,7 @@
 
 - 根包 7：`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`。
 - `web` 2：`I18nHandler` / `LocaleExtractor`；`aifei` 1：`I18nPlugin`。
-- `internal` / `defaultSource` 为非承诺实现，不得升为公共类型。
+- `internal` / `defaultSource` / `enjoy/directive` 为非承诺实现，不得升为公共类型。
 - 公共签名零第三方类型、零框架类型；`cn.aifei.*` 只允许在 `web`（core）与 `aifei`（Prop/Plugin）包。
 - `Localizer` 仅 import `internal.I18nHolder` 与 JDK；构造为包级（仅同包 `I18nKit.local` 可 new），不可变可复用，无 getter。
 
@@ -35,7 +35,7 @@
 | 档位映射 / 币种小数位 / 币种与时区校验 / 格式化 locale 解析 | `internal.FormatSupport`（locale 再委派 LocaleResolver） |
 | 来源稳定名注册 / 重名 / 依赖探测 | `internal.SourceRegistry` |
 | 运行期引擎持有与「未装配」消息 | `internal.I18nHolder` |
-| 日志获取（`Log.get(本类.class)`，禁 static / System.err） | `FallbackChain` / `BundleExporter` / `LocaleMeta` |
+| 日志获取（`Log.get(本类.class)`，禁 static / System.err） | `FallbackChain` / `BundleExporter` / `LocaleMeta` / `I18nEngine` / `PropertiesSource` |
 
 异常消息逐字表见 `docs/design.md` §8.3，各抛出点按表实现，不各写措辞。
 
@@ -56,6 +56,7 @@
 - `ArchitectureBoundaryTest`：13 例源码文本 + 反射门禁；`ClassFileVersionTest`：全部 class major = 52。
   门禁位于 `src/test/java/cn/hg/aifei/i18n/`，须在模块根执行（surefire `workingDirectory=${project.basedir}` 保证）。
 - 门禁**不得为兼容错误用法而放宽**；新增例外必须先改 `docs/design.md` §2 再改门禁。
+- 唯一门禁例外：`cn.aifei.enjoy.*` 仅允许出现在 `enjoy/directive/`（design.md §16.8.1）；`cn.aifei.log.*` 另允许 design.md §6.3 登记的 WARN 记录类所在包。
 - 测试零联网：测试源码中的 URL host 只能是 `127.0.0.1` / `localhost`；无真实 DB / KV 外部服务依赖。
 - 验证命令：`cd aifei-i18n && mvn clean verify`，必须 0 failure / 0 error。
 
