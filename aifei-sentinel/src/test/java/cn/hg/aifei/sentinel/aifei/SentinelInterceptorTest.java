@@ -111,6 +111,58 @@ public class SentinelInterceptorTest {
         Assert.assertEquals(0, svc.blankCalls);
     }
 
+    @Test
+    public void testAnnotatedResourceNameCached() throws Exception {
+        Method m = AnnotatedService.class.getMethod("logic");
+        Invocation inv = invocationOf(new AnnotatedService(), m);
+
+        Assert.assertEquals("unit.logic", INTERCEPTOR.resourceOf(inv));
+        String cached = INTERCEPTOR.resourceOf(inv);
+        Assert.assertSame(cached, INTERCEPTOR.resourceOf(inv));
+        Assert.assertTrue(SentinelInterceptor.RESOURCE_CACHE.get(AnnotatedService.class).containsKey(m));
+    }
+
+    @Test
+    public void testDefaultResourceNameCached() throws Exception {
+        Method m = DemoService.class.getMethod("index");
+        String expected = DemoService.class.getName() + "#index";
+        Invocation inv = invocationOf(new DemoService(), m);
+
+        Assert.assertEquals(expected, INTERCEPTOR.resourceOf(inv));
+        String cached = INTERCEPTOR.resourceOf(inv);
+        Assert.assertSame(cached, INTERCEPTOR.resourceOf(inv));
+        Assert.assertTrue(SentinelInterceptor.RESOURCE_CACHE.get(DemoService.class).containsKey(m));
+    }
+
+    @Test
+    public void testConcurrentResourceNameConsistent() throws Exception {
+        Method m = AnnotatedService.class.getMethod("logic");
+        final Invocation inv = invocationOf(new AnnotatedService(), m);
+        final String[] results = new String[8];
+        Thread[] threads = new Thread[results.length];
+        for (int i = 0; i < threads.length; i++) {
+            final int idx = i;
+            threads[i] = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    results[idx] = INTERCEPTOR.resourceOf(inv);
+                }
+            });
+            threads[i].start();
+        }
+        for (Thread t : threads) {
+            t.join();
+        }
+        for (String r : results) {
+            Assert.assertEquals("unit.logic", r);
+        }
+    }
+
+    private static Invocation invocationOf(Object target, Method m) {
+        Callback callback = args -> null;
+        return new Invocation(target, m, new Object[]{}, new Interceptor[]{}, callback);
+    }
+
     private static Object invoke(Object target, String methodName) throws Exception {
         Method m = target.getClass().getMethod(methodName);
         Callback callback = args -> {

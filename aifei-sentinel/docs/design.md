@@ -25,6 +25,7 @@ aifei 生态已有缓存（`aifei-cache`）、鉴权（`aifei-sa-token`）等社
 | 引入方式 | 引入 `sentinel-core`（compile），L1 接线 | 流控与熔断算法成熟但滑动窗口/令牌桶边界易错，不宜自研；`sentinel-core` 是纯 Java，可手工装配 |
 | 埋点方式 | aifei 拦截器 + 编程式 `SphU.entry` | 官方 `@SentinelResource` 依赖 Spring AOP，aifei 不支持 Spring；改由拦截器统一埋点 |
 | 资源名声明 | 自研 `@SentinelResource` 注解（方法级） | 官方注解因 Spring AOP 被否决；自研注解仅用 JDK 注解类型、不含 Spring，由 `resourceOf` 直接读取，不新增依赖 |
+| 资源名解析缓存 | 按 `Method` 缓存在拦截器内部，用 `ClassValue<ConcurrentHashMap<Method,String>>` | 注解为编译期静态元数据、运行期不变，无需失效；`ClassValue` 随类卸载回收，避免强引用 `Method` 阻塞类卸载；此处「缓存」指类内部内存缓存，不引入 `aifei-cache` 等公共缓存组件 |
 | 禁用项 | `sentinel-annotation-aspectj`、`spring-cloud-starter-alibaba-sentinel` | 同上，Spring 生态 |
 | 规则管理 | 对接官方 Sentinel Dashboard，不自研控制台 | 规则管理、推送、监控由官方 Dashboard 承担，自研 WebUI + CRUD 的投入产出比不划算 |
 | 生命周期 | 静态门面 `SentinelKit`，在 `onStart()` 装配 | 不需要插件机制，静态 init 即可嵌入 aifei 启动流程 |
@@ -101,6 +102,15 @@ public interface SentinelBlockHandler {
 ```java
 public class SentinelInterceptor implements Interceptor {
 
+    /** 随类卸载自动回收，避免强引用 Method 阻塞 ClassLoader */
+    static final ClassValue<ConcurrentHashMap<Method, String>> RESOURCE_CACHE =
+            new ClassValue<ConcurrentHashMap<Method, String>>() {
+                @Override
+                protected ConcurrentHashMap<Method, String> computeValue(Class<?> type) {
+                    return new ConcurrentHashMap<Method, String>();
+                }
+            };
+
     private final SentinelBlockHandler blockHandler;
 
     public SentinelInterceptor(SentinelBlockHandler blockHandler) {
@@ -122,14 +132,18 @@ public class SentinelInterceptor implements Interceptor {
         }
     }
 
-    /** 资源名：注解非空白 value 优先（trim 后），否则回退「全限定类名#方法名」；子类覆盖则不读注解 */
+    /** 资源名：注解非空白 value 优先（trim 后），否则回退「全限定类名#方法名」；结果按 Method 缓存，子类覆盖则不读注解与缓存 */
     protected String resourceOf(Invocation inv) {
         Method m = inv.getMethod();
+        return RESOURCE_CACHE.get(m.getDeclaringClass()).computeIfAbsent(m, SentinelInterceptor::resolve);
+    }
+
+    private static String resolve(Method m) {
         SentinelResource anno = m.getAnnotation(SentinelResource.class);
         if (anno != null && anno.value() != null && !anno.value().trim().isEmpty()) {
             return anno.value().trim();
         }
-        return m.getDeclaringClass().getName() + "#" + inv.getMethodName();
+        return m.getDeclaringClass().getName() + "#" + m.getName();
     }
 }
 ```
@@ -194,6 +208,8 @@ public final class SentinelKit {
 优先级：① 方法标注 `cn.hg.aifei.sentinel.annotation.SentinelResource` 且 `value` 非空白 → 取 `value.trim()`（如 `demo.index`）；② 未标注或 `value` 为 `null` / 空串 / 纯空白 → 回退默认「全限定类名#方法名」，如 `cn.demo.VipService#index`。
 
 规则 JSON 中的 `resource` 必须与最终资源名严格对齐，否则限流不生效。SDK 不校验注解 `value` 格式、不强制前缀，逻辑名由使用方自定（约定小写点分 `<业务域>.<动作>`）。注解只在默认 `resourceOf` 实现中读取：子类覆盖 `resourceOf` 时注解不再生效；需按 HTTP path 维度限流时也走覆盖方式。
+
+解析结果按 `Method` 缓存在拦截器内部（`ClassValue<ConcurrentHashMap<Method,String>>`）：注解是编译期静态元数据、运行期不变，故缓存永不过期；`ClassValue` 随类卸载自动回收。此处缓存属类内部内存缓存，不引入 `aifei-cache` 等公共缓存组件。子类覆盖 `resourceOf` 时不读该缓存。
 
 ### 5.2 规则 JSON
 
@@ -305,7 +321,7 @@ Dashboard 模式下的启动顺序为：注入属性 → 注册回写（替换 p
 | 风险 | 规避 |
 |---|---|
 | `entry` / `exit` 不配对 → 计数器泄漏 | 拦截器 `finally` 强制 `exit` + 测试断言 |
-| 规则 `resource` 与埋点资源名错位 → 限流失效 | 资源名统一走「全限定类名#方法名」，规则示例同源 |
+| 规则 `resource` 与埋点资源名错位 → 限流失效 | 资源名按「注解逻辑名优先、未标注回退默认名」生成，规则 JSON 与注解两处同源维护 |
 | Sentinel 类型渗透业务代码 | 门面收敛 + `KernelBindingTest` 把关 |
 | 回环震荡：同时开热读与回写互相触发 | 两种模式互斥，Dashboard 模式不注册热读数据源 |
 | 注入时序晚于 transport 初始化 → 连不上 Dashboard | 文档强制 `onStart()` 中最早调用 `loadRules` |
@@ -314,3 +330,4 @@ Dashboard 模式下的启动顺序为：注入属性 → 注册回写（替换 p
 | 回写并发与半截文件 | 写操作串行化（锁）+ 临时文件原子落盘 |
 | 规则文件是 classpath 资源 | 不启热读、不回写，按一次性加载 |
 | 注解 `value` 与规则 `resource` 不一致 → 限流静默失效 | 逻辑名在注解与规则 JSON 两处同源维护；空白值回退默认名；子类覆盖 `resourceOf` 时注解不生效须自行保证对齐 |
+| 缓存强引用 `Method` 阻塞类卸载 | 缓存用 `ClassValue` 承载，随 `Class` 卸载自动回收，不用静态 `ConcurrentHashMap` 直接持有 `Method` |

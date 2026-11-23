@@ -188,7 +188,7 @@ public class SentinelInterceptor implements Interceptor {
 }
 ```
 
-`resourceOf` 默认读取方法上的 `@SentinelResource` 注解（`value` 非空白时经 `trim` 作为资源名），未标注时回退「全限定类名#方法名」；子类可覆盖该方法完全自定义。
+`resourceOf` 默认读取方法上的 `@SentinelResource` 注解（`value` 非空白时经 `trim` 作为资源名），未标注时回退「全限定类名#方法名」；解析结果按 `Method` 缓存（`ClassValue` 承载，随类卸载回收，注解运行期不变故无需失效）。子类可覆盖该方法完全自定义，覆盖后既不读注解也不读缓存。
 
 ```java
 @FunctionalInterface

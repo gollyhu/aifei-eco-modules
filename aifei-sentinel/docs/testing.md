@@ -13,7 +13,7 @@
 | 测试类 | 层次 | 覆盖 |
 |---|---|---|
 | `KernelBindingTest` | 架构门禁（源码扫描） | 内核绑定收敛、零硬引用 transport |
-| `SentinelInterceptorTest` | 行为（接入层） | 未命中规则放行透传、命中限流走降级、注解资源名命中、空白注解回退默认名 |
+| `SentinelInterceptorTest` | 行为（接入层） | 未命中规则放行透传、命中限流走降级、注解资源名命中、空白注解回退默认名、资源名解析缓存与并发一致性 |
 | `SentinelRuleWatchTest` | 热生效（core） | `watch` 后改文件自动刷新规则 |
 | `SentinelKitModeTest` | 模式分流（core） | 本地模式热读且不回写、Dashboard 模式不热读且回写、缺 `app.name` fail-fast |
 
@@ -42,6 +42,9 @@
 | `testBlockedWhenFlowRuleHit` | 命中 `FlowRule`（QPS=0）时降级返回值被写入、业务方法**未执行** |
 | `testAnnotatedResourceNameIsUsed` | 方法标注 `@SentinelResource("unit.logic")` 后以该逻辑名为资源名，命中 QPS=0 规则 → 降级返回值被写入、业务未执行 |
 | `testBlankAnnotationFallsBackToDefault` | `@SentinelResource("   ")` 空白值回退「全限定类名#方法名」，命中该默认名的 QPS=0 规则 → 降级返回值被写入、业务未执行 |
+| `testAnnotatedResourceNameCached` | 注解方法重复解析返回同一实例，且 `RESOURCE_CACHE` 中存在该 `Method` 条目 |
+| `testDefaultResourceNameCached` | 未标注方法回退默认名同样被缓存，重复解析返回同一实例 |
+| `testConcurrentResourceNameConsistent` | 8 线程并发解析同一 `Method`，结果全部一致 |
 
 既有内嵌 `DemoService` 不加注解，继续覆盖默认资源名的回退路径；注解用例放在新增内嵌 `AnnotatedService`。
 
