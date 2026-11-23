@@ -9,6 +9,7 @@ package cn.hg.aifei.sentinel.aifei;
 import cn.aifei.aop.Interceptor;
 import cn.aifei.aop.Invocation;
 import cn.aifei.proxy.Callback;
+import cn.hg.aifei.sentinel.annotation.SentinelResource;
 import cn.hg.aifei.sentinel.spi.SentinelBlockHandler;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
@@ -22,7 +23,7 @@ import java.util.Collections;
 
 /**
  * 行为测试：以真实 Invocation（target, method, args, interceptors, callback 构造器）+ 真实 Sentinel 驱动，
- * 覆盖放行透传与限流降级两条路径，不启动 HTTP。
+ * 覆盖放行透传、限流降级与注解资源名命中 / 回退，不启动 HTTP。
  */
 public class SentinelInterceptorTest {
 
@@ -41,6 +42,23 @@ public class SentinelInterceptorTest {
 
         public String blocked() {
             blockedCalls++;
+            return "ok";
+        }
+    }
+
+    public static class AnnotatedService {
+        int logicCalls;
+        int blankCalls;
+
+        @SentinelResource("unit.logic")
+        public String logic() {
+            logicCalls++;
+            return "ok";
+        }
+
+        @SentinelResource("   ")
+        public String blank() {
+            blankCalls++;
             return "ok";
         }
     }
@@ -65,6 +83,32 @@ public class SentinelInterceptorTest {
         Object ret = invoke(svc, "blocked");
         Assert.assertEquals(BLOCKED, ret);       // 降级返回值
         Assert.assertEquals(0, svc.blockedCalls); // 业务未执行
+    }
+
+    @Test
+    public void testAnnotatedResourceNameIsUsed() throws Exception {
+        FlowRule rule = new FlowRule("unit.logic");
+        rule.setGrade(RuleConstant.FLOW_GRADE_QPS);
+        rule.setCount(0);
+        FlowRuleManager.loadRules(Collections.singletonList(rule));
+
+        AnnotatedService svc = new AnnotatedService();
+        Object ret = invoke(svc, "logic");
+        Assert.assertEquals(BLOCKED, ret);
+        Assert.assertEquals(0, svc.logicCalls);
+    }
+
+    @Test
+    public void testBlankAnnotationFallsBackToDefault() throws Exception {
+        FlowRule rule = new FlowRule(AnnotatedService.class.getName() + "#blank");
+        rule.setGrade(RuleConstant.FLOW_GRADE_QPS);
+        rule.setCount(0);
+        FlowRuleManager.loadRules(Collections.singletonList(rule));
+
+        AnnotatedService svc = new AnnotatedService();
+        Object ret = invoke(svc, "blank");
+        Assert.assertEquals(BLOCKED, ret);
+        Assert.assertEquals(0, svc.blankCalls);
     }
 
     private static Object invoke(Object target, String methodName) throws Exception {

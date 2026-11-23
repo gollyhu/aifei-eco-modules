@@ -27,7 +27,7 @@
         <article class="card" aria-labelledby="title-flow">
             <div class="card-head">
                 <h2 class="card-title" id="title-flow">① 流控 QPS</h2>
-                <code class="rule-tag">DemoService#index · count 2.0/s</code>
+                <code class="rule-tag">demo.index · count 2.0/s</code>
             </div>
             <p class="card-desc">每秒放行 2 次；连发超过阈值即返回限流业务码 <code>10006</code>。</p>
             <div class="actions">
@@ -49,7 +49,7 @@
         <article class="card" aria-labelledby="title-slow">
             <div class="card-head">
                 <h2 class="card-title" id="title-slow">② 熔断 RT</h2>
-                <code class="rule-tag">DemoService#slow · RT&gt;500ms</code>
+                <code class="rule-tag">demo.slow · RT&gt;500ms</code>
             </div>
             <p class="card-desc">接口实际 sleep 800ms；连续多次触发 RT 阈值后返回降级码 <code>10006</code>，不再执行方法。</p>
             <div class="actions">
@@ -71,7 +71,7 @@
         <article class="card" aria-labelledby="title-hot">
             <div class="card-head">
                 <h2 class="card-title" id="title-hot">③ 热点参数</h2>
-                <code class="rule-tag">DemoService#detail · id · count 5.0/s</code>
+                <code class="rule-tag">demo.detail · id · count 5.0/s</code>
             </div>
             <p class="card-desc">按 <code>id</code> 统计；本页固定请求 <code>id=1</code>，同一 id 每秒放行 5 次，超出返回 <code>10006</code>。</p>
             <div class="actions">

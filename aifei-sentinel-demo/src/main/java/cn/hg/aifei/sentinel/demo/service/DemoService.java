@@ -10,6 +10,7 @@ import cn.aifei.core.Para;
 import cn.aifei.core.Path;
 import cn.aifei.demo.common.arch.Out;
 import cn.aifei.util.Prop;
+import cn.hg.aifei.sentinel.annotation.SentinelResource;
 import cn.hg.aifei.sentinel.demo.common.DemoAppConfig;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,10 +25,12 @@ public class DemoService {
 
     // 方法名 index 命中内核默认入口约定会映射为 /demo，显式声明让 /demo/index 可达
     @Path("index")
+    @SentinelResource("demo.index")
     public Out index() {
         return Out.ok("index 正常响应");
     }
 
+    @SentinelResource("demo.slow")
     public Out slow() {
         try {
             Thread.sleep(800);   // 模拟慢接口，配合熔断规则（RT > 500ms）
@@ -37,6 +40,7 @@ public class DemoService {
         return Out.ok("slow 正常响应");
     }
 
+    @SentinelResource("demo.detail")
     public Out detail(@Para(name="id", defaultValue="0") int id) {
         return Out.ok("detail-" + id);
     }

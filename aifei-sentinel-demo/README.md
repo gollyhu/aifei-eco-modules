@@ -65,9 +65,9 @@ stop-demo.bat               :: 按端口 80 找到监听进程并结束（与启
 
 | 端点 | 治理类型 | 规则（`sentinel-rules.json`） |
 | --- | --- | --- |
-| `GET /demo/index` | 流控（QPS） | `DemoService#index`，`count=2.0`（每秒放行 2 次，超出限流） |
-| `GET /demo/slow` | 熔断（RT） | `DemoService#slow`，`count=500.0`（RT>500ms 触发，接口实际 sleep 800ms） |
-| `GET /demo/detail?id=N` | 热点参数限流 | `DemoService#detail`，`paramIdx=0`（即 `id`），`count=5.0`（同一 id 每秒 5 次，超出限流） |
+| `GET /demo/index` | 流控（QPS） | `demo.index`，`count=2.0`（每秒放行 2 次，超出限流） |
+| `GET /demo/slow` | 熔断（RT） | `demo.slow`，`count=500.0`（RT>500ms 触发，接口实际 sleep 800ms） |
+| `GET /demo/detail?id=N` | 热点参数限流 | `demo.detail`，`paramIdx=0`（即 `id`），`count=5.0`（同一 id 每秒 5 次，超出限流） |
 | `GET /demo/state` | 模式来源 | 无对应规则，故不会被限流；页面靠它自动识别本地 / Dashboard 模式 |
 
 ## 现场演示脚本（约 1 分钟）
@@ -96,13 +96,13 @@ stop-demo.bat               :: 按端口 80 找到监听进程并结束（与启
 
 ```json
 {
-  "flowRules":      [{"resource": "...DemoService#index",  "grade": 1, "count": 2.0}],
-  "degradeRules":   [{"resource": "...DemoService#slow",  "grade": 0, "count": 500.0, "timeWindow": 10}],
-  "paramFlowRules": [{"resource": "...DemoService#detail", "grade": 1, "count": 5.0, "paramIdx": 0}]
+  "flowRules":      [{"resource": "demo.index",  "grade": 1, "count": 2.0}],
+  "degradeRules":   [{"resource": "demo.slow",  "grade": 0, "count": 500.0, "timeWindow": 10}],
+  "paramFlowRules": [{"resource": "demo.detail", "grade": 1, "count": 5.0, "paramIdx": 0}]
 }
 ```
 
-资源名默认「全限定类名#方法名」，须与规则 JSON 的 `resource` 严格一致（见 `aifei-sentinel` 模块约定）。
+`index` / `slow` / `detail` 方法标注了 `cn.hg.aifei.sentinel.annotation.SentinelResource`，资源名取注解值（如 `demo.index`），须与规则 JSON 的 `resource` 严格一致；未标注的方法（如 `state`）仍用默认「全限定类名#方法名」（见 `aifei-sentinel` 模块约定）。
 
 ## 依赖说明
 

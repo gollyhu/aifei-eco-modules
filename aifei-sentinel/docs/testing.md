@@ -13,7 +13,7 @@
 | 测试类 | 层次 | 覆盖 |
 |---|---|---|
 | `KernelBindingTest` | 架构门禁（源码扫描） | 内核绑定收敛、零硬引用 transport |
-| `SentinelInterceptorTest` | 行为（接入层） | 未命中规则放行透传、命中限流走降级 |
+| `SentinelInterceptorTest` | 行为（接入层） | 未命中规则放行透传、命中限流走降级、注解资源名命中、空白注解回退默认名 |
 | `SentinelRuleWatchTest` | 热生效（core） | `watch` 后改文件自动刷新规则 |
 | `SentinelKitModeTest` | 模式分流（core） | 本地模式热读且不回写、Dashboard 模式不热读且回写、缺 `app.name` fail-fast |
 
@@ -40,6 +40,10 @@
 |---|---|
 | `testPassThroughWhenNoRule` | 无规则时业务方法被执行且返回值透传 |
 | `testBlockedWhenFlowRuleHit` | 命中 `FlowRule`（QPS=0）时降级返回值被写入、业务方法**未执行** |
+| `testAnnotatedResourceNameIsUsed` | 方法标注 `@SentinelResource("unit.logic")` 后以该逻辑名为资源名，命中 QPS=0 规则 → 降级返回值被写入、业务未执行 |
+| `testBlankAnnotationFallsBackToDefault` | `@SentinelResource("   ")` 空白值回退「全限定类名#方法名」，命中该默认名的 QPS=0 规则 → 降级返回值被写入、业务未执行 |
+
+既有内嵌 `DemoService` 不加注解，继续覆盖默认资源名的回退路径；注解用例放在新增内嵌 `AnnotatedService`。
 
 ### 3.3 热生效测试 `SentinelRuleWatchTest`
 
@@ -81,5 +85,6 @@ mvn test           # 快速迭代：仅跑测试阶段（架构门禁 KernelBind
 
 ## 6. 变更时的测试要求
 
-- 新增或改变公共行为（配置键、资源名规则、模式分流、回写策略）时，同步更新本文件的用例清单与 `docs/design.md`。
+- 新增或改变公共行为（配置键、资源名规则、注解命中与回退、模式分流、回写策略）时，同步更新本文件的用例清单与 `docs/design.md`。
+- 新增公共注解时补「注解命中 + 空白回退」两类用例，并确认 `KernelBindingTest` 仍通过（注解类不得引入 `cn.aifei.*` / Sentinel / Spring 类型）。
 - 触及内核绑定边界（`cn.aifei.aop.*` 引用位置、新增对 arch / undertow / sql / transport 的引用）时，必须先让 `KernelBindingTest` 通过。

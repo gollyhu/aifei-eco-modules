@@ -6,7 +6,7 @@ aifei-sentinel 是为 [aifei](https://aifei.cn) 提供的极简流量治理组�
 - 通过 `routes.scan(...)` 注册拦截器，在 `onStart()` 中加载规则。
 - 五种治理能力共用同一处埋点，差异只在规则类型。
 - 由是否配置 Dashboard 地址切换两种互斥运行模式，切换模式不需要修改业务代码。
-- 不引入 Spring：官方的 `@SentinelResource` 注解依赖 Spring AOP，本 SDK 改用 aifei 拦截器表达等价的横切。
+- 不引入 Spring：官方的 `@SentinelResource` 注解依赖 Spring AOP，本 SDK 改用 aifei 拦截器表达等价的横切；另提供同名自研注解（不同包、零 Spring 依赖）声明逻辑资源名。
 
 两个基础概念：**资源（Resource）** 是被保护代码块的名字，本 SDK 默认取「全限定类名#方法名」；**规则（Rule）** 描述「某个资源怎么限」。埋点及 `entry` / `entry.exit` 的成对调用已封装在拦截器内，业务不需要手写。
 
@@ -188,6 +188,8 @@ public class SentinelInterceptor implements Interceptor {
 }
 ```
 
+`resourceOf` 默认读取方法上的 `@SentinelResource` 注解（`value` 非空白时经 `trim` 作为资源名），未标注时回退「全限定类名#方法名」；子类可覆盖该方法完全自定义。
+
 ```java
 @FunctionalInterface
 public interface SentinelBlockHandler {
@@ -234,7 +236,24 @@ public class MethodAwareInterceptor extends SentinelInterceptor {
 
 ### 资源名
 
-默认资源名为「全限定类名#方法名」，例如 `cn.demo.VipService#index`。规则 JSON 中的 `resource` 必须与此严格一致，否则限流不会生效。需要按 HTTP path 维度限流时，继承 `SentinelInterceptor` 覆盖 `resourceOf`。
+资源名按以下优先级确定：
+
+1. 方法标注 `cn.hg.aifei.sentinel.annotation.SentinelResource` 且 `value` 非空白 → 取 `value.trim()`，如 `demo.index`。
+2. 未标注，或 `value` 为 `null` / 空串 / 纯空白 → 回退默认「全限定类名#方法名」，如 `cn.demo.VipService#index`。
+
+```java
+import cn.hg.aifei.sentinel.annotation.SentinelResource;
+
+@Path("/demo")
+public class DemoService {
+    @SentinelResource("demo.index")
+    public Out index() { ... }
+}
+```
+
+规则 JSON 中的 `resource` 必须与最终资源名严格一致，否则限流不会生效。SDK 不校验注解 `value` 格式、不强制前缀，逻辑名由使用方自定（推荐小写点分 `<业务域>.<动作>`）。
+
+注解只在 `SentinelInterceptor` 默认的 `resourceOf` 实现中读取；子类覆盖 `resourceOf` 时注解不生效。需要按 HTTP path 维度限流时，继承 `SentinelInterceptor` 覆盖 `resourceOf` 返回 path（此时无需注解）。
 
 ## 规则文件
 
@@ -277,7 +296,8 @@ Dashboard 地址与应用名通过系统属性注入 Sentinel（`csp.sentinel.da
 
 | 问题 | 解答 |
 |---|---|
-| 限流没生效？ | 先核对规则里的 `resource` 和「全限定类名#方法名」是否一字不差 |
+| 限流没生效？ | 先核对规则里的 `resource` 和最终资源名（注解 `value`，未标注时为「全限定类名#方法名」）是否一字不差 |
+| 注解 `@SentinelResource` 没生效？ | 包名须为 `cn.hg.aifei.sentinel.annotation`（自研，非官方 Spring 注解）；`value` 必须非空非空白；若子类覆盖了 `resourceOf`，注解不生效 |
 | 改了 JSON 规则没反应？ | 本地模式改文件秒级热生效（`sentinel.rules.refreshMs`，默认 3s）；Dashboard 模式下规则以控制台为准，手改文件会被回写覆盖 |
 | 配了 Dashboard 启动报错？ | 两种可能：未引入 `sentinel-transport-simple-http`，或漏配 `sentinel.app.name`；二者 SDK 均直接报错 |
 | Dashboard 模式下重启会丢规则吗？ | 不会，SDK 自动回写本地 `sentinel-rules.json`，重启即恢复 |
