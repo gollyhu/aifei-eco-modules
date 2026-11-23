@@ -25,7 +25,7 @@ aifei 生态已有缓存（`aifei-cache`）、鉴权（`aifei-sa-token`）等社
 | 引入方式 | 引入 `sentinel-core`（compile），L1 接线 | 流控与熔断算法成熟但滑动窗口/令牌桶边界易错，不宜自研；`sentinel-core` 是纯 Java，可手工装配 |
 | 埋点方式 | aifei 拦截器 + 编程式 `SphU.entry` | 官方 `@SentinelResource` 依赖 Spring AOP，aifei 不支持 Spring；改由拦截器统一埋点 |
 | 资源名声明 | 自研 `@SentinelResource` 注解（方法级） | 官方注解因 Spring AOP 被否决；自研注解仅用 JDK 注解类型、不含 Spring，由 `resourceOf` 直接读取，不新增依赖 |
-| 资源名解析缓存 | 按 `Method` 缓存在拦截器内部，用 `ClassValue<ConcurrentHashMap<Method,String>>` | 注解为编译期静态元数据、运行期不变，无需失效；`ClassValue` 随类卸载回收，避免强引用 `Method` 阻塞类卸载；此处「缓存」指类内部内存缓存，不引入 `aifei-cache` 等公共缓存组件 |
+| 资源名解析缓存 | 按 `Method` 缓存在拦截器内部，用 `ClassValue<ConcurrentHashMap<Method,String>>` | 注解为编译期静态元数据、运行期不变，无需失效；`ClassValue` 随类卸载回收，避免强引用 `Method` 阻塞类卸载。本缓存属**模块内部私有内存缓存**，与根 `AGENTS.md`「缓存 / Redis 出口基线」所指的**跨实例 / 公共缓存**（`aifei-cache`）边界不同：前者是消除重复反射的实现细节、按需保留；后者才受「一律优先 `aifei-cache`」约束 |
 | 禁用项 | `sentinel-annotation-aspectj`、`spring-cloud-starter-alibaba-sentinel` | 同上，Spring 生态 |
 | 规则管理 | 对接官方 Sentinel Dashboard，不自研控制台 | 规则管理、推送、监控由官方 Dashboard 承担，自研 WebUI + CRUD 的投入产出比不划算 |
 | 生命周期 | 静态门面 `SentinelKit`，在 `onStart()` 装配 | 不需要插件机制，静态 init 即可嵌入 aifei 启动流程 |
@@ -209,7 +209,7 @@ public final class SentinelKit {
 
 规则 JSON 中的 `resource` 必须与最终资源名严格对齐，否则限流不生效。SDK 不校验注解 `value` 格式、不强制前缀，逻辑名由使用方自定（约定小写点分 `<业务域>.<动作>`）。注解只在默认 `resourceOf` 实现中读取：子类覆盖 `resourceOf` 时注解不再生效；需按 HTTP path 维度限流时也走覆盖方式。
 
-解析结果按 `Method` 缓存在拦截器内部（`ClassValue<ConcurrentHashMap<Method,String>>`）：注解是编译期静态元数据、运行期不变，故缓存永不过期；`ClassValue` 随类卸载自动回收。此处缓存属类内部内存缓存，不引入 `aifei-cache` 等公共缓存组件。子类覆盖 `resourceOf` 时不读该缓存。
+解析结果按 `Method` 缓存在拦截器内部（`ClassValue<ConcurrentHashMap<Method,String>>`）：注解是编译期静态元数据、运行期不变，故缓存永不过期；`ClassValue` 随类卸载自动回收。此处属模块内部私有内存缓存，边界与定义见根 `AGENTS.md`「缓存 / Redis 出口基线」及其后续「内部内存缓存不受上一条约束」条目——**不引入 `aifei-cache`，也不因此禁用内部缓存**。子类覆盖 `resourceOf` 时不读该缓存。
 
 ### 5.2 规则 JSON
 

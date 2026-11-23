@@ -66,7 +66,8 @@
 - **已登记的公共面框架类型例外**（须先在此登记，模块文档不得单方面声明）：
   - `aifei-trace` 的 `TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `cn.aifei.log.LogFactory`——日志门面接口即框架公共契约，包装实现收进 `internal` 会使使用方 `settings.setLogFactory(new TraceLogFactory(...))` 这一核心用法失效；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链；理由见 `aifei-trace/docs/design.md` §2 决策 2 / 3。
   - `aifei-i18n` 的 `web.I18nHandler` / `web.LocaleExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链（与 `aifei-trace` 同构）；理由见 `aifei-i18n/docs/design.md` §2 决策 D-1 / §5.7 / §13 待明确事项 1。
-- **缓存 / Redis 出口基线**：缓存与 Redis 场景一律优先自研库 `aifei-cache`，不得直接引入 Jedis / Redisson / Lettuce / Spring Data Redis（`aifei-cache` 自身的实现内核除外）。
+- **缓存 / Redis 出口基线**：**跨实例 / 公共缓存**与 Redis 场景一律优先自研库 `aifei-cache`，不得直接引入 Jedis / Redisson / Lettuce / Spring Data Redis（`aifei-cache` 自身的实现内核除外）。
+- **内部内存缓存不受上一条约束**：模块内部为消除重复计算而使用的**进程内内存缓存**（如反射元数据 / 方法注解解析结果缓存、静态常量映射、`ClassValue` / `ConcurrentHashMap` 等纯 JDK 结构）属实现细节，**不属于**「缓存 / Redis 出口基线」的管辖范围，**应按需保留使用**，不得以「不加缓存」为由一并禁用。此类缓存须满足：不引入外部依赖、不改变公共行为、随对象 / 类生命周期正确回收（优先 `ClassValue` 等可随类卸载回收的结构，避免静态容器强引用 `Class` / `Method` 阻塞卸载）。
 - **已登记的 Redis 出口例外**（模块须先在此登记，模块文档不得单方面声明；除此之外 Redis 场景仍一律优先 `aifei-cache`）：
   - `aifei-mq` 的 `redisstream` 后端使用 `redis.clients:jedis:8.0.1` 直连 Redis，**不经过 `aifei-cache`**——Redis Streams 的 stream / consumer-group / `XREADGROUP` 语义超出 `aifei-cache` 的 Cache / Counter 抽象，无法经其门面表达；该后端标注**实验性、未真机验证**，随包提供但不承诺运行期语义；理由见 `aifei-mq/docs/design.md` §4.10 / §9 / §10。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。
