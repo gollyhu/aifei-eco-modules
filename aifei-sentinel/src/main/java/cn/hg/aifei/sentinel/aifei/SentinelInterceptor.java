@@ -27,16 +27,10 @@ public class SentinelInterceptor implements Interceptor {
 
     @Override
     public void intercept(Invocation inv) throws Exception {
-        Entry entry = null;
-        try {
-            entry = SphU.entry(resourceOf(inv));
+        try (Entry entry = SphU.entry(resourceOf(inv));) {
             inv.invoke();
         } catch (BlockException e) {
             inv.setReturnValue(blockHandler.handle(e));
-        } finally {
-            if (entry != null) {
-                entry.exit();
-            }
         }
     }
 

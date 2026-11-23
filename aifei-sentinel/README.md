@@ -208,6 +208,30 @@ public interface SentinelBlockHandler {
 | `ParamFlowException` | 热点参数限流命中 |
 | `AuthorityException` | 黑白名单命中 |
 
+### 按方法/参数定制降级
+
+`SentinelBlockHandler` 只接收 `BlockException`，SDK 不在 SPI 中暴露 aifei 内核类型。若降级结果需要读取 `Invocation`（方法名、参数等），在消费方自定义 `SentinelInterceptor` 子类并覆盖 `intercept`，不要改 SDK 接口：
+
+```java
+public class MethodAwareInterceptor extends SentinelInterceptor {
+
+    public MethodAwareInterceptor(SentinelBlockHandler handler) {
+        super(handler);
+    }
+
+    @Override
+    public void intercept(Invocation inv) throws Exception {
+        try (Entry entry = SphU.entry(resourceOf(inv))) {
+            inv.invoke();
+        } catch (BlockException e) {
+            inv.setReturnValue(Out.fail("RATE_LIMIT_" + inv.getMethodName()));
+        }
+    }
+}
+```
+
+该方式把 `SphU` / `Entry` / `BlockException` 带入消费方代码；常规场景仍推荐直接 `new SentinelInterceptor(e -> Out.fail(OutCode.RATE_LIMIT))`。
+
 ### 资源名
 
 默认资源名为「全限定类名#方法名」，例如 `cn.demo.VipService#index`。规则 JSON 中的 `resource` 必须与此严格一致，否则限流不会生效。需要按 HTTP path 维度限流时，继承 `SentinelInterceptor` 覆盖 `resourceOf`。
