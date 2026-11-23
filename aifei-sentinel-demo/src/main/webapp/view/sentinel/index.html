@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-sentinel-demo · 治理能力演示</title>
+    <link rel="stylesheet" href="/assets/css/sentinel-test.css">
+</head>
+<body>
+<main class="page" id="app">
+    <header class="topbar">
+        <div class="topbar-main">
+            <h1 class="page-title">aifei-sentinel-demo</h1>
+            <p class="page-sub" id="page-sub">正在识别运行模式…</p>
+        </div>
+        <div class="topbar-side">
+            <span class="badge badge-pending" id="mode-badge" role="status" aria-live="polite">模式识别中</span>
+            <span class="stat mono" id="stat">—</span>
+            <button class="btn btn-tiny" type="button" data-action="reload">刷新模式</button>
+            <a class="console-link" id="console-link" href="#" target="_blank" rel="noopener" hidden>打开 Sentinel 控制台 ↗</a>
+        </div>
+    </header>
+
+    <p class="notice" id="notice" role="status" hidden></p>
+
+    <section class="cards" aria-label="Sentinel 治理能力演示">
+        <article class="card" aria-labelledby="title-flow">
+            <div class="card-head">
+                <h2 class="card-title" id="title-flow">① 流控 QPS</h2>
+                <code class="rule-tag">DemoService#index · count 2.0/s</code>
+            </div>
+            <p class="card-desc">每秒放行 2 次；连发超过阈值即返回限流业务码 <code>10006</code>。</p>
+            <div class="actions">
+                <button class="btn btn-primary" type="button" data-action="once" data-kind="flow">单次请求</button>
+                <label class="burst">
+                    <span>连发</span>
+                    <input class="num" id="count-flow" type="number" min="2" max="50" value="6" aria-label="流控连发次数">
+                    <span>次</span>
+                </label>
+                <button class="btn" type="button" data-action="burst" data-kind="flow">连发测试</button>
+            </div>
+            <div class="result-head">
+                <span>结果 · 最新在前</span>
+                <button class="btn btn-tiny btn-ghost" type="button" data-action="clear" data-kind="flow">清空</button>
+            </div>
+            <ol class="results" id="results-flow"></ol>
+        </article>
+
+        <article class="card" aria-labelledby="title-slow">
+            <div class="card-head">
+                <h2 class="card-title" id="title-slow">② 熔断 RT</h2>
+                <code class="rule-tag">DemoService#slow · RT&gt;500ms</code>
+            </div>
+            <p class="card-desc">接口实际 sleep 800ms；连续多次触发 RT 阈值后返回降级码 <code>10006</code>，不再执行方法。</p>
+            <div class="actions">
+                <button class="btn btn-primary" type="button" data-action="once" data-kind="slow">单次请求</button>
+                <label class="burst">
+                    <span>连发</span>
+                    <input class="num" id="count-slow" type="number" min="2" max="30" value="6" aria-label="熔断连发次数">
+                    <span>次</span>
+                </label>
+                <button class="btn" type="button" data-action="burst" data-kind="slow">连发测试</button>
+            </div>
+            <div class="result-head">
+                <span>结果 · 最新在前</span>
+                <button class="btn btn-tiny btn-ghost" type="button" data-action="clear" data-kind="slow">清空</button>
+            </div>
+            <ol class="results" id="results-slow"></ol>
+        </article>
+
+        <article class="card" aria-labelledby="title-hot">
+            <div class="card-head">
+                <h2 class="card-title" id="title-hot">③ 热点参数</h2>
+                <code class="rule-tag">DemoService#detail · id · count 5.0/s</code>
+            </div>
+            <p class="card-desc">按 <code>id</code> 统计；本页固定请求 <code>id=1</code>，同一 id 每秒放行 5 次，超出返回 <code>10006</code>。</p>
+            <div class="actions">
+                <button class="btn btn-primary" type="button" data-action="once" data-kind="hot">单次请求</button>
+                <label class="burst">
+                    <span>连发</span>
+                    <input class="num" id="count-hot" type="number" min="2" max="50" value="8" aria-label="热点参数连发次数">
+                    <span>次</span>
+                </label>
+                <button class="btn" type="button" data-action="burst" data-kind="hot">连发测试</button>
+            </div>
+            <div class="result-head">
+                <span>结果 · 最新在前</span>
+                <button class="btn btn-tiny btn-ghost" type="button" data-action="clear" data-kind="hot">清空</button>
+            </div>
+            <ol class="results" id="results-hot"></ol>
+        </article>
+    </section>
+
+    <footer class="foot">
+        <p>端点：<code>GET /demo/index</code> · <code>GET /demo/slow</code> · <code>GET /demo/detail?id=N</code> · 模式来源 <code>GET /demo/state</code></p>
+        <p>HTTP 恒 200，语义由 <code>code</code> 承载：<code>0</code> 成功，<code>10006</code> 限流 / 熔断降级。限流与降级共用业务码，按卡片判定语义。</p>
+    </footer>
+</main>
+
+<script>
+(function () {
+    'use strict';
+
+    var ENDPOINTS = {
+        flow: { url: '/demo/index', list: 'results-flow', count: 'count-flow' },
+        slow: { url: '/demo/slow', list: 'results-slow', count: 'count-slow' },
+        hot: { url: '/demo/detail?id=1', list: 'results-hot', count: 'count-hot' }
+    };
+    var MAX_ROWS = 12;
+
+    function $(id) {
+        return document.getElementById(id);
+    }
+
+    function now() {
+        return (window.performance && performance.now) ? performance.now() : Date.now();
+    }
+
+    function loadState() {
+        var badge = $('mode-badge');
+        badge.textContent = '模式识别中';
+        badge.className = 'badge badge-pending';
+        fetch('/demo/state', { credentials: 'same-origin' })
+            .then(function (res) { return res.json(); })
+            .then(function (resp) {
+                if (!resp || resp.code !== 0) {
+                    throw new Error(resp && resp.msg ? resp.msg : ('code=' + (resp && resp.code)));
+                }
+                renderState(resp.data || {});
+            })
+            .catch(function (err) {
+                badge.textContent = '● 模式识别失败';
+                badge.className = 'badge badge-err';
+                $('page-sub').textContent = '无法读取 /demo/state：' + err.message;
+                var notice = $('notice');
+                notice.hidden = false;
+                notice.textContent = '模式未知，三张卡仍可测试；请确认 demo 已启动且端口正确。';
+            });
+    }
+
+    function renderState(data) {
+        var dash = data.mode === 'dashboard';
+        var badge = $('mode-badge');
+        badge.textContent = '● ' + (data.modeLabel || (dash ? 'Dashboard 模式' : '本地模式'));
+        badge.className = 'badge ' + (dash ? 'badge-dash' : 'badge-local');
+        $('page-sub').textContent = '配置 ' + (data.configName || '—') + ' · 规则文件 ' + (data.rulesFile || '—');
+        $('stat').textContent = dash ? ('控制台 ' + (data.dashboardServer || '8858')) : '本地热读';
+
+        var link = $('console-link');
+        if (dash && data.dashboardUrl) {
+            link.href = data.dashboardUrl;
+            link.hidden = false;
+            link.textContent = '打开 Sentinel 控制台（' + (data.dashboardServer || '8858') + '）↗';
+        } else {
+            link.hidden = true;
+            link.removeAttribute('href');
+        }
+
+        var notice = $('notice');
+        notice.hidden = false;
+        notice.textContent = data.tip || '';
+    }
+
+    function flagOf(kind, code) {
+        if (code === 0) {
+            return { text: '正常', cls: 'ok' };
+        }
+        if (code === 10006) {
+            return kind === 'slow'
+                ? { text: '熔断降级', cls: 'degrade' }
+                : { text: '限流', cls: 'limit' };
+        }
+        return { text: '业务失败', cls: 'fail' };
+    }
+
+    function addResult(kind, code, msg, elapsed) {
+        var list = $(ENDPOINTS[kind].list);
+        var flag = flagOf(kind, code);
+        var li = document.createElement('li');
+        li.className = 'result result-' + flag.cls;
+
+        var codeEl = document.createElement('span');
+        codeEl.className = 'r-code mono';
+        codeEl.textContent = 'code ' + code;
+        li.appendChild(codeEl);
+
+        var flagEl = document.createElement('span');
+        flagEl.className = 'r-flag';
+        flagEl.textContent = flag.text;
+        li.appendChild(flagEl);
+
+        var msgEl = document.createElement('span');
+        msgEl.className = 'r-msg';
+        msgEl.textContent = msg === null || msg === undefined ? '' : String(msg);
+        li.appendChild(msgEl);
+
+        var timeEl = document.createElement('span');
+        timeEl.className = 'r-time mono';
+        timeEl.textContent = elapsed + ' ms';
+        li.appendChild(timeEl);
+
+        list.insertBefore(li, list.firstChild);
+        while (list.children.length > MAX_ROWS) {
+            list.removeChild(list.lastChild);
+        }
+    }
+
+    function callOnce(kind) {
+        var start = now();
+        return fetch(ENDPOINTS[kind].url, { credentials: 'same-origin' })
+            .then(function (res) { return res.json(); })
+            .then(function (resp) {
+                addResult(kind, resp && resp.code, resp && resp.msg, Math.round(now() - start));
+            })
+            .catch(function (err) {
+                addResult(kind, -1, '请求失败：' + err.message, Math.round(now() - start));
+            });
+    }
+
+    function runBurst(kind, btn) {
+        var input = $(ENDPOINTS[kind].count);
+        var n = parseInt(input.value, 10);
+        if (isNaN(n) || n < 2) {
+            n = 2;
+        }
+        if (n > 50) {
+            n = 50;
+        }
+        btn.disabled = true;
+        var tasks = [];
+        for (var i = 0; i < n; i++) {
+            tasks.push(callOnce(kind));
+        }
+        Promise.all(tasks).then(function () { btn.disabled = false; });
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('button[data-action]'), function (btn) {
+        btn.addEventListener('click', function () {
+            var action = btn.getAttribute('data-action');
+            if (action === 'reload') {
+                loadState();
+                return;
+            }
+            var kind = btn.getAttribute('data-kind');
+            if (!kind) {
+                return;
+            }
+            if (action === 'once') {
+                callOnce(kind);
+            } else if (action === 'burst') {
+                runBurst(kind, btn);
+            } else if (action === 'clear') {
+                $(ENDPOINTS[kind].list).innerHTML = '';
+            }
+        });
+    });
+
+    loadState();
+}());
+</script>
+</body>
+</html>

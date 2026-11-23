@@ -13,7 +13,8 @@ import cn.hg.aifei.sentinel.demo.common.DemoAppConfig;
 public class DemoApp {
 
     /**
-     * 启动 demo 应用；HTTP 端口经 {@code -Dundertow.port} 传入（见 start-demo.bat 的 18080）。
+     * 启动 demo 应用；HTTP 端口经 {@code -Dundertow.port} 传入（启动脚本默认 80，占用时可设 {@code DEMO_PORT} 走备用端口）。
+     * 主页面 <http://localhost:80/>，运行模式由配置文件自动识别，脚本不手动切换。
      *
      * @param args 命令行参数，原样交给 aifei 内核
      */
