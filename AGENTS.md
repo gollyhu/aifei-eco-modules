@@ -1,6 +1,6 @@
 # aifei-eco-modules 开发约束（全体模块共同遵守）
 
-本文件适用于仓库内全部模块（发布模块：`aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-trace` / `aifei-http` / `aifei-excel` / `aifei-i18n`；示例工程：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-excel-demo` / `aifei-i18n-demo`）及其后续新增模块，供开发代理与项目贡献者使用。
+本文件适用于仓库内全部模块（发布模块：`aifei-cache` / `aifei-sentinel` / `aifei-weixin` / `aifei-sa-token` / `aifei-websocket` / `aifei-mq` / `aifei-oss` / `aifei-lock` / `aifei-job` / `aifei-id` / `aifei-trace` / `aifei-http` / `aifei-excel` / `aifei-i18n`；示例工程：`aifei-sentinel-demo` / `aifei-websocket-demo` / `aifei-mq-demo` / `aifei-oss-demo` / `aifei-job-demo` / `aifei-id-demo` / `aifei-trace-demo` / `aifei-http-demo` / `aifei-excel-demo` / `aifei-i18n-demo`）及其后续新增模块，供开发代理与项目贡献者使用。此处「发布模块」指规划上会发布的库模块（区别于示例工程），与「是否已正式发布到仓库」是两个不同维度——当前仅 `aifei-cache` 已正式发布；版本号是否带 `-SNAPSHOT` 由后者决定，详见下文与 `.codebuddy/rules/engineering-standards.md` §2。
 
 各模块的专属约束与验证命令见其自身 `AGENTS.md`。模块文件可**补充、收紧**本文件，但不得**放宽**；两者不一致时以更严格者为执行标准，并应及时消除不一致。
 
@@ -45,6 +45,7 @@
 - 需求与现有设计冲突时，**先明确并更新设计决策，再改代码**。
 - **未经设计决策**，不得自行确定契约类行为：空值语义、过期语义、序列化格式、异常类型与消息、key 命名规则、资源名规则、模式分流条件、失败策略等。
 - 未经设计决策，不得新增或扩大公共 API 面。
+- **版本纪律**：全部模块在基线正式发布到仓库前一律保持 `x.y.z-SNAPSHOT`（唯一例外：已发布的基线 `aifei-cache` 保持 `1.1.0`）；适用范围、生效时机与解除条件见 `.codebuddy/rules/engineering-standards.md` §2「版本管理与发布（SNAPSHOT 纪律）」。
 
 ## 硬性约束
 

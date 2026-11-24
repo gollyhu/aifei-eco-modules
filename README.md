@@ -223,7 +223,7 @@ cd aifei-i18n      && mvn clean verify      # 门禁验收命令
 cd aifei-tools     && mvn clean verify      # 门禁验收命令
 ```
 
-**发布能力**：当前仅 `aifei-cache`、`aifei-oss`、`aifei-tools` 三个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 13 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。
+**发布能力**：当前仅 `aifei-cache`、`aifei-oss`、`aifei-tools` 三个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 13 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。具备发布配置 ≠ 已正式发布：当前仅 `aifei-cache` 已正式发布（基线，版本 `1.1.0`），其余模块均保持 `SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
 
 ## 运行示例
 
