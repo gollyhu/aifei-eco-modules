@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * 加锁入口：唯一创建 {@link Lock} 句柄的地方。
  *
  * <p>锁语义只依赖存储侧三条原子命令；参数校验先于装配检查，因此「参数错误」不会被「模块未装配」
- * 掩盖。抢不到锁返回 {@code null}（DEBUG），存储故障抛 {@link LockException}（ERROR），两者严格区分。</p>
+ * 掩盖。抢不到锁返回 {@code null}，存储故障抛 {@link LockException}，两者严格区分。</p>
  */
 public final class LockKit {
 

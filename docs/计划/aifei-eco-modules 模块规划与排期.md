@@ -43,7 +43,7 @@
 ### 2.2 需求输入与文档规范
 
 - `需求` 下任务输入：`../需求/aifei-cache-1.1.0.md`、`aifei-http.md`、`aifei-job.md`、`aifei-lock.md`、`aifei-audit.md`、`aifei-i18n.md`、`aifei-tools.md`、`archive/aifei-mq.md`、`archive/aifei-excel.md`，以及本文件（`aifei-i18n-directive.md` 已废弃归档，唯一现行版本为 `aifei-i18n.md` §11）。
-- 文档四件套：16 个库模块均具备 `../../README.md` / `docs/design.md` / `AGENTS.md` / `docs/testing.md`（`aifei-lock` 的 testing.md 已于 2026-11-20 补齐，16 个齐备）；11 个 demo 均有 `README.md`。
+- 文档四件套：15 个库模块均具备 `../../README.md` / `docs/design.md` / `AGENTS.md` / `docs/testing.md`；`aifei-lock` 为例外，按其设计决策不单设 `docs/testing.md`，测试策略与用例清单位于其 `docs/design.md` §7 与 `AGENTS.md`；11 个 demo 均有 `README.md`。
 - 已登记例外见根 `../../AGENTS.md`：4 项 `compile`（`aifei-oss` 的 x-file-storage-core、`aifei-sa-token` 的 sa-token-core、`aifei-job` 的 quartz 与 slf4j-api）、1 项公共面框架类型（`aifei-trace`）。`aifei-sentinel` 的 sentinel-core / parameter-flow-control / datasource-extension 三项为 `compile`，**已作为例外登记于根 `AGENTS.md`**（随 SDK 传递，与根 `README.md`「依赖说明」口径一致），理由见 `aifei-sentinel/docs/design.md` §3.3。
 
 ### 2.3 能力缺口盘点

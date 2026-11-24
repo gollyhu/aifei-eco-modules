@@ -114,7 +114,7 @@ cache 侧异常契约：参数非法抛 `IllegalArgumentException`（**先于**�
 - `cache __MAIN__ instance is not initialized`
 - `LockHolder has not been initialized. Add LockPlugin first.`
 
-日志统一经 `cn.aifei.log.Log`（`Log.get(本类.class)`），不引入任何日志绑定，禁止 `System.err` / `org.slf4j.*` / 自建通道。记录口径：`release()` / `renew()` 的 `true` 与 `false` 记 DEBUG，存储故障记 ERROR 并带 cause 堆栈，`close()` 吞掉的异常记 ERROR（由 `release()` 完成的那条）。日志文案中的锁名一律取自句柄 `name()`。
+日志统一经 `cn.aifei.log.Log`（`Log.get(本类.class)`），不引入任何日志绑定，禁止 `System.err` / `org.slf4j.*` / 自建通道。记录口径：`release()` / `renew()` 的 `true` 与 `false` 记 DEBUG，存储故障记 ERROR 并带 cause 堆栈，`close()` 吞掉的异常记 ERROR（由 `release()` 完成的那条）。日志文案中的锁名一律取自句柄 `name()`。上述 ERROR 口径仅适用于 `release()` / `renew()` / `close()`：`tryLock()` / `acquire()` 路径的存储故障按包装规则抛 `LockException`，**不记 ERROR**。理由：加锁失败时锁未建立、无持有状态需要清理，由调用方重试或租约自然过期兜底，影响小于释放 / 续期失败，不构成需要告警的事件；而 `release()` / `renew()` 失败可能意味着持锁泄漏或锁已丢失，须以 ERROR 留痕。
 
 ### 4.6 装配与启动校验
 
@@ -188,6 +188,16 @@ cache 侧异常契约：参数非法抛 `IllegalArgumentException`（**先于**�
 - **计时用例默认关闭**（`-Dlock.timing=true` 开启）：`wait = 10ms`、总耗时 ≤ 35ms 的断言对 CI 抖动敏感，与 Redis 集成测试同策略，本地 / 离线环境执行。
 - 测试须先装配日志工厂：非集成用例在 `@BeforeClass` 调 `LogKit.get().setLogFactory(...)` 装配 Noop 实现，否则 `Log.get(...)` 路径失败；测试替身不引入任何日志绑定依赖。
 - 用例清单：`ArchitectureBoundaryTest`（3 条门禁）、`LockKitTest`（20 条契约）、`LockPluginTest`（5 条启动校验）、`CacheLockStoreIntegrationTest`（5 条，默认跳过）、`LockTimingOfflineTest`（1 条，默认跳过）。
+- **surefire 统计口径**：集成类以 `@BeforeClass` Assume、计时类以 `@Before` Assume 跳过整类，故 surefire-reports 中两类各记 1 条 `Skipped`（`Tests run: 30, Skipped: 2`，实际执行 28 条）；这与按 `@Test` 方法计的「跳过 6 例」（5 集成 + 1 计时）是同一事实的两种口径，勿混读。
+
+未覆盖项与人工验证：
+
+| 项 | 说明 |
+| --- | --- |
+| Redis 真后端端到端 | 由 `CacheLockStoreIntegrationTest` 承担，默认跳过，开启见本节集成开关；连不上必须失败。 |
+| 计时窗口对 CI 抖动的敏感性 | 由 `LockTimingOfflineTest` 承担，默认跳过，开启见本节计时开关；仅本地 / 离线执行。 |
+| 多实例互斥 / 集群场景 | v1 不覆盖（见 §1 范围与 README 能力边界）。 |
+| 真实 `aifei-cache` 装配异常路径 | 由 `LockPluginTest` 启动校验用例与集成用例交叉覆盖，非集成态用能力替身。 |
 
 ## 8. 验收对照
 
