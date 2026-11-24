@@ -20,6 +20,8 @@ import cn.aifei.weixin.core.msg.OutMsg;
 import cn.aifei.weixin.core.msg.OutMsgXmlBuilder;
 import cn.aifei.weixin.spi.WeixinAccount;
 import cn.aifei.weixin.spi.WeixinIo;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 
 /**
@@ -152,6 +154,13 @@ public class MsgUtil {
 
     /**
      * 微信签名校验：参数按字典序拼 token,timestamp,nonce[,encrypt] 后取 SHA-1
+     *
+     * @param token     微信配置的 Token
+     * @param signature 待校验签名，大小写不敏感
+     * @param timestamp 时间戳
+     * @param nonce     随机串
+     * @param encrypt   安全模式下参与签名的密文，可省略
+     * @return 签名一致返回 {@code true}
      */
     public static boolean checkSignature(String token, String signature, String timestamp, String nonce, String... encrypt) {
         if (token == null || signature == null || timestamp == null || nonce == null) {
@@ -163,7 +172,9 @@ public class MsgUtil {
         } else {
             expect = Sha1Util.sortedSign(token, timestamp, nonce, encrypt[0]);
         }
-        return expect.equals(signature.toLowerCase());
+        // 常量时间比较，避免时序侧信道泄露签名前缀
+        return MessageDigest.isEqual(expect.getBytes(StandardCharsets.UTF_8),
+                signature.toLowerCase().getBytes(StandardCharsets.UTF_8));
     }
 
     /**

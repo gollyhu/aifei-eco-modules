@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * 单测用伪支付 HTTP 客户端：记录请求、按需返回，全程不联网
@@ -28,12 +29,14 @@ public class FakePayHttpClient implements PayHttpClient {
 
     public PayHttpResponse getResponse = new PayHttpResponse(200, new HashMap<String, String>(), "{}");
     public PayHttpResponse postResponse = new PayHttpResponse(200, new HashMap<String, String>(), "{}");
+    public Supplier<PayHttpResponse> getSupplier;
+    public Supplier<PayHttpResponse> postSupplier;
 
     @Override
     public PayHttpResponse get(String url, Map<String, String> headers) {
         getUrls.add(url);
         getHeaders.add(headers);
-        return getResponse;
+        return getSupplier != null ? getSupplier.get() : getResponse;
     }
 
     @Override
@@ -41,6 +44,6 @@ public class FakePayHttpClient implements PayHttpClient {
         postUrls.add(url);
         postHeaders.add(headers);
         postBodies.add(jsonBody);
-        return postResponse;
+        return postSupplier != null ? postSupplier.get() : postResponse;
     }
 }

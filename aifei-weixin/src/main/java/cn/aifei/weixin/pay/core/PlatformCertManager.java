@@ -20,7 +20,10 @@ import java.security.cert.CertificateFactory;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -89,6 +92,7 @@ public class PlatformCertManager implements PlatformKeySource {
             return;
         }
         long nowMillis = now;
+        Set<String> freshSerials = new HashSet<>();
         for (int i = 0; i < data.size(); i++) {
             JSONObject item = data.getJSONObject(i);
             String serial = item.getString("serial_no");
@@ -97,14 +101,16 @@ public class PlatformCertManager implements PlatformKeySource {
                     encrypted.getString("ciphertext"), encrypted.getString("associated_data"));
             long expireAt = parseExpireAt(item.getString("expire_time"), nowMillis);
             entries.put(serial, new Entry(parsePublicKey(pem), expireAt));
+            freshSerials.add(serial);
         }
+        entries.keySet().retainAll(freshSerials);
     }
 
     /**
      * 请求头：验签依赖 Wechatpay-Serial，此处仅需 Authorization
      */
     Map<String, String> authorizationHeaders(String method, String canonicalUrl, String body) {
-        Map<String, String> headers = new ConcurrentHashMap<>();
+        Map<String, String> headers = new HashMap<>();
         headers.put("Authorization",
                 PaySignature.buildAuthorization(merchant, method, "/" + canonicalUrl, body));
         headers.put("Accept", "application/json");

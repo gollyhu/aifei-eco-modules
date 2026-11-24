@@ -44,6 +44,10 @@ public class ApiCaller {
 
     /**
      * 取 access_token（appId/secret 直参版本，公众号与小程序通用），缓存未命中按 appId 单飞
+     *
+     * @param appId  公众号 / 小程序 appId，同时作为缓存键
+     * @param secret 应用密钥
+     * @return 有效的 access_token
      */
     public static String accessToken(String appId, String secret) {
         AccessTokenCache cache = WxApiConfig.tokenCache();
@@ -61,8 +65,8 @@ public class ApiCaller {
 
             String url = API_BASE + TOKEN_PATH
                     + "?grant_type=client_credential"
-                    + "&appid=" + appId
-                    + "&secret=" + secret;
+                    + "&appid=" + urlEncode(appId)
+                    + "&secret=" + urlEncode(secret);
             ApiResult result = ApiResult.parse(WxApiConfig.http().get(url));
             if (!result.isSucceed()) {
                 throw new WxApiException("获取 access_token 失败：" + result.getErrorCode() + " " + result.getErrorMsg());

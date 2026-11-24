@@ -292,6 +292,7 @@ SDK **不做幂等去重、不感知租户**：微信会重复投递，业务须
 | 解密 | 每个 `encrypt_certificate` 用 `apiV3Key` 做 AesGcm 解密得到 PEM |
 | 过期 | `expire_time` 解析后提前 5 分钟失效；缺省时按 12 小时兜底 |
 | 公钥解析 | 支持 X.509 证书 PEM 与公钥 PEM 两种格式 |
+| 旧序列号淘汰 | 全部证书解析成功后，清理缓存中不在本次 `serial_no` 集合里的旧条目；响应无 `data` 时不清理（保留现有缓存），60 秒节流与 `synchronized` 刷新均不变 |
 
 `AesGcm` 固定使用 `AES/GCM/NoPadding`、tag 128 位，`associated_data` 非空时 `updateAAD`，失败抛 `WxApiException`。
 

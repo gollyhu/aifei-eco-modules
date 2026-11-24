@@ -12,7 +12,7 @@
 
 ## 2. 测试分层
 
-共 18 个测试类、110 个用例（另有 7 个测试辅助类，不含用例）。
+共 18 个测试类、111 个用例（另有 7 个测试辅助类，不含用例）。
 
 | 层次 | 测试类 | 用例数 |
 | --- | --- | --- |
@@ -31,7 +31,7 @@
 | 支付（商户凭据） | `PayMerchantTest` | 4 |
 | 支付（签名） | `PaySignatureTest` | 4 |
 | 支付（回调） | `PayNotifyUtilTest` | 6 |
-| 支付（平台证书） | `PlatformCertManagerTest` | 4 |
+| 支付（平台证书） | `PlatformCertManagerTest` | 5 |
 | 支付（GCM） | `AesGcmTest` | 3 |
 
 ## 3. 测试替身
@@ -40,7 +40,7 @@
 | --- | --- |
 | `support.FakeWeixinIo` | 伪 `WeixinIo`：`params` 供 `query`、`body` 供 `body`、`getRequest` 供 `isGet`；`replyXml` 记录结果并累加回复次数 |
 | `core.http.FakeHttpClient` | 伪公众号 `HttpClient`：记录 GET / POST / multipart / download 的 URL 与 body，按 `Supplier` 定制响应；对 `/cgi-bin/token` 单独计数并返回 `tokenResponse` |
-| `support.FakePayHttpClient` | 伪 `PayHttpClient`：记录 URL、请求头与 body，直接返回预设的 `PayHttpResponse` |
+| `support.FakePayHttpClient` | 伪 `PayHttpClient`：记录 URL、请求头与 body，可用 `Supplier` 定制响应，否则返回预设的 `PayHttpResponse` |
 | `support.PayTestKeys` | 支付素材工厂：RSA 密钥对、PKCS#8 / X.509 PEM 生成、用 `AES/GCM/NoPadding` + `GCMParameterSpec(128, nonce)` 构造官方形态密文 |
 | `support.NoopLog` / `NoopLogFactory` / `TestLogs` | 空日志实现与工厂；`TestLogs.install()` 幂等地把 `LogFactory` 替换为 `NoopLogFactory` |
 
@@ -179,6 +179,7 @@
 | | `missingResourceThrows` | 缺 `resource` 抛异常 |
 | `PlatformCertManagerTest` | `downloadsAndDecryptsCertificate` | 下载 + 解密得到公钥，URL 与 `Authorization` 头正确 |
 | | `unknownSerialReturnsNullAfterRefresh` | 未知序列号返回 `null`，刷新窗口内不重复下载 |
+| | `refreshEvictsSerialsNoLongerReturned` | 两次刷新返回不同序列号后，旧序列号返回 `null`、新序列号可命中 |
 | | `downloadFailureThrows` | 下载失败（500）抛异常 |
 | | `parsePublicKeySupportsCertificatePem` | 证书与公钥 PEM 均可解析，`expire_time` 可按 `OffsetDateTime` 解析 |
 | `AesGcmTest` | `decryptRoundtrip` | 加解密回原文 |
@@ -189,7 +190,7 @@
 
 ```shell
 # 模块根目录（aifei-weixin）执行
-mvn clean verify   # 主验证命令：全部 110 个用例 + 打包，必须 0 failure / 0 error（架构门禁为 surefire 用例，test 阶段即执行）
+mvn clean verify   # 主验证命令：全部 111 个用例 + 打包，必须 0 failure / 0 error（架构门禁为 surefire 用例，test 阶段即执行）
 mvn test           # 快速迭代：仅跑 test 阶段（本模块无 verify 专属门禁）
 ```
 

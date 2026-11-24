@@ -20,10 +20,12 @@ import cn.aifei.weixin.pay.core.PlatformCertManager;
 import cn.aifei.weixin.support.FakePayHttpClient;
 import cn.aifei.weixin.support.PayTestKeys;
 import com.alibaba.fastjson2.JSONObject;
+import java.lang.reflect.Field;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 /**
@@ -66,6 +68,27 @@ public class PlatformCertManagerTest {
     }
 
     @Test
+    public void refreshEvictsSerialsNoLongerReturned() throws Exception {
+        KeyPair pair = PayTestKeys.generateKeyPair();
+        FakePayHttpClient http = new FakePayHttpClient();
+        AtomicInteger calls = new AtomicInteger();
+        http.getSupplier = () -> new cn.aifei.weixin.pay.core.PayHttpResponse(200,
+                new HashMap<String, String>(),
+                certificatesJson(pair.getPublic(), calls.getAndIncrement() == 0 ? "SERIAL-OLD" : "SERIAL-NEW"));
+        PlatformCertManager manager = new PlatformCertManager(merchant(pair));
+        WxPayConfig.set(http, manager);
+
+        assertEquals(pair.getPublic(), manager.bySerial("SERIAL-OLD"));
+
+        Field lastRefresh = PlatformCertManager.class.getDeclaredField("lastRefreshAtMillis");
+        lastRefresh.setAccessible(true);
+        lastRefresh.setLong(manager, System.currentTimeMillis() - 61_000L);
+
+        assertEquals(pair.getPublic(), manager.bySerial("SERIAL-NEW"));
+        assertNull("已不在微信返回列表中的旧序列号必须被淘汰", manager.bySerial("SERIAL-OLD"));
+    }
+
+    @Test
     public void downloadFailureThrows() {
         FakePayHttpClient http = new FakePayHttpClient();
         http.getResponse = new cn.aifei.weixin.pay.core.PayHttpResponse(500, new HashMap<String, String>(),
@@ -102,6 +125,10 @@ public class PlatformCertManagerTest {
     }
 
     private static String certificatesJson(PublicKey platformKey) {
+        return certificatesJson(platformKey, "PLAT-SERIAL-1");
+    }
+
+    private static String certificatesJson(PublicKey platformKey, String serial) {
         JSONObject encrypted = new JSONObject();
         encrypted.put("algorithm", "AEAD_AES_256_GCM");
         encrypted.put("nonce", "abcdef123456");
@@ -110,7 +137,7 @@ public class PlatformCertManagerTest {
                 "certificate", PayTestKeys.toPublicKeyPem(platformKey)));
 
         JSONObject item = new JSONObject();
-        item.put("serial_no", "PLAT-SERIAL-1");
+        item.put("serial_no", serial);
         item.put("effective_time", OffsetDateTime.now().minusHours(1).toString());
         item.put("expire_time", OffsetDateTime.now().plusHours(1).toString());
         item.put("encrypt_certificate", encrypted);
