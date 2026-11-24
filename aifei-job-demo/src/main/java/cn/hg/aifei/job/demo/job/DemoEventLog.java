@@ -212,7 +212,7 @@ public final class DemoEventLog {
     }
 
     /**
-     * 一条事件的不可变快照。
+     * 一条事件记录。
      */
     public static final class Record {
 

@@ -88,6 +88,7 @@ final class JobRunner implements Runnable {
                 log.error("job " + task.name() + " failed", error);
                 record(JobEvent.Phase.FAILED, endTime, error);
             }
+            // endTime 用于终态与超时判定，续排基准 lastEnd 在 finish() 内重新采样，语义不同故两处各取一次时钟
             skipOverdue(lastStart, endTime);
         } finally {
             finish(lastStart);

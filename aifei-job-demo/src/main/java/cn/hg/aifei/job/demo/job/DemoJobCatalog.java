@@ -341,6 +341,7 @@ public final class DemoJobCatalog {
         public long nextFireTime(long now, long lastStartTime, long lastEndTime) {
             if (mode == Mode.CRON) {
                 // 秒对齐：下一个严格晚于 now 的 5 秒节拍点
+                // 现实时区偏移为整分钟，epoch 的 5 秒边界与本地秒边界一致，故可近似 Quartz 的 0/5 * * * * ?
                 return (now / beat + 1L) * beat;
             }
             if (mode == Mode.FIXED_RATE) {

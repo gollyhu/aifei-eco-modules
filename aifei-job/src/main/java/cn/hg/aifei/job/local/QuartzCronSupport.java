@@ -71,17 +71,12 @@ public final class QuartzCronSupport implements CronCalculator {
         if (expression == null || expression.trim().isEmpty()) {
             throw JobErrors.illegalCron(taskName, expression, null);
         }
-        CronExpression cached = cache.get(expression);
-        if (cached != null) {
-            return cached;
-        }
-        CronExpression parsed;
-        try {
-            parsed = new CronExpression(expression);
-        } catch (ParseException e) {
-            throw JobErrors.illegalCron(taskName, expression, e);
-        }
-        cache.put(expression, parsed);
-        return parsed;
+        return cache.computeIfAbsent(expression, key -> {
+            try {
+                return new CronExpression(key);
+            } catch (ParseException e) {
+                throw JobErrors.illegalCron(taskName, key, e);
+            }
+        });
     }
 }
