@@ -14,7 +14,7 @@
 
 `aifei-job` 为 aifei 应用补齐**应用内定时任务**：业务只写方法 + 一个注解，调度、并发控制、异常隔离、停机收敛由模块统一负责。
 
-- 坐标：`io.github.gollyhu:aifei-job:1.0.0`（`packaging=jar`）
+- 坐标：`io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`（`packaging=jar`）
 - 包名：`cn.hg.aifei.job`
 - 技术基线：**Java 8**（语法与 API 双约束，主 JAR class major version = 52）
 - 调度内核：JDK `ScheduledThreadPoolExecutor` 上的**单飞自续排模型**——每个任务始终至多一个待触发实例，执行结束后于 `finally` 计算下次延迟并重排；**不重叠、不堆叠、不补跑是结构属性**，不是附加守卫
@@ -36,7 +36,7 @@
 
 ### 1.3 工程结构（单模块）
 
-单模块 `io.github.gollyhu:aifei-job:1.0.0`：公共 7 类型 + `internal` + `local` + `aifei` 同处一个 JAR。文件清单见 §15。
+单模块 `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`：公共 7 类型 + `internal` + `local` + `aifei` 同处一个 JAR。文件清单见 §15。
 
 ### 1.4 v1 不做清单（边界，防范围蔓延）
 
@@ -1140,7 +1140,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 ## 15. 文件清单（1.0.0 目标态）
 
 ```text
-aifei-job/                                  io.github.gollyhu:aifei-job:1.0.0（packaging=jar）
+aifei-job/                                  io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT（packaging=jar）
 ├── pom.xml                                 # Java 8；aifei-all provided；quartz + slf4j-api compile；传递依赖排空
 ├── README.md                               # 用法 / 语义声明 / 依赖声明（面向使用者）
 ├── AGENTS.md                               # 开发约束（面向开发代理）
@@ -1176,4 +1176,4 @@ aifei-job/                                  io.github.gollyhu:aifei-job:1.0.0（
 
 ---
 
-> **一句话总览**：`io.github.gollyhu:aifei-job:1.0.0` 单模块 —— 根包 **7 个公共类型**（`JobKit` / `JobEvent` / `JobListener` / `JobException` + 3 注解）+ `internal` 非承诺实现（配置 / 错误 / 任务名 / 触发方式 / 扫描 / 注册表 / 容器实例 / 记账 / 事件 / holder / 纯函数节拍 / 调度内核与两层 Runnable）+ `local.QuartzCronSupport`（唯一 Quartz 触点）+ `aifei.JobPlugin` 单一装配入口。调度模型 = 唤醒层固定 1 线程的自续排单飞；不重叠、不堆叠、不补跑是结构属性；拒绝、跳过、异常、停机四类语义各有唯一记账点。
+> **一句话总览**：`io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` 单模块 —— 根包 **7 个公共类型**（`JobKit` / `JobEvent` / `JobListener` / `JobException` + 3 注解）+ `internal` 非承诺实现（配置 / 错误 / 任务名 / 触发方式 / 扫描 / 注册表 / 容器实例 / 记账 / 事件 / holder / 纯函数节拍 / 调度内核与两层 Runnable）+ `local.QuartzCronSupport`（唯一 Quartz 触点）+ `aifei.JobPlugin` 单一装配入口。调度模型 = 唤醒层固定 1 线程的自续排单飞；不重叠、不堆叠、不补跑是结构属性；拒绝、跳过、异常、停机四类语义各有唯一记账点。

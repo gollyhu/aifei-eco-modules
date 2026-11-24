@@ -18,7 +18,7 @@ aifei-sentinel 是为 [aifei](https://aifei.cn) 提供的极简流量治理组�
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-sentinel</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

@@ -2,13 +2,13 @@
 
 > 本文件是任务输入，不是 PRD / 设计。定位：只做分布式锁，不做分布式事务。
 > 公共面 3 个类型、0 个配置键、句柄不可变。
-> 发布序列：`aifei-cache:1.1.0` → `aifei-lock:1.0.0` →（`aifei-job:1.1.0` 集群互斥）。
+> 发布序列：`aifei-cache:1.1.0` → `aifei-lock:1.0.0-SNAPSHOT` →（`aifei-job:1.1.0` 集群互斥）。
 
 ## 一、背景与目标
 
 现有 7 个模块均无跨实例互斥能力：`aifei-cache` 1.0 的 `putIfAbsent` 只配无条件 `remove`，租约到期会误删他人的锁；数据库行锁只对单库单行生效；JDK `ReentrantLock` 只在本 JVM 有效。本模块补齐该能力，**锁语义只依赖三条原子命令**：`SET key token PX lease NX`（加锁）、Lua CAS 删除（释放）、Lua CAS 续期（续期）。加锁成功后 cache 侧会追加一次 `cacheNames()` 登记（`SADD`），属**附加命令**：既不参与互斥判断，其失败也不得改变加锁结论（见第二节硬约束）。
 
-坐标 `io.github.gollyhu:aifei-lock:1.0.0`，包名 `cn.hg.aifei.lock`，Java 8（class major 52）。
+坐标 `io.github.gollyhu:aifei-lock:1.0.0-SNAPSHOT`，包名 `cn.hg.aifei.lock`，Java 8（class major 52）。
 
 **不做**：分布式事务（跨库一致性用 outbox + 幂等消费或 Saga）；单机 / caffeine 后端（静默无互斥比报错更危险，无共享存储的用户不能使用本模块）；可重入、公平排队、读写锁、锁丢失回调、jdbc 后端、多实例；自动续期看门狗。
 

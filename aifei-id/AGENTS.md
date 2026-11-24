@@ -12,7 +12,7 @@
 
 ## 交付性质
 
-`aifei-id` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-id:1.0.0`（`packaging=jar`），Java 8，包名 `cn.hg.aifei.id`。
+`aifei-id` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT`（`packaging=jar`），Java 8，包名 `cn.hg.aifei.id`。
 
 **不适用范围（不得据此模块约束要求）**：
 

@@ -2,7 +2,7 @@
 
 ## 1.0.0（2026-11-19）
 
-首个正式版本。坐标 `io.github.gollyhu:aifei-i18n:1.0.0`，Java 8（class major 52），零第三方 compile 依赖。
+首个正式版本。坐标 `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`，Java 8（class major 52），零第三方 compile 依赖。
 
 ### 新特性
 
@@ -34,7 +34,7 @@
 
 - **构建命令**：`cd aifei-i18n && mvn clean verify`。实测输出关键行：`Tests run: 126, Failures: 0, Errors: 0, Skipped: 0`、`BUILD SUCCESS`。
 - **产物**：`target/aifei-i18n-1.0.0.jar`。内含 32 个主源文件编译产物及 Maven 元数据（`pom.xml` / `pom.properties`）。
-- **版本核对**：`javap -verbose` 抽验 `cn.hg.aifei.i18n.I18nKit` → `major version: 52`；`pom.xml` 为 `1.0.0`，与坐标 `io.github.gollyhu:aifei-i18n:1.0.0` 一致。
+- **版本核对**：`javap -verbose` 抽验 `cn.hg.aifei.i18n.I18nKit` → `major version: 52`；`pom.xml` 为 `1.0.0`，与坐标 `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` 一致。
 - **环境要求**：JDK 8+（class major 52）、Maven 3.6+；`cn.aifei:aifei-all:1.1.2` 由消费方提供（`provided`）；仅用 `kv` 来源时才需 `io.github.gollyhu:aifei-cache:1.1.0`。
 
 ## 交付物清单
@@ -56,7 +56,7 @@
 <dependency>
   <groupId>io.github.gollyhu</groupId>
   <artifactId>aifei-i18n</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

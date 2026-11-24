@@ -24,7 +24,7 @@
 
 ### 1.1 先装入 aifei-mq
 
-demo 依赖 `aifei-mq:1.0.0`，首次运行前先把它装入本地仓库：
+demo 依赖 `aifei-mq:1.0.0-SNAPSHOT`，首次运行前先把它装入本地仓库：
 
 ```bat
 cd aifei-mq && mvn -B clean install

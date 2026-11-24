@@ -2,7 +2,7 @@
 
 微信开发包：公众号协议内核 + 开放接口客户端 + 小程序 + 微信支付 V3 + aifei 接入层。任意自带 `aifei-all` 的 aifei 项目引入即可用。
 
-坐标：`io.github.gollyhu:aifei-weixin:1.0.0`
+坐标：`io.github.gollyhu:aifei-weixin:1.0.0-SNAPSHOT`
 
 ## 文档
 
@@ -33,7 +33,7 @@
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-weixin</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

@@ -11,7 +11,7 @@
 
 ## 交付性质
 
-`aifei-mq` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 为**单模块** `io.github.gollyhu:aifei-mq:1.0.0`（`packaging=jar`）：公共 API + `internal` + `aifei.MqPlugin` + 7 个后端实现包同处一个 JAR（`docs/design.md` §15）。
+`aifei-mq` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 为**单模块** `io.github.gollyhu:aifei-mq:1.0.0-SNAPSHOT`（`packaging=jar`）：公共 API + `internal` + `aifei.MqPlugin` + 7 个后端实现包同处一个 JAR（`docs/design.md` §15）。
 
 ## 硬性约束
 

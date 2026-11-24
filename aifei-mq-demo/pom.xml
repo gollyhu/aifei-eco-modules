@@ -6,7 +6,7 @@
 
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-mq-demo</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>aifei-mq-demo</name>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-mq</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <!-- 客户端在 aifei-mq 内为 optional，不向下游传递；demo 声明全部客户端以演示多后端切换 -->

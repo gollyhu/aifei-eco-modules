@@ -3,7 +3,7 @@
 > 版本：v1（待评审）｜需求分析师：**芬西施**｜日期：**2026-11-18**
 > 依据：`docs/需求/aifei-audit.md`（唯一权威输入，含 R-01~R-09 / AC 35 条 / PV 3 条）
 > 交付物性质：**库模块（可被应用依赖的 SDK）+ 示例工程 `aifei-audit-demo`**，不是业务应用工程
-> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei-all` 为 `provided`；零第三方 compile / runtime 依赖
+> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei-all` 为 `provided`；零第三方 compile / runtime 依赖
 
 **本文口径声明**：需求文档 §二 非目标、§三 五条已定档前提、§五 契约口径**原样承接、不得推翻**。公共面逐字签名（根包 4 类 / `spi` 3 类 / `aifei` 2 类）、包内分布、异常类型职责、事件不可变实现方式、配置键名一律由架构师在 `aifei-audit/docs/design.md` 定稿，**本文不代写签名**。
 
@@ -314,7 +314,7 @@ stateDiagram-v2
 
 | 项 | 约束 | 参照 |
 | --- | --- | --- |
-| 工程形态 | 平级目录 `aifei-audit-demo/`，独立 `pom.xml`；依赖 `io.github.gollyhu:aifei-audit:1.0.0` + `cn.aifei:aifei-all:1.1.2` | `aifei-http-demo/pom.xml` |
+| 工程形态 | 平级目录 `aifei-audit-demo/`，独立 `pom.xml`；依赖 `io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all:1.1.2` | `aifei-http-demo/pom.xml` |
 | 启动入口 | `DemoApp` → `Aifei.start(DemoAppConfig)`；`start-demo.bat` 编译后按 `-Dundertow.port=18160` 启动，`stop-demo.bat` 按 18160 找监听进程结束 | `aifei-http-demo/start-demo.bat` |
 | HTTP 层 | **自写 HIO**：同步官方 `aifei-demo/src/main/java/cn/aifei/demo/common/arch/**`，保留 `cn.aifei.demo.common.arch` 包名并逐字照抄，不得本地化改写 | 仓库根 `AGENTS.md`「官方源码同步」 |
 | 页面 | 单页静态层，本地全局 Vue + 原生 JS，**零 CDN、零构建工具**；断网可用 | `aifei-http-demo` 的 `view` + `assets` |

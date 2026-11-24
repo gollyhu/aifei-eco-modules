@@ -4,7 +4,7 @@
 并把「当前生效 Locale」贯通到 JDK 的数值 / 货币 / 日期格式化。文案来源**开放扩展**，模块自带
 `properties` / `db` / `kv` 三个默认件，运行期可刷新。
 
-- 坐标：`io.github.gollyhu:aifei-i18n:1.0.0`
+- 坐标：`io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`
 - Java 8（class major 52）；`aifei-all` 为 `provided`，消费方自带
 - 零第三方 compile 依赖
 

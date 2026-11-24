@@ -6,7 +6,7 @@
 
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-excel-demo</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>aifei-excel-demo</name>
@@ -17,7 +17,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aifei.version>1.1.2</aifei.version>
-        <aifei-excel.version>1.0.0</aifei-excel.version>
+        <aifei-excel.version>1.0.0-SNAPSHOT</aifei-excel.version>
         <easyexcel.version>3.3.2</easyexcel.version>
         <undertow.version>2.2.39.Final</undertow.version>
     </properties>

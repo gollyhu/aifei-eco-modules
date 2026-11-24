@@ -8,32 +8,32 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | 模块 | 坐标 | 定位 |
 | --- | --- | --- |
 | [aifei-cache](aifei-cache/README.md) | `io.github.gollyhu:aifei-cache:1.1.0` | 缓存与计数组件：Caffeine / Redis 双后端，支持多实例 |
-| [aifei-sentinel](aifei-sentinel/README.md) | `io.github.gollyhu:aifei-sentinel:1.0.0` | Sentinel 流量治理接入 SDK：流控、熔断、系统保护 |
+| [aifei-sentinel](aifei-sentinel/README.md) | `io.github.gollyhu:aifei-sentinel:1.0.0-SNAPSHOT` | Sentinel 流量治理接入 SDK：流控、熔断、系统保护 |
 | [aifei-sentinel-demo](aifei-sentinel-demo/README.md) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
-| [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
-| [aifei-sa-token](aifei-sa-token/README.md) | `io.github.gollyhu:aifei-sa-token:1.0.0` | Sa-Token 认证鉴权接入 SDK：登录态、角色权限、注解鉴权 |
-| [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，内建 JDK 自实现 RFC6455 |
+| [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0-SNAPSHOT` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
+| [aifei-sa-token](aifei-sa-token/README.md) | `io.github.gollyhu:aifei-sa-token:1.0.0-SNAPSHOT` | Sa-Token 认证鉴权接入 SDK：登录态、角色权限、注解鉴权 |
+| [aifei-websocket](aifei-websocket/README.md) | `io.github.gollyhu:aifei-websocket:1.0.0-SNAPSHOT` | WebSocket 双向能力：客户端出站连接 + 服务端接收连接，内建 JDK 自实现 RFC6455 |
 | [aifei-websocket-demo](aifei-websocket-demo/README.md) | （示例工程，不发布） | aifei-websocket 的完整接入示例：本地回环演示建连 / 收发 / 断线自动重连 |
-| [aifei-mq](aifei-mq/README.md) | `io.github.gollyhu:aifei-mq:1.0.0` | 异步消息能力：生产者发送 + 消费者订阅，内存后端开箱即用，真实 MQ 后端可扩展 |
+| [aifei-mq](aifei-mq/README.md) | `io.github.gollyhu:aifei-mq:1.0.0-SNAPSHOT` | 异步消息能力：生产者发送 + 消费者订阅，内存后端开箱即用，真实 MQ 后端可扩展 |
 | [aifei-mq-demo](aifei-mq-demo/README.md) | （示例工程，不发布） | aifei-mq 的完整接入示例：发送 / 订阅消费闭环演示（默认同时启用 memory 主实例与 mqtt / mqtt5 / redisstream 命名实例，需公网 broker 与本机 Redis；离线时先精简 `mq.names`，详见 demo README） |
-| [aifei-oss](aifei-oss/README.md) | `io.github.gollyhu:aifei-oss:1.0.0` | 多平台对象 / 文件存储能力：基于 X File Storage（覆盖 30+ 平台）二次封装，本模块类型白名单 20 项 |
+| [aifei-oss](aifei-oss/README.md) | `io.github.gollyhu:aifei-oss:1.0.0-SNAPSHOT` | 多平台对象 / 文件存储能力：基于 X File Storage（覆盖 30+ 平台）二次封装，本模块类型白名单 20 项 |
 | [aifei-oss-demo](aifei-oss-demo/README.md) | （示例工程，不发布） | aifei-oss 的完整接入示例：本地存储的上传 / 下载 / 列举 / 复制 / 删除演示 |
-| [aifei-lock](aifei-lock/README.md) | `io.github.gollyhu:aifei-lock:1.0.0` | 分布式锁：基于共享缓存的原子加锁、CAS 释放与 CAS 续期 |
-| [aifei-job](aifei-job/README.md) | `io.github.gollyhu:aifei-job:1.0.0` | 应用内定时任务：cron / 固定频率 / 固定延迟，单飞自续排、拒绝记账、优雅停机 |
+| [aifei-lock](aifei-lock/README.md) | `io.github.gollyhu:aifei-lock:1.0.0-SNAPSHOT` | 分布式锁：基于共享缓存的原子加锁、CAS 释放与 CAS 续期 |
+| [aifei-job](aifei-job/README.md) | `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` | 应用内定时任务：cron / 固定频率 / 固定延迟，单飞自续排、拒绝记账、优雅停机 |
 | [aifei-job-demo](aifei-job-demo/README.md) | （示例工程，不发布） | aifei-job 的完整接入示例：任务列表 / 到点触发 / 跳过 / 异常隔离 / 停机收敛演示（端口 18110） |
-| [aifei-id](aifei-id/README.md) | `io.github.gollyhu:aifei-id:1.0.0` | 分布式 ID：雪花（`1+41+10+12`）与号段双策略，workerId 三来源，零第三方 |
+| [aifei-id](aifei-id/README.md) | `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT` | 分布式 ID：雪花（`1+41+10+12`）与号段双策略，workerId 三来源，零第三方 |
 | [aifei-id-demo](aifei-id-demo/README.md) | （示例工程，不发布） | aifei-id 的完整接入示例：单号生成 / 并发去重 / 号段换段 / workerId 状态演示（端口 18140，雪花与号段两脚本互斥） |
-| [aifei-trace](aifei-trace/README.md) | `io.github.gollyhu:aifei-trace:1.0.0` | 请求链路贯通：`TraceKit` 链路上下文 + 日志 `[traceId] ` 前缀贯通 + Web 入口绑定清理，零第三方 |
+| [aifei-trace](aifei-trace/README.md) | `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT` | 请求链路贯通：`TraceKit` 链路上下文 + 日志 `[traceId] ` 前缀贯通 + Web 入口绑定清理，零第三方 |
 | [aifei-trace-demo](aifei-trace-demo/README.md) | （示例工程，不发布） | aifei-trace 的完整接入示例：链路展示 / 日志前缀 / 线程池传递 / 头提取回退演示（端口 18130） |
-| [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
+| [aifei-http](aifei-http/README.md) | `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` | 出站 HTTP 统一客户端：纯 JDK HttpURLConnection，超时 / 重试 / 拦截 / 编解码统一，零第三方 |
 | [aifei-http-demo](aifei-http-demo/README.md) | （示例工程，不发布） | aifei-http 的完整接入示例：回环靶子演示超时 / 重试 / 拦截 / gzip / 资源名（端口 18120，零外网） |
-| [aifei-i18n](aifei-i18n/README.md) | `io.github.gollyhu:aifei-i18n:1.0.0` | 国际化能力：开放来源扩展 + 3 默认来源（properties/db/kv）+ 单条取文案/整包导出 + Locale 上下文贯通 + JDK 格式化薄封装 + Enjoy 三条模板指令，零第三方 |
+| [aifei-i18n](aifei-i18n/README.md) | `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` | 国际化能力：开放来源扩展 + 3 默认来源（properties/db/kv）+ 单条取文案/整包导出 + Locale 上下文贯通 + JDK 格式化薄封装 + Enjoy 三条模板指令，零第三方 |
 | [aifei-i18n-demo](aifei-i18n-demo/README.md) | （示例工程，不发布） | aifei-i18n 的完整接入示例：真实 Enjoy 渲染演示 `#i18n`/`#lang`/`#dir` 三条指令与语言包下发（端口 18170，零外网） |
-| [aifei-excel](aifei-excel/README.md) | `io.github.gollyhu:aifei-excel:1.0.0` | Excel 读写统一门面：注解表头映射、一次性便捷读写、流式分批读写，唯一内核 easyexcel 可选引入 |
+| [aifei-excel](aifei-excel/README.md) | `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` | Excel 读写统一门面：注解表头映射、一次性便捷读写、流式分批读写，唯一内核 easyexcel 可选引入 |
 | [aifei-excel-demo](aifei-excel-demo/README.md) | （示例工程，不发布） | aifei-excel 的完整接入示例：上传解析 / 一次性导出 / 流式导出演示（端口 18150） |
-| [aifei-audit](aifei-audit/README.md) | `io.github.gollyhu:aifei-audit:1.0.0` | 注解式操作审计：`@Audit` 声明式采集 + `AuditKit` 手动埋点，事件交 `AuditSink` SPI，零存储 / 零线程池 / 零生态依赖 |
+| [aifei-audit](aifei-audit/README.md) | `io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT` | 注解式操作审计：`@Audit` 声明式采集 + `AuditKit` 手动埋点，事件交 `AuditSink` SPI，零存储 / 零线程池 / 零生态依赖 |
 | [aifei-audit-demo](aifei-audit-demo/README.md) | （示例工程，不发布） | aifei-audit 的完整接入示例：8 场景单页演示——注解与未标注对照 / 手动埋点 / 脱敏对照 / sink 切换 / 业务异常 / traceId 关联 / 空态 / 失败隔离（端口 18160，零外网） |
-| [aifei-tools](aifei-tools/README.md) | `io.github.gollyhu:aifei-tools:1.0.0` | 极简工具集：captcha 验证码 / ip 归属地 / qr 二维码 / mask 脱敏，子包隔离各自独立可用，零强制第三方（内核 optional） |
+| [aifei-tools](aifei-tools/README.md) | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：captcha 验证码 / ip 归属地 / qr 二维码 / mask 脱敏，子包隔离各自独立可用，零强制第三方（内核 optional） |
 
 ### aifei-cache
 

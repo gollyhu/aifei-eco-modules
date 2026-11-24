@@ -2,7 +2,7 @@
 
 > 版本：v1.0｜系统架构师：**贾苟思**｜日期：**2026-11-18**
 > 输入：`docs/需求/aifei-audit.md`（任务输入，最高权威）、`aifei-audit/docs/prd.md`（需求关已通过）
-> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei-all:1.1.2` 为 `provided`；零第三方 compile / runtime 依赖
+> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei-all:1.1.2` 为 `provided`；零第三方 compile / runtime 依赖
 > 本文口径：需求 §二 非目标、§三 五条已定档前提、§五 契约口径**原样承接**；公共面逐字签名、配置键名、异常职责、不可变实现方式、门禁方法级判据均由本文定稿。**本文与需求冲突时以需求为准**，并须走需求回写流程。
 
 ---
@@ -779,7 +779,7 @@ sequenceDiagram
 
 | 项 | 定稿 |
 | --- | --- |
-| 坐标 | `io.github.gollyhu:aifei-audit-demo:1.0.0`（示例工程，不发布） |
+| 坐标 | `io.github.gollyhu:aifei-audit-demo:1.0.0-SNAPSHOT`（示例工程，不发布） |
 | 端口 | **18160**（`-Dundertow.port=18160`），WebSocket / mq / job / http / trace / id / excel 端口均不占用 |
 | 结构 | 与 `aifei-http-demo` 同构：`DemoApp` → `Aifei.start(DemoAppConfig)`；自写 HIO（`cn.aifei.demo.common.arch` 11 个文件逐字拷贝自 `aifei-http-demo`）；`service` 包声明 `@Path`；`webapp` 静态页；`start-demo.bat` / `stop-demo.bat` |
 | 依赖 | `aifei-all`(compile) + `aifei-audit`(compile) + `aifei-trace` + `aifei-sa-token` + `aifei-mq`（示例工程行为，`Q16` 定档）。**模块 pom 不得出现这些** |

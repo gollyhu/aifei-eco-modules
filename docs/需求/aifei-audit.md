@@ -2,7 +2,7 @@
 
 > 本文件是**任务输入**（需求 + 验收标准），不是 `design.md`、不是 PRD 补充、不是任务分解。公共 API 逐字签名、包结构与门禁细则、行为契约细节，由 `aifei-audit/docs/design.md` 定稿，本文只给能力诉求与可验收边界。
 > 关联：`docs/计划/aifei-eco-modules 模块规划与排期.md` §3.3（`aifei-audit` 立项判词：注解式操作审计；与业务日志边界模糊；落库 / 落 MQ 的职责切分需定档；**定档后 1.5 周**）；同构范本 `docs/需求/aifei-http.md`、`docs/需求/aifei-job.md`。
-> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei-all` 为 `provided`；零第三方 compile / runtime 依赖。
+> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei-all` 为 `provided`；零第三方 compile / runtime 依赖。
 
 ## 〇、交付物性质声明（先读，门禁口径依赖此节）
 

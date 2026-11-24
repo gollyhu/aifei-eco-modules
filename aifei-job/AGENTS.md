@@ -11,7 +11,7 @@
 
 ## 交付性质
 
-`aifei-job` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 为**单模块** `io.github.gollyhu:aifei-job:1.0.0`（`packaging=jar`）：公共 API 7 类型 + `internal` + `local` + `aifei.JobPlugin` 同处一个 JAR。
+`aifei-job` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 为**单模块** `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`（`packaging=jar`）：公共 API 7 类型 + `internal` + `local` + `aifei.JobPlugin` 同处一个 JAR。
 
 **v1 不留任何 v1.1 桩代码与占位配置**：不建 `cluster` 包、不声明 `job.cluster.*` 键、不写 `TODO` / 被注释掉的代码 / 预留未使用参数。
 

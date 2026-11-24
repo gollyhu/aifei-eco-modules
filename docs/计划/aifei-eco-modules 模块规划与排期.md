@@ -70,14 +70,14 @@
 
 | 模块 | 坐标 | 补的缺口 | 公共面（实际） | 依赖策略 |
 | --- | --- | --- | --- | --- |
-| `aifei-http` | `io.github.gollyhu:aifei-http:1.0.0` | 出站 HTTP：超时、重试、拦截器、请求/响应编解码 | 根包 6 类：`HttpClient` / `HttpRequest` / `HttpResponse` / `HttpKit` / `HttpException` / `HttpInterceptor` | 零第三方；纯 JDK `HttpURLConnection` |
-| `aifei-excel` | `io.github.gollyhu:aifei-excel:1.0.0` | Excel 读写：注解映射、一次性与流式分批 | 根包 5 类：`Excel` / `ExcelKit` / `ExcelException` / `ExcelColumn` / `ExcelIgnore` | EasyExcel `optional` |
-| `aifei-id` | `io.github.gollyhu:aifei-id:1.0.0` | 分布式 ID：雪花 + 号段 | 4 类：`IdGenerator` / `IdKit` / `IdException` + `aifei.IdPlugin` | 零第三方；`aifei-cache` / `aifei-lock` 均 `optional` |
-| `aifei-trace` | `io.github.gollyhu:aifei-trace:1.0.0` | traceId 全链路贯穿 | 8 类：根包 6 类 + `web` 2 类（`TraceHandler` / `TraceIdExtractor`） | 零第三方；依赖 `aifei-log` 门面（已登记例外） |
-| `aifei-job` | `io.github.gollyhu:aifei-job:1.0.0` | 应用内定时任务 | 根包 7 类 | quartz + slf4j-api `compile`（已登记例外） |
-| `aifei-audit` | `io.github.gollyhu:aifei-audit:1.0.0` | 注解式操作审计：结构化事件 + 落点 SPI | 根包 + `spi` 3 类 + `aifei` 插件 | 零第三方 compile/runtime（junit 仅 test） |
-| `aifei-i18n` | `io.github.gollyhu:aifei-i18n:1.0.0` | 多语言：后端取文案 + 前端语言包下发 + Enjoy 三指令 | 根包 7 + `web` 2 + `aifei` 1 = 精确 10 类 | 零第三方；`aifei-cache` 为 `optional`（KV 来源） |
-| `aifei-tools` | `io.github.gollyhu:aifei-tools:1.0.0` | 极简工具集：IP 归属地 / 验证码 / 二维码 / 脱敏 | 根包零类型，公共 API 全在 `ipdb`/`captcha`/`qr`/`mask` 子包 | ip2region `3.3.7` / ZXing core `3.5.3` / aifei-cache 均 `optional` |
+| `aifei-http` | `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` | 出站 HTTP：超时、重试、拦截器、请求/响应编解码 | 根包 6 类：`HttpClient` / `HttpRequest` / `HttpResponse` / `HttpKit` / `HttpException` / `HttpInterceptor` | 零第三方；纯 JDK `HttpURLConnection` |
+| `aifei-excel` | `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` | Excel 读写：注解映射、一次性与流式分批 | 根包 5 类：`Excel` / `ExcelKit` / `ExcelException` / `ExcelColumn` / `ExcelIgnore` | EasyExcel `optional` |
+| `aifei-id` | `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT` | 分布式 ID：雪花 + 号段 | 4 类：`IdGenerator` / `IdKit` / `IdException` + `aifei.IdPlugin` | 零第三方；`aifei-cache` / `aifei-lock` 均 `optional` |
+| `aifei-trace` | `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT` | traceId 全链路贯穿 | 8 类：根包 6 类 + `web` 2 类（`TraceHandler` / `TraceIdExtractor`） | 零第三方；依赖 `aifei-log` 门面（已登记例外） |
+| `aifei-job` | `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` | 应用内定时任务 | 根包 7 类 | quartz + slf4j-api `compile`（已登记例外） |
+| `aifei-audit` | `io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT` | 注解式操作审计：结构化事件 + 落点 SPI | 根包 + `spi` 3 类 + `aifei` 插件 | 零第三方 compile/runtime（junit 仅 test） |
+| `aifei-i18n` | `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` | 多语言：后端取文案 + 前端语言包下发 + Enjoy 三指令 | 根包 7 + `web` 2 + `aifei` 1 = 精确 10 类 | 零第三方；`aifei-cache` 为 `optional`（KV 来源） |
+| `aifei-tools` | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：IP 归属地 / 验证码 / 二维码 / 脱敏 | 根包零类型，公共 API 全在 `ipdb`/`captcha`/`qr`/`mask` 子包 | ip2region `3.3.7` / ZXing core `3.5.3` / aifei-cache 均 `optional` |
 
 > **`aifei-http` 依赖口径已定档（2026-11-10）**：零第三方纯 JDK，不引入 okhttp、不设 provider 扩展点；同路线经验参考 `aifei-weixin` 的 `core.http.JdkHttpClient` / `pay.JdkPayHttpClient`（multipart、文件下载、mTLS），非代码复用。四条能力边界：① 不支持 HTTP/2；② 连接池受 JVM 全局属性 `http.maxConnections` / `http.keepAlive` 约束、不可按实例调参，模块不得改写；③ 超时仅 connect / read 两段，无整体 deadline、不可取消在途请求；④ gzip、Cookie、重定向自行实现。资源名唯一拼装点 `internal.HttpResource`，模块零 `aifei-sentinel` 依赖。
 
@@ -85,9 +85,9 @@
 
 | 模块 | 坐标 | 补的缺口 | 公共面预估（须过设计决策） | 依赖策略 | 工期 |
 | --- | --- | --- | --- | --- | --- |
-| `aifei-metrics` | `io.github.gollyhu:aifei-metrics:1.0.0` | 运行指标采集 + Prometheus 文本端点 | `MetricsKit` / `Metric` / `MetricsException` | 零第三方（自实现文本格式） | 2 周 |
-| `aifei-sms` | `io.github.gollyhu:aifei-sms:1.0.0` | 短信通道：模板化发送 + 回执 | `SmsClient` / `SmsKit` / `SmsMessage` / `SmsException` | 阿里云/腾讯云/华为云 SDK 均 `optional` | 2 周 |
-| `aifei-pay` | `io.github.gollyhu:aifei-pay:1.0.0` | 支付宝支付：下单/查单/退款/回调验签 | `AliPayClient` / `AliPayKit` / `AliPayNotifyUtil` / `AliPayException` | 纯 JDK 签名，零第三方 | 3 周 |
+| `aifei-metrics` | `io.github.gollyhu:aifei-metrics:1.0.0-SNAPSHOT` | 运行指标采集 + Prometheus 文本端点 | `MetricsKit` / `Metric` / `MetricsException` | 零第三方（自实现文本格式） | 2 周 |
+| `aifei-sms` | `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` | 短信通道：模板化发送 + 回执 | `SmsClient` / `SmsKit` / `SmsMessage` / `SmsException` | 阿里云/腾讯云/华为云 SDK 均 `optional` | 2 周 |
+| `aifei-pay` | `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT` | 支付宝支付：下单/查单/退款/回调验签 | `AliPayClient` / `AliPayKit` / `AliPayNotifyUtil` / `AliPayException` | 纯 JDK 签名，零第三方 | 3 周 |
 
 > 原列本档的 `aifei-i18n` 已于 2026-11-19 交付，移入 §3.1 已交付清单；其范式对齐 `aifei-cache` 的 provider 扩展点，而非 `aifei-weixin` 的通道接入。
 
@@ -114,9 +114,9 @@
 graph TD
     KERNEL["aifei 框架内核 1.1.2（cache: aifei/compile；其余: aifei-all/provided）"]
     CACHE["aifei-cache:1.1.0"]
-    LOCK["aifei-lock:1.0.0"]
-    ID["aifei-id:1.0.0"]
-    SATOKEN["aifei-sa-token:1.0.0"]
+    LOCK["aifei-lock:1.0.0-SNAPSHOT"]
+    ID["aifei-id:1.0.0-SNAPSHOT"]
+    SATOKEN["aifei-sa-token:1.0.0-SNAPSHOT"]
 
     KERNEL --> CACHE
     KERNEL --> LOCK

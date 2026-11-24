@@ -11,7 +11,7 @@ rem   cd ..\aifei-excel ^&^& mvn -q -DskipTests clean install
 echo [1/3] Build demo and classpath...
 call mvn -q -f .\pom.xml compile dependency:build-classpath -Dmdep.outputFile=target\cp.txt
 if errorlevel 1 (
-    echo Build failed. Ensure aifei-excel:1.0.0 is installed: cd ..\aifei-excel ^&^& mvn -q -DskipTests clean install
+    echo Build failed. Ensure aifei-excel:1.0.0-SNAPSHOT is installed: cd ..\aifei-excel ^&^& mvn -q -DskipTests clean install
     exit /b 1
 )
 

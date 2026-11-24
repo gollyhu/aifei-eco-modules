@@ -14,7 +14,7 @@
 
 ## 二、范围
 
-- 交付 `io.github.gollyhu:aifei-tools:1.0.0`，包名 `cn.hg.aifei.tools`，Java 8（class major 52）
+- 交付 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`，包名 `cn.hg.aifei.tools`，Java 8（class major 52）
 - 首批工具（4 个，各自独立可用）：验证码落 `cn.hg.aifei.tools.captcha` 子包；IP 归属地查询落 `cn.hg.aifei.tools.ipdb` 子包；二维码落 `cn.hg.aifei.tools.qr` 子包；脱敏落 `cn.hg.aifei.tools.mask` 子包
 - 后续工具按需追加（候选：其它极简工具），本版不预置空壳、不留占位类
 - 零**强制**第三方运行依赖；`aifei-all` 为 `provided`；第三方能力内核为 `optional`（captcha 的 `aifei-cache`、ipdb 的 `org.lionsoul:ip2region:3.3.7`、qr 的 `com.google.zxing:core:3.5.3`），缺失时首次调用抛可读异常，对齐 `aifei-excel` 的 EasyExcel 先例

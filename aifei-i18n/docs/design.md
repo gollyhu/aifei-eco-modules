@@ -6,7 +6,7 @@
 >
 > **交付性质**：`aifei-i18n` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。工程内**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构实体 / Generator / UI 页面。只有「根包公共 API 精确 7 类型 + `web` 接入包 2 类型 + `aifei` 装配包 1 类型 + `internal` 非承诺实现」。**本模块不提供 HTTP 端点**——语言包下发由消费方 Just Service 一行完成（契约见 §9.4）。
 >
-> **坐标**：`io.github.gollyhu:aifei-i18n:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.i18n`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（`aifei-all` 为 `provided`、`aifei-cache` 为 `optional`，junit 为 `test`）。
+> **坐标**：`io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.i18n`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（`aifei-all` 为 `provided`、`aifei-cache` 为 `optional`，junit 为 `test`）。
 >
 > **文档状态**：本文是 1.0.0 的**设计定稿（契约）**。§5 的公共类型签名、§7 的 4 个配置键名、§2 的 4 项定档结论是编码与维护的**唯一依据**，变更前必须先改本文并过设计决策。增量需求来源见 `docs/需求/aifei-i18n.md` §十一。
 
@@ -1138,7 +1138,7 @@ mvn dependency:tree                             # 断言：aifei-all(provided) +
 | `junit:junit:4.13.2` | `test` | 单元测试 + 双门禁（`assertThrows` 断言异常） |
 
 - **零第三方 compile 强制**：无 slf4j/logback/log4j/okhttp/jackson 等；日志只面向 `cn.aifei.log.Log`。
-- **pom 骨架**（对齐 `aifei-http/pom.xml`）：`io.github.gollyhu:aifei-i18n:1.0.0:jar`；properties 含 `maven.compiler.source/target=1.8`、`project.build.sourceEncoding=UTF-8`、`aifei.version=1.1.2`、`aifei-cache.version=1.1.0`、`junit.version=4.13.2`；`maven-compiler-plugin 3.15.0`（source/target 1.8、UTF-8）+ `maven-surefire-plugin 3.2.5`（带 `<workingDirectory>${project.basedir}</workingDirectory>`，门禁靠相对路径 `src/main/java` 扫描）。
+- **pom 骨架**（对齐 `aifei-http/pom.xml`）：`io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT:jar`；properties 含 `maven.compiler.source/target=1.8`、`project.build.sourceEncoding=UTF-8`、`aifei.version=1.1.2`、`aifei-cache.version=1.1.0`、`junit.version=4.13.2`；`maven-compiler-plugin 3.15.0`（source/target 1.8、UTF-8）+ `maven-surefire-plugin 3.2.5`（带 `<workingDirectory>${project.basedir}</workingDirectory>`，门禁靠相对路径 `src/main/java` 扫描）。
 - **验证命令**：`cd aifei-i18n && mvn clean verify`（0 failure / 0 error）。
 
 ---
@@ -1169,7 +1169,7 @@ mvn dependency:tree                             # 断言：aifei-all(provided) +
 > 计数口径：主源 26 = 根包 7 + web 2 + aifei 1 + internal 13 + defaultSource 3；测试 10；模块文档/构建 4 = `pom.xml` + `README.md` + `AGENTS.md` + `docs/testing.md`。另有 `docs/design.md`（本文，已产出）与仓库根 `README.md`（模块总览加一行，归属 T12）不计入 40。每个待创建文件**恰好归属** T01–T12 中的一个任务（见 §14.2）。
 
 ```text
-aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1.0.0（packaging=jar）
+aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT（packaging=jar）
 ├── pom.xml                                       # 构建：aifei-all provided + aifei-cache optional + junit test
 ├── README.md                                     # 面向使用者：用法 / JSON 契约 / 建表 SQL / CLDR & jlink 说明
 ├── AGENTS.md                                     # 面向开发代理：硬约束与门禁说明
@@ -1584,7 +1584,7 @@ String effectivePageLang():
 #### 16.7.1 目录结构（对齐仓库现有 demo 风格，参照 aifei-excel-demo）
 
 ```text
-aifei-i18n-demo/                              io.github.gollyhu:aifei-i18n-demo:1.0.0（jar，示例工程不发布）
+aifei-i18n-demo/                              io.github.gollyhu:aifei-i18n-demo:1.0.0-SNAPSHOT（jar，示例工程不发布）
 ├── pom.xml                                   aifei-all compile + aifei-i18n compile + undertow-core
 ├── README.md                                 启动方式、端点、P-01~P-06 核对、版本不发布声明
 ├── start-demo.bat                            -Dundertow.port=18170
@@ -1615,7 +1615,7 @@ aifei-i18n-demo/                              io.github.gollyhu:aifei-i18n-demo:
 | 依赖 | 范围 | 说明 |
 | --- | --- | --- |
 | `cn.aifei:aifei-all:1.1.2` | compile | 示例工程自带内核（含 Enjoy + Undertow 内核 API） |
-| `io.github.gollyhu:aifei-i18n:1.0.0` | compile | 被演示的库本体；启动前先 `cd ..\aifei-i18n && mvn -q -DskipTests clean install` |
+| `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` | compile | 被演示的库本体；启动前先 `cd ..\aifei-i18n && mvn -q -DskipTests clean install` |
 | `io.undertow:undertow-core:2.2.39.Final` | compile | 对齐 excel-demo 版本；零日志绑定（自带 ConsoleLogFactory） |
 
 - **零新增第三方**：不引 jackson/slf4j 等；JSON 由 `cn.aifei.json.Json` 拼装。
@@ -1850,4 +1850,4 @@ sequenceDiagram
 
 ---
 
-> **一句话总览**：`io.github.gollyhu:aifei-i18n:1.0.0` 单模块 —— 根包 **7 公共类型**（`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`）+ `web` 2（`I18nHandler` / `LocaleExtractor`）+ `aifei` 1（`I18nPlugin`）+ `internal` 11 规则类 + `defaultSource` 3 默认来源；零第三方、4 配置键、开放来源 + 唯一回退链 + Locale 四级贯通 + 整包四字段稳定导出 + JDK 格式化薄门面；回退/排序/规范化/解析/dir/插值/格式化/key 校验各有唯一定义点，双门禁（源码 13 例 + class major 52）强制收敛。
+> **一句话总览**：`io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` 单模块 —— 根包 **7 公共类型**（`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`）+ `web` 2（`I18nHandler` / `LocaleExtractor`）+ `aifei` 1（`I18nPlugin`）+ `internal` 11 规则类 + `defaultSource` 3 默认来源；零第三方、4 配置键、开放来源 + 唯一回退链 + Locale 四级贯通 + 整包四字段稳定导出 + JDK 格式化薄门面；回退/排序/规范化/解析/dir/插值/格式化/key 校验各有唯一定义点，双门禁（源码 13 例 + class major 52）强制收敛。

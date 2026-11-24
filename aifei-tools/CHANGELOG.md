@@ -8,7 +8,7 @@
 
 aifei 生态的极简工具集库模块（SDK，可被应用依赖），定位「几十行就能写完、却每个应用都要抄一遍」的能力收拢到一个 JAR。五个工具按子包隔离、各自独立可用、互不牵连：`captcha` 验证码 / `ipdb` IP 归属地 / `qr` 二维码 / `mask` 脱敏 / `kdf` 密钥派生。
 
-- 坐标：`io.github.gollyhu:aifei-tools:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.tools`；Java 8（class major 52）；根包零公共类型
+- 坐标：`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.tools`；Java 8（class major 52）；根包零公共类型
 
 ### 五子包与公共类型（共 20 个，根包零公共类型）
 

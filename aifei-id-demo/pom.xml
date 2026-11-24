@@ -6,7 +6,7 @@
 
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-id-demo</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>aifei-id-demo</name>
@@ -17,7 +17,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aifei.version>1.1.2</aifei.version>
-        <aifei-id.version>1.0.0</aifei-id.version>
+        <aifei-id.version>1.0.0-SNAPSHOT</aifei-id.version>
         <undertow.version>2.2.39.Final</undertow.version>
     </properties>
 

@@ -2,7 +2,7 @@
 
 注解式操作审计 SDK：把「谁在何时对什么做了什么、结果如何」采集为一条不可变事件，交给消费方自己实现的落点。
 
-- 坐标：`io.github.gollyhu:aifei-audit:1.0.0`｜包名：`cn.hg.aifei.audit`｜Java 8
+- 坐标：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`｜包名：`cn.hg.aifei.audit`｜Java 8
 - **零存储、零线程池、零生态依赖**：只有 `cn.aifei:aifei-all`（`provided`），消费方必须自带
 
 ## 依赖声明
@@ -11,7 +11,7 @@
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-audit</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

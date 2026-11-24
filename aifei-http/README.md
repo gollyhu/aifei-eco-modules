@@ -2,7 +2,7 @@
 
 aifei 生态的**出站 HTTP 统一客户端**（库模块 / SDK）：业务只构造请求、读响应，超时、重试、拦截、编解码、资源名由模块统一负责。
 
-- 坐标：`io.github.gollyhu:aifei-http:1.0.0`
+- 坐标：`io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT`
 - 包名：`cn.hg.aifei.http`；Java 8（class major 52）
 - **零第三方**：传输实现只用 JDK `HttpURLConnection`；不引 okhttp / jackson / slf4j / commons-*
 
@@ -12,7 +12,7 @@ aifei 生态的**出站 HTTP 统一客户端**（库模块 / SDK）：业务只�
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-http</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 
 <!-- 消费方必须自带框架内核：本模块对 aifei-all 是 provided，不向下游传递 -->

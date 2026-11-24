@@ -2,7 +2,7 @@
 
 > 本文件是任务输入，不是 PRD / 设计。公共 API 与契约细节由 `aifei-http/docs/design.md` 定稿。
 > 关联：`docs/需求/aifei-eco-modules 模块规划与排期.md`（§二 能力缺口、§三 坐标与公共面、§三末依赖定档）；同构范本 `docs/需求/aifei-job.md`。
-> 坐标与基线：`io.github.gollyhu:aifei-http:1.0.0`；包名 `cn.hg.aifei.http`；Java 8（class major 52）。
+> 坐标与基线：`io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.http`；Java 8（class major 52）。
 
 ## 〇、交付物性质声明（先读，门禁口径依赖此节）
 

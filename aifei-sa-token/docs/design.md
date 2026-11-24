@@ -55,7 +55,7 @@ public interface Dispatcher<P1, P2, I extends Input, O extends Output> {
 
 ## 3. 总体架构
 
-单模块，自包含 `pom.xml`（无聚合父 pom），坐标 `io.github.gollyhu:aifei-sa-token:1.0.0`。
+单模块，自包含 `pom.xml`（无聚合父 pom），坐标 `io.github.gollyhu:aifei-sa-token:1.0.0-SNAPSHOT`。
 
 ### 3.1 内部分层
 

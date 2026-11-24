@@ -8,7 +8,7 @@
 
 - 这是**库模块（SDK）**，不是应用工程。无 `AppConfig` / `Launcher` / `service/` / `webapp/` / 路由 / HIO / 表实体 / Generator。
 - 本模块不提供 HTTP 端点；语言包下发由消费方 Just Service 一行完成。
-- 坐标 `io.github.gollyhu:aifei-i18n:1.0.0`，包名 `cn.hg.aifei.i18n`，Java 8（class major 52）。
+- 坐标 `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`，包名 `cn.hg.aifei.i18n`，Java 8（class major 52）。
 
 ## 二、公共面（精确 10 类型，不得增删）
 

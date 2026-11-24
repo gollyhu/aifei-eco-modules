@@ -40,7 +40,7 @@
 
 ### 3.1 交付范围（本期做）
 
-- 交付 `io.github.gollyhu:aifei-i18n:1.0.0`，包名 `cn.hg.aifei.i18n`，Java 8（class major 52）。
+- 交付 `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`，包名 `cn.hg.aifei.i18n`，Java 8（class major 52）。
 - **文案来源：1 个扩展点 + 3 个默认实现**。`properties`（零依赖默认，classpath）/ `db`（框架内核数据库能力，只读）/ `kv`（`aifei-cache`，`optional`）是**随模块附送的默认件**，不是可选集合的封闭枚举。
 - **来源数量由消费方决定**：任何满足「来源基本要素」（§5.2）的实现都可接入并按序参与叠加，**无需修改模块代码、无需改 pom、无需新增配置键**。
 - 后端取单条文案能力 + 前端语言包整包导出能力；**模块本身不提供 HTTP 端点**，下发由消费方的 Just Service 一行完成（JSON 契约写进 `README.md` 与 `docs/design.md`）。

@@ -36,7 +36,7 @@ aifei 生态已有缓存（`aifei-cache`）、鉴权（`aifei-sa-token`）等社
 
 | 项目 | 定位 |
 |---|---|
-| `aifei-sentinel` | SDK 本体，坐标 `io.github.gollyhu:aifei-sentinel:1.0.0` |
+| `aifei-sentinel` | SDK 本体，坐标 `io.github.gollyhu:aifei-sentinel:1.0.0-SNAPSHOT` |
 | `aifei-sentinel-demo` | 自写 HIO 的最小接入示例，演示两种运行模式 |
 
 各项目在自身 `<properties>` 内统一版本（`aifei.version` / `sentinel.version` / `junit.version`），demo 通过坐标 `io.github.gollyhu:aifei-sentinel` 依赖 SDK。

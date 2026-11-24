@@ -2,7 +2,7 @@
 
 aifei 生态的 **Excel 读写统一门面**（库模块 / SDK）：注解表头映射、一次性便捷读写、流式分批读写，单一内核 easyexcel 可选引入。
 
-- 坐标：`io.github.gollyhu:aifei-excel:1.0.0`（`packaging=jar`）
+- 坐标：`io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT`（`packaging=jar`）
 - 包名：`cn.hg.aifei.excel`；Java 8（class major 52）
 - 根包精确 5 个公共类型：`Excel` / `ExcelKit` / `ExcelException` / `ExcelColumn` / `ExcelIgnore`
 - 无 Plugin、无配置键、无 provider / SPI；不记录日志、零 DB、零 Web 面
@@ -13,7 +13,7 @@ aifei 生态的 **Excel 读写统一门面**（库模块 / SDK）：注解表头
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-excel</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 
 <!-- 消费方必须自带框架内核：本模块对 aifei-all 是 provided，不向下游传递 -->

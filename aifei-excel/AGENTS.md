@@ -12,7 +12,7 @@
 
 ## 交付性质（库模块，非业务应用）
 
-`aifei-excel` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**：没有 `AppConfig` / `Launcher` / `@Path` Service / `service/` 业务包 / `webapp/` / HTTP 路由 / 表结构 / `Db+Row` / `Generator` / Plugin / 配置键。坐标 `io.github.gollyhu:aifei-excel:1.0.0`（`packaging=jar`），根包**精确 5 公共类型** + `internal.easyexcel` 非承诺适配层同处一个 JAR。
+`aifei-excel` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**：没有 `AppConfig` / `Launcher` / `@Path` Service / `service/` 业务包 / `webapp/` / HTTP 路由 / 表结构 / `Db+Row` / `Generator` / Plugin / 配置键。坐标 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT`（`packaging=jar`），根包**精确 5 公共类型** + `internal.easyexcel` 非承诺适配层同处一个 JAR。
 
 **不适用章节（不得据此模块约束要求）**：
 
@@ -120,7 +120,7 @@ start-demo.bat        # 启动 demo
 stop-demo.bat         # 停止 demo
 ```
 
-demo 依赖 `aifei-excel:1.0.0`，需先在 `aifei-excel/` 执行 `mvn -q -DskipTests clean install` 安装到本地仓库（默认 `~/.m2/repository`；如改过配置，以 `mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout` 的查询结果为准）后才能构建。
+demo 依赖 `aifei-excel:1.0.0-SNAPSHOT`，需先在 `aifei-excel/` 执行 `mvn -q -DskipTests clean install` 安装到本地仓库（默认 `~/.m2/repository`；如改过配置，以 `mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout` 的查询结果为准）后才能构建。
 
 > **零联网纪律**：全部单测离线；xlsx / xls 样本由测试在 `target/` 现场写出再读回，或固定极小样本，**不提交二进制到仓库**。
 

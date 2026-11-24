@@ -7,7 +7,7 @@
 
 ### 1.1 定位
 
-`aifei-oss`（坐标 `io.github.gollyhu:aifei-oss:1.0.0`）为 aifei 应用补齐**多平台对象 / 文件存储**能力：以统一接口把文件存到本地磁盘、FTP / SFTP、以及阿里云 OSS、腾讯云 COS、华为云 OBS、MinIO、AWS S3 等 30+ 存储平台。
+`aifei-oss`（坐标 `io.github.gollyhu:aifei-oss:1.0.0-SNAPSHOT`）为 aifei 应用补齐**多平台对象 / 文件存储**能力：以统一接口把文件存到本地磁盘、FTP / SFTP、以及阿里云 OSS、腾讯云 COS、华为云 OBS、MinIO、AWS S3 等 30+ 存储平台。
 
 ### 1.2 基于 X File Storage 二次封装（非自实现）
 

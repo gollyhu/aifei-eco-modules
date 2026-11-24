@@ -4,7 +4,7 @@
 
 - HTTP 端口 **18150**（回环访问 `localhost`）
 - 单页入口 `http://localhost:18150/excel/demo/page`（页面模板 `src/main/webapp/view/excel/index.html`，零 CDN）
-- 依赖 `io.github.gollyhu:aifei-excel:1.0.0` + `com.alibaba:easyexcel:3.3.2`（见文末「依赖引入」）
+- 依赖 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` + `com.alibaba:easyexcel:3.3.2`（见文末「依赖引入」）
 
 ## 前置：先把 aifei-excel 装入本地仓库
 
@@ -52,7 +52,7 @@ curl -F "file=@once.xlsx" "http://localhost:18150/excel/demo/parse?batchSize=500
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-excel</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 <!-- 库模块以 optional 声明唯一内核，不向下游传递；消费方（本 demo）必须显式引入 -->
 <dependency>

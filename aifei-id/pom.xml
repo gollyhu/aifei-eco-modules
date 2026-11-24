@@ -6,7 +6,7 @@
 
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-id</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>aifei-id</name>
@@ -18,7 +18,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <aifei.version>1.1.2</aifei.version>
         <aifei-cache.version>1.1.0</aifei-cache.version>
-        <aifei-lock.version>1.0.0</aifei-lock.version>
+        <aifei-lock.version>1.0.0-SNAPSHOT</aifei-lock.version>
         <junit.version>4.13.2</junit.version>
     </properties>
 

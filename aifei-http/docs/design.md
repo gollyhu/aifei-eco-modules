@@ -4,7 +4,7 @@
 
 > **交付性质**：`aifei-http` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。工程内**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面；只有「根包公共 API 精确 6 类型 + `internal` 非承诺实现 + 一个装配用 `aifei.HttpPlugin`」。
 >
-> **坐标**：`io.github.gollyhu:aifei-http:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.http`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（compile / runtime / optional 全为零）。
+> **坐标**：`io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.http`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（compile / runtime / optional 全为零）。
 >
 > **文档状态**：本文是 1.0.0 的**设计定稿，已按本文实现交付**（模块 + `aifei-http-demo` 已落地并过 `mvn clean verify`，`docs/testing.md` 已产出）。§5 的 6 个公共类型签名与 §7 的配置键名仍是公共契约的**唯一依据**，变更前必须先改本文。
 
@@ -838,7 +838,7 @@ sequenceDiagram
 ### 9.1 工程根与主源码（18 个主源文件）
 
 ```text
-aifei-http/                                    io.github.gollyhu:aifei-http:1.0.0（packaging=jar）
+aifei-http/                                    io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT（packaging=jar）
 ├── pom.xml                                    # Java 8；aifei-all provided；junit test；零第三方
 ├── README.md                                  # 用法 / 能力边界 / 消费方自带 aifei-all（编码角色写）
 ├── AGENTS.md                                  # 模块硬约束（本文同级）
@@ -1042,7 +1042,7 @@ mvn clean verify
 
 ## 14. `aifei-http-demo`（示例工程，平级目录，不随模块发布）
 
-- **位置**：`aifei-http-demo/`（仓库根、与 `aifei-http/` 平级）；端口 **18120**；依赖 `io.github.gollyhu:aifei-http:1.0.0` + `cn.aifei:aifei-all`（demo 自带，验证模块 `provided` 口径）。
+- **位置**：`aifei-http-demo/`（仓库根、与 `aifei-http/` 平级）；端口 **18120**；依赖 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all`（demo 自带，验证模块 `provided` 口径）。
 - **离线可跑**：demo 自带**本地回环 echo 端点**，页面**不请求任何外网地址**；端点支持 6 种可控行为（回显 query / 请求头 / 请求体、指定状态码、延迟 N 毫秒、前 N 次 5xx、gzip 压缩响应、重定向到自身）。
 - **页面**：单页（`src/main/webapp/view/demo/index.html` + `assets/{js,css}`），零构建工具，覆盖需求 §八 的 8 个场景（请求构造 / 发送与响应 / 重试 / 超时 / 拦截器与资源名 / 空态 / 错误态 / 连接池边界只读展示）。
 - **不出原型、不走 QA 基线门禁**（已定档）；**不得**因页面需求回头要求模块新增公共 API。
@@ -1051,5 +1051,5 @@ mvn clean verify
 
 ---
 
-> **一句话总览**：`io.github.gollyhu:aifei-http:1.0.0` 单模块 —— 根包 **6 个公共类型**（`HttpClient` / `HttpRequest` / `HttpResponse` / `HttpKit` / `HttpException` / `HttpInterceptor`）+ `internal` 11 个非承诺类型（配置 / 资源名 / 重试 / 超时 / 编解码 / gzip / 实例持有 / 网络失败标记 / 包级传输契约 / 纯 JDK 传输 / 执行编排）+ `aifei.HttpPlugin` 单一装配入口。零第三方、无 provider、无短路、默认不重试；超时、重试、拦截、编解码、资源名各有唯一定义点。
+> **一句话总览**：`io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` 单模块 —— 根包 **6 个公共类型**（`HttpClient` / `HttpRequest` / `HttpResponse` / `HttpKit` / `HttpException` / `HttpInterceptor`）+ `internal` 11 个非承诺类型（配置 / 资源名 / 重试 / 超时 / 编解码 / gzip / 实例持有 / 网络失败标记 / 包级传输契约 / 纯 JDK 传输 / 执行编排）+ `aifei.HttpPlugin` 单一装配入口。零第三方、无 provider、无短路、默认不重试；超时、重试、拦截、编解码、资源名各有唯一定义点。
 

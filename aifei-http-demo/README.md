@@ -4,7 +4,7 @@
 **本机自己的回环端点**，现场演示出站 HTTP 的四类能力：统一超时、统一重试、统一拦截、统一编解码（含资源名）。
 
 - 端口 **18120**（`aifei-job-demo` 占 18110）
-- 依赖 `io.github.gollyhu:aifei-http:1.0.0` + `cn.aifei:aifei-all:1.1.2`（`aifei-http` 以 `provided` 声明，消费方自带）
+- 依赖 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all:1.1.2`（`aifei-http` 以 `provided` 声明，消费方自带）
 - 页面入口 `http://127.0.0.1:18120/http/demo/page`（静态层：`view/http/index.html` + `assets/{js,css}` + 本地全局 Vue，零 CDN）
 
 ## ★ 全程零外网声明

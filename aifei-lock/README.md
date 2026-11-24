@@ -2,7 +2,7 @@
 
 面向 aifei 应用的**分布式锁**：基于共享缓存的跨实例互斥。业务代码只依赖三个类型（`Lock` / `LockKit` / `LockException`），锁落在主缓存实例的 `__LOCK__` 保留分区，不新建连接、零配置键。
 
-坐标：`io.github.gollyhu:aifei-lock:1.0.0`，包名 `cn.hg.aifei.lock`，Java 8。
+坐标：`io.github.gollyhu:aifei-lock:1.0.0-SNAPSHOT`，包名 `cn.hg.aifei.lock`，Java 8。
 
 ## 它能做什么，不能做什么
 
@@ -85,7 +85,7 @@ try (Lock lock = LockKit.tryLock("job:coupon:issue", Duration.ofSeconds(60))) {
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-lock</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 
 <!-- 必须显式引入：本模块对 aifei-cache 的依赖是 optional，不会传递给你 -->

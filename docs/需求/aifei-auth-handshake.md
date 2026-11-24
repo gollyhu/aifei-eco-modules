@@ -2,7 +2,7 @@
 
 > 本文件是任务输入，不是 PRD / 设计。公共 API 与契约细节由 `aifei-auth-handshake/docs/design.md` 定稿。
 > 关联模块：`aifei-http`（出站 HTTP 通信 + 重试，本模块的传输底座）；`aifei-tools`（承载已落地的 KDF 派生能力，本模块经 `KdfKit` 取用，不自行实现）；`aifei-sa-token`（接入型鉴权模块，与本模块的自实现型分界，互补不重叠）。
-> 决策出处：本轮对话（2026-11-24，用户描述的「请求认证 → 收挑战码 → KDF 派生密钥 → 缓存 → 业务请求 → 失败重握手」自定义握手流程），由交付负责人婷立德定档，需求分析师芬西施整理落盘。其中 KDF 派生能力已先期落地进 `aifei-tools:1.0.0`，本文只把它作为已存在的外部能力引用。
+> 决策出处：本轮对话（2026-11-24，用户描述的「请求认证 → 收挑战码 → KDF 派生密钥 → 缓存 → 业务请求 → 失败重握手」自定义握手流程），由交付负责人婷立德定档，需求分析师芬西施整理落盘。其中 KDF 派生能力已先期落地进 `aifei-tools:1.0.0-SNAPSHOT`，本文只把它作为已存在的外部能力引用。
 
 ## 〇、交付物性质声明（先读，门禁口径依赖此节）
 
@@ -47,8 +47,8 @@
 
 | # | 前提 | 需求含义 |
 | --- | --- | --- |
-| 1 | **模块定位** | `io.github.gollyhu:aifei-auth-handshake:1.0.0`，包 `cn.hg.aifei.auth.handshake`；**挑战-响应握手鉴权编排客户端**——有状态、联网、含重试编排 |
-| 2 | **依赖定档** | `io.github.gollyhu:aifei-http:1.0.0`（compile，出站 HTTP 通信 + 重试）；`io.github.gollyhu:aifei-tools:1.0.0`（compile，KDF 取用，已落地）；`cn.aifei:aifei-all:1.1.2`（provided，消费方自带）。**KDF 已在 `aifei-tools:1.0.0` 落地，本模块不依赖任何更高版本** |
+| 1 | **模块定位** | `io.github.gollyhu:aifei-auth-handshake:1.0.0-SNAPSHOT`，包 `cn.hg.aifei.auth.handshake`；**挑战-响应握手鉴权编排客户端**——有状态、联网、含重试编排 |
+| 2 | **依赖定档** | `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT`（compile，出站 HTTP 通信 + 重试）；`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（compile，KDF 取用，已落地）；`cn.aifei:aifei-all:1.1.2`（provided，消费方自带）。**KDF 已在 `aifei-tools:1.0.0-SNAPSHOT` 落地，本模块不依赖任何更高版本** |
 | 3 | **KDF 取用方式** | 经 `aifei-tools` 的 `KdfKit` 调用：`KdfKit.derive(KdfSpec.hmac(hash, keyLen), sn, challenge)`；`hash`（SHA-256 / SHA-512）与 `keyLen` 由配置指定；本模块**只取用、不自行实现**派生算法 |
 | 4 | **家族与分界** | 家族前缀 `aifei-auth-*`（自实现型鉴权形态）：首员 handshake，次员 `aifei-auth-jwt`（未来）。与 `aifei-sa-token`（接入型）分界须在 README / AGENTS 一句话点明 |
 | 5 | **架构演进备忘（不预先实现）** | 不抽 `aifei-auth-core`：待 handshake + jwt 落地后按三次法则实证交集再提取；`aifei-sa-token` 大概率不进 core（接入型异构） |
@@ -94,7 +94,7 @@
 | 1 | **握手闭环**：认证 → 取 challenge → 派生 `auth_key` → 缓存 → 填业务 JSON → 发业务请求 → 解析，完整跑通（经 `aifei-http` 回环端点模拟认证服务与业务服务） | 集成测试（回环端点） |
 | 2 | **失败重握手 ≤ 2**：业务请求鉴权失败时清缓存 → 重握 → 重发，上限 2；超过仍失败抛可读异常、不静默返回 | 集成测试（端点计数） |
 | 3 | **缓存命中不重复握手**：同会话连续业务请求复用缓存 `auth_key`，认证端点握手次数保持 1（未被鉴权失败触发时） | 集成测试（端点计数） |
-| 4 | **依赖**：`mvn dependency:tree` 出现 `aifei-http:1.0.0`（compile）、`aifei-tools:1.0.0`（compile）、`aifei-all:1.1.2`（provided），无其它第三方 compile / runtime 依赖 | `dependency:tree` 断言 |
+| 4 | **依赖**：`mvn dependency:tree` 出现 `aifei-http:1.0.0-SNAPSHOT`（compile）、`aifei-tools:1.0.0-SNAPSHOT`（compile）、`aifei-all:1.1.2`（provided），无其它第三方 compile / runtime 依赖 | `dependency:tree` 断言 |
 | 5 | **KDF 取用**：派生经 `KdfKit.derive(...)`；门禁断言本模块源码无 `javax.crypto.Mac` / `javax.crypto.SecretKeyFactory` 直接调用（派生算法只在 `aifei-tools`） | 门禁源码扫描 + 集成测试 |
 | 6 | **装配**：`HandshakePlugin.start()` 后 `@Inject` 主客户端非 null、可发握手请求；`stop()` 后 `HandshakeKit` 调用抛可读异常（不静默返回）；重复 `start()` / `stop()` 幂等 | 集成测试（容器装配） |
 | 7 | **配置非法**：认证端点 / `sn` 缺失、KDF 档位非法、字段映射缺失、重握手次数非法 → 启动失败，消息含键名与原值 | 单元测试 |

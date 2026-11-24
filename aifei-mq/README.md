@@ -4,7 +4,7 @@
 
 - **适合**：进程内解耦 / 削峰；需要在多种消息后端之间切换而业务代码不动。
 - **不适合**：延迟 / 定时消息（`send` 一律立即投递，请在业务侧自行调度）；事务消息、消息回溯、死信管理等 broker 高级特性（公共 API 未覆盖）。
-- 坐标：`io.github.gollyhu:aifei-mq:1.0.0`（单 `jar`，内置 7 个后端）
+- 坐标：`io.github.gollyhu:aifei-mq:1.0.0-SNAPSHOT`（单 `jar`，内置 7 个后端）
 - 包名：`cn.hg.aifei.mq`｜技术基线：Java 8
 
 ## 目录
@@ -30,7 +30,7 @@
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-mq</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 

@@ -4,7 +4,7 @@
 
 - HTTP 端口 **18130**（回环访问 `localhost`），零外部服务、零外网、零 CDN
 - 单页入口 `http://localhost:18130/trace/demo/page`（页面模板 `src/main/webapp/view/demo/index.html`，本地 Vue）
-- 依赖 `cn.aifei:aifei-all:1.1.2` + `io.github.gollyhu:aifei-trace:1.0.0`（均以 `compile` 自带）+ `io.undertow:undertow-core:2.2.39.Final`；零日志绑定（demo 自带 `ConsoleLogFactory`）
+- 依赖 `cn.aifei:aifei-all:1.1.2` + `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`（均以 `compile` 自带）+ `io.undertow:undertow-core:2.2.39.Final`；零日志绑定（demo 自带 `ConsoleLogFactory`）
 
 ## 前置：先把 aifei-trace 装入本地仓库
 

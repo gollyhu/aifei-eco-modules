@@ -3,7 +3,7 @@
 `aifei-job` 的可运行示例工程：一个应用 + 6 个演示任务 + 1 个事件监听器，页面与端点把
 「到点触发 / 跳过 / 异常隔离 / 停机收敛」四类语义直接摊开给人看。
 
-- **示例工程，不发布**：不在 `aifei-job` 的发布件里，坐标仅供本地运行（`io.github.gollyhu:aifei-job-demo:1.0.0`）。
+- **示例工程，不发布**：不在 `aifei-job` 的发布件里，坐标仅供本地运行（`io.github.gollyhu:aifei-job-demo:1.0.0-SNAPSHOT`）。
 - **不改模块**：本工程只消费 `aifei-job` 的公共面（`JobPlugin` / 3 个触发注解 / `JobKit` / `JobListener` / `JobEvent`），
   不引用其 `internal` 包，也不为 demo 反向要求模块新增 API。
 - 技术基线：Java 8、Maven、Aifei + Undertow、自写 HIO（`cn.aifei.demo.common.arch`，与 `aifei-mq-demo` 逐字同步）。
@@ -14,7 +14,7 @@
 | --- | --- |
 | JDK | 8+（源码按 Java 8 语法编写） |
 | Maven | 3.6+，本地仓库需已有 `cn.aifei:aifei-all:1.1.2` |
-| 模块 | `io.github.gollyhu:aifei-job:1.0.0` 已 `mvn install` 到本地仓库 |
+| 模块 | `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` 已 `mvn install` 到本地仓库 |
 
 ## 2. 启动 / 停止
 

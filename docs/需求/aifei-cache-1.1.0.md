@@ -189,7 +189,7 @@ Redis 实现必须保持单条 `SET key value PX ttl NX`，不得拆成「无 TT
 ## 九、执行方式
 
 - 本文件为任务输入，按仓库根 `AGENTS.md` 的文档分工与模块约束执行。
-- 本版本是 `aifei-lock` 的前置包，**先于 `aifei-lock:1.0.0` 发布**；lock 再基于本 release 实现 `CacheLockStore`，在此之前不实现该类（见 `aifei-lock.md` 第二节第 2~4 项）。
+- 本版本是 `aifei-lock` 的前置包，**先于 `aifei-lock:1.0.0-SNAPSHOT` 发布**；lock 再基于本 release 实现 `CacheLockStore`，在此之前不实现该类（见 `aifei-lock.md` 第二节第 2~4 项）。
 
 ## 附：评审意见落实（2026-11-05）
 

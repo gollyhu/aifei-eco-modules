@@ -4,7 +4,7 @@
 
 - **适合**：应用内的周期任务（固定频率 / 固定延迟）与 cron 定点任务；需要统一配置、统一观测与优雅停机的场景。
 - **不适合**：分布式调度（选主 / 分片 / 任务分发）、工作流与 DAG 编排、批处理框架、任务管理后台、动态脚本任务、任务传参（v1 均不做）。
-- 坐标：`io.github.gollyhu:aifei-job:1.0.0`（单 `jar`，**库模块**，不是应用工程）
+- 坐标：`io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`（单 `jar`，**库模块**，不是应用工程）
 - 包名：`cn.hg.aifei.job`｜技术基线：**Java 8**（语法与 API 双约束，主 JAR class major = 52）
 - 调度内核：JDK `ScheduledThreadPoolExecutor` 上的**单飞自续排模型**——每个任务始终至多一个待触发实例，执行结束后重算下次延迟并重排，**不重叠、不堆叠、不补跑是结构属性**；cron 解析委托 Quartz `CronExpression`（唯一用途）
 - 构建本模块需 Maven 3.6+（`maven-compiler-plugin` 3.15.0 的最低要求）
@@ -29,7 +29,7 @@
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-job</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
 </dependency>
 
 <!-- 框架内核：本模块对它是 provided，不传递，必须由你的应用自带 -->

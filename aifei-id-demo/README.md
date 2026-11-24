@@ -4,7 +4,7 @@
 
 - HTTP 端口 **18140**（回环访问 `localhost`），零外部服务、零 CDN
 - 单页入口 `http://localhost:18140/id/demo/page`（页面模板 `src/main/webapp/view/id/index.html`，本地 Vue）
-- 依赖 `io.github.gollyhu:aifei-id:1.0.0` + `cn.aifei:aifei-all:1.1.2`（均以 `compile` 自带）+ `io.undertow:undertow-core:2.2.39.Final`；零日志绑定（demo 自带 `ConsoleLogFactory`）
+- 依赖 `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all:1.1.2`（均以 `compile` 自带）+ `io.undertow:undertow-core:2.2.39.Final`；零日志绑定（demo 自带 `ConsoleLogFactory`）
 
 ## 前置：先把 aifei-id 装入本地仓库
 

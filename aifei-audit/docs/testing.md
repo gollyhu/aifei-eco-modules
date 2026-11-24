@@ -1,7 +1,7 @@
 # 测试报告：aifei-audit
 
 > 版本：**v2（返工后复测）**｜测试工程师：**策市袁**｜日期：**2026-11-18**
-> 被测对象：`io.github.gollyhu:aifei-audit:1.0.0`（模块） + `aifei-audit-demo`（示例工程，端口 18160）
+> 被测对象：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`（模块） + `aifei-audit-demo`（示例工程，端口 18160）
 > 依据：`docs/需求/aifei-audit.md`（AC 34 条 / 门禁清单）、`docs/prd.md`（§7 场景 / §8 AC 索引）、`docs/design.md`（§10 门禁 / §11 测试支撑 / §13 UI 契约 / §15 AC 分组 / §16 跨文件约定 / §21 返工裁决）
 > 判定纪律：本报告所有「通过」均来自**真实命令输出**与**真实 HTTP 响应**，无阅读推断。
 

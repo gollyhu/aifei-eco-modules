@@ -829,7 +829,7 @@ stateDiagram-v2
 
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-websocket</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>aifei-websocket</name>
@@ -904,7 +904,7 @@ stateDiagram-v2
 
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-websocket-demo</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>aifei-websocket-demo</name>
@@ -929,7 +929,7 @@ stateDiagram-v2
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-websocket</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>

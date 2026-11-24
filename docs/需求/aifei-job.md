@@ -2,7 +2,7 @@
 
 > 本文件是任务输入，不是 PRD / 设计。
 > 关联：`docs/需求/aifei-lock.md`（v1.1 集群互斥的运行时依赖）。
-> 发布序列：`aifei-cache:1.1.0` → `aifei-lock:1.0.0` → `aifei-job:1.1.0`（集群互斥）。
+> 发布序列：`aifei-cache:1.1.0` → `aifei-lock:1.0.0-SNAPSHOT` → `aifei-job:1.1.0`（集群互斥）。
 
 ## 一、背景
 
@@ -14,7 +14,7 @@
 
 ## 二、范围
 
-- **本次交付 `io.github.gollyhu:aifei-job:1.0.0`**；集群互斥为 v1.1（发布 `1.1.0`），不在本次范围
+- **本次交付 `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`**；集群互斥为 v1.1（发布 `1.1.0`），不在本次范围
 - 包名 `cn.hg.aifei.job`；技术基线 Java 8（class major 52）
 - 公共 API 零框架类型、零第三方类型；运行时零中间件依赖（不建表、不连 DB，Quartz 仅作 cron 表达式计算库）
 

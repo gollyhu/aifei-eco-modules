@@ -11,7 +11,7 @@
 
 ## 交付性质
 
-`aifei-trace` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面；也没有 Plugin、配置键、internal 包、SPI。坐标 `io.github.gollyhu:aifei-trace:1.0.0`（`packaging=jar`），全模块 8 公共类型即全部实现。
+`aifei-trace` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面；也没有 Plugin、配置键、internal 包、SPI。坐标 `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`（`packaging=jar`），全模块 8 公共类型即全部实现。
 
 **不适用范围（不得据此模块约束要求）**：表结构 / `Db+Row` / `Generator`（零 DB）；`@Path` Service 与 HIO（`TraceHandler` 是挂在使用方 Handler 链上的接入构件，不是路由）；页面 / 原型基线（`aifei-trace-demo` 单页由前端直接实装，不经原型与 QA 基线门禁）；Plugin 装配（trace 无连接资源、无配置可解析，装配动作全部发生在使用方 AppConfig 内）。
 

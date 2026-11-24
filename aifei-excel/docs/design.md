@@ -4,7 +4,7 @@
 
 > **交付性质**：`aifei-excel` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**。工程内**没有** `AppConfig implements AifeiConfig` / `Launcher` / `@Path` Service 方法 / `service/` 业务包 / 业务库表 / `Db+Row` / `Generator` / 服务拓扑 / 部署架构 / 数据层实现 / UI 原型与 QA 基线门禁；只有「根包公共 API 精确 5 类型 + `internal/easyexcel` 非承诺适配层」。不适用章节声明见 §0。
 >
-> **坐标**：`io.github.gollyhu:aifei-excel:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.excel`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**唯一第三方依赖** `com.alibaba:easyexcel:3.3.2`（`optional`），`aifei-all:1.1.2` 为 `provided`。
+> **坐标**：`io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.excel`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**唯一第三方依赖** `com.alibaba:easyexcel:3.3.2`（`optional`），`aifei-all:1.1.2` 为 `provided`。
 >
 > **文档状态**：1.0.0 已落地（库模块 + demo + 门禁测试齐备）。§5 的 5 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
 >
@@ -128,7 +128,7 @@ aifei 生态有 `aifei-oss` 负责「文件往哪存」，但**缺 Excel 读写�
 ### 2.4 依赖树结论（实测回填，实现期以本表核对）
 
 ```text
-io.github.gollyhu:aifei-excel:1.0.0
+io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT
 ├─ cn.aifei:aifei-all:1.1.2 ........................ provided（消费方自带）
 ├─ com.alibaba:easyexcel:3.3.2 ..................... optional（阻断传递）
 │  ├─ com.alibaba:easyexcel-core:3.3.2 ............... optional
@@ -757,7 +757,7 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 ### 11.1 模块源码文件清单
 
 ```text
-aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.0（packaging=jar）
+aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT（packaging=jar）
 ├── pom.xml                                   # Java 8；aifei-all provided；easyexcel optional；junit test；零日志绑定
 ├── README.md                                 # 用法 / 配置 / 内存边界 / 可选依赖警告（实现批次写，素材见 §5–§7、§10）
 ├── AGENTS.md                                 # 模块硬约束（实现批次写，素材见 §9 + §3 决策表）
@@ -839,7 +839,7 @@ aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.
 
 ### 12.2 demo 端点清单（`aifei-excel-demo`，不发布）
 
-- **位置**：仓库根 `aifei-excel-demo/`（与 `aifei-excel/` 平级）；依赖 `io.github.gollyhu:aifei-excel:1.0.0` + `com.alibaba:easyexcel:3.3.2`（消费方自带，验证 `optional` 口径）+ `cn.aifei:aifei-all`（demo 以 `compile` 自带，验证 provided 口径）。
+- **位置**：仓库根 `aifei-excel-demo/`（与 `aifei-excel/` 平级）；依赖 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` + `com.alibaba:easyexcel:3.3.2`（消费方自带，验证 `optional` 口径）+ `cn.aifei:aifei-all`（demo 以 `compile` 自带，验证 provided 口径）。
 - **端口**：**18150**（已实测空闲；18100 mq / 18110 job / 18120 http / 18130 trace / 18140 id 顺延）。
 - **形态**：自写 HIO（包名 **`cn.hg.aifei.excel.demo`**，跟随 `aifei-id-demo` 的 `arch` 同步类结构：`ContentType` / `In` / `InParser` / `IoDispatcher` / `IoHandler` / `Out` / `OutCode` / `TargetFactory`）+ 单页静态层（`webapp/view/excel/index.html` + `assets/{js,css,lib}`，Vue 走本地 `assets/lib`）+ `ExcelDemoService` + `DemoAppConfig` + `start-demo.bat` / `stop-demo.bat`；离线可跑、零日志绑定（自带 `ConsoleLogFactory` 如需装配日志，同 `aifei-id-demo`）。
 - **端点契约**（信封 `code` / `data` / `msg`，HTTP 状态恒 200，语义由 `code` 承载；上传为 `multipart/form-data`，其余 `GET`；`/excel/demo/...` 命名空间）：
@@ -906,5 +906,5 @@ aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.
 
 ---
 
-> **一句话总览**：`io.github.gollyhu:aifei-excel:1.0.0` 单模块 —— 根包 **精确 5 个公共类型**（`Excel` 流式门面 / `ExcelKit` 一次性便捷门面 / `ExcelException` / `@ExcelColumn` / `@ExcelIgnore`）+ `internal.easyexcel` 非承诺适配层。读 = SAX 逐批回调（`batchSize` 默认 1000、内存 `O(batchSize)`），写 = 同会话多次追加（`finish` 收尾）；注解做表头名/列序/排除映射，仅内置类型转换、无 SPI；三段异常统一收敛且保留 cause。唯一第三方 `easyexcel:3.3.2` 为 `optional`（已实测 Java 8 兼容、离线依赖树 EXIT=0），`aifei-all` 为 `provided`，零 Plugin / 零配置键 / 零 `cn.aifei.*` / 零 DB / 零 Web 面 / 零日志绑定。示例工程 `aifei-excel-demo` 端口 18150 真实可跑（上传解析 + 两种导出），不发布。
+> **一句话总览**：`io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` 单模块 —— 根包 **精确 5 个公共类型**（`Excel` 流式门面 / `ExcelKit` 一次性便捷门面 / `ExcelException` / `@ExcelColumn` / `@ExcelIgnore`）+ `internal.easyexcel` 非承诺适配层。读 = SAX 逐批回调（`batchSize` 默认 1000、内存 `O(batchSize)`），写 = 同会话多次追加（`finish` 收尾）；注解做表头名/列序/排除映射，仅内置类型转换、无 SPI；三段异常统一收敛且保留 cause。唯一第三方 `easyexcel:3.3.2` 为 `optional`（已实测 Java 8 兼容、离线依赖树 EXIT=0），`aifei-all` 为 `provided`，零 Plugin / 零配置键 / 零 `cn.aifei.*` / 零 DB / 零 Web 面 / 零日志绑定。示例工程 `aifei-excel-demo` 端口 18150 真实可跑（上传解析 + 两种导出），不发布。
 

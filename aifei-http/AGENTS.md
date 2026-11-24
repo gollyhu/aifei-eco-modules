@@ -11,7 +11,7 @@
 
 ## 交付性质
 
-`aifei-http` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面。坐标 `io.github.gollyhu:aifei-http:1.0.0`（`packaging=jar`），公共 API + `internal` + `aifei.HttpPlugin` 同处一个 JAR。
+`aifei-http` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面。坐标 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT`（`packaging=jar`），公共 API + `internal` + `aifei.HttpPlugin` 同处一个 JAR。
 
 **不适用范围（不得据此模块约束要求）**：表结构 / `Db+Row` / `Generator`（零 DB）；`@Path` Service 与 HIO（模块无入站 HTTP 面）；页面 / 原型基线（无 UI，`aifei-http-demo` 单页由前端直接实装，不经原型与 QA 基线门禁）。
 

@@ -4,7 +4,7 @@
 
 > **交付性质**：`aifei-trace` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。工程内**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面；只有「根包公共 API 精确 6 类型 + `web` 接入包精确 2 类型」，**无 Plugin、无配置键、无 internal 包**。
 >
-> **坐标**：`io.github.gollyhu:aifei-trace:1.0.0`（`packaging=jar`）；包名 `cn.hg.aifei.trace`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（pom 仅 `cn.aifei:aifei-all` provided + junit test）。
+> **坐标**：`io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.trace`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（pom 仅 `cn.aifei:aifei-all` provided + junit test）。
 >
 > **文档状态**：本文是 1.0.0 的**设计定稿，已按本文实现交付**（模块 + `aifei-trace-demo` 已落地并过 `mvn clean verify`，§12 事项 1 已完成根 `AGENTS.md` 登记）。§5 的 8 个公共类型签名仍是公共面的**唯一依据**，变更前必须先改本文。
 >
@@ -732,7 +732,7 @@ mvn dependency:tree                                  # 断言：仅 aifei-all(pr
 
 ## 13. `aifei-trace-demo`（示例工程，平级目录，不随模块发布）
 
-- **位置**：`aifei-trace-demo/`（仓库根、与 `aifei-trace/` 平级）；端口 **18130**（18110 job-demo / 18120 http-demo 顺延）；依赖 `io.github.gollyhu:aifei-trace:1.0.0` + `cn.aifei:aifei-all`（demo 自带，验证模块 `provided` 口径）+ junit 无关（demo 无测试要求）。
+- **位置**：`aifei-trace-demo/`（仓库根、与 `aifei-trace/` 平级）；端口 **18130**（18110 job-demo / 18120 http-demo 顺延）；依赖 `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all`（demo 自带，验证模块 `provided` 口径）+ junit 无关（demo 无测试要求）。
 - **形态**：`aifei-http-demo` 同款——零构建静态层单页（`src/main/webapp/view/demo/index.html` + `assets/{js,css}`）+ HIO + `DemoService` + `DemoAppConfig`；`start-demo.bat` / `stop-demo.bat`。
 - **演示场景（4 个）**：
   1. **当前请求 traceId / spanId 实时展示**：`DemoService` 经 HIO 返回 `TraceKit.getTraceId()` / `getSpanId()`，页面显示——验证 TraceHandler 绑定与 finally 清理（刷新页面 traceId 每次变化）。
@@ -750,7 +750,7 @@ mvn dependency:tree                                  # 断言：仅 aifei-all(pr
 ### 14.1 模块源码（14 个文件）
 
 ```text
-aifei-trace/                                   io.github.gollyhu:aifei-trace:1.0.0（packaging=jar）
+aifei-trace/                                   io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT（packaging=jar）
 ├── pom.xml                                    # Java 8；aifei-all provided；junit test；零第三方
 ├── README.md                                  # 用法 / 能力边界 / 手动传递指引（编码角色写，素材见 §8）
 ├── AGENTS.md                                  # 模块硬约束（另任务产出，不在本批次）
@@ -819,4 +819,4 @@ aifei-trace/                                   io.github.gollyhu:aifei-trace:1.0
 
 ---
 
-> **一句话总览**：`io.github.gollyhu:aifei-trace:1.0.0` 单模块 —— 对齐官方 8 公共类型（`TraceKit` / `TraceContext` / `TraceIdGenerator` / `DefaultTraceIdGenerator` / `TraceLog` / `TraceLogFactory` + `web.TraceHandler` / `web.TraceIdExtractor`），无 Plugin、无配置、无 internal、无异常体系；ThreadLocal 上下文唯一持有、UUID 生成唯一算法、前缀拼装唯一定义；日志经 `TraceLogFactory` 装饰任意 LogFactory 贯通，Web 经 `TraceHandler` 绑定/清理；跨模块传播 v1 不做，手动传递指引进 README。
+> **一句话总览**：`io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT` 单模块 —— 对齐官方 8 公共类型（`TraceKit` / `TraceContext` / `TraceIdGenerator` / `DefaultTraceIdGenerator` / `TraceLog` / `TraceLogFactory` + `web.TraceHandler` / `web.TraceIdExtractor`），无 Plugin、无配置、无 internal、无异常体系；ThreadLocal 上下文唯一持有、UUID 生成唯一算法、前缀拼装唯一定义；日志经 `TraceLogFactory` 装饰任意 LogFactory 贯通，Web 经 `TraceHandler` 绑定/清理；跨模块传播 v1 不做，手动传递指引进 README。

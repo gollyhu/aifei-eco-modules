@@ -257,7 +257,7 @@ mvn dependency:tree                                 # 断言：aifei-all(provide
 ### 8. 遗留风险与未落实项
 
 1. `DEF-01` 未修复前，`AC-R-20` 的自动门禁通道无效（当前为人工扫描替代，属降级证据）。
-2. demo 的 `pom.xml` 依赖本地仓库的 `aifei-http:1.0.0.jar`（20:51:08 安装），非 workspace 源码直连；已核对两者 class 集合与大小完全一致（21/21、33275 B），本次验证有效，但**后续库改动须先 `mvn install` 再验 demo**。
+2. demo 的 `pom.xml` 依赖本地仓库的 `aifei-http:1.0.0-SNAPSHOT.jar`（20:51:08 安装），非 workspace 源码直连；已核对两者 class 集合与大小完全一致（21/21、33275 B），本次验证有效，但**后续库改动须先 `mvn install` 再验 demo**。
 3. 门禁④「不得出现 `http.maxConnections` / `http.keepAlive` 字面量」只扫 `aifei-http/src/main/java`，不含 demo；demo 的只读展示因此不受拦（与 PRD §八-8 要求一致，属已知边界而非缺陷）。
 4. 页面把内部类型全限定名 `cn.hg.aifei.http.internal.HttpIoException` 直接展示（P3 建议，非缺陷：`AC-R-15` 明确允许 `HttpException` 子类；建议页面改用 `simpleType` 展示）。
 5. 「断网环境」未做物理断网跑（本机回环可用，外部网络未隔离）；离线性结论来自「代码内 URL 全回环 + 伪传输 + 全量用例 117 例无外网访问」的组合证据。

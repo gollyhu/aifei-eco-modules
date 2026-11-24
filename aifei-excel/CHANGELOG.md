@@ -4,7 +4,7 @@
 
 ## [1.0.0] - 2026-11-18
 
-首版：Excel 读写统一门面（注解表头映射 + 一次性便捷读写 + 流式分批读写），坐标 `io.github.gollyhu:aifei-excel:1.0.0`（`packaging=jar`），Java 8（class major 52）。
+首版：Excel 读写统一门面（注解表头映射 + 一次性便捷读写 + 流式分批读写），坐标 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT`（`packaging=jar`），Java 8（class major 52）。
 
 ### 新增
 
