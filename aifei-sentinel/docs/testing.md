@@ -49,7 +49,7 @@
 | `testParamFlowHitWithOverriddenArgs` | AOP 路径构造期 args 为空，覆盖 `argsOf` 提供实参后热点规则命中 → 降级返回值被写入、业务未执行 |
 | `testParamFlowPassWhenArgsMissing` | 无实参时 `ParamFlowChecker` 下标越界直接放行 → 业务执行（回归保护：热点规则不静默拒绝） |
 
-既有内嵌 `DemoService` 不加注解，继续覆盖默认资源名的回退路径；注解用例放在新增内嵌 `AnnotatedService`；带参用例放在 `ParamService`（资源名 `unit.param.hot`）。热点用例用 `count=0` 使判定不依赖时间窗口。
+内嵌 `DemoService` 不加注解，覆盖默认资源名的回退路径；`AnnotatedService` 覆盖注解命中；`ParamService`（资源名 `unit.param.hot`）覆盖带参路径。热点用例用 `count=0` 使判定不依赖时间窗口。
 
 ### 3.3 热生效测试 `SentinelRuleWatchTest`
 
@@ -80,6 +80,12 @@ mvn test           # 快速迭代：仅跑测试阶段（架构门禁 KernelBind
 - `KernelBindingTest` 依赖相对路径 `src/main/java`，**必须在模块根目录执行**。
 - 测试全部离线，无外部服务依赖；Dashboard 相关行为通过系统属性与内存规则验证，不真连 Dashboard。
 
+### 验证结果
+
+在模块根目录执行 `mvn test`，18 个用例全部通过（0 failure / 0 error）：架构门禁 4 例、行为与规则测试 14 例。
+
+demo 端到端人工验证覆盖本地模式规则热读、Dashboard 模式推送与合并回写（无回环），以及流控 / 热点参数 / 熔断三卡连发结果；验证方法见 `aifei-sentinel-demo/README.md`。
+
 ## 5. 未覆盖项与人工验证
 
 | 项 | 说明 |
@@ -88,7 +94,7 @@ mvn test           # 快速迭代：仅跑测试阶段（架构门禁 KernelBind
 | Dashboard 端到端 | 起官方控制台 → 控制台改规则 → 本地 `sentinel-rules.json` 更新 → 重启规则仍在，由 demo 人工验证（`start-dashboard.bat` / `start-demo-dashboard.bat`） |
 | transport 推送链路 | `sentinel-transport-simple-http` 的命令处理与推送依赖真实控制台，单测不覆盖 |
 | 系统保护 / 黑白名单 | 依赖机器负载、`ContextUtil.enter(origin)` 等运行时上下文，当前仅覆盖流控与热点参数路径，其余共用同一埋点与加载链路 |
-| Dashboard 控制台「拒绝 QPS」实时展示 | 需真实控制台与 transport 推送，单测不覆盖；由 demo 端到端连发验证返回码（见 `aifei-sentinel-demo/docs/hotspot-param-fix.md`） |
+| Dashboard 控制台「拒绝 QPS」实时展示 | 需真实控制台与 transport 推送，单测不覆盖；由 demo 端到端连发验证返回码 |
 
 ## 6. 变更时的测试要求
 

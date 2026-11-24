@@ -10,7 +10,7 @@ import cn.aifei.aop.Invocation;
 import cn.hg.aifei.sentinel.aifei.SentinelInterceptor;
 import cn.hg.aifei.sentinel.spi.SentinelBlockHandler;
 
-/** demo 接入层：AOP 路径实参晚于拦截器解析，热点端点从 HTTP 入参读取 id 供 Sentinel 按值统计。 */
+/** AOP 路径实参晚于拦截器解析，热点端点从 HTTP 入参读取 id 供 Sentinel 按值统计。 */
 public class DemoSentinelInterceptor extends SentinelInterceptor {
 
     private static final String DETAIL_RESOURCE = "demo.detail";

@@ -53,7 +53,7 @@ public class SentinelInterceptor implements Interceptor {
         }
     }
 
-    /** 埋点实参：默认取方法实参；AOP 路径下拦截器执行时实参尚未解析，需子类覆盖本方法从 Input 读取。 */
+    /** 默认取方法实参；AOP 路径下拦截器执行时实参尚未解析，需子类覆盖本方法从 Input 读取。 */
     protected Object[] argsOf(Invocation inv) {
         return inv.getArgs();
     }

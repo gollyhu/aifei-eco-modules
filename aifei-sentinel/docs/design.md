@@ -119,17 +119,11 @@ public class SentinelInterceptor implements Interceptor {
 
     @Override
     public void intercept(Invocation inv) throws Exception {
-        Entry entry = null;
-        try {
-            Object[] args = argsOf(inv);
-            entry = SphU.entry(resourceOf(inv), EntryType.IN, 1, args != null ? args : EMPTY_ARGS);
+        Object[] args = argsOf(inv);
+        try (Entry entry = SphU.entry(resourceOf(inv), EntryType.IN, 1, args != null ? args : EMPTY_ARGS)) {
             inv.invoke();
         } catch (BlockException e) {
             inv.setReturnValue(blockHandler.handle(e));   // 复用消费方 IoHandler 的输出渲染
-        } finally {
-            if (entry != null) {
-                entry.exit();                              // 必须成对退出，否则统计计数器泄漏
-            }
         }
     }
 
@@ -154,7 +148,7 @@ public class SentinelInterceptor implements Interceptor {
 }
 ```
 
-要点：埋点只写一次，流控/熔断/热点参数/系统保护/黑白名单共用同一 `SphU.entry`，差异只在规则类型。
+要点：埋点只写一次，流控/熔断/热点参数/系统保护/黑白名单共用同一 `SphU.entry`，差异只在规则类型。`Entry` 由 try-with-resources 管理，退出时调用 `close()`（等价于 `exit()`），确保 entry/exit 成对。
 
 热点参数额外依赖实参：埋点以 `EntryType.IN`、批量数 1、`argsOf(inv)` 传入的实参与 `ParamFlowRule.paramIdx` 对齐。Proxy 路径（`new Invocation(target, method, args, ...)`）实参构造期就位，默认 `argsOf` 即可命中；`routes.scan` 的 AOP 路径下 aifei 在拦截器链执行完毕后才解析实参，拦截器进入时 `inv.getArgs()` 为 `null`，须由消费方覆盖 `argsOf` 从 `Input` 读取（见 demo 的 `DemoSentinelInterceptor`）。未携带实参时 Sentinel 的 `ParamFlowChecker` 因下标越界直接放行，热点规则不生效。
 

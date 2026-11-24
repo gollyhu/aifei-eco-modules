@@ -201,7 +201,7 @@ public class SentinelInterceptorTest {
             return "ok";
         };
 
-        // AOP 路径构造期 args 为空，由覆盖的 argsOf 提供实参后热点规则命中
+        // AOP 路径实参尚未解析，由覆盖的 argsOf 提供实参以命中热点规则
         Assert.assertEquals(BLOCKED, invokeWithArgs(interceptor, svc, m, new Object[]{}, callback));
         Assert.assertEquals(0, svc.calls);
     }

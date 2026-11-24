@@ -74,7 +74,7 @@ stop-demo.bat               :: 按端口 80 找到监听进程并结束（与启
 
 1. 打开主页面 <http://localhost:80/>，确认顶栏模式徽标（本地或 Dashboard）。
 2. 流控卡点「单次请求」→ `code=0`（正常）；点「连发测试」超过 2 次/秒：前 2 次 `code=0`，之后标为「限流」。
-3. 熔断卡连发 6 次（每次 ~800ms）：RT 超阈值后标为「熔断降级」，不再执行 `slow` 方法。
+3. 熔断卡逐次串行连发 6 次（每次 ~800ms）：累计 2~3 次慢调用后熔断，后续标为「熔断降级」，不再执行 `slow` 方法。
 4. 热点卡连发 8 次（`id=1`）：前 5 次 `code=0`，之后标为「限流」。
 
 > 压测可用 `ab -n 20 -c 5 http://localhost/demo/index` 之类工具快速触发限流。
@@ -96,11 +96,13 @@ stop-demo.bat               :: 按端口 80 找到监听进程并结束（与启
 
 ```json
 {
-  "flowRules":      [{"resource": "demo.index",  "grade": 1, "count": 2.0}],
-  "degradeRules":   [{"resource": "demo.slow",  "grade": 0, "count": 500.0, "timeWindow": 10}],
-  "paramFlowRules": [{"resource": "demo.detail", "grade": 1, "count": 5.0, "paramIdx": 0}]
+  "flowRules":      [{"resource": "demo.index",  "grade": 1, "count": 2.0, "strategy": 0, "controlBehavior": 0}],
+  "degradeRules":   [{"resource": "demo.slow",  "grade": 0, "count": 500.0, "timeWindow": 10, "minRequestAmount": 2, "slowRatioThreshold": 1.0, "statIntervalMs": 5000}],
+  "paramFlowRules": [{"resource": "demo.detail", "grade": 1, "count": 5.0, "paramIdx": 0, "controlBehavior": 0}]
 }
 ```
+
+`degradeRules` 的 `minRequestAmount=2` 与 `slowRatioThreshold=1.0` 表示统计窗口内至少 2 个请求且全部为慢调用才触发熔断，`statIntervalMs=5000` 为统计窗口长度。
 
 `index` / `slow` / `detail` 方法标注了 `cn.hg.aifei.sentinel.annotation.SentinelResource`，资源名取注解值（如 `demo.index`），须与规则 JSON 的 `resource` 严格一致；未标注的方法（如 `state`）仍用默认「全限定类名#方法名」（见 `aifei-sentinel` 模块约定）。
 

@@ -184,11 +184,13 @@ public class SentinelInterceptor implements Interceptor {
 
     public void intercept(Invocation inv) throws Exception;
 
+    protected Object[] argsOf(Invocation inv);
+
     protected String resourceOf(Invocation inv);
 }
 ```
 
-`resourceOf` 默认读取方法上的 `@SentinelResource` 注解（`value` 非空白时经 `trim` 作为资源名），未标注时回退「全限定类名#方法名」；解析结果按 `Method` 缓存（`ClassValue` 承载，随类卸载回收，注解运行期不变故无需失效）。子类可覆盖该方法完全自定义，覆盖后既不读注解也不读缓存。
+`resourceOf` 默认读取方法上的 `@SentinelResource` 注解（`value` 非空白时经 `trim` 作为资源名），未标注时回退「全限定类名#方法名」；解析结果按 `Method` 缓存（`ClassValue` 承载，随类卸载回收，注解运行期不变故无需失效）。子类可覆盖该方法完全自定义，覆盖后既不读注解也不读缓存。`argsOf` 默认返回 `inv.getArgs()`，`null` 由拦截器以空数组兜底；AOP 路径下实参晚于拦截器解析，须由消费方覆盖该方法从 `Input` 取值（见「热点参数」）。
 
 ```java
 @FunctionalInterface
@@ -266,7 +268,10 @@ public class DemoService {
 public class DemoSentinelInterceptor extends SentinelInterceptor {
     @Override
     protected Object[] argsOf(Invocation inv) {
-        Integer id = inv.getInput().getInt("id");
+        if (!"demo.detail".equals(resourceOf(inv))) {
+            return new Object[0];
+        }
+        Integer id = inv.getInput() == null ? null : inv.getInput().getInt("id");
         return new Object[]{id == null ? 0 : id};
     }
 }

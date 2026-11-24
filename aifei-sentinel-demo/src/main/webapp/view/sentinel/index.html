@@ -51,7 +51,7 @@
                 <h2 class="card-title" id="title-slow">② 熔断 RT</h2>
                 <code class="rule-tag">demo.slow · RT&gt;500ms</code>
             </div>
-            <p class="card-desc">接口实际 sleep 800ms；连续多次触发 RT 阈值后返回降级码 <code>10006</code>，不再执行方法。</p>
+            <p class="card-desc">接口 sleep 800ms；逐次连发，累计 2~3 次慢调用后熔断，后续返回降级码 <code>10006</code> 且不再执行方法。</p>
             <div class="actions">
                 <button class="btn btn-primary" type="button" data-action="once" data-kind="slow">单次请求</button>
                 <label class="burst">
@@ -227,6 +227,20 @@
             n = 50;
         }
         btn.disabled = true;
+        if (kind === 'slow') {
+            // 慢调用在请求结束时统计，并发同批会在熔断生效前全部放行，故逐次串行
+            var sent = 0;
+            var next = function () {
+                if (sent >= n) {
+                    btn.disabled = false;
+                    return;
+                }
+                sent++;
+                callOnce(kind).then(next);
+            };
+            next();
+            return;
+        }
         var tasks = [];
         for (var i = 0; i < n; i++) {
             tasks.push(callOnce(kind));
