@@ -70,7 +70,7 @@ cn.hg.aifei.id.internal     实现层（非承诺 API）：配置 / 错误 / 命
 | ⑥ | `noJvmGlobalPropertyWrite` | 不得出现 `System.setProperty` / `System.getProperties().put` / `System.setErr` / `System.setOut` |
 | ⑦ | `java8Compatibility` | 不得出现 `List.of(` / `Map.of(` / `Set.of(` / `record ` / `var ` / `"""` / `sealed ` / `instanceof` 模式匹配 |
 | ⑧ | `noServiceProvider` | 不得出现 `ServiceLoader` / `META-INF/services`；`src/main/resources` 下不得存在 `META-INF/services/` |
-| ⑨ | `clockOnlyInSnowflake` | `System.currentTimeMillis` 与纪元字面量 `1704067200000` 只允许出现在 `internal/SnowflakeIdGenerator.java` |
+| ⑨ | `clockOnlyInSnowflake` | `System.currentTimeMillis`（调用形式）与 `System::currentTimeMillis`（方法引用形式）及纪元字面量 `1704067200000` 只允许出现在 `internal/SnowflakeIdGenerator.java` |
 | ⑩ | `cacheNamesOnlyInIdNames` | `"__ID__"` / `"segment."` / `"worker"` 只允许出现在 `internal/IdNames.java` |
 | ⑪ | `classForNameOnlyInIdDeps` | `Class.forName` 只允许出现在 `internal/IdDeps.java` |
 | ⑫ | `threadCreationOnlyInWorkerLease` | `new Thread(` / `Executors.` / `ThreadPoolExecutor` 只允许出现在 `internal/LockWorkerIdSource.java` |

@@ -22,4 +22,4 @@ for /f "usebackq delims=" %%i in ("target\cp.txt") do set "CP=%%i"
 echo [2/3] Starting demo (segment, local store), HTTP 18140, press Ctrl+C to stop...
 echo [3/3] Verify: http://localhost:18140/id/demo/page
 echo.
-java -Ddemo.config=app-config-segment.txt -Dundertow.port=18140 -Dundertow.host=0.0.0.0 -cp ".\target\classes;%CP%" cn.hg.aifei.id.demo.DemoApp
+java -Ddemo.config=app-config-segment.txt -Dundertow.port=18140 -Dundertow.host=127.0.0.1 -cp ".\target\classes;%CP%" cn.hg.aifei.id.demo.DemoApp

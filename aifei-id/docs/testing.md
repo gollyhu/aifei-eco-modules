@@ -128,7 +128,7 @@
 | ⑥ | `noJvmGlobalPropertyWrite` | 零 `System.setProperty` / `getProperties().put` / `setErr` / `setOut` |
 | ⑦ | `java8Compatibility` | 零 Java 9+ 集合工厂 / `record` / `var` / text block / `sealed` / `instanceof` 模式匹配 |
 | ⑧ | `noServiceProvider` | 零 `ServiceLoader` / `META-INF/services`，且目录不存在 |
-| ⑨ | `clockOnlyInSnowflake` | `System.currentTimeMillis` 与 `1704067200000` 只在 `SnowflakeIdGenerator` |
+| ⑨ | `clockOnlyInSnowflake` | `System.currentTimeMillis` 与 `System::currentTimeMillis` 及 `1704067200000` 只在 `SnowflakeIdGenerator` |
 | ⑩ | `cacheNamesOnlyInIdNames` | `"__ID__"` / `"segment."` / `"worker"` 只在 `IdNames` |
 | ⑪ | `classForNameOnlyInIdDeps` | `Class.forName` 只在 `IdDeps` |
 | ⑫ | `threadCreationOnlyInWorkerLease` | `new Thread(` / `Executors.` / `ThreadPoolExecutor` 只在 `LockWorkerIdSource` |

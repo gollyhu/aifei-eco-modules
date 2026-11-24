@@ -283,7 +283,7 @@ cn.hg.aifei.id.internal     实现层（非承诺 API）：配置 / 错误 / 命
 | 规则 | 唯一定义点 |
 | --- | --- |
 | 雪花位宽 / 移位 / EPOCH / 序列上限 / workerId 上限 / 回拨容差常量 | `internal.SnowflakeIdGenerator` |
-| 雪花时刻采样（`System.currentTimeMillis`） | 同上（门禁 ⑨） |
+| 雪花时刻采样（`System.currentTimeMillis` 调用与 `System::currentTimeMillis` 方法引用） | 同上（门禁 ⑨） |
 | 回拨等待与「序列耗尽等下一毫秒」的等待实现 | 同上（同一私有方法 `waitNextMillis`） |
 | 号段分配、耗尽取段、**回退检测** | `internal.SegmentIdGenerator#nextId` |
 | 号段长度与 TTL 的取值约束 | `internal.IdConfig`（校验）+ `IdErrors`（消息） |
@@ -797,7 +797,7 @@ private static final Set<String> EXPECTED_BRIDGE_TYPES_SET = new LinkedHashSet<>
 | ⑥ | `noJvmGlobalPropertyWrite` | 不得出现 `System.setProperty` / `System.getProperties().put` / `System.setErr` / `System.setOut` | JVM 全局状态被改写（会波及同进程其它模块） |
 | ⑦ | `java8Compatibility` | 不得出现 `List.of(` / `Map.of(` / `Set.of(` / `record ` 声明 / `var ` 局部声明 / `"""` / `sealed ` / `instanceof` 模式匹配 | Java 8 兼容底线（class major 52） |
 | ⑧ | `noServiceProvider` | 不得出现 `ServiceLoader` / `META-INF/services` 字面量；`src/main/resources` 下不得存在 `META-INF/services/` 目录 | 无 provider / 无 SPI 决策被暗装绕过 |
-| ⑨ | `clockOnlyInSnowflake` | `System.currentTimeMillis` 与纪元字面量 `1704067200000` 只允许出现在 `internal/SnowflakeIdGenerator.java` | 第二处时刻采样 / 纪元常量被复制（位布局随之分裂） |
+| ⑨ | `clockOnlyInSnowflake` | `System.currentTimeMillis`（调用形式）与 `System::currentTimeMillis`（方法引用形式）及纪元字面量 `1704067200000` 只允许出现在 `internal/SnowflakeIdGenerator.java` | 第二处时刻采样 / 纪元常量被复制（位布局随之分裂） |
 | ⑩ | `cacheNamesOnlyInIdNames` | 字面量 `"__ID__"` / `"segment."` / `"worker"` / `"id.worker."` 只允许出现在 `internal/IdNames.java` | 键拼装散落（冻结的物理 key 格式） |
 | ⑪ | `classForNameOnlyInIdDeps` | `Class.forName` 只允许出现在 `internal/IdDeps.java` | 反射 / 依赖探测散落（防暗装 provider） |
 | ⑫ | `threadCreationOnlyInWorkerLease` | `new Thread(` / `Executors.` / `ThreadPoolExecutor` 只允许出现在 `internal/LockWorkerIdSource.java` | 后台线程被悄悄引入（本模块仅租约续期需要线程） |
@@ -985,7 +985,7 @@ aifei-id/                                     io.github.gollyhu:aifei-id:1.0.0-S
 | AC-10 | `IdPlugin`：`prop == null` → `IllegalArgumentException` 消息 A；`start()` 幂等；失败回滚（`IdHolder` 无残留 + 租约释放）；`stop()` 幂等 | `IdPluginTest` |
 | AC-11 | 配置：§8 全部键的缺失/越界/非整数 → 消息 M/N；无关键被忽略（场景 21/22） | `IdConfigTest` |
 | AC-12 | 可选依赖缺失 → 消息 J/K（`IdDeps` 探测，不得出现 `NoClassDefFoundError`） | `IdPluginTest`（借助类加载断言的隔离用例） |
-| AC-13 | `System.currentTimeMillis` 仅在雪花文件；`"__ID__"` / 配置键 / `Class.forName` / 线程创建各只有一处 | 门禁 ⑨⑩⑪⑫⑬ |
+| AC-13 | `System.currentTimeMillis` 与 `System::currentTimeMillis` 仅在雪花文件；`"__ID__"` / 配置键 / `Class.forName` / 线程创建各只有一处 | 门禁 ⑨⑩⑪⑫⑬ |
 | AC-14 | 无 SQL、无 SPI、无 JVM 全局写、测试零联网 | 门禁 ⑤⑥⑧⑭ + 断网 `mvn clean verify` |
 | AC-15 | demo：端口 18140、5 端点、4 个展示内容可见、ID 以字符串展示、`segment` 脚本离线可跑 | `aifei-id-demo` 实测（§13） |
 

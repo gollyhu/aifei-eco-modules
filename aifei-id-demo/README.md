@@ -31,7 +31,7 @@ start-demo-segment.bat   :: 号段模式启动（HTTP 18140），与上一脚本
 stop-demo.bat            :: 按端口 18140 找到监听进程并结束
 ```
 
-两个脚本都做三步：`mvn compile dependency:build-classpath` → 读 classpath → 以 `-Ddemo.config=<配置文件> -Dundertow.port=18140 -Dundertow.host=0.0.0.0` 启动 `cn.hg.aifei.id.demo.DemoApp`。
+两个脚本都做三步：`mvn compile dependency:build-classpath` → 读 classpath → 以 `-Ddemo.config=<配置文件> -Dundertow.port=18140 -Dundertow.host=127.0.0.1` 启动 `cn.hg.aifei.id.demo.DemoApp`。
 
 启动后访问 `http://localhost:18140/id/demo/page` 即为正常。
 

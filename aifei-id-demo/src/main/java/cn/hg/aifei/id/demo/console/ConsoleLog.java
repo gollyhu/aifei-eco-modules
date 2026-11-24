@@ -9,10 +9,10 @@ package cn.hg.aifei.id.demo.console;
 import cn.aifei.log.Log;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -37,7 +37,7 @@ public class ConsoleLog implements Log {
      */
     static final ArrayDeque<String> HISTORY = new ArrayDeque<String>(HISTORY_CAPACITY);
 
-    private static final SimpleDateFormat TIME_FORMAT = new SimpleDateFormat("HH:mm:ss.SSS");
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     final String name;
 
@@ -266,7 +266,7 @@ public class ConsoleLog implements Log {
      * 唯一输出点：控制台打印一行 + 写入环形缓冲。
      */
     private void println(String level, String msg, Throwable t) {
-        String line = TIME_FORMAT.format(new Date()) + " [" + level + "] " + name + " : " + msg;
+        String line = LocalDateTime.now().format(TIME_FORMAT) + " [" + level + "] " + name + " : " + msg;
         if (t != null) {
             line = line + System.lineSeparator() + stackTraceOf(t);
         }

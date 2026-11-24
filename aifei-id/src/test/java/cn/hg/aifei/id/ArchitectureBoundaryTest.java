@@ -145,7 +145,7 @@ public class ArchitectureBoundaryTest {
     /**
      * 门禁⑨：只允许出现在雪花实现里的字面量。
      */
-    private static final String[] CLOCK_FRAGMENTS = {"System.currentTimeMillis", "1704067200000"};
+    private static final String[] CLOCK_FRAGMENTS = {"System.currentTimeMillis", "System::currentTimeMillis", "1704067200000"};
 
     /**
      * 门禁⑩：只允许出现在 {@code IdNames} 里的字面量（含双引号，即代码里的字符串字面量）。
@@ -392,8 +392,9 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
-     * 门禁⑨：时刻采样（{@code System.currentTimeMillis}）与纪元字面量（{@code 1704067200000}）只允许出现在
-     * {@code internal/SnowflakeIdGenerator.java}，防止第二处时刻采样与纪元复制导致位空间分裂。
+     * 门禁⑨：时刻采样（{@code System.currentTimeMillis} 调用与 {@code System::currentTimeMillis} 方法引用）与
+     * 纪元字面量（{@code 1704067200000}）只允许出现在 {@code internal/SnowflakeIdGenerator.java}，
+     * 防止第二处时刻采样与纪元复制导致位空间分裂。
      *
      * @throws IOException 读取源码失败
      */
