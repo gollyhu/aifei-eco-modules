@@ -9,11 +9,7 @@ package cn.hg.aifei.websocket.demo.ws;
 import cn.hg.aifei.websocket.ClientListener;
 import cn.hg.aifei.websocket.Message;
 
-/**
- * 客户端监听器的演示实现：把建连、收发、断线与自动重连事件追加进 {@link DemoEventLog}，供演示端点读出去。
- *
- * <p>回调在底层库的读 / 连接线程上执行，因此这里只做「记一行日志」这种极轻量操作，不做耗时阻塞。</p>
- */
+/** 客户端监听器演示实现：把建连、收发、断线与重连事件记入 {@link DemoEventLog}。 */
 public class DemoClientListener implements ClientListener {
 
     /**

@@ -301,6 +301,93 @@ public abstract class ServerContractTest {
     }
 
     /**
+     * 多会话二进制广播：各会话收到的副本内容一致。
+     */
+    @Test
+    public void shouldBroadcastSameBinaryContentToAllSessions() throws Exception {
+        WebSocketServer server = newServer(loopbackServerConfig(), new ServerRecorder());
+        ClientProbe first = new ClientProbe();
+        ClientProbe second = new ClientProbe();
+        WebSocketClient firstClient = null;
+        WebSocketClient secondClient = null;
+        byte[] payload = new byte[] {10, 20, 30, 40, 50};
+        try {
+            server.start();
+            firstClient = newClient(clientConfig(uriOf(server)), first);
+            secondClient = newClient(clientConfig(uriOf(server)), second);
+            firstClient.connect();
+            secondClient.connect();
+            assertTrue(first.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            assertTrue(second.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            awaitSessionCount(server, 2);
+
+            server.broadcast(payload);
+
+            Message firstMessage = first.messages.poll(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            Message secondMessage = second.messages.poll(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            assertNotNull(firstMessage);
+            assertNotNull(secondMessage);
+            assertFalse(firstMessage.isText());
+            assertFalse(secondMessage.isText());
+            assertArrayEquals(payload, firstMessage.asBytes());
+            assertArrayEquals(payload, secondMessage.asBytes());
+            assertArrayEquals("各会话收到的内容应一致", firstMessage.asBytes(), secondMessage.asBytes());
+        } finally {
+            if (firstClient != null) {
+                firstClient.close();
+            }
+            if (secondClient != null) {
+                secondClient.close();
+            }
+            server.stop();
+        }
+    }
+
+    /**
+     * stop() 后再次 start()，空闲回收仍生效（共享调度器未随 stop 关闭）。
+     */
+    @Test
+    public void shouldReclaimIdleAfterStopThenStart() throws Exception {
+        ServerConfig config = loopbackServerConfig();
+        config.setSessionIdleTimeoutSeconds(1);
+        WebSocketServer server = newServer(config, new ServerRecorder());
+        ClientProbe firstProbe = new ClientProbe();
+        ClientProbe secondProbe = new ClientProbe();
+        WebSocketClient firstClient = null;
+        WebSocketClient secondClient = null;
+        try {
+            server.start();
+            firstClient = newClient(clientConfig(uriOf(server)), firstProbe);
+            firstClient.connect();
+            assertTrue(firstProbe.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            awaitSessionCount(server, 1);
+
+            server.stop();
+            awaitSessionCount(server, 0);
+            firstClient.close();
+
+            server.start();
+            secondClient = newClient(clientConfig(uriOf(server)), secondProbe);
+            secondClient.connect();
+            assertTrue(secondProbe.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            awaitSessionCount(server, 1);
+
+            awaitCondition(() -> server.sessions().isEmpty(), 6000L,
+                    "stop() 后再次 start()，空闲回收仍应生效");
+            assertTrue(secondProbe.closeLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            assertEquals(1000, secondProbe.lastCloseCode);
+        } finally {
+            if (firstClient != null) {
+                firstClient.close();
+            }
+            if (secondClient != null) {
+                secondClient.close();
+            }
+            server.stop();
+        }
+    }
+
+    /**
      * 构造仅含地址的客户端配置。
      *
      * @param uri 目标地址

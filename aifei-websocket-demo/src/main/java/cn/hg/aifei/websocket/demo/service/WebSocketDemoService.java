@@ -22,26 +22,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 演示 Service：现场演示 aifei-websocket 的建连、收发、心跳与断线自动重连。
- *
- * <p>所有端点均为 GET，返回 {@link Out}（HTTP 恒 200，业务状态由 {@code code} 承载）。客户端与服务端实例都由
- * 装配入口（{@code WebSocketClientPlugin} / {@code WebSocketServerPlugin}）注册，此处按接口类型 {@code @Inject}
- * 取用，也就是本模块要演示的标准用法。事件明细（收到什么消息、状态怎么变、何时重连）来自
- * {@link DemoEventLog}，由两个监听器在回调线程上写入。</p>
- */
+/** 演示 Service：端点均为 GET，HTTP 恒 200、业务状态由 {@code code} 承载，演示建连、收发与断线重连。 */
 @Path("/ws/demo")
 public class WebSocketDemoService {
 
-    /**
-     * 装配入口注册的客户端单例。
-     */
     @Inject
     WebSocketClient client;
 
-    /**
-     * 装配入口注册的服务端单例。
-     */
     @Inject
     WebSocketServer server;
 
@@ -213,11 +200,7 @@ public class WebSocketDemoService {
         return Out.ok("已请求关闭客户端（close() 之后不再自动重连）");
     }
 
-    /**
-     * 组装现场快照：客户端状态、服务端状态与会话清单、事件日志。
-     *
-     * @return 现场快照，字段含义见方法内注释
-     */
+    /** 组装现场快照：两端状态、会话清单与事件日志。 */
     private Map<String, Object> stateMap() {
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("clientState", client.state().name());
@@ -246,11 +229,7 @@ public class WebSocketDemoService {
         return data;
     }
 
-    /**
-     * 校验两个注入字段都已就绪；未就绪时返回失败响应，避免抛出空指针。
-     *
-     * @return 就绪时返回 {@code null}，否则返回失败响应
-     */
+    /** 校验注入就绪；未就绪返回失败响应，避免空指针。 */
     private Out requireInjected() {
         if (client == null || server == null) {
             return Out.fail("WebSocket 实例尚未装配完成（client=" + client + ", server=" + server
@@ -259,12 +238,7 @@ public class WebSocketDemoService {
         return null;
     }
 
-    /**
-     * 把运行态异常整理成一行可读描述，便于端点响应中定位问题。
-     *
-     * @param e 捕获到的异常
-     * @return 形如 {@code IllegalStateException: xxx} 的描述
-     */
+    /** 把运行态异常整理成一行可读描述。 */
     private String describe(RuntimeException e) {
         return e.getClass().getSimpleName() + ": " + e.getMessage();
     }

@@ -28,28 +28,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 跨后端共享的服务端骨架：会话登记与注销、广播、空闲会话回收调度、启停幂等都在此实现一次。
+ * 跨后端共享的服务端骨架：会话登记、广播、空闲回收与启停幂等在此实现一次。
  *
- * <p>传输后端只实现启停与端口三个钩子：{@link #doStart()} / {@link #doStop()} / {@link #doPort()}。会话事件经
- * {@link #handleSessionOpen(WebSocketSession)} / {@link #handleSessionMessage(WebSocketSession, Message)} /
- * {@link #refreshSessionActivity(WebSocketSession)} / {@link #handleSessionClose(WebSocketSession, int, String, boolean)} /
- * {@link #handleError(WebSocketSession, Throwable)} 回灌本骨架。会话登记、广播跳过规则、空闲回收与回调保护
- * 各自只有一处实现，后端不得复制。</p>
- *
- * <p>线程安全：公共方法可从任意线程调用。会话登记表由内部锁保护，{@code sessions()} 返回不可变快照；
- * 空闲回收在私有的单线程守护调度器上执行；启停由独立的生命周期锁串行化，避免 {@code doStop()} 内部等待
- * 会话关闭回调时与登记锁成环。</p>
+ * <p>会话登记、广播跳过规则、空闲回收与回调保护各自只有一处实现。会话表由内部锁保护，sessions() 返回
+ * 不可变快照；启停用独立生命周期锁串行化，避免 doStop() 等待关闭回调时与登记锁成环。</p>
  */
 public abstract class AbstractWebSocketServer implements WebSocketServer {
 
-    /**
-     * RFC6455 正常关闭码，用于空闲会话回收。
-     */
     private static final int NORMAL_CLOSURE = 1000;
 
-    /**
-     * 空闲回收线程工厂：线程为守护线程，随 JVM 退出而终止。
-     */
     private static final ThreadFactory IDLE_THREAD_FACTORY = new ThreadFactory() {
 
         private final AtomicInteger counter = new AtomicInteger();
@@ -71,9 +58,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
      */
     private final Object lock = new Object();
 
-    /**
-     * 串行化启停的生命周期锁；与 {@link #lock} 相互独立，避免与关闭回调成环。
-     */
+    /** 与 lock 独立，避免 doStop() 等待关闭回调时成环。 */
     private final Object lifecycleLock = new Object();
 
     /**
@@ -81,7 +66,9 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
      */
     private final Map<String, SessionEntry> sessions = new LinkedHashMap<>();
 
-    private final ScheduledExecutorService scheduler;
+    /** 类级共享且永不关闭：stop() 后 start() 仍须能回收空闲会话（硬契约）。 */
+    private static final ScheduledExecutorService scheduler =
+            Executors.newSingleThreadScheduledExecutor(IDLE_THREAD_FACTORY);
 
     private volatile boolean started;
 
@@ -92,10 +79,6 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
 
     /**
      * 保存装配输入。
-     *
-     * @param config 服务端配置
-     * @param listener 服务端监听器
-     * @throws IllegalArgumentException {@code config} 或 {@code listener} 为 {@code null}
      */
     protected AbstractWebSocketServer(ServerConfig config, ServerListener listener) {
         if (config == null) {
@@ -106,7 +89,6 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         }
         this.config = config;
         this.listener = listener;
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(IDLE_THREAD_FACTORY);
     }
 
     @Override
@@ -200,15 +182,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         return WebSocketBackend.TYPE;
     }
 
-    // ─────────── 会话事件回灌点：由实现层在底层回调内调用 ───────────
-
-    /**
-     * 回灌「会话可收发」事件：登记会话并触发 {@code onOpen}。会话标识由实现层经
-     * {@link SessionIds#next()} 生成后传入。
-     *
-     * @param session 新会话
-     * @throws IllegalArgumentException {@code session} 为 {@code null}
-     */
+    /** 登记会话并触发 onOpen；session.id() 须由实现层经 {@link SessionIds#next()} 生成。 */
     protected final void handleSessionOpen(WebSocketSession session) {
         if (session == null) {
             throw new IllegalArgumentException("session can not be null");
@@ -219,13 +193,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         ListenerGuard.onOpen(listener, session);
     }
 
-    /**
-     * 回灌「会话收到数据帧」事件：刷新活跃时间并触发 {@code onMessage}。
-     *
-     * @param session 来源会话
-     * @param message 收到的消息
-     * @throws IllegalArgumentException {@code session} 或 {@code message} 为 {@code null}
-     */
+    /** 刷新活跃时间并触发 onMessage。 */
     protected final void handleSessionMessage(WebSocketSession session, Message message) {
         if (session == null) {
             throw new IllegalArgumentException("session can not be null");
@@ -237,13 +205,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         ListenerGuard.onMessage(listener, session, message);
     }
 
-    /**
-     * 回灌「会话有入站活动」事件：把无需上浮为 {@link Message} 的入站帧（如 pong 控制帧）计入活跃时间，
-     * 供空闲回收判活。
-     *
-     * @param session 相关会话
-     * @throws IllegalArgumentException {@code session} 为 {@code null}
-     */
+    /** 把 pong 等不上浮的入站帧计入活跃，避免只回 pong 的存活会话被空闲回收误判。 */
     protected final void refreshSessionActivity(WebSocketSession session) {
         if (session == null) {
             throw new IllegalArgumentException("session can not be null");
@@ -251,15 +213,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         refreshActivity(session);
     }
 
-    /**
-     * 回灌「会话关闭」事件：先触发 {@code onClose}（此时 {@code session} 仍可读标识与远端地址），再注销会话。
-     *
-     * @param session 被关闭的会话
-     * @param code 关闭码
-     * @param reason 关闭原因
-     * @param remote 是否由对端发起
-     * @throws IllegalArgumentException {@code session} 为 {@code null}
-     */
+    /** 先触发 onClose（此时仍可读标识与地址），再注销会话。 */
     protected final void handleSessionClose(WebSocketSession session, int code, String reason, boolean remote) {
         if (session == null) {
             throw new IllegalArgumentException("session can not be null");
@@ -270,13 +224,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         }
     }
 
-    /**
-     * 回灌「运行态故障」事件：包装后转投 {@code onError}。
-     *
-     * @param session 相关会话；服务器级故障时为 {@code null}
-     * @param error 故障；已是 {@link WebSocketConnectionException} 时原样上浮，否则包装
-     * @throws IllegalArgumentException {@code error} 为 {@code null}
-     */
+    /** 包装故障后转投 onError；session 为 null 表示服务器级故障。 */
     protected final void handleError(WebSocketSession session, Throwable error) {
         if (error == null) {
             throw new IllegalArgumentException("error can not be null");
@@ -287,45 +235,21 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         ListenerGuard.onError(listener, session, wrapped);
     }
 
-    // ─────────── 传输钩子：由实现层实现（第三方类型只允许出现在实现包） ───────────
-
-    /**
-     * 绑定并在配置端口上开始接受连接；返回后 {@link #doPort()} 必须可返回实际绑定端口且端口可被接受连接。
-     *
-     * <p>绑定失败等运行态故障应抛 {@link WebSocketException}（或让本骨架包装）。已启动时的重复调用由本
-     * 骨架拦截，实现无需判重。</p>
-     */
+    /** 绑定并接受连接；绑定失败抛 {@link WebSocketException}，返回后 doPort() 须可读实际端口。 */
     protected abstract void doStart();
 
-    /**
-     * 停止接受新连接、向全部会话发出关闭帧（关闭码 {@code 1001}，即 RFC6455 的 GOING_AWAY）并释放监听端口；实现须尽力
-     * 保证每个会话的关闭都会经 {@link #handleSessionClose(WebSocketSession, int, String, boolean)} 回灌。
-     */
+    /** 停止接受连接并向全部会话发关闭帧（{@code 1001} GOING_AWAY）；每个关闭须经 handleSessionClose 回灌。 */
     protected abstract void doStop();
 
-    /**
-     * 返回实际绑定的监听端口；仅在已启动时被调用。
-     *
-     * @return 实际监听端口
-     */
+    /** 实际监听端口；仅在已启动时调用。 */
     protected abstract int doPort();
 
-    /**
-     * 返回构建时使用的配置；供实现读取监听地址、端口与连接参数。
-     *
-     * @return 服务端配置
-     */
+    /** 构建时使用的配置。 */
     protected final ServerConfig config() {
         return config;
     }
 
-    // ─────────── 内部实现 ───────────
-
-    /**
-     * 刷新会话活跃时间；未登记会话静默跳过。
-     *
-     * @param session 相关会话
-     */
+    /** 刷新活跃时间；未登记会话静默跳过。 */
     private void refreshActivity(WebSocketSession session) {
         synchronized (lock) {
             SessionEntry entry = sessions.get(session.id());
@@ -335,12 +259,9 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         }
     }
 
-    /**
-     * 依消息类型向全部已登记会话广播；对已关闭会话与广播瞬间关闭的会话静默跳过，不中断其余会话。
-     *
-     * @param message 待广播消息
-     */
+    /** 向全部会话广播，跳过已关闭者；二进制副本在循环外只取一次以避免逐会话克隆。 */
     private void broadcastMessage(Message message) {
+        byte[] bytes = message.isText() ? null : message.asBytes();
         for (WebSocketSession session : sessions()) {
             if (!session.isOpen()) {
                 continue;
@@ -349,7 +270,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
                 if (message.isText()) {
                     session.send(message.asText());
                 } else {
-                    session.send(message.asBytes());
+                    session.send(bytes);
                 }
             } catch (RuntimeException ignored) {
                 // 会话可能正在关闭，广播跳过该会话，不中断其余会话
@@ -357,9 +278,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         }
     }
 
-    /**
-     * 按 {@code max(1, sessionIdleTimeoutSeconds)} 秒周期安排空闲会话回收；阈值为 {@code 0} 时不启用。
-     */
+    /** 按 max(1, sessionIdleTimeoutSeconds) 秒周期安排空闲回收；阈值为 0 时不启用。 */
     private void scheduleIdleScan() {
         int idleSeconds = config.sessionIdleTimeoutSeconds();
         if (idleSeconds <= 0) {
@@ -375,9 +294,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         }, periodSeconds, periodSeconds, TimeUnit.SECONDS);
     }
 
-    /**
-     * 取消空闲回收任务。
-     */
+    /** 取消空闲回收任务。 */
     private void cancelIdleScan() {
         ScheduledFuture<?> scan = idleScan;
         if (scan != null) {
@@ -386,10 +303,7 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         }
     }
 
-    /**
-     * 扫描并回收空闲会话：空闲时长达到阈值者先移出登记表，再以关闭码 {@code 1000} 关闭；关闭回调随后仍会
-     * 触发一次 {@code onClose}。
-     */
+    /** 回收空闲会话：先移出登记表再以关闭码 1000 关闭；关闭回调随后仍触发一次 onClose。 */
     private void recycleIdleSessions() {
         long thresholdMillis = config.sessionIdleTimeoutSeconds() * 1000L;
         if (thresholdMillis <= 0L) {
@@ -416,16 +330,12 @@ public abstract class AbstractWebSocketServer implements WebSocketServer {
         }
     }
 
-    /**
-     * 会话登记条目：保存会话与最近一次入站活动时间，后者由空闲回收判活。
-     */
+    /** 会话登记条目：保存会话与最近一次入站活动时间，后者由空闲回收判活。 */
     private static final class SessionEntry {
 
         private final WebSocketSession session;
 
-        /**
-         * 最近一次入站帧时间（毫秒）；受 {@link AbstractWebSocketServer#lock} 保护。
-         */
+        /** 最近一次入站帧时间（毫秒）；受 {@link AbstractWebSocketServer#lock} 保护。 */
         private long lastActivityMillis;
 
         private SessionEntry(WebSocketSession session, long lastActivityMillis) {

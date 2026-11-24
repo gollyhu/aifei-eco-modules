@@ -260,8 +260,6 @@ public final class Rfc6455Handshake {
         }
     }
 
-    // ─────────── 内部实现 ───────────
-
     /**
      * 读取一行（不含行尾 {@code CRLF}）；流已结束且未读到任何字节时返回 {@code null}。
      *
@@ -274,7 +272,7 @@ public final class Rfc6455Handshake {
         int current;
         while ((current = in.read()) != -1) {
             if (current == '\n') {
-                return new String(line.toByteArray(), StandardCharsets.UTF_8);
+                return new String(line.toByteArray(), StandardCharsets.US_ASCII);
             }
             if (current != '\r') {
                 line.write(current);
@@ -286,7 +284,7 @@ public final class Rfc6455Handshake {
         if (line.size() == 0) {
             return null;
         }
-        return new String(line.toByteArray(), StandardCharsets.UTF_8);
+        return new String(line.toByteArray(), StandardCharsets.US_ASCII);
     }
 
     /**

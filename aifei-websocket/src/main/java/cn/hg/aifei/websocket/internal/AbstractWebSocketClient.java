@@ -21,16 +21,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 跨后端共享的客户端骨架：状态机、发送前置校验、编解码路径、关闭幂等与自动重连编排都在此实现一次。
+ * 跨后端共享的客户端骨架：状态机、发送校验、编解码、关闭幂等与自动重连编排在此实现一次。
  *
- * <p>传输后端只实现建连、发送、关闭、远端地址四个钩子：{@link #doConnect()} / {@link #doSendText(String)} /
- * {@link #doSendBinary(byte[])} / {@link #doClose(int, String)} / {@link #doRemoteAddress()}。底层回调经
- * {@link #handleOpen()} / {@link #handleMessage(Message)} / {@link #handleClose(int, String, boolean)} /
- * {@link #handleError(Throwable)} 回灌本骨架，由本骨架驱动状态迁移与监听器回调。状态迁移、退避、校验与
- * 回调保护各自只有一处实现，后端不得复制。</p>
- *
- * <p>线程安全：公共方法可从任意线程调用。状态以 {@code volatile} 发布、迁移在内部锁内完成；自动重连在
- * 本类私有的单线程守护调度器上执行，不经传输回调线程。调度器线程按需创建，若从未触发重连则不产生线程。</p>
+ * <p>后端只实现传输钩子，底层回调经 handle* 回灌本骨架；状态迁移、退避、校验、回调保护各自只有一处实现。
+ * 状态以 volatile 发布、迁移在内部锁内完成，重连不经传输回调线程。</p>
  */
 public abstract class AbstractWebSocketClient implements WebSocketClient {
 
@@ -39,9 +33,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
      */
     private static final int NORMAL_CLOSURE = 1000;
 
-    /**
-     * 无关闭帧（连接未建立或异常中断）时使用的状态码，与传输层约定一致。
-     */
+    /** 无关闭帧（连接未建立或异常中断）时上报 -1，与传输层约定一致。 */
     private static final int NO_STATUS_CODE = -1;
 
     /**
@@ -68,7 +60,9 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
      */
     private final Object lock = new Object();
 
-    private final ScheduledExecutorService scheduler;
+    /** 类级共享且永不关闭：close() 后显式 connect() 仍须能调度重连（硬契约）。 */
+    private static final ScheduledExecutorService scheduler =
+            Executors.newSingleThreadScheduledExecutor(RECONNECT_THREAD_FACTORY);
 
     private volatile ConnectionState state = ConnectionState.CLOSED;
 
@@ -89,13 +83,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
      */
     private ScheduledFuture<?> pendingReconnect;
 
-    /**
-     * 保存装配输入；跨字段校验（地址协议、重试延迟上下限）在构建时于此完成。
-     *
-     * @param config 客户端配置
-     * @param listener 客户端监听器
-     * @throws IllegalArgumentException {@code config} 或 {@code listener} 为 {@code null}，或跨字段校验不通过
-     */
+    /** 跨字段校验（地址协议、重试延迟上下限）在构建时完成。 */
     protected AbstractWebSocketClient(ClientConfig config, ClientListener listener) {
         if (config == null) {
             throw new IllegalArgumentException("config can not be null");
@@ -107,7 +95,6 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         WebSocketValidator.requireMaxRetryDelayMillis(config.initialRetryDelayMillis(), config.maxRetryDelayMillis());
         this.config = config;
         this.listener = listener;
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(RECONNECT_THREAD_FACTORY);
     }
 
     @Override
@@ -202,13 +189,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         return WebSocketBackend.TYPE;
     }
 
-    // ─────────── 传输回调回灌点：由实现层在底层回调内调用 ───────────
-
-    /**
-     * 回灌「握手成功」事件：{@code CONNECTING → OPEN}，复位重连计数与最近错误，并触发 {@code onOpen}。
-     *
-     * <p>非 {@code CONNECTING} 时静默忽略（通常是本模块已主动关闭后的迟到回调）。</p>
-     */
+    /** 回灌握手成功：CONNECTING → OPEN；非 CONNECTING 的迟到回调静默忽略。 */
     protected final void handleOpen() {
         synchronized (lock) {
             if (state != ConnectionState.CONNECTING) {
@@ -221,12 +202,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         ListenerGuard.onOpen(listener);
     }
 
-    /**
-     * 回灌「收到数据帧」事件；仅当状态为 {@code OPEN} 时上浮，否则丢弃。
-     *
-     * @param message 收到的消息
-     * @throws IllegalArgumentException {@code message} 为 {@code null}
-     */
+    /** 回灌收到的数据帧；仅 OPEN 时上浮。 */
     protected final void handleMessage(Message message) {
         if (message == null) {
             throw new IllegalArgumentException("message can not be null");
@@ -237,15 +213,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         ListenerGuard.onMessage(listener, message);
     }
 
-    /**
-     * 回灌「连接结束」事件：收敛到 {@code CLOSED}，触发一次 {@code onClose}，随后按自动重连规则决定是否重连。
-     *
-     * <p>同一连接内重复回灌只生效一次：状态已是 {@code CLOSED} 时直接返回，从而保证 {@code onClose} 恰好一次。</p>
-     *
-     * @param code 关闭码；无关闭帧时为 {@code -1}
-     * @param reason 关闭原因
-     * @param remote 是否由对端发起
-     */
+    /** 回灌连接结束：收敛到 CLOSED 并按规则重连；重复回灌直接返回，保证 onClose 恰好一次。 */
     protected final void handleClose(int code, String reason, boolean remote) {
         boolean notify;
         synchronized (lock) {
@@ -259,12 +227,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         maybeReconnect();
     }
 
-    /**
-     * 回灌「运行态故障」事件：包装后转投 {@code onError}，并记下作为重连耗尽时的最近错误。
-     *
-     * @param error 故障；已是 {@link WebSocketConnectionException} 时原样上浮，否则包装
-     * @throws IllegalArgumentException {@code error} 为 {@code null}
-     */
+    /** 回灌运行态故障：包装后转投 onError，并记下作为重连耗尽时的最近错误。 */
     protected final void handleError(Throwable error) {
         if (error == null) {
             throw new IllegalArgumentException("error can not be null");
@@ -276,62 +239,27 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         ListenerGuard.onError(listener, wrapped);
     }
 
-    // ─────────── 传输钩子：由实现层实现（第三方类型只允许出现在实现包） ───────────
-
-    /**
-     * 建立一条全新的传输连接，并异步发起建连；每次调用都必须新建传输对象。
-     *
-     * <p>本方法在 {@code CONNECTING} 状态下被调用：首次建连与自动重连都经此入口。建连结果须经
-     * {@link #handleOpen()} / {@link #handleClose(int, String, boolean)} / {@link #handleError(Throwable)}
-     * 回灌。同步失败可直接抛出运行时异常，本骨架会将其视为建连失败。
-     */
+    /** 建连钩子：每次调用必须新建传输对象，结果经 handle* 回灌；同步失败按建连失败收敛。 */
     protected abstract void doConnect();
 
-    /**
-     * 通过当前传输发送一条文本消息；仅在状态为 {@code OPEN} 时被调用。
-     *
-     * @param text 文本内容
-     */
+    /** 发送文本；仅在 OPEN 时被调用。 */
     protected abstract void doSendText(String text);
 
-    /**
-     * 通过当前传输发送一条二进制消息；仅在状态为 {@code OPEN} 时被调用。
-     *
-     * @param bytes 二进制内容
-     */
+    /** 发送二进制；仅在 OPEN 时被调用。 */
     protected abstract void doSendBinary(byte[] bytes);
 
-    /**
-     * 关闭当前传输或中止正在进行的建连；幂等由本骨架保证，实现内无需再判重。
-     *
-     * <p>处于 {@code CONNECTING} 时也必须尽力中止建连（例如关闭尚未完成的传输对象）。</p>
-     *
-     * @param code 关闭码
-     * @param reason 关闭原因；可为 {@code null}
-     */
+    /** 关闭传输或中止建连；幂等由骨架保证，CONNECTING 时亦须尽力中止（硬契约）。 */
     protected abstract void doClose(int code, String reason);
 
-    /**
-     * 返回当前传输的远端地址字符串；未连接或不可用时返回 {@code null}。
-     *
-     * @return 远端地址；不可用时 {@code null}
-     */
+    /** 远端地址；未连接或不可用时返回 null。 */
     protected abstract String doRemoteAddress();
 
-    /**
-     * 返回构建时使用的配置；供实现读取地址、请求头、超时与心跳参数。
-     *
-     * @return 客户端配置
-     */
+    /** 构建时使用的配置。 */
     protected final ClientConfig config() {
         return config;
     }
 
-    // ─────────── 内部实现 ───────────
-
-    /**
-     * 发起一次建连；调用前状态须已为 {@code CONNECTING}。同步失败按「建连失败」收敛。
-     */
+    /** 发起建连；调用前状态须为 CONNECTING，同步失败按建连失败收敛。 */
     private void startTransport() {
         try {
             doConnect();
@@ -341,9 +269,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         }
     }
 
-    /**
-     * 由重连调度线程发起的一次重连；用户已主动关闭或状态已非 {@code CLOSED} 时放弃本次重连。
-     */
+    /** 重连调度线程发起；用户已主动关闭或状态非 CLOSED 时放弃。 */
     private void reconnect() {
         synchronized (lock) {
             if (userClosed || state != ConnectionState.CLOSED) {
@@ -354,12 +280,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         }
     }
 
-    /**
-     * 关闭主流程：置用户主动关闭标记、取消待定重连、按当前状态收敛，并保证 {@code onClose} 恰好一次。
-     *
-     * @param code 关闭码
-     * @param reason 关闭原因；可为 {@code null}
-     */
+    /** 关闭主流程：置用户关闭标记、取消待定重连、按状态收敛，保证 onClose 恰好一次。 */
     private void closeInternal(int code, String reason) {
         boolean wasConnecting;
         synchronized (lock) {
@@ -388,10 +309,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         }
     }
 
-    /**
-     * 依自动重连规则决定是否安排下一次重连：用户主动关闭或未开启自动重连时不重连；达到上限时进入终态并
-     * 触发 {@code onReconnectExhausted}；否则递增计数、算出退避、触发 {@code onReconnect} 并调度。
-     */
+    /** 依自动重连规则安排下一次重连；用户主动关闭或未开启时不重连，达上限进入终态。 */
     private void maybeReconnect() {
         boolean exhausted;
         int attempt = 0;
@@ -419,11 +337,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         }
     }
 
-    /**
-     * 在自有调度线程上延迟发起重连；用户已主动关闭时不再调度。
-     *
-     * @param delayMillis 退避时长（毫秒）
-     */
+    /** 在调度线程上延迟发起重连；用户已主动关闭时不再调度。 */
     private void scheduleReconnect(long delayMillis) {
         synchronized (lock) {
             if (userClosed) {
@@ -439,9 +353,7 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         }
     }
 
-    /**
-     * 取消待定的重连任务；须在持有 {@link #lock} 时调用。
-     */
+    /** 取消待定重连任务；须持 lock 调用。 */
     private void cancelPendingReconnect() {
         if (pendingReconnect != null) {
             pendingReconnect.cancel(false);
@@ -449,24 +361,14 @@ public abstract class AbstractWebSocketClient implements WebSocketClient {
         }
     }
 
-    /**
-     * 校验当前状态为 {@code OPEN}。
-     *
-     * @param operation 操作名，用于异常消息定位
-     * @throws IllegalStateException 当前状态非 {@code OPEN}
-     */
+    /** 校验当前状态为 OPEN。 */
     private void requireOpen(String operation) {
         if (state != ConnectionState.OPEN) {
             throw new IllegalStateException(operation + " is only allowed when state is OPEN but was " + state);
         }
     }
 
-    /**
-     * 把传输层异常包装为 {@link WebSocketConnectionException}；已是该类型时原样返回，避免重复包装。
-     *
-     * @param cause 传输层异常
-     * @return 运行态故障
-     */
+    /** 包装传输异常；已是 WebSocketConnectionException 时原样返回，避免重复包装。 */
     private WebSocketConnectionException connectionFailure(RuntimeException cause) {
         if (cause instanceof WebSocketConnectionException) {
             return (WebSocketConnectionException) cause;

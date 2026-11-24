@@ -7,6 +7,7 @@
 package cn.hg.aifei.websocket.internal.jdk;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -82,6 +83,28 @@ public class Rfc6455HandshakeTest {
         assertTrue(request.contains("Sec-WebSocket-Version: 13\r\n"));
         assertTrue(request.contains("Authorization: Bearer t0ken\r\n"));
         assertTrue(request.endsWith("\r\n\r\n"));
+    }
+
+    /**
+     * 握手头按 US-ASCII 解码：含非 ASCII 字节的头不抛异常，且不按 UTF-8 合成为多字节字符。
+     *
+     * @throws IOException 解析失败
+     */
+    @Test
+    public void shouldDecodeHeadersAsUsAscii() throws IOException {
+        ByteArrayOutputStream raw = new ByteArrayOutputStream();
+        raw.write("GET /chat HTTP/1.1\r\n".getBytes(StandardCharsets.US_ASCII));
+        raw.write("Host: 127.0.0.1\r\n".getBytes(StandardCharsets.US_ASCII));
+        raw.write("X-Non-Ascii: ".getBytes(StandardCharsets.US_ASCII));
+        raw.write(new byte[] {(byte) 0xE4, (byte) 0xB8, (byte) 0xAD});
+        raw.write("\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
+
+        Rfc6455Handshake.Request request = Rfc6455Handshake.readRequest(
+                new ByteArrayInputStream(raw.toByteArray()));
+        String value = request.get("X-Non-Ascii");
+        assertNotNull(value);
+        assertEquals("非 ASCII 字节应按 US-ASCII 逐字节解码，不合成 UTF-8 字符", 3, value.length());
+        assertFalse("头值不得按 UTF-8 合成多字节字符", value.contains("\u4E2D"));
     }
 
     /**

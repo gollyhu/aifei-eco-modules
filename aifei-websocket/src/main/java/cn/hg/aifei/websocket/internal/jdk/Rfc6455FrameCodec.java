@@ -15,18 +15,14 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ThreadLocalRandom;
+import java.security.SecureRandom;
 
 /**
- * RFC6455 帧编解码的唯一定义点（RFC6455 §5.2 / §5.4 / §5.5）：opcode / FIN / 掩码、7 / 16 / 64 位长度字段、
- * 控制帧约束与关闭帧载荷都在本类实现一次。
+ * RFC6455 帧编解码的唯一定义点（§5.2 / §5.4 / §5.5），本类属内部实现、不是公共 API。
  *
- * <p>掩码规则按 RFC6455：<b>客户端发出的帧必须掩码、服务端发出的帧不得掩码</b>；因此解码侧按角色传入
- * {@code requireMask}——服务端读客户端帧时传 {@code true}，客户端读服务端帧时传 {@code false}。分片聚合的
- * 16 MiB 上限常量也定义于此（单帧超限与聚合超限都以关闭码 {@code 1009} 表达），但累加判定由
- * {@link JdkWebSocketConnection} 调用本类常量完成。本类属内部实现，不是公共 API。</p>
- *
- * <p>线程安全：编码与解码方法无共享状态，可被多线程并发调用；同一输入流的解码必须由同一线程串行进行。</p>
+ * <p>按 RFC6455：<b>客户端发帧必须掩码、服务端发帧不得掩码</b>，故解码侧按角色传 {@code requireMask}。
+ * 分片聚合上限固定 16 MiB（超限以关闭码 {@code 1009} 表达），累加判定由 {@link JdkWebSocketConnection} 完成。
+ * 编解码方法无共享状态、可并发调用；同一输入流的解码须由同一线程串行进行。</p>
  */
 public final class Rfc6455FrameCodec {
 
@@ -100,9 +96,9 @@ public final class Rfc6455FrameCodec {
      */
     private static final int MAX_CLOSE_REASON_BYTES = 123;
 
-    /**
-     * 禁止创建工具类实例。
-     */
+    /** 类级复用避免每帧新建的开销；SecureRandom 线程安全。 */
+    private static final SecureRandom MASK_RANDOM = new SecureRandom();
+
     private Rfc6455FrameCodec() {
     }
 
@@ -163,7 +159,7 @@ public final class Rfc6455FrameCodec {
             return out.toByteArray();
         }
         byte[] key = new byte[4];
-        ThreadLocalRandom.current().nextBytes(key);
+        MASK_RANDOM.nextBytes(key);
         out.write(key, 0, 4);
         for (int i = 0; i < length; i++) {
             out.write(payload[offset + i] ^ key[i % 4]);
@@ -297,8 +293,6 @@ public final class Rfc6455FrameCodec {
             throw new ProtocolException(CLOSE_INVALID_PAYLOAD, "text payload is not valid UTF-8");
         }
     }
-
-    // ─────────── 内部实现 ───────────
 
     /**
      * 判断 opcode 是否为 RFC6455 定义的取值（0 / 1 / 2 / 8 / 9 / 10）。

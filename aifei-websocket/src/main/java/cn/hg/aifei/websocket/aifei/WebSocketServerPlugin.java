@@ -47,9 +47,7 @@ public class WebSocketServerPlugin implements Plugin {
      */
     private final MessageCodec codec;
 
-    /**
-     * 已装配的服务端实例；{@code null} 表示尚未装配，{@link #start()} 与 {@link #stop()} 据此保持幂等。
-     */
+    /** {@code null} 表示尚未装配；{@link #start()} 与 {@link #stop()} 据此保持幂等。 */
     private WebSocketServer server;
 
     /**

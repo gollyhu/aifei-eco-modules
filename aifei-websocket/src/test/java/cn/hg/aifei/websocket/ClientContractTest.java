@@ -282,6 +282,45 @@ public abstract class ClientContractTest {
     }
 
     /**
+     * 用户主动 close() 后再次显式 connect()，断线仍能经共享调度器自动重连并成功建连。
+     */
+    @Test
+    public void shouldReconnectAfterCloseThenExplicitConnect() throws Exception {
+        WebSocketServer first = startLoopbackServerOn(0);
+        int port = first.port();
+        ClientRecorder listener = new ClientRecorder();
+        WebSocketClient client = newClient(reconnectConfig(uriOfPort(port), 5), listener);
+        WebSocketServer second = null;
+        try {
+            client.connect();
+            assertTrue(listener.openLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+
+            client.close();
+            assertTrue(listener.closeLatch.await(TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
+            assertEquals(0, listener.reconnectCount.get());
+            assertSame(ConnectionState.CLOSED, client.state());
+
+            client.connect();
+            awaitCondition(() -> listener.openCount.get() >= 2, TIMEOUT_MILLIS,
+                    "close() 后显式 connect() 应能重新建连");
+
+            first.stop();
+            awaitCondition(() -> !listener.reconnectAttempts().isEmpty(), TIMEOUT_MILLIS,
+                    "显式 connect() 后断线仍应触发自动重连");
+
+            second = startLoopbackServerOn(port);
+            awaitCondition(() -> listener.openCount.get() >= 3, TIMEOUT_MILLIS,
+                    "自动重连应在超时内成功建连");
+        } finally {
+            client.close();
+            first.stop();
+            if (second != null) {
+                second.stop();
+            }
+        }
+    }
+
+    /**
      * 对端持续不可达时自动重连按 {@code maxRetries} 耗尽，触发一次 {@code onReconnectExhausted} 并进入终态。
      */
     @Test

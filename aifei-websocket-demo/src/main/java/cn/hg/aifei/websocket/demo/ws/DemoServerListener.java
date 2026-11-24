@@ -10,12 +10,7 @@ import cn.hg.aifei.websocket.Message;
 import cn.hg.aifei.websocket.ServerListener;
 import cn.hg.aifei.websocket.WebSocketSession;
 
-/**
- * 服务端监听器的演示实现：记录会话级事件，并对每条收到的文本帧**回声**回同一会话。
- *
- * <p>「回调内回声」是模块推荐的写法（回调内可以安全地再调 {@code session.send}），本类据此实现
- * 「客户端 → 服务端 → 客户端」的完整闭环演示。回调运行在底层库的工作线程上，故不做耗时阻塞操作。</p>
- */
+/** 服务端监听器演示实现：记录会话级事件，并对每条收到的帧回声回同一会话。 */
 public class DemoServerListener implements ServerListener {
 
     /**

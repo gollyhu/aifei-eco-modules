@@ -2,7 +2,7 @@
 
 本文是 `aifei-websocket` 的**设计事实来源**：定位、契约、决策与验收以本文为准。面向使用者（安装 / 用法 / 配置）的说明另见 `README.md`；面向开发代理的约束另见模块 `AGENTS.md`。
 
-> **文档状态**：1.0.0 已实现，**尚未发布到任何仓库**。行为语义分两类：**已定档**（§11 的裁决结论，尚未发布；发布后冻结）与**可自主演进**（未定档的其余行为）。已定档项在发布前如需变更，**必须先更新 §11** 并进入新的设计决策。
+> **文档状态**：1.0.0 已实现。行为语义分两类：**已定档**（§11 的裁决结论）与**可自主演进**（未定档的其余行为）。已定档项如需变更，**必须先更新 §11** 并进入新的设计决策。
 
 ---
 
@@ -363,7 +363,7 @@ public enum ConnectionState {
 
 - 客户端与会话**共用**同一枚举。
 - 语义与 W3C / RFC6455 一致：`CONNECTING`（握手进行中）、`OPEN`（可收发）、`CLOSING`（关闭握手进行中）、`CLOSED`（已关闭或从未连接）。
-- > **命名说明（已定档）**：需求草案取名 `ClientState`。本设计统一为 `ConnectionState` 以同时服务客户端与服务端会话、避免两个近义枚举，**不另立 `SessionState`**（定档见 §11，尚未发布；发布后冻结）。
+- > **命名说明（已定档）**：需求草案取名 `ClientState`。本设计统一为 `ConnectionState` 以同时服务客户端与服务端会话、避免两个近义枚举，**不另立 `SessionState`**（定档见 §11）。
 
 ### 4.7 消息：`Message`
 
@@ -510,7 +510,7 @@ public final class WebSocketUtil {
 - **直接构建内建 JDK 实现**（`internal.jdk.JdkWebSocketClient` / `JdkWebSocketServer`），不经任何注册表或 provider；与两个装配入口走同一条路径。
 - `config` / `listener` 为 `null` 抛 `IllegalArgumentException`。
 - 返回的实例**不会自动 `connect` / `start`**：由调用方决定（装配入口会替你 connect / start）。
-- 供「非 aifei 环境」或「程序化、多连接」场景使用；**程序化路径可自行创建任意多个实例**（多连接 / 多实例定档：本期 aifei 装配路径为单客户端 + 单服务端，不引入实例名与 `use(name)` 门面，见 §11，尚未发布；发布后冻结）。
+- 供「非 aifei 环境」或「程序化、多连接」场景使用；**程序化路径可自行创建任意多个实例**（多连接 / 多实例定档：本期 aifei 装配路径为单客户端 + 单服务端，不引入实例名与 `use(name)` 门面，见 §11）。
 - **对象编解码**经 `config.setCodec(...)` 注入；未配置时 `send(Object)` / `broadcast(Object)` 按 §4.1 / §4.3 抛 `IllegalStateException`（aifei 装配路径由 §4.12 的 3 参构造器配置）。
 
 ### 4.11 异常模型
@@ -573,7 +573,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 - `start()` 内：解析配置 → **若 `codec != null` 则先 `setCodec` 进配置对象** → 构建 JDK 实现 → **建连（客户端）/ 启动（服务端）** → 写入 `AopKit` 单例（使 `@Inject WebSocketClient` / `@Inject WebSocketServer` 生效）。
 - `start()` / `stop()` **幂等**；`stop()` 关闭对应实例。
 - 客户端监听器 / 服务端监听器分别为**构造参数**（配置里表达不了对象引用）；这是本模块相对 aifei-cache 的唯一形态差异。
-- **单实例已定档**：aifei 装配路径每类注册**一个**单例（`@Inject WebSocketClient` / `@Inject WebSocketServer` 各一个），**不引入实例名与 `use(name)` 门面**；多连接 / 多实例场景走 `WebSocketUtil` 程序化路径（见 §11，尚未发布；发布后冻结）。
+- **单实例已定档**：aifei 装配路径每类注册**一个**单例（`@Inject WebSocketClient` / `@Inject WebSocketServer` 各一个），**不引入实例名与 `use(name)` 门面**；多连接 / 多实例场景走 `WebSocketUtil` 程序化路径（见 §11）。
 - **`MessageCodec` 同属对象引用，走同一条路**：两个 `Plugin` 各提供 **2 参 / 3 参两个构造器**：
   - `(Prop prop, XxxListener listener)`：**语义等价于 `codec = null`**（不使用对象编解码）；此路径下 `send(Object)` / `broadcast(Object)` 会因未配置编解码器而抛 `IllegalStateException`。
   - `(Prop prop, XxxListener listener, MessageCodec codec)`：用于注入 `MessageCodec`。**若在 aifei 装配路径需要对象编解码，必须使用 3 参构造器**。
@@ -583,7 +583,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 
 ## 5. 内建传输实现：自实现 RFC6455（纯 JDK）
 
-> 原「provider 扩展点 + 注册表 + Java-WebSocket 后端」架构**已删除**。本节是现行架构的传输层事实来源。
+> 本节是现行架构的传输层事实来源。
 
 ### 5.1 定位与装配路径
 
@@ -661,7 +661,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 
 ---
 
-## 6. 行为契约（本次设计重点）
+## 6. 行为契约
 
 ### 6.1 建连与关闭语义
 
@@ -683,7 +683,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 
 ### 6.2 心跳保活
 
-- **参数**：`heartbeatSeconds`（客户端与服务端各自配置）。`0` = 禁用，是本模块的**默认值**（**已定档**：默认关闭，需显式配置开启；见 §11，尚未发布；发布后冻结）。
+- **参数**：`heartbeatSeconds`（客户端与服务端各自配置）。`0` = 禁用，是本模块的**默认值**（**已定档**：默认关闭，需显式配置开启；见 §11）。
 - **机制**：由传输层（`internal.jdk`）自行实现 RFC6455 **ping/pong 控制帧**：按 `heartbeatSeconds` 为周期发出 ping，并期望在 **`1.5 × heartbeatSeconds`** 内收到 pong（细节见 §5.5）。客户端与服务端**都**按各自的 `heartbeatSeconds` 执行。
 - **ping/pong 归属**：
   - **客户端主动 ping**：客户端按周期发出 ping，维持连接穿越代理 / NAT 的保活，并借 pong 判定服务端存活。
@@ -692,7 +692,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 - **pong 计入活跃（服务端活跃刷新）**：pong 不上浮为 `Message`，但服务端传输在收到 pong 帧时调用活跃刷新入口 `AbstractWebSocketServer#refreshSessionActivity`，把 pong 计入会话活跃时间（供 §6.6 空闲回收判活），使「只回 pong、不发数据帧的存活会话」不被误判。该结论的实证责任落在测试批次 **B5**：`LoopbackTest` 须包含「静默但正常回 pong 的会话在超过空闲阈值后仍未被回收」的用例。
 - **超时判活**：在 `1.5 × heartbeatSeconds` 内未收到对端 pong 即判定连接丢失，由传输层关闭连接（触发 `onClose`）。
 - **与自动重连的联动**：连接丢失检测触发的关闭走正常 `onClose` 路径，因此**客户端在开启自动重连时会对心跳超时导致的中断执行重连**（若无心跳，则依赖 TCP 层最终报错，发现更慢）。
-- **不做应用层心跳报文**（**已定档**：仅用 RFC6455 协议层 ping/pong 控制帧，不留应用层心跳扩展点；见 §11，尚未发布；发布后冻结）；`heartbeatSeconds` 的单位是**秒**（避免毫秒 → 秒的取整歧义）。
+- **不做应用层心跳报文**（**已定档**：仅用 RFC6455 协议层 ping/pong 控制帧，不留应用层心跳扩展点；见 §11）；`heartbeatSeconds` 的单位是**秒**（避免毫秒 → 秒的取整歧义）。
 
 ### 6.3 自动重连
 
@@ -702,7 +702,7 @@ public class WebSocketServerPlugin implements cn.aifei.plugin.Plugin {
 
 | 参数 | 默认值 | 含义 |
 | --- | --- | --- |
-| `autoReconnect` | `false` | 是否自动重连（**已定档**默认关闭，显式开启；见 §11，尚未发布；发布后冻结） |
+| `autoReconnect` | `false` | 是否自动重连（**已定档**默认关闭，显式开启；见 §11） |
 | `maxRetries` | `5` | 连续失败重试上限 |
 | `initialRetryDelayMillis` | `500` | 首次重试延迟（毫秒） |
 | `maxRetryDelayMillis` | `30000` | 单次重试延迟上限（毫秒） |
@@ -767,7 +767,7 @@ stateDiagram-v2
 
 - **文本与二进制都支持**：`send(String)` / `send(byte[])` / 收到的 `Message` 均如此。
 - **收到消息**：文本帧 → `Message.text`，二进制帧 → `Message.binary`；分片帧由 `Rfc6455FrameCodec` 聚合（含控制帧穿插）后一次性上浮（不暴露分片概念，见 §5.3）。
-- **发送队列与背压**：**本模块不提供自有发送队列**（**已定档**：不提供自有发送队列与背压；见 §11，尚未发布；发布后冻结）。
+- **发送队列与背压**：**本模块不提供自有发送队列**（**已定档**：不提供自有发送队列与背压；见 §11）。
   - `send*` 仅在 `OPEN` 时成功，否则抛 `IllegalStateException` 且消息被丢弃。
   - 是否在没有可用连接时「排队」由**调用方**决定（例如在自动重连期间，调用方自行缓冲业务消息，待 `onOpen` 后重放）。这样避免在模块内引入无界队列与背压策略。
   - 传输层自身可能对已发出的帧有写缓冲，但其语义不在本模块契约内。
@@ -784,7 +784,7 @@ stateDiagram-v2
 - **空闲会话回收**（`sessionIdleTimeoutSeconds`，默认 `0` = 禁用）：
   - 定义：「空闲」= 会话在 `sessionIdleTimeoutSeconds` 内**没有任何入站帧**（数据帧与 pong 控制帧都算活跃）。
   - **pong 计入活跃（可观测性）**：服务端传输在收到 pong 帧时调用活跃刷新入口 `AbstractWebSocketServer#refreshSessionActivity`，使「只回 pong、不发数据帧的存活会话」**不被**空闲回收误判（硬契约，见 §5.5）。该结论的实证责任落在测试批次 **B5**：`LoopbackTest` 须包含「静默但正常回 pong 的会话在超过空闲阈值后仍未被回收」的用例。
-  - 实现：服务端持有单线程调度器，按 `max(1, sessionIdleTimeoutSeconds)` 秒为周期扫描；某会话空闲时长 ≥ 阈值即以关闭码 `1000`（正常关闭）关闭并注销。
+  - 实现：服务端持有单线程调度器，按 `max(1, sessionIdleTimeoutSeconds)` 秒为周期扫描，某会话空闲时长 ≥ 阈值即以关闭码 `1000`（正常关闭）关闭并注销。
   - 最坏情况回收延迟约为 `2 × sessionIdleTimeoutSeconds`（扫描周期 + 阈值），此点写入 README。
   - 与心跳的关系：心跳检测的是**死连接**（不回 pong），空闲回收检测的是**活着但不说话**的连接；两者独立、可同时启用。
 
@@ -890,9 +890,9 @@ stateDiagram-v2
 | `junit:junit` | 4.13.2 | `test` | 单元 / 契约 / 回环测试 |
 
 - **Java 8 编译目标**：`source` / `target` = `1.8`，主 JAR class major version = 52。
-- **零第三方运行时依赖**：传输层为纯 JDK 自实现（`java.net.Socket` / `javax.net.ssl.SSLSocket`），**运行时不依赖任何第三方库**；旧版 `org.java-websocket:Java-WebSocket`（`optional`）与测试期 `org.slf4j:slf4j-simple` **已删除**。
+- **零第三方运行时依赖**：传输层为纯 JDK 自实现（`java.net.Socket` / `javax.net.ssl.SSLSocket`），**运行时不依赖任何第三方库**。
 - 模块**不使用任何日志门面**（无 SLF4J 依赖）：运行态故障经异常与 `onError` 回调上浮，不落第三方日志。
-- **发布 profile 已定档**：本期**不含** Maven Central 发布 profile（无 `central-release`、无 GPG、无 Central Portal 配置）；只保证 `mvn clean install` 装入本地仓库供消费方使用（见 §11，尚未发布；发布后冻结）。
+- **发布 profile 已定档**：本期**不含** Maven Central 发布 profile（无 `central-release`、无 GPG、无 Central Portal 配置）；只保证 `mvn clean install` 装入本地仓库供消费方使用（见 §11）。
 
 ### 7.2 `aifei-websocket-demo/pom.xml`
 
@@ -974,7 +974,7 @@ stateDiagram-v2
 
 ## 8. 文件清单（实现层照抄）
 
-> 路径相对 `aifei-websocket/`。`（已存在）` 指本次交付物。
+> 路径相对 `aifei-websocket/`。
 
 ```
 aifei-websocket/
@@ -982,7 +982,7 @@ aifei-websocket/
 ├── README.md                                                                  # 面向使用者：安装/用法/配置（B6）
 ├── AGENTS.md                                                                  # 面向开发代理：硬约束/门禁/验证命令（B6）
 ├── docs/
-│   └── design.md                                                              # 本文（已存在）
+│   └── design.md                                                              # 本文
 └── src/
     ├── main/java/cn/hg/aifei/websocket/
     │   ├── WebSocketClient.java                 # 客户端能力接口
@@ -1346,9 +1346,7 @@ mvn test -Dtest=BackoffTest#bounds       # 单用例：类名#方法名
 
 ## 11. 已定档决策（原待确认项的裁决结果）
 
-**本章为定档项**：下列 8 条均已裁决定档，措辞统一为「**已定档（尚未发布；发布后冻结）**」。后续如需变更，**必须先更新本节**并进入新的设计决策，不得在正文中就地改动。
-
-> **传输层重构的连带影响**：§11.5（日志绑定）与 §11.7（provider 单接口 vs 双接口）因「Java-WebSocket 依赖 + provider 扩展点」一并删除而**失效**，两条已就地标注「已删除（旧版）」，保留仅作历史记录；现行事实以 §5 与 §7 为准。其余 6 条继续有效。
+**本章为定档项**：下列 6 条均已裁决定档。后续如需变更，**必须先更新本节**并进入新的设计决策，不得在正文中就地改动。
 
 ### 11.1 枚举命名
 
@@ -1374,35 +1372,19 @@ mvn test -Dtest=BackoffTest#bounds       # 单用例：类名#方法名
 - **定档结论**：定档 **本期为单客户端 + 单服务端**（各 `@Inject` 一个）；多连接 / 多实例场景走 `WebSocketUtil` 程序化路径（可自行创建任意多个实例），**不引入实例名与 `use(name)` 门面**。
 - **定档日期**：2026-10-14
 
-### 11.5 日志绑定（已删除 / 旧版）
-
-- **原待确认项**：日志绑定
-- **定档结论**：定档 **模块不自带日志绑定**：消费方自带 `slf4j-api` + 任一 binding；模块测试期使用 `slf4j-simple`（版本已对齐 Java-WebSocket 传递的 `slf4j-api 2.0.13`）。
-- **定档日期**：2026-10-14
-- **状态（已删除）**：传输层改为纯 JDK 自实现后，模块**不再使用任何日志门面**，`slf4j-simple` 测试依赖一并删除；本条随旧版实现失效，仅作历史记录。现行约定见 §7.1。
-
-### 11.6 应用层心跳报文
+### 11.5 应用层心跳报文
 
 - **原待确认项**：应用层心跳报文
 - **定档结论**：定档 **不做**：仅使用 RFC6455 协议层 ping/pong 控制帧；**不为应用层心跳预留扩展点**。
 - **定档日期**：2026-10-14
 
-### 11.7 provider 单接口 vs 双接口（已删除 / 旧版）
-
-- **原待确认项**：provider 单接口 vs 双接口
-- **定档结论**：定档 **统一单接口 `WebSocketProvider`**（一个实现同时提供两端）；若未来出现只能做一端的后端，在其对应方法抛 `WebSocketException`，**如未来出现再走一次设计决策**。
-- **定档日期**：2026-10-14
-- **状态（已删除）**：provider 扩展点与注册表**已删除**，传输实现唯一且内建于 `internal.jdk`，本条随旧架构失效，仅作历史记录。现行架构见 §1.3 与 §5.1。
-
-### 11.8 Maven Central 发布 profile
+### 11.6 Maven Central 发布 profile
 
 - **原待确认项**：Maven Central 发布 profile
 - **定档结论**：定档 **本期不含** `central-release`（无 GPG、无 Central Portal 配置）；只保证 `mvn clean install` 装入本地仓库供消费方使用。
 - **定档日期**：2026-10-14
 
-以上 8 条为定档基线；正文其余未标注「已定档」的行为语义**可自主演进**。
-
-> 附记（非定档项）：旧版 `javawebsocket.JavaWebSocketSupport` 中的公共常量 `GOING_AWAY`（`1001`）已随该包一并删除；服务端 `stop()` 所需的 `1001` 关闭码由传输实现直接发出（见 §4.3 与 §5.4）。
+以上 6 条为定档基线；正文其余未标注「已定档」的行为语义**可自主演进**。
 
 ---
 

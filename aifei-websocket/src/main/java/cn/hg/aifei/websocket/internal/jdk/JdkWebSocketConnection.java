@@ -92,14 +92,10 @@ public final class JdkWebSocketConnection {
      */
     public static final int NORMAL_CLOSURE = 1000;
 
-    /**
-     * 无可用关闭帧时的关闭码，与公共契约一致。
-     */
+    /** 无可用关闭帧时上报 -1，与公共契约一致。 */
     public static final int NO_CLOSE_CODE = -1;
 
-    /**
-     * 心跳检测任务的执行周期（毫秒）；心跳周期与探活判定都按该节拍检查。
-     */
+    /** 心跳调度与探活判定的共用节拍（毫秒）。 */
     private static final long HEARTBEAT_TICK_MILLIS = 200L;
 
     /**
@@ -132,16 +128,11 @@ public final class JdkWebSocketConnection {
         }
     };
 
-    /**
-     * 全部连接共用的心跳调度器；未开启心跳的连接不产生任务，也就不占用本线程。
-     */
+    /** 全部连接共用的心跳调度器；未开启心跳的连接不占用本线程。 */
     private static final ScheduledExecutorService HEARTBEAT_EXECUTOR =
             Executors.newSingleThreadScheduledExecutor(HEARTBEAT_THREAD_FACTORY);
 
-    /**
-     * 心跳 ping 帧的异步写出执行器：心跳调度线程只负责判定与提交写任务，实际的同步 {@code flush} 交由本执行器，
-     * 避免慢连接的阻塞式写出拖垮 {@link #HEARTBEAT_EXECUTOR} 单线程、进而令所有连接的心跳被连带阻塞。
-     */
+    /** ping 的阻塞写出独立成池，避免慢连接拖垮 {@link #HEARTBEAT_EXECUTOR} 而连累全部连接的心跳。 */
     private static final ExecutorService HEARTBEAT_WRITE_EXECUTOR =
             Executors.newSingleThreadExecutor(HEARTBEAT_THREAD_FACTORY);
 
@@ -385,8 +376,6 @@ public final class JdkWebSocketConnection {
         return JdkSocketSupport.formatAddress(current.getRemoteSocketAddress());
     }
 
-    // ─────────── 内部实现：生命周期 ───────────
-
     /**
      * 客户端角色的建连线程主体：建连 → 握手 → {@code onOpen} → 读循环；任一环节失败按同一条路径收敛。
      */
@@ -627,8 +616,6 @@ public final class JdkWebSocketConnection {
         callback.onClose(code, reason, remote);
     }
 
-    // ─────────── 内部实现：写侧 ───────────
-
     /**
      * 写出一个数据帧；非 {@code OPEN} 时抛运行态故障（消息不排队、直接丢弃）。
      *
@@ -685,8 +672,6 @@ public final class JdkWebSocketConnection {
             out.flush();
         }
     }
-
-    // ─────────── 内部实现：心跳与释放 ───────────
 
     /**
      * 启动心跳：按 {@code heartbeatSeconds} 周期发 ping，并在 {@code 1.5 × heartbeatSeconds} 内未收到 pong 时

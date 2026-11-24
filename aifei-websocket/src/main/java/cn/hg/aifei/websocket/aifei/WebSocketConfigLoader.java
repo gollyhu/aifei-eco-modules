@@ -159,8 +159,6 @@ final class WebSocketConfigLoader {
         return config;
     }
 
-    // ─────────── 值读取：未配置返回 null，语法非法按含键名的配置错误上报 ───────────
-
     /**
      * 读取可选整数；未配置返回 {@code null}，语法非法抛含键名的配置错误。
      *

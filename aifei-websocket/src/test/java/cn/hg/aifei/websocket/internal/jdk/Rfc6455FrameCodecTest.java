@@ -17,6 +17,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.Test;
 
 /**
@@ -51,6 +53,21 @@ public class Rfc6455FrameCodecTest {
         assertEquals(Rfc6455FrameCodec.OPCODE_TEXT, decoded.opcode());
         assertTrue(decoded.fin());
         assertArrayEquals(payload, decoded.payload());
+    }
+
+    /**
+     * 掩码键来自强熵源：连续多帧的 4 字节掩码键不应全部相同（防止回退到固定 key）。
+     */
+    @Test
+    public void shouldUseRandomMaskingKeyPerFrame() {
+        Set<Integer> keys = new HashSet<Integer>();
+        for (int i = 0; i < 32; i++) {
+            byte[] frame = Rfc6455FrameCodec.encode(Rfc6455FrameCodec.OPCODE_TEXT, true,
+                    new byte[] {1}, true);
+            keys.add(Integer.valueOf(((frame[2] & 0xFF) << 24) | ((frame[3] & 0xFF) << 16)
+                    | ((frame[4] & 0xFF) << 8) | (frame[5] & 0xFF)));
+        }
+        assertTrue("连续多帧的掩码键不应全部相同", keys.size() > 1);
     }
 
     /**
@@ -290,8 +307,6 @@ public class Rfc6455FrameCodecTest {
         assertFalse(Rfc6455FrameCodec.isControl(Rfc6455FrameCodec.OPCODE_BINARY));
         assertFalse(Rfc6455FrameCodec.isControl(Rfc6455FrameCodec.OPCODE_CONTINUATION));
     }
-
-    // ─────────── 断言工具 ───────────
 
     /**
      * 断言给定帧字节解码时抛协议错误，且关闭码为期望值。

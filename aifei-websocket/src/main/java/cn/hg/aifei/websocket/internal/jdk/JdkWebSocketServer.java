@@ -135,8 +135,6 @@ public final class JdkWebSocketServer extends AbstractWebSocketServer {
         return current == null ? 0 : current.getLocalPort();
     }
 
-    // ─────────── 内部实现 ───────────
-
     /**
      * 接受循环：每接受一条连接就交给独立线程完成握手与后续读循环，避免慢握手阻塞接受。
      */

@@ -272,8 +272,6 @@ public class JdkWebSocketConnectionTest {
         }
     }
 
-    // ─────────── 测试工具 ───────────
-
     /**
      * 构造客户端配置。
      *

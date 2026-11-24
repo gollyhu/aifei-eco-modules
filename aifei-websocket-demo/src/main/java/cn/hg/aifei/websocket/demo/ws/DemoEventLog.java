@@ -14,18 +14,10 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * 演示用的进程内有界事件日志：客户端监听器与服务端监听器把收到的消息、状态变化与重连事件追加进来，
- * 由 {@code /ws/demo/state} 与 {@code /ws/demo/log} 端点读出去，便于现场肉眼验证行为。
- *
- * <p>日志有固定上限（{@link #MAX_ENTRIES}），超出后丢弃最旧一条，避免演示长时间运行时无界增长。所有方法
- * 均可从任意线程调用（监听器回调线程与 HTTP 请求线程会并发访问）。</p>
- */
+/** 演示用进程内有界事件日志，由演示端点读出；所有方法可从任意线程并发调用。 */
 public final class DemoEventLog {
 
-    /**
-     * 日志条目上限；超出后丢弃最旧一条。
-     */
+    /** 超出后丢弃最旧一条，避免演示长时间运行无界增长。 */
     public static final int MAX_ENTRIES = 200;
 
     /**
@@ -38,9 +30,7 @@ public final class DemoEventLog {
      */
     private static final Object LOCK = new Object();
 
-    /**
-     * 事件条目，按发生顺序保存；受 {@link #LOCK} 保护。
-     */
+    /** 按发生顺序保存；受 {@link #LOCK} 保护。 */
     private static final Deque<String> ENTRIES = new ArrayDeque<String>();
 
     private DemoEventLog() {
