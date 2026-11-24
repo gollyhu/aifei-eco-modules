@@ -67,12 +67,12 @@
 
 - **对象定位（硬约束）**：**禁用** `getFileInfoByUrl` / `delete(String)` / `exists(String)` / `download(String)` 等 String url 一族 API（它们一律委托 `FileRecorder`，默认 `DefaultFileRecorder.getByUrl()` 恒抛异常）；定位一律自行构造 `FileInfo` 后调用 `FileInfo` 一族 API，换算的唯一定义点是 `internal.OssPaths`。
 - **上传**：成功返回 `OssFileInfo`；失败抛 `OssException`；同名路径**跟随 x-file-storage 默认覆盖语义**。
-- **下载**：不存在抛 `OssException`；返回的 `OssObject` **无需关闭**——底层下载器为回调式（无 `getInputStream()`），内容经 `bytes()` / `writeTo(OutputStream)` 按次读取，流在实现内部开启并关闭。
-- **删除**：不存在返回 `false`（不抛异常）；成功返回 `true`。
+- **下载**：返回惰性 `OssObject`，读取内容（`bytes()` / `writeTo(OutputStream)`）时若不存在抛 `OssException`。**无需关闭**——底层下载器为回调式（无 `getInputStream()`），内容按次读取，流在实现内部开启并关闭。
+- **删除**：**幂等**（不存在也返回 `true`，不抛异常）。
 - **存在性**：不存在返回 `false`。
 - **签名 URL**：平台不支持时抛 `OssException`。
 - **列举**：`listFiles(path)` 返回路径列表；分页 `listFiles(path, maxFiles, marker)` 返回 `OssPage`（含子目录、下一页游标与截断标记）。列举依赖平台能力：`local-plus` 支持、`local` 不支持。
-- **复制**：同平台 `copy`（`CopyMode.AUTO`，服务端复制优先、平台不支持时降级为「下载 + 上传」）与跨平台 `copyTo`（`CopyMode.CROSS`）均已接线；两者都先探测平台支持度，不支持即抛 `OssException`；成功返回 `true`。
+- **复制**：同平台 `copy`（`CopyMode.AUTO`，服务端复制优先、平台不支持时降级为「下载 + 上传」）与跨平台 `copyTo`（`CopyMode.CROSS`）均已接线；成功返回 `true`。
 - **平台选择**：`@Inject OssClient` = 默认平台；多平台经 `OssKit.use(name)`。
 - **装配失败即启动失败**：必填配置缺失 / 平台类型未知 / **云 SDK 缺失**，均在 `OssPlugin.start()` 即失败（统一抛 `OssException`，**不**泄漏 `NoClassDefFoundError`），不留半装配状态。**配置与装配问题一律在启动期暴露**，不存在「启动成功但用不了」的隐形故障。
 - **脱敏**：`OssConfig` 的 `toString` 不得输出 `secretKey` 等敏感字段。

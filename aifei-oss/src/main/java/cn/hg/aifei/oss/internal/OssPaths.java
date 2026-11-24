@@ -24,7 +24,7 @@ final class OssPaths {
      */
     static String directory(String path) {
         if (path == null) {
-            throw new OssException("对象路径不能为 null");
+            throw new OssException("object path can not be null");
         }
         int idx = path.lastIndexOf('/');
         return idx < 0 ? "" : path.substring(0, idx + 1);
@@ -51,7 +51,7 @@ final class OssPaths {
     static String filename(String path) {
         String name = directory(path).isEmpty() ? path : path.substring(path.lastIndexOf('/') + 1);
         if (name == null || name.isEmpty()) {
-            throw new OssException("对象路径缺少文件名: " + path);
+            throw new OssException("object path lacks filename: " + path);
         }
         return name;
     }
