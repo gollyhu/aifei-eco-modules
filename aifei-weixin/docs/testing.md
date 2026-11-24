@@ -12,7 +12,7 @@
 
 ## 2. 测试分层
 
-共 18 个测试类、109 个用例（另有 7 个测试辅助类，不含用例）。
+共 18 个测试类、110 个用例（另有 7 个测试辅助类，不含用例）。
 
 | 层次 | 测试类 | 用例数 |
 | --- | --- | --- |
@@ -29,7 +29,7 @@
 | 小程序 | `MiniAppApiTest` | 9 |
 | 支付（下单 / 查单 / 关单 / 退款） | `PayApiTest` | 6 |
 | 支付（商户凭据） | `PayMerchantTest` | 4 |
-| 支付（签名） | `PaySignatureTest` | 3 |
+| 支付（签名） | `PaySignatureTest` | 4 |
 | 支付（回调） | `PayNotifyUtilTest` | 6 |
 | 支付（平台证书） | `PlatformCertManagerTest` | 4 |
 | 支付（GCM） | `AesGcmTest` | 3 |
@@ -170,6 +170,7 @@
 | `PaySignatureTest` | `signVerifiesWithPublicKey` | 签名可验证，篡改内容验证失败 |
 | | `buildAuthorizationHeaderFormat` | 头内 `mchid` / `serial_no` / 10 位时间戳 / 32 位随机串正确，message 互验通过 |
 | | `buildJsapiPayParamsSignsOfficialMessage` | JSAPI 二次签名按官方 message 构造且可验证 |
+| | `buildJsapiPayParamsToJsonHasOfficialKeys` | `toJson()` 解析后含且仅含 appId / timeStamp / nonceStr / package / signType / paySign 六个键，package 形如 `prepay_id=xxx`、signType=RSA，paySign 可按官方签名串验证 |
 | `PayNotifyUtilTest` | `verifyAcceptsValidSignature` | 合法签名 → `true` |
 | | `verifyFailsOnTamperedBodyOrUnknownSerial` | 篡改 body / 未知序列号 / 缺头 → `false` |
 | | `verifyIsCaseInsensitiveOnHeaderNames` | 头名大小写不敏感 |
@@ -188,7 +189,7 @@
 
 ```shell
 # 模块根目录（aifei-weixin）执行
-mvn clean verify   # 主验证命令：全部 109 个用例 + 打包，必须 0 failure / 0 error（架构门禁为 surefire 用例，test 阶段即执行）
+mvn clean verify   # 主验证命令：全部 110 个用例 + 打包，必须 0 failure / 0 error（架构门禁为 surefire 用例，test 阶段即执行）
 mvn test           # 快速迭代：仅跑 test 阶段（本模块无 verify 专属门禁）
 ```
 
@@ -203,7 +204,7 @@ mvn test           # 快速迭代：仅跑 test 阶段（本模块无 verify 专
 | 永久素材与图文素材 | `MediaApi.addMaterial` / `addNewsMaterial` 无自动用例 |
 | 模板消息与二维码创建 | `TemplateMsgApi.send`、`QrcodeApi.create`、`QrcodeApi.shortUrl` 无自动用例 |
 | OAuth2 其余接口 | `buildAuthorizeUrl` / `getUserInfo` / `refreshToken` 未覆盖（仅 `getAccessToken` 被间接覆盖） |
-| 支付门面透传与降级分支 | `PayApi.buildJsapiPayParams` 未直接测；`refund` 的空 `notifyUrl` 分支、错误体非 JSON 的降级分支未覆盖 |
+| 支付门面透传与降级分支 | `refund` 的空 `notifyUrl` 分支、错误体非 JSON 的降级分支未覆盖 |
 | `JdkHttpClient` 成功路径 | GET / POST 正常响应与 `postDownload` 传输未覆盖（仅失败、超时与 multipart 拼装） |
 | 真实微信联调 | 首验、消息回调、支付下单与回调需在真实公众号 / 商户环境人工验证 |
 | 多实例 token 共享 | `AccessTokenCache` 共享实现的正确性由消费方环境验证，SDK 只提供接口与内存实现 |

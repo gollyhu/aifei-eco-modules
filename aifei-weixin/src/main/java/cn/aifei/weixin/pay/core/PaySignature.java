@@ -11,6 +11,7 @@ package cn.aifei.weixin.pay.core;
 import cn.aifei.weixin.core.encrypt.RandomUtil;
 import cn.aifei.weixin.pay.PayMerchant;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.annotation.JSONField;
 import java.nio.charset.StandardCharsets;
 import java.security.Signature;
 import java.util.Base64;
@@ -77,10 +78,8 @@ public class PaySignature {
     }
 
     /**
-     * 拉起支付参数（字段名与 wx.requestPayment 入参一致）。
-     *
-     * <p>以下 getter 语义同字段名；{@link #toJson()} 输出的 JSON 键与小程序 / 公众号
-     * {@code wx.requestPayment} 的入参一一对应，可直接透传给前端。</p>
+     * 拉起支付参数，{@link #toJson()} 输出 appId / timeStamp / nonceStr / package / signType / paySign 六个键，
+     * 与小程序 / 公众号 {@code wx.requestPayment} 的入参一一对应，可直接透传给前端。
      */
     public static class JsapiPayParams {
 
@@ -91,7 +90,10 @@ public class PaySignature {
         /** 对应 wx.requestPayment 的 nonceStr。 */
         private final String nonceStr;
         /** 对应 wx.requestPayment 的 package，形如 {@code prepay_id=xxx}。 */
+        @JSONField(name = "package")
         private final String packageValue;
+        /** 对应 wx.requestPayment 的 signType，固定 RSA。 */
+        private final String signType = "RSA";
         /** 对应 wx.requestPayment 的 paySign。 */
         private final String paySign;
 
@@ -123,15 +125,20 @@ public class PaySignature {
             return packageValue;
         }
 
+        /** @return 签名类型，固定 RSA */
+        public String getSignType() {
+            return signType;
+        }
+
         /** @return 二次签名 paySign */
         public String getPaySign() {
             return paySign;
         }
 
         /**
-         * 序列化为 wx.requestPayment 可直接消费的 JSON（键名同入参）。
+         * 序列化为 wx.requestPayment 可直接消费的 JSON。
          *
-         * @return 含 appId / timeStamp / nonceStr / package / paySign 的 JSON 字符串
+         * @return 含 appId / timeStamp / nonceStr / package / signType / paySign 六个键的 JSON 字符串
          */
         public String toJson() {
             return JSON.toJSONString(this);

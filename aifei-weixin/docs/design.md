@@ -255,6 +255,7 @@ WxApiConfig.set(new JdkHttpClient(), new MemoryAccessTokenCache());   // 使用 
 | `buildJsapiPayParams(...)` | — | 委托 `PaySignature` 做 JSAPI 二次签名 |
 
 - 每次请求即时生成时间戳与随机串，方法线程安全。
+- `buildJsapiPayParams` 的 `toJson()` 输出 `appId` / `timeStamp` / `nonceStr` / `package` / `signType` / `paySign` 六个 `wx.requestPayment` 必填入参；`package` = `prepay_id={prepayId}`，`signType` 固定 `RSA`。Java 侧保留 `getPackageValue()` 兼容既有调用方。
 - 非 2xx 抛 `WxApiException`，错误信息取自响应体的 `code` / `message`；响应体非 JSON 时降级为原文（截断至 200 字符）。
 
 ### 8.2 签名与验签
@@ -267,6 +268,7 @@ WxApiConfig.set(new JdkHttpClient(), new MemoryAccessTokenCache());   // 使用 
 | 应答 / 回调验签串 | `timestamp\nnonce\nbody\n` |
 | 验签失败 | `PayVerifier.verify` 返回 `false`（参数缺失、序列号未知、异常均归为 `false`） |
 | JSAPI 二次签名串 | `appId\ntimeStamp\nnonceStr\nprepay_id={prepayId}\n` |
+| 拉起支付参数 JSON | `appId` / `timeStamp` / `nonceStr` / `package` / `signType` / `paySign` 六个键全必填、键名同 `wx.requestPayment`；`package` = `prepay_id={prepayId}`，`signType` 固定 `RSA`，签名串仅覆盖 `appId` / `timeStamp` / `nonceStr` / `package` |
 
 上述签名串格式由微信支付 V3 协议决定，属**冻结契约**，由 `PaySignatureTest` / `PayNotifyUtilTest` 的官方 message 与互验用例钉住。
 

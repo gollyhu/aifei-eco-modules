@@ -14,11 +14,15 @@ import static org.junit.Assert.assertTrue;
 
 import cn.aifei.weixin.pay.core.PaySignature;
 import cn.aifei.weixin.support.PayTestKeys;
+import com.alibaba.fastjson2.JSONObject;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
@@ -79,6 +83,28 @@ public class PaySignatureTest {
                 + params.getNonceStr() + "\n" + params.getPackageValue() + "\n";
         assertTrue(verifyWith(pair.getPublic(), message, params.getPaySign()));
         assertTrue(params.toJson().contains("\"paySign\""));
+    }
+
+    @Test
+    public void buildJsapiPayParamsToJsonHasOfficialKeys() {
+        java.security.KeyPair pair = PayTestKeys.generateKeyPair();
+        PayMerchant merchant = PayMerchant.of(PayTestKeys.MCH_ID, pair.getPrivate(),
+                PayTestKeys.MCH_SERIAL, PayTestKeys.API_V3_KEY);
+
+        PaySignature.JsapiPayParams params = PaySignature.buildJsapiPayParams(
+                PayTestKeys.APP_ID, merchant, "wx201410272009395522657a690389285100");
+        JSONObject json = JSONObject.parseObject(params.toJson());
+
+        Set<String> expected = new HashSet<>(Arrays.asList(
+                "appId", "timeStamp", "nonceStr", "package", "signType", "paySign"));
+        assertEquals(expected, json.keySet());
+        assertEquals(PayTestKeys.APP_ID, json.getString("appId"));
+        assertEquals("prepay_id=wx201410272009395522657a690389285100", json.getString("package"));
+        assertEquals("RSA", json.getString("signType"));
+
+        String message = json.getString("appId") + "\n" + json.getString("timeStamp") + "\n"
+                + json.getString("nonceStr") + "\n" + json.getString("package") + "\n";
+        assertTrue(verifyWith(pair.getPublic(), message, json.getString("paySign")));
     }
 
     static String signAndCapture(PrivateKey key, String message) {
