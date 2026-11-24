@@ -41,6 +41,9 @@ public class SaTokenConfigLoaderTest {
         Assert.assertEquals(Boolean.TRUE, config.getIsLog());
         Assert.assertEquals("info", config.getLogLevel());
         Assert.assertEquals("http://localhost:18080", config.getCurrDomain());
+        Assert.assertEquals(Boolean.TRUE, config.getDynamicActiveTimeout());
+        Assert.assertEquals(5, config.getMaxTryTimes());
+        Assert.assertEquals(Boolean.TRUE, config.getIsLastingCookie());
     }
 
     @Test

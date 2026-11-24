@@ -38,15 +38,21 @@ public class SaAnnotationInterceptor implements Interceptor {
     @Override
     public void intercept(Invocation inv) throws Exception {
         try {
-            SaAnnotationStrategy.instance.checkMethodAnnotation.accept(inv.getMethod());
-            inv.invoke();
-        } catch (StopMatchException ignored) {
-            // 方法上无注解或标注了 @SaIgnore：放行进入 action
+            checkAnnotation(inv);
             inv.invoke();
         } catch (Exception e) {
             if (!SaTokenErrorSupport.handle(inv, e, errorHandler)) {
                 throw e;
             }
+        }
+    }
+
+    /** 校验方法注解；无注解或标注 @SaIgnore 时直接放行，不向上抛 StopMatchException */
+    private void checkAnnotation(Invocation inv) {
+        try {
+            SaAnnotationStrategy.instance.checkMethodAnnotation.accept(inv.getMethod());
+        } catch (StopMatchException ignored) {
+            // 无注解或 @SaIgnore：放行进入 action
         }
     }
 }

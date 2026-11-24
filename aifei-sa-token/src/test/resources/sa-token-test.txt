@@ -17,3 +17,6 @@ sa-token.is-print = false
 sa-token.is-log = true
 sa-token.log-level = info
 sa-token.curr-domain = http://localhost:18080
+sa-token.dynamic-active-timeout = true
+sa-token.max-try-times = 5
+sa-token.is-lasting-cookie = true

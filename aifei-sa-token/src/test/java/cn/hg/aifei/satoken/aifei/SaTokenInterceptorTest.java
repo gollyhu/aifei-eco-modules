@@ -16,6 +16,7 @@ import cn.dev33.satoken.context.model.SaRequest;
 import cn.dev33.satoken.exception.BackResultException;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.SaTokenException;
+import cn.dev33.satoken.exception.StopMatchException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -180,6 +181,27 @@ public class SaTokenInterceptorTest {
     @Test(expected = IllegalArgumentException.class)
     public void rejectsNullErrorHandler() {
         new SaTokenInterceptor(null);
+    }
+
+    @Test
+    public void propagatesStopMatchExceptionWithoutReinvoking() throws Exception {
+        bindPath("/admin/list");
+        final int[] invokeCount = {0};
+
+        SaTokenInterceptor interceptor = new SaTokenInterceptor(e -> "denied")
+                .setAnnotationCheck(false)
+                .addInclude("/admin/**");
+
+        try {
+            interceptor.intercept(invocation(() -> {
+                invokeCount[0]++;
+                throw new StopMatchException();
+            }));
+            Assert.fail("action 抛 StopMatchException 应向上传播，而非被当作放行信号重复执行");
+        } catch (StopMatchException expected) {
+            // 预期：异常向上传播
+        }
+        Assert.assertEquals("action 不应重复执行", 1, invokeCount[0]);
     }
 
     private static void bindPath(String path) {

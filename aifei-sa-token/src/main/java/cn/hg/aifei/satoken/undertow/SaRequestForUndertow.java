@@ -87,7 +87,7 @@ final class SaRequestForUndertow implements SaRequest {
 
     @Override
     public String getCookieLastValue(String name) {
-        // UnderTow 的 exchange.getRequestCookie(name) 只返回单个 Cookie，last 与 first 等价，故直接委托 getCookieFirstValue。
+        // Undertow 的 exchange.getRequestCookie(name) 只返回单个 Cookie，last 与 first 等价，故直接委托 getCookieFirstValue。
         return getCookieFirstValue(name);
     }
 

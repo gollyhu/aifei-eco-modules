@@ -133,7 +133,7 @@ public class SaTokenUndertowDispatcher<I extends Input, O extends Output>
 }
 ```
 
-三个模型对象均为**无状态**，每次请求新建，数据实际存放在线程变量（`SaTokenUndertowContext`）与 `exchange` 上。
+`SaRequest` / `SaResponse` 为**无状态**，数据取自线程变量 `SaTokenUndertowContext`；`SaStorage` 因需通过 `AttachmentKey` 把请求级数据挂到 `exchange`，构造时持有 `exchange` 引用，但每次请求新建、不跨请求共享，同样无跨请求状态。
 
 `init()` 中另包一层 `Handler`，用于在业务执行期间绑定 aifei 已创建的 `Input`：
 
@@ -190,8 +190,6 @@ public void intercept(Invocation inv) throws Exception {
             auth.check();
         }
         inv.invoke();
-    } catch (StopMatchException ignored) {
-        inv.invoke();
     } catch (Exception e) {
         if (!SaTokenErrorSupport.handle(inv, e, errorHandler)) {
             throw e;
@@ -210,7 +208,7 @@ public void intercept(Invocation inv) throws Exception {
 
 | 异常 | 处理 |
 |---|---|
-| `StopMatchException` | 不处理（返回 `false`），由调用方放行 |
+| `StopMatchException` | 不处理（返回 `false`）；正常流程已在注解检查阶段消化，仅业务 action 抛出时向上传播 |
 | `BackResultException` | 取其 `result` 作为 action 返回值 |
 | 其余 `SaTokenException` | 交给 `SaTokenErrorHandler`，返回值经 `inv.setReturnValue` 渲染 |
 
@@ -364,6 +362,9 @@ dispatch(exchange)
 | `sa-token.token-name` | token 名称（同时是 Cookie 名与参数名） |
 | `sa-token.timeout` | token 有效期（秒） |
 | `sa-token.active-timeout` | 最低活跃频率（秒） |
+| `sa-token.dynamic-active-timeout` | 是否启用动态 active-timeout，按剩余有效期动态调整活跃频率；false 可节省缓存请求次数 |
+| `sa-token.max-try-times` | 创建 token 时保证唯一性的最高循环次数（-1 表示不循环尝试、直接使用） |
+| `sa-token.is-lasting-cookie` | 是否为持久 Cookie（临时 Cookie 关闭浏览器即失效，持久 Cookie 重新打开后仍有效） |
 | `sa-token.is-concurrent` | 是否允许同账号多地登录 |
 | `sa-token.is-share` | 多人登录同账号是否共用 token |
 | `sa-token.max-login-count` | 同账号最大登录数 |

@@ -66,7 +66,7 @@ mvn test                 # 快速迭代可只跑 test 阶段（本模块无 veri
 | `sameExpressionReusesCompiledInstance` | 同表达式返回同一实例（缓存生效） |
 | `rejectsBlankExpression` | 空表达式抛出异常 |
 
-### 3.4 `SaTokenInterceptorTest`（8 例）
+### 3.4 `SaTokenInterceptorTest`（9 例）
 
 | 用例 | 断言 |
 |---|---|
@@ -78,6 +78,7 @@ mvn test                 # 快速迭代可只跑 test 阶段（本模块无 veri
 | `propagatesNonSaTokenException` | 非 Sa-Token 异常继续向上传播，不被吞掉 |
 | `ruleListsAreUnmodifiable` | 规则列表对外只读 |
 | `rejectsNullErrorHandler` | 构造时拒绝 null 策略 |
+| `propagatesStopMatchExceptionWithoutReinvoking` | action 抛 StopMatchException 时异常向上传播且 action 只执行一次 |
 
 用例通过 `SaTokenContextForThreadLocalStaff` 装配上下文，并以 `StubRequest` 提供请求路径，**不依赖真实 HTTP 栈**。
 

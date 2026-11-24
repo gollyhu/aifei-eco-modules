@@ -121,7 +121,7 @@ sa-token.is-write-header = true
 sa-token.token-prefix = Bearer
 ```
 
-常用键：`token-name`、`timeout`、`active-timeout`、`is-concurrent`、`is-share`、`max-login-count`、`is-read-body` / `is-read-header` / `is-read-cookie`、`is-write-header`、`token-style`、`token-prefix`、`data-refresh-period`、`auto-renew`、`is-print`、`is-log`、`log-level`、`curr-domain`。
+常用键：`token-name`、`timeout`、`active-timeout`、`dynamic-active-timeout`、`is-concurrent`、`is-share`、`max-login-count`、`max-try-times`、`is-read-body` / `is-read-header` / `is-read-cookie`、`is-lasting-cookie`、`is-write-header`、`token-style`、`token-prefix`、`data-refresh-period`、`auto-renew`、`is-print`、`is-log`、`log-level`、`curr-domain`。
 
 取值非法会**在应用启动时**直接报错并指明出错键名，不会静默降级。
 

@@ -61,9 +61,6 @@ public class SaTokenInterceptor implements Interceptor {
                 auth.check();
             }
             inv.invoke();
-        } catch (StopMatchException ignored) {
-            // 注解要求跳过鉴权，或鉴权链主动停止匹配：放行进入 action
-            inv.invoke();
         } catch (Exception e) {
             if (!SaTokenErrorSupport.handle(inv, e, errorHandler)) {
                 throw e;
