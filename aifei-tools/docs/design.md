@@ -43,7 +43,7 @@
 ## 1. 实现方案
 
 ### 1.1 模块划分（库模块／无 Plugin 门面型）
-`io.github.gollyhu:aifei-tools:1.0.0`，包名 `cn.hg.aifei.tools`，Java 8（class major 52），无根聚合 pom、独立构建。定位「极简工具集」：**根包零公共类型**，工具按子包隔离、各自独立可用、无跨工具抽象。工具清单（当前 4 个）：
+`io.github.gollyhu:aifei-tools:1.0.0`（五子包基线，详见 §10.7），包名 `cn.hg.aifei.tools`，Java 8（class major 52），无根聚合 pom、独立构建。定位「极简工具集」：**根包零公共类型**，工具按子包隔离、各自独立可用、无跨工具抽象。工具清单（当前 5 个）：
 
 | 子包 | 公共类型 | internal（非承诺） |
 | --- | --- | --- |
@@ -51,10 +51,13 @@
 | `cn.hg.aifei.tools.captcha` | `Captcha` / `CaptchaKit` / `CaptchaType` / `CaptchaException`（N=4） | `CaptchaStore` / `LruCaptchaStore` / `ClusterCaptchaStore` / `CaptchaDeps` / `CaptchaErrors` / `TokenGenerator` / `ImageGenerator` |
 | `cn.hg.aifei.tools.qr` | `QrKit` / `QrOptions` / `QrErrorCorrection` / `QrException`（N=4） | `QrDeps` / `QrErrors` / `ImageCodec` |
 | `cn.hg.aifei.tools.mask` | `MaskUtil` / `MaskKit` / `MaskException`（N=3） | `MaskRegistry` / `MaskErrors` / `DefaultMasks` |
+| `cn.hg.aifei.tools.kdf` | `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException`（N=4） | `KdfErrors` / `HkdfEngine` / `Pbkdf2Engine` / `HmacEngine` |
+
+五子包共 **20 个公共类型**（ipdb 5 + captcha 4 + qr 4 + mask 3 + kdf 4）。kdf 子包形态对齐 `qr`（门面 + 值对象 + 枚举 + 异常，4 类型）；internal 放三个算法实现 + `KdfErrors` 消息唯一定义点（前缀 `kdf: `）。kdf 是**纯 JDK 零第三方**工具：HKDF（RFC 5869 extract+expand，`javax.crypto.Mac`）、PBKDF2（RFC 8018，`javax.crypto.SecretKeyFactory` + `PBEKeySpec`）、HMAC（`javax.crypto.Mac`，作派生原语 `HMAC(secret,challenge)→key`）；哈希档位 SHA-256 + SHA-512（`KdfHash` 枚举，`java.security.MessageDigest`）。`javax.crypto.*` / `java.security.*` import 仅允许出现在 `kdf/internal/`（门禁⑱边界断言）。
 
 无 Plugin、无配置键、无 SPI、无 `aifei` 接入包、零 `cn.aifei.*` 引用、零日志绑定、无 DB／Web 面（对齐 `aifei-excel`/`aifei-trace` 的不适用章节声明）。
 
-> **扩展指针**：后续追加第 5、第 6 … 个工具时，一律按 §10「后续工具扩展约定」执行——新增子包 + 门禁纯追加 + 不改既有签名 + 四文档同步；当前四子包 / 16 公共类型 / 17 例门禁不因此变动。
+> **扩展指针**：后续追加第 6、第 7 … 个工具时，一律按 §10「后续工具扩展约定」执行——新增子包 + 门禁纯追加 + 不改既有签名 + 四文档同步；当前五子包 / 20 公共类型 / 21 例门禁不因此变动（kdf 已按 §10 落地，门禁 17 → 21，见 §6.2）。
 
 ### 1.2 技术选型
 - 语言/构建：Java 8 + Maven（`source/target=1.8`、UTF-8、surefire `workingDirectory=${project.basedir}`）。
@@ -68,6 +71,7 @@
 - **captcha**：`CaptchaKit.generate(type)` → `TokenGenerator`（SecureRandom token + 字符/算式题及答案）→ `ImageGenerator`（Graphics2D PNG）→ 存答案进 `CaptchaStore`（默认 LRU / 可切集群）→ 返回 `Captcha`；`verify(token,input)` → 取答案比对（一次性消费，成功即删、失败计数超限失效）→ boolean。
 - **qr**：`QrKit.encode(text[, options])` → `QrDeps.requireZxing()`（缺失→可读 `QrException`）→ `QrOptions.defaults()`/`of(...)`（size=300/margin=4/EC=M，UTF-8 内部固定）→ ZXing `MultiFormatWriter` 出 `BitMatrix` → `ImageCodec.toPng(BitMatrix)`（`Graphics2D`/`ImageIO`）→ `byte[]` PNG；`decode(byte[]|InputStream)` → `ImageCodec` 还原 `BitMatrix` → ZXing `MultiFormatReader` → 文本（InputStream 变体**不关闭调用方流**）。
 - **mask**：`DefaultMasks` 初始化时把 `phone`/`idCard`/`bankCard`/`email`/`name`/`fixedPhone`/`password`/`address`/`ip` 九个默认规则注册进 `MaskRegistry`（唯一 `ConcurrentHashMap`）→ 业务 `MaskKit.register/replace/use` 操作注册表 → `MaskUtil.maskXxx(x)` 转发 `use("xxx").apply(x)`（`replace` 后默认规则自动跟随）；通用 `mask(value,keepLeft,keepRight[,maskChar])` 直接按保留位数打码。
+- **kdf**：`KdfKit.derive(spec, ikm[, data])` 按 `KdfSpec` 的 algorithm 维分派到 internal 引擎——HKDF 走 `HkdfEngine`（extract: `HMAC(salt, IKM)` 得 PRK；expand: `HMAC(PRK, info||counter)` 按 RFC 5869 循环生成长度，`javax.crypto.Mac.getInstance("HmacSHA256"/"HmacSHA512")`）、PBKDF2 走 `Pbkdf2Engine`（**手动 HMAC PRF 循环 RFC 8018 §5.2**：`Mac.getInstance("Hmac"+hash)` + `SecretKeySpec(password, ...)`，`DK = T_1‖…‖T_l`，`T_i = F(P, S, c, i) = U_1‖…‖U_c`，`U_1 = HMAC(P, S‖INT_32_BE(i))`、`U_j = HMAC(P, U_{j-1})`；纯 JDK 零第三方，输出满足任意 keyLen；**不使用 `SecretKeyFactory` 路线**——SunJCE 的 `PBKDF2SecretKey.getEncoded()` 返回 key 长度受 PBE cipher 约束，无法满足"任意 keyLen 输出"契约，偏离点见 §8-F1'）、HMAC 走 `HmacEngine`（`Mac.getInstance("HmacSHA256"/"HmacSHA512")`，`HMAC(secret, data)→key`，作最小派生原语；secret=ikm、data=第三入参，对齐 RFC 2104 `HMAC(K, text)` 两入参形态）；`KdfHash` 决定 `Mac`/`MessageDigest` 的算法名后缀；`KdfErrors` 是全部 `kdf: ` 消息与 `KdfException` 构造的唯一定义点；算法名非法/参数非法（salt 长度、iterations ≤0、keyLen ≤0、info null 等）抛可读 `KdfException`。
 
 ## 2. 文件清单（相对 `aifei-tools/`，每个文件恰好归属一个任务，见 §5）
 
@@ -123,8 +127,18 @@ aifei-tools/
     │           ├── MaskRegistry.java          [T15] ConcurrentHashMap 唯一持有者
     │           ├── MaskErrors.java            [T15] 异常唯一构造点+消息（前缀 mask: ）
     │           └── DefaultMasks.java          [T15] 9 默认规则初始注册唯一定义点
+    │   └── kdf/
+    │       ├── KdfKit.java                    [T21] 全静态门面 derive(spec,ikm) 两参 + derive(spec,ikm,data) 三参（无状态，对齐 QrKit）
+    │       ├── KdfSpec.java                   [T21] 派生参数值对象（algorithm+hash+salt+iterations+info+keyLen）
+    │       ├── KdfHash.java                   [T21] 枚举 SHA256/SHA512
+    │       ├── KdfException.java              [T21] 统一异常
+    │       └── internal/
+    │           ├── KdfErrors.java             [T20] 异常唯一构造点+消息（前缀 kdf: ）
+    │           ├── HkdfEngine.java            [T20] HKDF RFC5869 extract+expand（javax.crypto.Mac）
+    │           ├── Pbkdf2Engine.java          [T20] PBKDF2 手动 HMAC PRF 循环 RFC8018 §5.2（Mac+SecretKeySpec，非 SecretKeyFactory，§8-F1'）
+    │           └── HmacEngine.java            [T20] HMAC 派生原语 RFC2104（javax.crypto.Mac，secret=ikm、data=第三入参，§8-F10）
     └── test/java/cn/hg/aifei/tools/
-        ├── ArchitectureBoundaryTest.java      [T10] 门禁 17 例
+        ├── ArchitectureBoundaryTest.java      [T10] 门禁 21 例（原17 + kdf追加4）
         ├── ipdb/
         │   ├── IpSearcherTest.java            [T08] 三模式一致/命中/close 幂等/非法参数/依赖缺失/并发
         │   ├── IpRegionTest.java              [T08] 五段解析/"0"→空串/查不到全空
@@ -141,6 +155,12 @@ aifei-tools/
         │   ├── MaskUtilTest.java              [T18] 通用 mask + 9 默认规则 + replace 跟随
         │   ├── MaskKitTest.java               [T18] register/replace/use 三态 + 默认规则在册不可删
         │   └── PublicApiContractMaskTest.java [T18] 公共面形态与签名
+        ├── kdf/
+        │   ├── HkdfTest.java                  [T22] HKDF RFC5869 附录A向量（SHA256/SHA512，逐字比对字节）
+        │   ├── Pbkdf2Test.java                [T22] PBKDF2 RFC8018/RFC6070向量（HmacSHA256/HmacSHA512）
+        │   ├── HmacTest.java                  [T22] HMAC RFC4231测试向量
+        │   ├── KdfKitTest.java                [T22] 三算法门面分派+参数非法+keyLen任意长度
+        │   └── PublicApiContractKdfTest.java  [T22] 公共面形态与签名
         └── support/
             └── IpSampleData.java              [T08] 内嵌 base64 最小 v4/v6 xdb 样本常量（不提交二进制）
 
@@ -259,6 +279,42 @@ public final class MaskException extends RuntimeException {
 }
 ```
 `UnaryOperator` 为 `java.util.function.UnaryOperator`（JDK 类型）；九个默认规则 `maskXxx` 均转发注册表，故 `replace` 后自动跟随（冻结契约）。
+
+### 3.5 kdf 子包（N=4）
+
+> 算法名以 `String` 常量表达（`KdfSpec` 内校验合法值集合 {`"HKDF"`, `"PBKDF2"`, `"HMAC"`}），档位以 `KdfHash` 枚举表达——这是 Q2 裁决的**参数组合形态**（algorithm + hash 两维），不采用 `HKDF_SHA256` 笛卡尔枚举。理由：① 三算法入参集合异构（HKDF 需 salt+info、PBKDF2 需 salt+iterations、HMAC 仅需 secret），单枚举常量无法承载差异；② 扩档位只加 `KdfHash` 一行，不爆笛卡尔积；③ 与需求文档默认假设一致。algorithm 合法值集合在 `KdfSpec` 内以常量校验，`KdfErrors` 抛出非法值。
+
+```java
+public final class KdfKit {                                        // 全静态门面（无状态，对齐 QrKit 命名例外）
+    private KdfKit();
+    public static byte[] derive(KdfSpec spec, byte[] ikm);         // 两参重载：data 传 null；HKDF/PBKDF2 忽略 data、HMAC 视 data 为空字节（HMAC(ikm, "")）
+    public static byte[] derive(KdfSpec spec, byte[] ikm, byte[] data);  // 三参重载：按 spec.algorithm 分派；ikm = 输入密钥材料（HKDF 的 IKM / PBKDF2 的 password / HMAC 的 secret=K）；data = HMAC 的 message=text（对齐 RFC 2104 HMAC(K,text) 两入参），HKDF 传 null 忽略、PBKDF2 传 null 忽略、HMAC 传 null 视为空字节；返回 keyLen 字节密钥
+}
+public final class KdfSpec {                                       // 派生参数值对象（algorithm + hash + salt + iterations + info + keyLen）
+    public static KdfSpec hkdf(KdfHash hash, byte[] salt, byte[] info, int keyLen);              // HKDF：salt 可空（RFC5869 默认全0 HashLen 字节）、info 可空（作空字节）、keyLen > 0 且 ≤ 255×HashLen
+    public static KdfSpec pbkdf2(KdfHash hash, byte[] salt, int iterations, int keyLen);          // PBKDF2：salt 不可空、iterations > 0、keyLen > 0
+    public static KdfSpec hmac(KdfHash hash, int keyLen);                                         // HMAC 派生原语：HMAC(secret=ikm, data)→key；secret 经 KdfKit.derive 入参 ikm 传入、data 经第三入参传入（spec 不持运行期 secret/data，只持 hash+keyLen）
+    public String getAlgorithm();                                  // "HKDF"/"PBKDF2"/"HMAC"
+    public KdfHash getHash();                                      // SHA256/SHA512
+    public byte[] getSalt();                                       // HKDF 可空；PBKDF2 非空；HMAC 返回 null
+    public int getIterations();                                    // 仅 PBKDF2 用；HKDF/HMAC 返回 0
+    public byte[] getInfo();                                       // 仅 HKDF 用；PBKDF2/HMAC 返回 null
+    public int getKeyLen();                                        // 输出密钥字节长度，> 0；HMAC 模式 keyLen≤HashLen 截取前 keyLen 字节、keyLen>HashLen 按 RFC5869 expand 风格循环扩展（HMAC 作 PRF）
+}
+public enum KdfHash { SHA256, SHA512 }                             // → HmacSHA256/HmacSHA512（Mac 算法名后缀）；PBKDF2 手动 PRF 循环用同一 Mac 算法名
+public final class KdfException extends RuntimeException {
+    public KdfException(String message);
+    public KdfException(String message, Throwable cause);
+}
+```
+
+> **HMAC 派生原语签名裁决（§8-F10，层B阻塞项）**：`KdfKit.derive` 提供**两参与三参两个重载**。三参重载 `(spec, ikm, data)` 的 `data` 是 HMAC 的 message（RFC 2104 `HMAC(K, text)` 的 text），供层B `KDF(sn, challenge)` 传入 `ikm=sn`（secret）、`data=challenge`（message）。两参重载 `(spec, ikm)` 是便捷形式，等价于 `data=null`——HMAC 视为空字节 `HMAC(ikm, "")`，HKDF/PBKDF2 忽略 data。**不采用方案②（spec 持 challenge）**：challenge 是运行期握手数据、每次握手都变，值对象不应持有运行期数据；**不采用方案③（ikm=sn‖challenge）**：拼接是 hack、边界歧义、与 RFC 2104 两入参定义不符。HMAC 的 keyLen 语义：原始输出 = HashLen（SHA-256=32/SHA-512=64），keyLen≤HashLen 截取前 keyLen 字节、keyLen>HashLen 按 RFC 5869 expand 风格循环扩展（HMAC 作 PRF），与 §9"任意 keyLen 输出"一致。
+
+**Q1 裁决**：kdf 公共面精确 **N=4**，类型为 `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException`（门面 + 值对象 + 枚举 + 异常，对齐 `qr` 子包 4 类型范式）。不单设 `KdfAlgorithm` 枚举——algorithm 用 `String` + `KdfSpec` 内校验，避免与 `KdfHash` 形成笛卡尔耦合（详见 Q2）。
+
+**Q2 裁决**：**参数组合**（algorithm + hash 两维），不采用 `HKDF_SHA256` 笛卡尔枚举。算法名以 `String` 表达、档位以 `KdfHash` 枚举表达。理由见本节首段。
+
+`KdfKit.derive` 是唯一公共入口（两参与三参两个重载），按 `spec.getAlgorithm()` 分派到 `HkdfEngine` / `Pbkdf2Engine` / `HmacEngine`（internal，非承诺）。三引擎均用 `javax.crypto.Mac`（HKDF/HMAC 直接用、PBKDF2 手动 PRF 循环用），PBKDF2 不使用 `SecretKeyFactory` 路线（偏离点 §8-F1'）。`javax.crypto.*` / `java.security.*` import 仅允许 `kdf/internal/`（`java.security.` 放宽至 captcha/internal，门禁⑲）。`KdfSpec` 三个静态工厂 `hkdf` / `pbkdf2` / `hmac` 是构造唯一入口（私有构造器，值对象不可变；getIterations 在非 PBKDF2 算法返回 0、getInfo 在非 HKDF 算法返回 null、getSalt 在 HMAC 返回 null，便于调用方无差别读）。`KdfErrors` 是 `KdfException` 构造与全部 `kdf: ` 消息的唯一定义点（门禁⑳扩充覆盖 `kdf: ` 前缀，归入门禁⑪）。
 
 ## 4. 调用流程（Mermaid）
 
@@ -387,7 +443,47 @@ sequenceDiagram
     U-->>Biz: 脱敏结果
 ```
 
-## 5. 任务列表（T01…T18，逐步依赖；每文件恰好一个任务）
+### 4.5 kdf 密钥派生（三算法分派）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Biz as 业务代码
+    participant Kit as KdfKit
+    participant Spec as KdfSpec
+    participant Err as KdfErrors(internal)
+    participant H as HkdfEngine(internal)
+    participant P as Pbkdf2Engine(internal)
+    participant M as HmacEngine(internal)
+    participant JCE as javax.crypto.Mac (JDK)
+    Biz->>Spec: hkdf(hash,salt,info,keyLen) / pbkdf2(hash,salt,iters,keyLen) / hmac(hash,keyLen)
+    Spec-->>Biz: KdfSpec（值对象，校验合法值，不持运行期 ikm/data）
+    Biz->>Kit: derive(spec, ikm) 或 derive(spec, ikm, data)
+    Kit->>Err: 校验 spec/ikm 非空（缺失→KdfException 可读）
+    alt algorithm = HKDF
+        Kit->>H: derive(spec, ikm)（data 忽略）
+        H->>JCE: Mac.getInstance("Hmac"+hash)
+        H->>H: extract: HMAC(salt, IKM) → PRK（salt 空则全0 HashLen 字节）
+        H->>H: expand: HMAC(PRK, info‖counter) 循环到 keyLen（RFC5869）
+        H-->>Kit: keyLen 字节密钥
+    else algorithm = PBKDF2
+        Kit->>P: derive(spec, ikm)（data 忽略）
+        P->>JCE: Mac.getInstance("Hmac"+hash) + SecretKeySpec(ikm, ...)
+        P->>P: 手动 PRF 循环 RFC8018 §5.2：DK=T_1‖…‖T_l，T_i=F(P,S,c,i)
+        Note over P: U_1=HMAC(P,S‖INT_32_BE(i))、U_j=HMAC(P,U_{j-1})；纯 JDK，任意 keyLen
+        P-->>Kit: keyLen 字节密钥
+    else algorithm = HMAC
+        Kit->>M: derive(spec, ikm, data)（data 传 null→空字节）
+        M->>JCE: Mac.getInstance("Hmac"+hash)
+        M->>JCE: init(SecretKeySpec(ikm=secret, ...)); doFinal(data=message)
+        Note over M: 对齐 RFC2104 HMAC(K,text)：ikm=K、data=text；层B KDF(sn,challenge)→ikm=sn、data=challenge
+        M->>M: keyLen≤HashLen 截取前 keyLen；keyLen>HashLen 按 RFC5869 expand 风格循环扩展
+        M-->>Kit: keyLen 字节密钥
+    end
+    Kit-->>Biz: byte[] 密钥
+```
+
+## 5. 任务列表（T01…T22，逐步依赖；每文件恰好一个任务；T19 预留不用）
 
 | 任务 | 内容（文件，见 §2 标签） | 依赖 | 优先级 | 验收 |
 | --- | --- | --- | --- | --- |
@@ -409,9 +505,13 @@ sequenceDiagram
 | T16 mask 公共面 | `MaskUtil.java` · `MaskKit.java` · `MaskException.java` | T15 | P0 | §3.4 签名逐字一致；register/replace/use 三态正确；`maskXxx≡use(...).apply`；replace 后跟随 |
 | T17 qr 测试 | `QrKitTest.java` · `PublicApiContractQrTest.java` | T14 | P0 | §9 qr 验收覆盖；全离线；decode 闭环与"不关闭调用方流"用例按 §8-C1/§8-C3 已定档口径实施 |
 | T18 mask 测试 | `MaskUtilTest.java` · `MaskKitTest.java` · `PublicApiContractMaskTest.java` | T16 | P0 | §9 mask 验收覆盖；默认规则在册与 replace 跟随 |
+| **T20 kdf 内核** | `KdfErrors.java` · `HkdfEngine.java` · `Pbkdf2Engine.java` · `HmacEngine.java` | T01 | P0 | `KdfErrors` 为 `KdfException` 构造与全部 `kdf: ` 消息唯一定义点（门禁⑪扩充）；`HkdfEngine` 按 RFC5869 extract(`HMAC(salt,IKM)→PRK`)+expand(`HMAC(PRK,info‖counter)` 循环到 keyLen)；`Pbkdf2Engine` **手动 HMAC PRF 循环 RFC8018 §5.2**（`Mac+SecretKeySpec`，DK=T_1‖…‖T_l，T_i=F(P,S,c,i)，非 SecretKeyFactory 路线，§8-F1'）；`HmacEngine` 用 `Mac.getInstance("Hmac"+hash)`，`HMAC(secret=ikm, data=第三入参)` 对齐 RFC2104（§8-F10）；`javax.crypto` 仅 `kdf/internal/`、`java.security` 仅 `kdf/internal/`+`captcha/internal/`（门禁⑲，§8-F11） |
+| **T21 kdf 公共面** | `KdfKit.java` · `KdfSpec.java` · `KdfHash.java` · `KdfException.java` | T20 | P0 | §3.5 签名逐字一致；`KdfKit.derive` 两参+三参两重载，按 algorithm 分派三引擎；`KdfSpec` 三静态工厂 `hkdf`/`pbkdf2`/`hmac` 是构造唯一入口、值对象不可变；algorithm 合法值集合 {HKDF,PBKDF2,HMAC} 在 `KdfSpec` 校验、非法抛 `KdfException`；公共签名零第三方（门禁⑧扩充覆盖 kdf 公共层） |
+| **T22 kdf 测试** | `HkdfTest.java` · `Pbkdf2Test.java` · `HmacTest.java` · `KdfKitTest.java` · `PublicApiContractKdfTest.java` | T21 | P0 | HKDF 对标 RFC5869 附录A向量（SHA256/SHA512 两档，逐字比对输出字节）；PBKDF2 对标 RFC7914 §B.1（PBKDF2-HMAC-SHA256 官方向量，不使用 RFC6070 那是 PBKDF1，§8-F7）；HMAC 对标 RFC4231 + 三参重载 derive(spec,ikm,data) 的 data=message 路径（§8-F10）；`KdfKitTest` 覆盖三算法门面分派 + 参数非法（keyLen≤0/iterations≤0/salt null/algorithm 非法）+ 任意 keyLen 输出（PBKDF2 手动 PRF，§8-F1'）；全离线零联网 |
 
-> 实现期硬纪律：T02–T09、T13–T18 不得改公共面签名（§8-E1 已定档的 `IpRegion.of(...)` 方法级补充为唯一例外）；发现签名不可行须先回写本文 §3 再改代码（根 AGENTS.md）。
+> 实现期硬纪律：T02–T09、T13–T18、T20–T22 不得改公共面签名（§8-E1 已定档的 `IpRegion.of(...)` 方法级补充为唯一例外）；发现签名不可行须先回写本文 §3 再改代码（根 AGENTS.md）。
 > qr 的 `decode` 相关实现与测试（T14/T17）所依赖的行为口径已于 §8-C1/§8-C3 定档（保留 decode、失败抛 `QrException` 且保留 cause、不返回 null），按此开工；null/空输入语义见 §8-C2 与 §7.2。
+> kdf 的实现与测试（T20–T22）按 §3.5 公共签名与 §6.2 门禁 ⑱⑲⑳⑳'（追加4例）开工；三算法实现要点见 §3.5 与 §1.3；测试对标 RFC5869/RFC8018/RFC6070/RFC4231 标准向量逐字比对（§九 P0 映射）。
 
 ## 6. 依赖与门禁
 
@@ -428,7 +528,9 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 
 零日志绑定（禁 slf4j/logback/log4j）、零 DB、零 Web。**根 AGENTS.md 无需新增登记**（公共面零框架/第三方类型、无 compile 例外），同 `aifei-excel`。
 
-### 6.2 门禁 `ArchitectureBoundaryTest` 断言清单（17 例，正式定档需求三推荐口径）
+> **kdf 子包依赖**：纯 JDK 工具，**不新增任何第三方依赖**（HKDF/PBKDF2/HMAC 均用 JDK 8 自带 `javax.crypto.Mac` / `javax.crypto.SecretKeyFactory` + `javax.crypto.spec.PBEKeySpec` / `java.security.MessageDigest`，无 optional 内核）；pom 依赖清单不变，版本号 `1.0.0`。
+
+### 6.2 门禁 `ArchitectureBoundaryTest` 断言清单（21 例：原 17 + kdf 追加 4，正式定档需求三推荐口径 + §10 扩展约定）
 
 | # | 方法 | 判定口径 |
 | --- | --- | --- |
@@ -449,14 +551,20 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | ⑮ | `qrPublicSurfaceExact` | `qr/` 直接子 `.java` 精确 4 且集合 = {QrKit,QrOptions,QrErrorCorrection,QrException} |
 | ⑯ | `zxingOnlyInQrInternal` | `import com.google.zxing.` 仅允许 `qr/internal/` 下文件 |
 | ⑰ | `maskPublicSurfaceExact` | `mask/` 直接子 `.java` 精确 3 且集合 = {MaskUtil,MaskKit,MaskException} |
+| ⑱ | `kdfPublicSurfaceExact` | `kdf/` 直接子 `.java` 精确 4 且集合 = {KdfKit,KdfSpec,KdfHash,KdfException}（集合相等，防同名替换；口径对齐门禁②③⑮⑰） |
+| ⑲ | `cryptoOnlyInKdfInternal` | `import javax.crypto.` 仅允许 `kdf/internal/` 下文件；`import java.security.` 仅允许 `kdf/internal/` 与 `captcha/internal/`（captcha 既有 `SecureRandom` 合法用法，1.0.0 既有代码不破坏）。JDK 加密 API 边界；kdf 是纯 JDK 工具、无第三方内核，故无 `org.lionsoul.` 等第三方边界断言，但有 JDK 加密包边界。门禁⑳′仍守护 kdf 公共层零 `java.security.`/`javax.crypto.` |
+| ⑳ | `kdfPrefixOnlyInErrors` | `kdf: ` 消息前缀仅允许 `KdfErrors.java`（测试断言与公共 javadoc 除外）——扩充门禁⑪覆盖 `kdf: ` 前缀，原 `ip: `/`captcha: `/`qr: `/`mask: ` 四组断言逐字保留，只收不放 |
+| ⑳′ | `publicSignaturesNoThirdPartyKdf` | `kdf/` 公共层（非 internal）源码不得出现 `javax.crypto.`/`java.security.`/`org.lionsoul.`/`com.google.zxing.`/`cn.aifei.`/`cn.hg.aifei.cache.` 字面量——kdf 公共签名零 JDK 加密类型、零第三方，扩充门禁⑧扫描覆盖 kdf 公共层，原四子包断言不变 |
 
-构建期断言（门禁外）：主 JAR 全 class major=52（`javap` 抽查 `IpSearcher`/`IpKit`/`IpSession`/`CaptchaKit`/`QrKit`/`QrDeps`/`MaskKit`）；`mvn dependency:tree` 仅出现 §6.1 清单（含 zxing 且无 javase/jcommander/jai-imageio）。
+门禁例数 **17 → 21**（追加 4 例 ⑱⑲⑳⑳′；⑪⑧为扩充既有断言覆盖范围、不新增方法数）。验证命令期望例数同步改写：`mvn clean verify` 期望 0 failure / 0 error（含架构门禁 21 例）；`mvn test -Dtest=ArchitectureBoundaryTest` 期望 21 例。
+
+> **门禁纯追加纪律（kdf）**：原 17 例的全部断言逐字保留、一律不删改、不放宽、不绕过；⑪与⑧仅扩充覆盖范围（`kdf: ` 前缀、kdf 公共层扫描），不删减原 `ip: `/`captcha: `/`qr: `/`mask: ` 四组断言与原四子包扫描断言。新增 4 例 `@Test` 方法与既有 17 例同风格（小驼峰、见名知义）。§6.2 门禁表与 `AGENTS.md`「包边界与门禁」表同步追加行并更新例数，**不得重排或改写既有 17 行**。
 
 ## 7. 跨文件约定 + 异常语义 + 测试样本
 
 ### 7.1 命名与唯一定义点
-- 后缀：`IpSearcher`/`Captcha` 会话对象与值对象用名词（命名例外，对齐 `Excel`/`HttpClient`）；`IpKit`/`CaptchaKit` = 有状态门面（操作有生命周期的会话/存储，全 static，无 Plugin 装配期——对齐 `TraceKit` 命名例外）；`QrKit` = 全静态门面（无状态，对齐 `IpKit`）；`QrOptions` 值对象；`MaskUtil` 无状态工具（全 static）；`MaskKit` 注册表门面（全 static，操作 `ConcurrentHashMap`）；`XxxException`/`XxxType`/`XxxMode`/`XxxRegion` 按 Java 习惯；internal 用 `Deps/Errors/Session/Parser/Store/Generator/Registry/Codec/Masks`。
-- 唯一定义点：依赖探测=`*Deps`；异常构造与消息=`*Errors`；region 五段解析=`RegionParser`；Config 构建与 close 幂等=`IpSession`；token 随机与题目生成=`TokenGenerator`；ZXing 依赖探测=`QrDeps`；`BitMatrix`↔PNG 编解码=`ImageCodec`；mask 注册表（唯一 `ConcurrentHashMap`）=`MaskRegistry`；9 默认规则初始注册=`DefaultMasks`。
+- 后缀：`IpSearcher`/`Captcha` 会话对象与值对象用名词（命名例外，对齐 `Excel`/`HttpClient`）；`IpKit`/`CaptchaKit` = 有状态门面（操作有生命周期的会话/存储，全 static，无 Plugin 装配期——对齐 `TraceKit` 命名例外）；`QrKit` = 全静态门面（无状态，对齐 `IpKit`）；`QrOptions` 值对象；`MaskUtil` 无状态工具（全 static）；`MaskKit` 注册表门面（全 static，操作 `ConcurrentHashMap`）；`XxxException`/`XxxType`/`XxxMode`/`XxxRegion` 按 Java 习惯；internal 用 `Deps/Errors/Session/Parser/Store/Generator/Registry/Codec/Masks`。kdf：`KdfKit` = 全静态门面（无状态，KDF 是纯函数，对齐 `QrKit` 全静态门面命名例外）；`KdfSpec` = 派生参数值对象（algorithm + hash + salt + iterations + info + keyLen）；`KdfHash` = 枚举；internal 用 `Errors/Engine`（`HkdfEngine`/`Pbkdf2Engine`/`HmacEngine`）。
+- 唯一定义点：依赖探测=`*Deps`；异常构造与消息=`*Errors`；region 五段解析=`RegionParser`；Config 构建与 close 幂等=`IpSession`；token 随机与题目生成=`TokenGenerator`；ZXing 依赖探测=`QrDeps`；`BitMatrix`↔PNG 编解码=`ImageCodec`；mask 注册表（唯一 `ConcurrentHashMap`）=`MaskRegistry`；9 默认规则初始注册=`DefaultMasks`。kdf：`KdfException` 构造与全部 `kdf: ` 消息=`KdfErrors`；HKDF extract+expand=`HkdfEngine`；PBKDF2=`Pbkdf2Engine`；HMAC 派生原语=`HmacEngine`（三引擎均非公共 API、对外不可见；`KdfKit.derive` 按 `KdfSpec.getAlgorithm()` 分派）。
 - 冻结契约落实点：默认规则名 `phone`/`idCard`/`bankCard`/`email`/`name`/`fixedPhone`/`password`/`address`/`ip` 初始在册、不可删（唯一在 `DefaultMasks`）；`maskPhone(x)≡use("phone").apply(x)` 及 `replace` 后跟随（其余 8 条同构），落实在 `DefaultMasks` + `MaskUtil` 转发；`register`/`replace`/`use` 全拼写。
 - 每类规则只一处；公共 javadoc 简体中文、写全标签；文件头统一版权块；CRLF + UTF-8。
 
@@ -502,6 +610,20 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | value 为空串 `""`（通用 `mask` + 9 默认规则统一口径） | 返回空串 `""` |
 | `keepLeft` / `keepRight` 为负数 | 抛可读 `MaskException`：`mask: keepLeft and keepRight must not be negative` |
 | `maskIp` 文本分段 | 按分隔符特征打码：含 `.` 按 `.` 分段；含 `:` 视为 IPv6，`::` 先展开为完整 8 段再分段（保留首段，其余每段一个 `*`）；**等价写法结果一致**——压缩式 `2001:db8:85a3::8a2e:370:7334` 与展开式 `2001:db8:85a3:0:0:8a2e:370:7334` 均 → `2001:*:*:*:*:*:*:*`（7 个 `*`）；**展开对畸形输入健壮、不抛异常**（多 `::`、段数越界、非法字符等按 §8-D14 宽松退化）；两者皆无则退化为"保留首字符 + 其余等长 `*`"。内容文本非法一律不抛异常，`MaskException` 仅用于规则注册与 `keepLeft`/`keepRight` 非法（见 §8-D14 澄清） |
+
+**kdf（前缀 `kdf: `，消息措辞由 `KdfErrors` 唯一定义）**
+| 场景 | 行为/消息 | cause |
+| --- | --- | --- |
+| spec 为 null | `kdf: spec must not be null` | — |
+| ikm 为 null | `kdf: input key material must not be null` | — |
+| hash 为 null（`KdfSpec` 的 `KdfHash` 档位缺失） | `kdf: hash must not be null` | — |
+| algorithm 非法（非 HKDF/PBKDF2/HMAC） | `kdf: unknown algorithm "{alg}", expected one of: HKDF, PBKDF2, HMAC` | — |
+| keyLen ≤ 0 | `kdf: keyLen must be positive, but was: {n}` | — |
+| PBKDF2 salt 为 null | `kdf: salt must not be null for PBKDF2` | — |
+| PBKDF2 iterations ≤ 0 | `kdf: iterations must be positive, but was: {n}` | — |
+| HKDF keyLen 超过 255 × HashLen（RFC5869 上限） | `kdf: keyLen {n} exceeds RFC5869 maximum {max} for {hash}` | — |
+| 底层 JDK 算法不可用（`Mac.getInstance("Hmac"+hash)` 抛 `NoSuchAlgorithmException`，三算法均用 Mac） | `kdf: algorithm "{alg}" not available in this JDK, cause: {msg}` | `NoSuchAlgorithmException` |
+| 派生过程运行时异常 | `kdf: derive failed for {alg}-{hash}, cause: {msg}` | 原异常 |
 
 **region「0」语义（需求七-6 定档）**：五段字段**永不为 null**；raw 值为 `"0"` 或 `"Reserved"` → 归一为**空串 `""`**（不是 "0"、不是 null、不是占位符）；查不到 IP（内核返回 null/空串）→ 返回 `IpRegion` 五字段全 `""` 的非 null 对象，javadoc 写明。理由：对外语义干净，与内核 v3.14.0「查不到返回空串」一致，调用方无需识别内核哨兵。
 
@@ -578,6 +700,25 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
    - **理由**：本文 §4.2 时序图原本就画了 `remove(token)`（成功即删、失败仅计数、超限删除）三态，但 §3.2 只列三方法，属设计文档自相矛盾；补 `remove` 是修复该缺口，不是新增能力。默认方法使匿名桩只需实现原三方法即可编译。
    - **QA 对接**：`CaptchaStoreTest` 覆盖三态——校验成功删 token、失败不消费只计数、超限删除；`LruCaptchaStore` 与 `ClusterCaptchaStore` 各自验证。
 
+### F. kdf 子包决策记录（层A 增量，本轮新增；需求 `aifei-auth-handshake.md` §三决策2 / §四层A / §七层A / §八 Q1/Q2）
+
+> 本节为 kdf 子包的已定档决策，逐条对齐需求文档 `docs/需求/aifei-auth-handshake.md` 与 `AGENTS.md`「扩展新工具」四步硬动作。改动须先回写本节再改代码。
+
+1. **算法选型（F1，需求 §三决策2 不可推翻）**：纳入 HKDF（RFC 5869 extract+expand）、PBKDF2（RFC 8018 口令+盐+迭代）、HMAC（作派生原语 `HMAC(secret, data)→key`，对齐 RFC 2104 `HMAC(K, text)` 两入参）；哈希档位 SHA-256 + SHA-512。不纳入 scrypt/Argon2/BCrypt（需第三方）、SHA-1（不安全）、SHA-384（边际低）、KDF1/KDF2/SP800-108/TLS PRF（小众遗留）。全部 JDK 8 零第三方：HKDF/HMAC 用 `javax.crypto.Mac.getInstance("HmacSHA256"/"HmacSHA512")`、PBKDF2 用**手动 HMAC PRF 循环 RFC 8018 §5.2**（`Mac.getInstance("Hmac"+hash)` + `SecretKeySpec(password, ...)`，DK=T_1‖…‖T_l，T_i=F(P,S,c,i)，纯 JDK 零第三方、满足任意 keyLen，偏离点见 F1'）、哈希长度查询用 `java.security.MessageDigest.getInstance("SHA-256"/"SHA-512").getDigestLength()`。
+2. **公共面 N=4 与命名（F2 = Q1 裁决）**：定档 **N=4**，类型 `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException`（门面 + 值对象 + 枚举 + 异常，对齐 `qr` 子包 4 类型范式）。`KdfKit` 为全静态门面（无状态，KDF 是纯函数，对齐 `QrKit` 全静态门面命名例外，§7.1 已登记）。不单设 `KdfAlgorithm` 枚举——algorithm 用 `String` 表达，避免与 `KdfHash` 形成笛卡尔耦合（详见 F3）。
+3. **形态裁决（F3 = Q2 裁决）**：**参数组合**（algorithm + hash 两维），不采用 `HKDF_SHA256` 笛卡尔枚举。algorithm 以 `String` 表达、档位以 `KdfHash` 枚举表达。理由：① 三算法入参集合异构（HKDF 需 salt+info、PBKDF2 需 salt+iterations、HMAC 需 secret+data），单枚举常量无法承载差异，必须靠 `KdfSpec` 值对象承载；② 扩档位只加 `KdfHash` 一行，不爆笛卡尔积；③ 与需求文档 §八 Q2 默认假设一致。algorithm 合法值集合 {`"HKDF"`, `"PBKDF2"`, `"HMAC"`} 在 `KdfSpec` 内以常量校验，非法值抛 `KdfException`（消息见 §7.2）。
+4. **`KdfSpec` 值对象形态（F4）**：三静态工厂 `hkdf(KdfHash, byte[] salt, byte[] info, int keyLen)` / `pbkdf2(KdfHash, byte[] salt, int iterations, int keyLen)` / `hmac(KdfHash, int keyLen)` 是构造唯一入口（私有构造器、值对象不可变）。HKDF 的 salt 可空（RFC 5869 默认全 0 HashLen 字节）、info 可空（作空字节）；PBKDF2 的 salt 不可空、iterations > 0；HMAC 无 salt/iterations（getSalt 返回 null、getIterations 返回 0，便于调用方无差别读）；**HMAC 的 secret/data 是运行期输入、经 `KdfKit.derive` 入参传入，不进 spec**（见 F10）。六个 getter 全暴露（algorithm/hash/salt/iterations/info/keyLen）。校验在工厂内完成，`KdfKit.derive` 不重复校验 spec 合法性（spec 已不可变且工厂已校验），只校验 spec/ikm 非空。
+5. **门禁追加 4 例（F5，纯追加原 17 不变）**：追加 ⑱`kdfPublicSurfaceExact`（精确 4 + 集合相等 {KdfKit,KdfSpec,KdfHash,KdfException}）、⑲`cryptoOnlyInKdfInternal`（`javax.crypto.` 仅 `kdf/internal/`；`java.security.` 仅 `kdf/internal/` 与 `captcha/internal/`——captcha 既有 `SecureRandom` 合法用法不破坏，偏离点见 F11）、⑳`kdfPrefixOnlyInErrors`（`kdf: ` 前缀仅 `KdfErrors.java`，扩充门禁⑪）、⑳′`publicSignaturesNoThirdPartyKdf`（kdf 公共层零 JDK 加密类型、零第三方字面量，扩充门禁⑧）。门禁 17 → 21。kdf 纯 JDK 无第三方内核，故无 `org.lionsoul.` 等第三方边界断言；但 JDK 加密 API（`javax.crypto`/`java.security`）需独立边界断言⑲，守护「公共签名零 JDK 加密类型」契约，门禁⑳′仍守护 kdf 公共层零 `java.security.`/`javax.crypto.`。
+6. **依赖（F6）**：纯 JDK 工具，**不新增任何第三方依赖**（HKDF/PBKDF2/HMAC 均用 JDK 8 自带 `javax.crypto`/`java.security`）。pom 依赖清单不变，版本号 `1.0.0`。`THIRD_PARTY_NOTICES.md` 不新增条目（kdf 无第三方内核）。
+7. **测试对标（F7，需求 §七层A 验收）**：HKDF 对标 RFC 5869 附录 A 测试向量（SHA-256 / SHA-512 两档，逐字比对输出字节，不得模糊匹配）；PBKDF2 对标 **RFC 7914 §B.1**（PBKDF2-HMAC-SHA256 官方向量，寇戴码实测逐字一致）与 RFC 8018 §5.2 算法描述（**不使用 RFC 6070**——那是 PBKDF1 向量，不适用 PBKDF2，原设计误引已修正）；HMAC 对标 RFC 4231 测试向量。`KdfKitTest` 覆盖三算法门面分派 + 参数非法路径 + 任意 keyLen 输出。全离线零联网（KDF 是纯函数，无 IO 无状态）。
+8. **CHANGELOG 建立（F8，§10.7）**：本模块首次新增工具，建立 `aifei-tools/CHANGELOG.md`，记录版本 `1.0.0`、新增 kdf 子包、公共类型 16 → 20、门禁 17 → 21、依赖无变化。由发布工程师落地，设计关只定口径。
+9. **待明确事项（F9，转交寇戴码/策市袁实证，不阻塞设计）**：
+   - **F9-a**（已闭环）：原担忧 PBKDF2 `PBKDF2WithHmacSHA512` provider 可用性——因改手动 HMAC PRF 循环（F1'），不再依赖 `SecretKeyFactory`，`HmacSHA512` 是 JDK 标准算法名、全发行版可用，此项已消解。
+   - **F9-b**：RFC 测试向量在测试源码中以硬编码 byte[]/hex 字符串常量表达（不联网拉取、不引入测试向量库）；寇戴码照抄 RFC 文本，策市袁断言逐字比对。
+10. **HMAC 派生原语签名裁决（F10，层B阻塞项，主理人退回裁决）**：`KdfKit.derive` 改为**两参与三参两个重载**：`derive(KdfSpec spec, byte[] ikm)` 与 `derive(KdfSpec spec, byte[] ikm, byte[] data)`。三参重载的 `data` 是 HMAC 的 message（RFC 2104 `HMAC(K, text)` 的 text），供层B `KDF(sn, challenge)` 传入 `ikm=sn`（secret=K）、`data=challenge`（message=text）。两参重载等价 `data=null`——HMAC 视为空字节 `HMAC(ikm, "")`，HKDF/PBKDF2 忽略 data。**裁决方案①**（改签名加 data 第三入参），否决方案②（spec 持 challenge：值对象不应持运行期数据、challenge 每次握手都变）与方案③（ikm=sn‖challenge：拼接 hack、边界歧义、与 RFC 2104 两入参定义不符）。HMAC 的 keyLen 语义：原始输出 = HashLen（SHA-256=32/SHA-512=64），keyLen≤HashLen 截取前 keyLen 字节、keyLen>HashLen 按 RFC 5869 expand 风格循环扩展（HMAC 作 PRF），与 §9"任意 keyLen 输出"一致。寇戴码改 `HmacEngine` + `HmacTest`，策市袁补测 `(spec, ikm, data)` 三参路径。
+11. **PBKDF2 实现手法偏离（F1'，主理人批准）**：原设计 F1/§1.3/§3.5 写 PBKDF2 用 `SecretKeyFactory.getInstance("PBKDF2WithHmac"+hash)` + `PBEKeySpec` + `generateSecret().getEncoded()`。寇戴码实现期实测：SunJCE 的 `PBKDF2SecretKey.getEncoded()` 返回 key 长度受 PBE cipher 约束（keyLen=32 返回 4 字节、keyLen=64 返回 8 字节），不满足"任意 keyLen 输出"契约（§9 P0 验收）。实际实现改为**手动 HMAC PRF 循环 RFC 8018 §5.2**：`Mac.getInstance("Hmac"+hash)` + `SecretKeySpec(password, ...)`，`DK = T_1‖…‖T_l`，`T_i = F(P, S, c, i) = U_1 ⊕ … ⊕ U_c`，`U_1 = HMAC(P, S‖INT_32_BE(i))`、`U_j = HMAC(P, U_{j-1})`；纯 JDK 零第三方，输出与 RFC 7914 §B.1 官方向量逐字一致。主理人批准此偏离。§1.3/§3.5/§4.5/F1 已同步回写。
+12. **门禁⑲口径偏离（F11，主理人批准）**：原设计 F5/§6.2 门禁⑲写 `javax.crypto.`/`java.security.` 仅 `kdf/internal/`。寇戴码实现期实测：`captcha/internal` 既有的 `TokenGenerator`/`ImageGenerator` 已用 `java.security.SecureRandom`（1.0.0 既有代码，token 随机数），门禁⑲原口径会破坏既有 captcha 测试。实际实现：`javax.crypto.` 仅 `kdf/internal/`（不变）；`java.security.` 放宽至 `kdf/internal/` + `captcha/internal/`（captcha 既有 `SecureRandom` 合法用法）。门禁⑳′（kdf 公共层零 `java.security.`）仍守护 kdf 公共签名契约。主理人批准此偏离（新门禁不应破坏既有代码）。§6.2 门禁⑲行已同步回写。
+
 ## 9. P0 验收覆盖映射（需求六 → 设计/任务/门禁）
 | 需求验收要点 | 落点 |
 | --- | --- |
@@ -610,12 +751,21 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | mask 公共面精确 3 | §6.2 门禁⑰；T10/T16 |
 | 四工具无 Plugin/配置键、公共签名零第三方/框架类型、零日志绑定、根包仍零类型 | §1.1/§3.3/§3.4；T10/T13–T18 |
 | 实现期 API 细化：`IpRegion.of(...)` 工厂（5 getter 冻结、null→空串且空白串原样保留）+ `CaptchaStore.remove` 三态（成功删/失败计数/超限删） | §3.1/§3.2/§8-E；T04/T05/T08/T09 `PublicApiContractIpTest`/`CaptchaStoreTest` |
+| **kdf HKDF 对标 RFC5869 附录A测试向量（SHA256/SHA512 两档，逐字比对输出字节）** | §1.3/§3.5；T20/T22 `HkdfTest` |
+| **kdf PBKDF2 对标 RFC7914 §B.1测试向量（PBKDF2-HMAC-SHA256 官方向量，寇戴码实测逐字一致；不使用 RFC6070——那是 PBKDF1 不适用 PBKDF2）** | §1.3/§3.5/§8-F1'；T20/T22 `Pbkdf2Test` |
+| **kdf HMAC 对标 RFC4231测试向量 + 三参重载 derive(spec,ikm,data) 的 data=message 路径（层B KDF(sn,challenge) 用 ikm=sn、data=challenge）** | §1.3/§3.5/§8-F10；T20/T22 `HmacTest` |
+| **kdf 三算法门面分派 + 参数非法（algorithm 非法/keyLen≤0/iterations≤0/salt null 等）抛可读 KdfException + 任意 keyLen 输出（PBKDF2 手动 PRF 循环，非 SecretKeyFactory 路线）** | §3.5/§7.2/§8-F1'；T21/T22 `KdfKitTest` |
+| **kdf 纯 JDK 零第三方（dependency:tree 不新增、import 仅 java.*/javax.crypto.*/java.security.* 限 kdf/internal）** | §1.1/§6.1/§6.2 门禁⑲；T10/T20 |
+| **kdf 门禁纯追加（原17例不变 + 追加4例 ⑱⑲⑳⑳′，公共面精确4 + 集合相等 + javax.crypto/java.security边界 + kdf: 前缀唯一定义点 + 公共签名零第三方扩充）** | §6.2 门禁⑱⑲⑳⑳′；T10 |
+| **kdf 公共面精确 4（KdfKit/KdfSpec/KdfHash/KdfException）** | §6.2 门禁⑱；T10/T21 |
+| **kdf 公共签名零第三方/框架类型（含零 JDK 加密类型，javax.crypto/java.security 仅 kdf/internal）** | §3.5/§6.2 门禁⑲⑳′；T10/T21 |
+| **文档四同步：design.md（本文 kdf 章节）+ README.md + AGENTS.md + docs/testing.md；CHANGELOG.md 首次建立记录版本 1.0.0** | §10.5/§10.7；T11 文档四件套补充 kdf + CHANGELOG 建立 |
 
-> 一句话总览：`aifei-tools` 单模块——根包零公共类型，四子包共 16 公共类型（`ipdb` 5 / `captcha` 4 / `qr` 4 / `mask` 3）；ipdb 走实测锁定的 `ip2region:3.3.7`（Java 8 class 52，弃用 Java 11 的 3.3.8 有实证）双库自动路由、三模式映射内核四策略、默认 VECTOR_INDEX + 内核池化并发、region `"0"`→空串；captcha 纯 JDK 绘 PNG + 一次性消费 + LRU/可选 aifei-cache 双存储；qr 走 `zxing:core:3.5.3`（optional，Java 基线已 javap 实测 class major 52 ✓）+ 自写 `BitMatrix`→PNG；mask 走 `ConcurrentHashMap` 注册表 + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）；四子包公共面零第三方/框架类型，17 例门禁守护。
+> 一句话总览：`aifei-tools` 单模块——根包零公共类型，五子包共 20 公共类型（`ipdb` 5 / `captcha` 4 / `qr` 4 / `mask` 3 / `kdf` 4）；ipdb 走实测锁定的 `ip2region:3.3.7`（Java 8 class 52，弃用 Java 11 的 3.3.8 有实证）双库自动路由、三模式映射内核四策略、默认 VECTOR_INDEX + 内核池化并发、region `"0"`→空串；captcha 纯 JDK 绘 PNG + 一次性消费 + LRU/可选 aifei-cache 双存储；qr 走 `zxing:core:3.5.3`（optional，Java 基线已 javap 实测 class major 52 ✓）+ 自写 `BitMatrix`→PNG；mask 走 `ConcurrentHashMap` 注册表 + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）；kdf 走纯 JDK（`javax.crypto.Mac`/`MessageDigest`）HKDF+PBKDF2（手动 PRF 循环 RFC8018 §5.2）+HMAC（RFC2104 两入参，derive 两参/三参重载）三算法 + SHA256/SHA512 两档；五子包公共面零第三方/框架类型，21 例门禁守护（原 17 + kdf 追加 4）。
 
 ## 10. 后续工具扩展约定（追加第 5、第 6 … 个极简工具）
 
-> **本章性质**：这是**流程契约**，规定「将来如何安全追加新工具」，**不改变**当前四子包 / 16 公共类型 / 17 例门禁 / §8 已定档决策的任何口径，也不扩大现有公共 API。本轮不新增任何源文件、§2 文件清单条目或 §5 任务；下述动作在「新增某工具」的立项中执行。
+> **本章性质**：这是**流程契约**，规定「将来如何安全追加新工具」，**不改变**当前五子包 / 20 公共类型 / 21 例门禁 / §8 已定档决策的任何口径，也不扩大现有公共 API。kdf 子包已按本章约定落地（门禁 17 → 21，见 §6.2；公共类型 16 → 20，见 §1.1）；下述动作在「新增某工具」的立项中执行。
 > **不变边界**：无论工具数量如何增长，「根包零公共类型 + 子包隔离 + 各自独立可用 + 无跨工具抽象」恒定（§1.1、AGENTS.md「交付性质」）；唯一承受变化的是**每个新工具自身**的公共面、internal 实现、依赖、门禁与测试。
 
 ### 10.1 新增工具 = 新增子包（结构约定）
@@ -644,6 +794,8 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | 消息前缀唯一性纳入门禁⑪ | **+0**（扩充既有 `errorMessagesOnlyInErrors`） | 在门禁⑪内追加新前缀 `<前缀>: ` 仅在 `<新工具>` 的 `<Tool>Errors` 出现的断言；原 `ip: `/`captcha: `/`qr: `/`mask: ` 四组断言及例外（测试断言、公共 javadoc）逐字保留——只收不放 |
 
 - **例数口径**：无新内核时 17 → 18；有新内核时 17 → 19；此后每加一工具按同规则累加，N 为累加后的方法总数。验证命令（`mvn clean verify` / `mvn test -Dtest=ArchitectureBoundaryTest`）的期望例数同步改写。
+  - **kdf 实证**：kdf 为纯 JDK 工具（无第三方内核），但因其公共签名零 JDK 加密类型的要求需要独立的「`javax.crypto`/`java.security` 边界」断言，故追加 4 例（⑱公共面精确 + ⑲JDK 加密包边界 + ⑳`kdf: `前缀 + ⑳′公共签名零第三方扩充），门禁 17 → 21（详见 §6.2）。此为 kdf 特例：纯 JDK 工具若需守护 JDK 加密 API 不外泄至公共层，仍可加边界断言；后续纯 JDK 工具按实际需要追加，不强制 1 例或 4 例。
+    - **门禁⑲口径偏离（§8-F11）**：`javax.crypto.` 仅 `kdf/internal/`；`java.security.` 放宽至 `kdf/internal/` + `captcha/internal/`（captcha 既有 `SecureRandom` 合法用法，1.0.0 既有代码不破坏）。新门禁不应破坏既有代码；门禁⑳′仍守护 kdf 公共层零 `java.security.`/`javax.crypto.`。
 - 新 `@Test` 方法与既有 17 例同风格（小驼峰、见名知义）；§6.2 门禁表与 AGENTS.md「包边界与门禁」表同步追加行并更新例数，**不得重排或改写既有 17 行**。
 
 ### 10.3 公共面纪律
@@ -676,6 +828,6 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 
 ### 10.7 版本策略
 
-- 新增工具属**能力扩展**，走版本号**递增（语义化 minor）**：当前坐标 `io.github.gollyhu:aifei-tools:1.0.0`，首次新增工具 → `1.1.0`（后续 `1.2.0`、`1.3.0`…）；仅修缺陷走 patch，破坏性变更走 major（本模块公共面冻结，原则上不发生）。
+- **版本策略**：当前基线 `io.github.gollyhu:aifei-tools:1.0.0`（五子包基线）。后续能力扩展走 minor 递增（`1.1.0`、`1.2.0`…）、缺陷修复走 patch、破坏性变更走 major（本模块公共面冻结，原则上不发生）。
 - **CHANGELOG**：本模块当前无 CHANGELOG；约定**首次新增工具时建立** `aifei-tools/CHANGELOG.md`（沿用仓库文档语言与行尾规范），记录版本号、日期、新增工具与公共面、门禁例数变化、依赖变化；此后每次发布同步追加。
 - 版本与 CHANGELOG 由发布工程师落地，设计关只定口径；坐标版本变更同步 `pom.xml` 与 README/文档索引等引用处。

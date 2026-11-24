@@ -25,7 +25,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 架构门禁（设计 §6.2，17 例）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
+ * 架构门禁（设计 §6.2，21 例：原 17 + kdf 追加 4）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
  *
  * <p>执行位置必须为 aifei-tools 模块根目录（依赖相对路径 src/main/java），
  * 由 surefire workingDirectory 固定为 ${project.basedir} 保证。</p>
@@ -42,9 +42,11 @@ public class ArchitectureBoundaryTest {
     private static final String CAPTCHA_PACKAGE = ROOT_PACKAGE + "captcha/";
     private static final String QR_PACKAGE = ROOT_PACKAGE + "qr/";
     private static final String MASK_PACKAGE = ROOT_PACKAGE + "mask/";
+    private static final String KDF_PACKAGE = ROOT_PACKAGE + "kdf/";
     private static final String IP_INTERNAL = IPDB_PACKAGE + "internal/";
     private static final String CAPTCHA_INTERNAL = CAPTCHA_PACKAGE + "internal/";
     private static final String QR_INTERNAL = QR_PACKAGE + "internal/";
+    private static final String KDF_INTERNAL = KDF_PACKAGE + "internal/";
 
     private static final Set<String> IP_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
             "IpSearcher.java", "IpKit.java", "IpRegion.java", "IpException.java", "IpQueryMode.java"));
@@ -54,6 +56,8 @@ public class ArchitectureBoundaryTest {
             "QrKit.java", "QrOptions.java", "QrErrorCorrection.java", "QrException.java"));
     private static final Set<String> MASK_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
             "MaskUtil.java", "MaskKit.java", "MaskException.java"));
+    private static final Set<String> KDF_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
+            "KdfKit.java", "KdfSpec.java", "KdfHash.java", "KdfException.java"));
 
     /** ① 根包 cn/hg/aifei/tools/ 直接子级 .java 精确 0。 */
     @Test
@@ -122,7 +126,7 @@ public class ArchitectureBoundaryTest {
         }
     }
 
-    /** ⑧ 16 个公共类型源码零第三方 / 零框架字面量。 */
+    /** ⑧ 公共类型源码零第三方 / 零框架字面量（kdf 子包扩充覆盖：扫描 kdf 公共层第三方/框架字面量，口径同原四子包）。 */
     @Test
     public void publicSignaturesNoThirdParty() throws IOException {
         List<String[]> publicFiles = new ArrayList<String[]>();
@@ -130,10 +134,12 @@ public class ArchitectureBoundaryTest {
         publicFiles.add(new String[]{CAPTCHA_PACKAGE, "captcha", "4"});
         publicFiles.add(new String[]{QR_PACKAGE, "qr", "4"});
         publicFiles.add(new String[]{MASK_PACKAGE, "mask", "3"});
+        publicFiles.add(new String[]{KDF_PACKAGE, "kdf", "4"});
         for (String[] group : publicFiles) {
             Set<String> names = group[1].equals("ipdb") ? IP_PUBLIC
                     : group[1].equals("captcha") ? CAPTCHA_PUBLIC
-                    : group[1].equals("qr") ? QR_PUBLIC : MASK_PUBLIC;
+                    : group[1].equals("qr") ? QR_PUBLIC
+                    : group[1].equals("kdf") ? KDF_PUBLIC : MASK_PUBLIC;
             for (String name : names) {
                 Path file = SOURCE_ROOT.resolve(group[0]).resolve(name);
                 String text = stripComments(read(file));
@@ -179,14 +185,15 @@ public class ArchitectureBoundaryTest {
         }
     }
 
-    /** ⑪ 四类消息前缀只允许在对应 Errors 类（本轮收紧：覆盖 ip/captcha/qr/mask）。 */
+    /** ⑪ 四类消息前缀只允许在对应 Errors 类（本轮收紧：覆盖 ip/captcha/qr/mask，kdf 扩充覆盖 kdf）。 */
     @Test
     public void errorMessagesOnlyInErrors() throws IOException {
         String[][] rules = {
                 {"ip: ", IP_INTERNAL + "IpErrors.java"},
                 {"captcha: ", CAPTCHA_INTERNAL + "CaptchaErrors.java"},
                 {"qr: ", QR_INTERNAL + "QrErrors.java"},
-                {"mask: ", "cn/hg/aifei/tools/mask/internal/MaskErrors.java"}
+                {"mask: ", "cn/hg/aifei/tools/mask/internal/MaskErrors.java"},
+                {"kdf: ", KDF_INTERNAL + "KdfErrors.java"}
         };
         for (Path file : javaFiles(SOURCE_ROOT)) {
             String path = normalize(file);
@@ -276,6 +283,67 @@ public class ArchitectureBoundaryTest {
     @Test
     public void maskPublicSurfaceExact() throws IOException {
         assertPublicSurface(MASK_PACKAGE, MASK_PUBLIC, 3, "mask");
+    }
+
+    /** ⑱ kdf 公共面精确 4 且集合相等。 */
+    @Test
+    public void kdfPublicSurfaceExact() throws IOException {
+        assertPublicSurface(KDF_PACKAGE, KDF_PUBLIC, 4, "kdf");
+    }
+
+    /**
+     * ⑲ javax.crypto. import 仅允许 kdf/internal；java.security. import 仅允许 kdf/internal 与
+     * captcha/internal（captcha 既有的 SecureRandom 用于 token 随机数，设计 §6.2 原口径未覆盖此既有用法，
+     * 实现期偏离：放宽 java.security. 边界至 captcha/internal，javax.crypto. 边界不变）。
+     */
+    @Test
+    public void cryptoOnlyInKdfInternal() throws IOException {
+        for (Path file : javaFiles(SOURCE_ROOT)) {
+            String path = normalize(file);
+            for (String line : imports(stripComments(read(file)))) {
+                if (line.startsWith("javax.crypto.")) {
+                    assertTrue("javax.crypto 泄漏出 kdf/internal: " + path + " -> " + line,
+                            path.startsWith(KDF_INTERNAL));
+                }
+                if (line.startsWith("java.security.")) {
+                    assertTrue("java.security 泄漏出 kdf/internal 或 captcha/internal: " + path + " -> " + line,
+                            path.startsWith(KDF_INTERNAL) || path.startsWith(CAPTCHA_INTERNAL));
+                }
+            }
+        }
+    }
+
+    /** ⑳ kdf: 消息前缀仅允许 KdfErrors.java（扩充门禁⑪，口径同 ip/captcha/qr/mask）。 */
+    @Test
+    public void kdfPrefixOnlyInErrors() throws IOException {
+        String prefix = "kdf: ";
+        String errorsFile = KDF_INTERNAL + "KdfErrors.java";
+        for (Path file : javaFiles(SOURCE_ROOT)) {
+            String path = normalize(file);
+            if (path.equals(errorsFile)) {
+                continue;
+            }
+            assertFalse("kdf: 前缀只允许在 KdfErrors: " + path,
+                    stripComments(read(file)).contains(prefix));
+        }
+        assertTrue("KdfErrors 必须承载 kdf: 前缀",
+                stripComments(read(SOURCE_ROOT.resolve(errorsFile))).contains(prefix));
+    }
+
+    /** ⑳′ kdf 公共层零 JDK 加密类型、零第三方字面量（扩充门禁⑧扫描覆盖 kdf 公共层）。 */
+    @Test
+    public void publicSignaturesNoThirdPartyKdf() throws IOException {
+        for (String name : KDF_PUBLIC) {
+            Path file = SOURCE_ROOT.resolve(KDF_PACKAGE).resolve(name);
+            String text = stripComments(read(file));
+            for (String forbidden : Arrays.asList(
+                    "javax.crypto.", "java.security.",
+                    "org.lionsoul.", "com.google.zxing.",
+                    "cn.aifei.", "cn.hg.aifei.cache.")) {
+                assertFalse("kdf 公共类型不得含 JDK 加密/第三方/框架字面量: " + name + " -> " + forbidden,
+                        text.contains(forbidden));
+            }
+        }
     }
 
     // ---------------------------------------------------------------- 工具方法

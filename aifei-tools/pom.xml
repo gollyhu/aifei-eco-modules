@@ -163,7 +163,7 @@
                     <source>${maven.compiler.source}</source>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <show>public</show>
-                    <excludePackageNames>cn.hg.aifei.tools.ipdb.internal.*:cn.hg.aifei.tools.captcha.internal.*:cn.hg.aifei.tools.qr.internal.*:cn.hg.aifei.tools.mask.internal.*</excludePackageNames>
+                    <excludePackageNames>cn.hg.aifei.tools.ipdb.internal.*:cn.hg.aifei.tools.captcha.internal.*:cn.hg.aifei.tools.qr.internal.*:cn.hg.aifei.tools.mask.internal.*:cn.hg.aifei.tools.kdf.internal.*</excludePackageNames>
                     <doclint>none</doclint>
                     <detectJavaApiLink>false</detectJavaApiLink>
                     <detectOfflineLinks>false</detectOfflineLinks>

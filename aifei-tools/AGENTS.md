@@ -12,7 +12,7 @@
 
 ## 交付性质（库模块，非业务应用）
 
-`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.0.0`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，四个工具按子包隔离、各自独立可用、无跨工具抽象。
+`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.0.0`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，五个工具按子包隔离、各自独立可用、无跨工具抽象。
 
 **不适用章节（不得据此模块约束要求）**：
 
@@ -52,7 +52,7 @@ pom 只允许下列五项，属性 `<ip2region.version>3.3.7</ip2region.version>
 ### 公共面收敛（不得放宽）
 
 - **根包 `cn.hg.aifei.tools` 精确 0 公共类型**（门禁①）；不创建 `package-info.java`。
-- 四子包共**精确 16 个公共类型**，签名逐字见 `docs/design.md` §3：
+- 五子包共**精确 20 个公共类型**，签名逐字见 `docs/design.md` §3：
 
 | 子包 | 公共类型（N） |
 | --- | --- |
@@ -60,6 +60,7 @@ pom 只允许下列五项，属性 `<ip2region.version>3.3.7</ip2region.version>
 | `captcha` | `Captcha` / `CaptchaKit` / `CaptchaType` / `CaptchaException`（4） |
 | `qr` | `QrKit` / `QrOptions` / `QrErrorCorrection` / `QrException`（4） |
 | `mask` | `MaskUtil` / `MaskKit` / `MaskException`（3） |
+| `kdf` | `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException`（4） |
 
 - **不得增删、不得改名**；新增公共类型或改签名须先回写 `docs/design.md` §3 过设计决策再改门禁期望集合。**唯一已定档方法级例外**：`IpRegion.of(String,String,String,String,String)` 静态工厂（design §8-E1），供 `ipdb.internal` 构造公共值对象，五个 getter 与「字段永不为 null」契约冻结不变。
 - 公共签名**零第三方类型、零框架类型**：只含 JDK 类型（`InputStream` / `String` / `UnaryOperator` / 基本类型等）+ 本模块类型；不出现 `org.lionsoul.*` / `com.google.zxing.*` / `cn.aifei.*` / `cn.hg.aifei.cache.*`（门禁⑧）。
@@ -73,14 +74,15 @@ cn.hg.aifei.tools.ipdb         ip：5 公共类型 + internal（非承诺）
 cn.hg.aifei.tools.captcha      captcha：4 公共类型 + internal（非承诺）
 cn.hg.aifei.tools.qr           qr：4 公共类型 + internal（非承诺）
 cn.hg.aifei.tools.mask         mask：3 公共类型 + internal（非承诺）
+cn.hg.aifei.tools.kdf          kdf：4 公共类型 + internal（非承诺）
 ```
 
-- `org.lionsoul.*` 只允许在 `ipdb/internal/`（门禁④）；`cn.hg.aifei.cache.*` 只允许在 `captcha/internal/`（门禁⑤）；`com.google.zxing.*` 只允许在 `qr/internal/`（门禁⑯）。
+- `org.lionsoul.*` 只允许在 `ipdb/internal/`（门禁④）；`cn.hg.aifei.cache.*` 只允许在 `captcha/internal/`（门禁⑤）；`com.google.zxing.*` 只允许在 `qr/internal/`（门禁⑯）；`javax.crypto.*` / `java.security.*` 只允许在 `kdf/internal/`（kdf 是纯 JDK 工具，captcha/internal 既有 `java.security.SecureRandom` 用法保留，门禁⑲口径见下）。
 - 公共层（非 internal）→ 纯 JDK + 本模块类型；internal → 各自 optional 内核 + JDK。工具之间互不引用、无跨工具抽象层。
 
 ## 包边界与门禁
 
-`ArchitectureBoundaryTest`（**17 例**，扫描 `src/main/java`；⑭ 扫 `src/test/java`）判定口径与 `docs/design.md` §6.2 **逐字一致**：
+`ArchitectureBoundaryTest`（**21 例**：原 17 + kdf 追加 4，扫描 `src/main/java`；⑭ 扫 `src/test/java`）判定口径与 `docs/design.md` §6.2 **逐字一致**：
 
 | # | 测试方法 | 判定口径 |
 | --- | --- | --- |
@@ -91,18 +93,22 @@ cn.hg.aifei.tools.mask         mask：3 公共类型 + internal（非承诺）
 | ⑤ | `cacheOnlyInCaptchaInternal` | `import cn.hg.aifei.cache.` 仅允许 `captcha/internal/` 下文件 |
 | ⑥ | `noFrameworkReference` | 全模块禁止 `import cn.aifei.`（无接入包、无 log 例外） |
 | ⑦ | `noWebSqlOrLogBinding` | 禁 `io.undertow.`/`java.sql.`/`org.slf4j.`；pom 不声明 logback/log4j/slf4j-simple |
-| ⑧ | `publicSignaturesNoThirdParty` | 四子包公共层（非 internal）源码不得出现 `org.lionsoul.`/`com.google.zxing.`/`cn.aifei.`/`cn.hg.aifei.cache.` 字面量 |
+| ⑧ | `publicSignaturesNoThirdParty` | 五子包公共层（非 internal）源码不得出现 `org.lionsoul.`/`com.google.zxing.`/`cn.aifei.`/`cn.hg.aifei.cache.` 字面量（kdf 扩充覆盖扫描，原四 forbidden 字面量不变） |
 | ⑨ | `java8Compatibility` | 禁 `List.of(`/`Map.of(`/`Set.of(`/`record `/`var `/`"""`/`sealed `/`instanceof` 模式匹配 |
 | ⑩ | `classForNameOnlyInDeps` | `Class.forName` 仅允许 `IpDeps.java`/`CaptchaDeps.java` |
-| ⑪ | `errorMessagesOnlyInErrors` | `ip: `/`captcha: `/`qr: `/`mask: ` 消息前缀仅允许 `IpErrors.java`/`CaptchaErrors.java`/`QrErrors.java`/`MaskErrors.java`（测试断言与公共 javadoc 除外）——本轮收紧：仅扩充覆盖范围，不删减原 14 例任何断言 |
+| ⑪ | `errorMessagesOnlyInErrors` | `ip: `/`captcha: `/`qr: `/`mask: `/`kdf: ` 消息前缀仅允许对应 `*Errors.java`（测试断言与公共 javadoc 除外）——kdf 扩充覆盖 `kdf: ` 前缀，原四组断言逐字保留 |
 | ⑫ | `regionParsingOnlyInParser` | region 分隔符 `\|` 及 `"0"`/`"Reserved"` 归空串的唯一实现只在 `RegionParser.java` |
 | ⑬ | `noServiceProvider` | 禁 `ServiceLoader`/`META-INF/services`（无 SPI） |
 | ⑭ | `testSourcesOfflineOnly` | 测试源 URL host 仅 `127.0.0.1`/`localhost`；`IpSampleData` 的 base64 常量允许 |
 | ⑮ | `qrPublicSurfaceExact` | `qr/` 直接子 `.java` 精确 4 且集合 = {QrKit,QrOptions,QrErrorCorrection,QrException} |
 | ⑯ | `zxingOnlyInQrInternal` | `import com.google.zxing.` 仅允许 `qr/internal/` 下文件 |
 | ⑰ | `maskPublicSurfaceExact` | `mask/` 直接子 `.java` 精确 3 且集合 = {MaskUtil,MaskKit,MaskException} |
+| ⑱ | `kdfPublicSurfaceExact` | `kdf/` 直接子 `.java` 精确 4 且集合 = {KdfKit,KdfSpec,KdfHash,KdfException}（口径对齐门禁②③⑮⑰） |
+| ⑲ | `cryptoOnlyInKdfInternal` | `import javax.crypto.` 仅允许 `kdf/internal/`；`import java.security.` 仅允许 `kdf/internal/` 与 `captcha/internal/`（captcha 既有 `SecureRandom` 用法保留；设计 §6.2 原口径未覆盖此既有用法，实现期偏离已记录） |
+| ⑳ | `kdfPrefixOnlyInErrors` | `kdf: ` 消息前缀仅允许 `KdfErrors.java`（测试断言与公共 javadoc 除外）——扩充门禁⑪覆盖 `kdf: ` 前缀 |
+| ⑳′ | `publicSignaturesNoThirdPartyKdf` | `kdf/` 公共层（非 internal）源码不得出现 `javax.crypto.`/`java.security.`/`org.lionsoul.`/`com.google.zxing.`/`cn.aifei.`/`cn.hg.aifei.cache.` 字面量——kdf 公共签名零 JDK 加密类型、零第三方 |
 
-门禁**不得删除、放宽或绕过**，也不得为兼容错误用法而调整；新增例外必须先改 `docs/design.md` 再改断言并过主理人登记。构建期断言（门禁外）：主 JAR 全 class major=52（`javap` 抽查 `IpSearcher`/`IpKit`/`IpSession`/`CaptchaKit`/`QrKit`/`QrDeps`/`MaskKit`）；`mvn dependency:tree` 仅出现上述依赖清单（含 zxing 且无 javase/jcommander/jai-imageio）。
+门禁**不得删除、放宽或绕过**，也不得为兼容错误用法而调整；新增例外必须先改 `docs/design.md` 再改断言并过主理人登记。构建期断言（门禁外）：主 JAR 全 class major=52（`javap` 抽查 `IpSearcher`/`IpKit`/`IpSession`/`CaptchaKit`/`QrKit`/`QrDeps`/`MaskKit`/`KdfKit`）；`mvn dependency:tree` 仅出现上述依赖清单（含 zxing 且无 javese/jcommander/jai-imageio，kdf 无新增第三方）。
 
 ## 唯一定义点清单（实现类不得复制）
 
@@ -122,9 +128,13 @@ cn.hg.aifei.tools.mask         mask：3 公共类型 + internal（非承诺）
 | mask 注册表（唯一 `ConcurrentHashMap`） | `mask.internal.MaskRegistry` |
 | `MaskException` 构造与全部 `mask: ` 消息 | `mask.internal.MaskErrors` |
 | 9 默认规则初始注册（不可删） | `mask.internal.DefaultMasks` |
+| `KdfException` 构造与全部 `kdf: ` 消息 | `kdf.internal.KdfErrors` |
+| HKDF extract+expand（RFC 5869） | `kdf.internal.HkdfEngine` |
+| PBKDF2（RFC 8018 §5.2，手动 HMAC PRF 循环） | `kdf.internal.Pbkdf2Engine` |
+| HMAC 派生原语（RFC 4231，`HMAC(ikm, ikm)`） | `kdf.internal.HmacEngine` |
 
 - **命名后缀**：`XxxUtil` 无状态工具（全 static、结果只由入参决定）；`XxxKit` 有状态门面（操作有生命周期的会话/注册表，全 static）；会话对象/值对象用名词（`IpSearcher`/`Captcha`/`IpRegion`/`QrOptions` 等命名例外，已登记 design §7.1）；`internal` 用 `Deps/Errors/Session/Parser/Store/Generator/Registry/Codec/Masks`。
-- **消息前缀唯一定义点**：`ip: ` 仅在 `IpErrors`、`captcha: ` 仅在 `CaptchaErrors`、`qr: ` 仅在 `QrErrors`、`mask: ` 仅在 `MaskErrors`（门禁⑪ + 测试断言与公共 javadoc 除外）。
+- **消息前缀唯一定义点**：`ip: ` 仅在 `IpErrors`、`captcha: ` 仅在 `CaptchaErrors`、`qr: ` 仅在 `QrErrors`、`mask: ` 仅在 `MaskErrors`、`kdf: ` 仅在 `KdfErrors`（门禁⑪ + 测试断言与公共 javadoc 除外）。
 
 ## 已定档行为契约红线（QA 与后续改动的依据）
 
@@ -135,7 +145,7 @@ cn.hg.aifei.tools.mask         mask：3 公共类型 + internal（非承诺）
 - **captcha**：`verify` 一次性消费（成功即删、失败计数、超限失效，业务失败返回 `false` 不抛异常）；默认 TTL=120s / capacity=10000 / maxFailures=5；默认进程内 LRU，切集群走 optional aifei-cache；token = `SecureRandom` 32 字节 Base64 URL 无填充，不可从图片反推。
 - **qr**：`encode`/`decode` 均保留；`encode(null)`/`decode(null)`/`decode(空 byte[])` 抛 `QrException`；空串 `""` 合法且可往返（实现用私有区单字符 `\uE000` 哨兵）；**单个 U+E000 字符往返被误归一为空串属已知限制、不列入验收、QA 不落断言**；decode 失败抛 `QrException` 保留 cause、不返回 null；`decode(InputStream)` 不关闭调用方流；`QrOptions` 冻结为 size/margin/EC 三项 + `defaults()`/`of()`（默认 300/4/M、UTF-8 内部固定）；不加流式输出。
 - **mask**：通用 `mask` + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）初始在册不可删，`maskXxx(x)≡use("xxx").apply(x)`、`replace` 后跟随；value 为 null 返回 null、空串返回空串；`keepLeft`/`keepRight` 负数抛 `MaskException`；`maskIp` 按分隔符特征打码——含 `.` 按 `.` 分段，含 `:` 视为 IPv6 且 `::` 先展开为完整 8 段再打码（首段 + 其余每段一个 `*`，示例 IPv6 为 7 个 `*`），等价写法结果一致、畸形输入健壮不抛异常，无分隔符退化为保留首字符 + 等长 `*`；内容文本非法一律不抛 `MaskException`，`MaskException` 仅用于规则注册与负数 keep。
-- **异常**：四类模块异常均为 `RuntimeException`、公共方法不写 `throws`；依赖缺失首次调用抛可读模块异常，禁止裸抛 `NoClassDefFoundError`/`LinkageError`。
+- **kdf**：`KdfKit.derive(spec, ikm)` 按 `spec.getAlgorithm()` 分派到 `HkdfEngine` / `Pbkdf2Engine` / `HmacEngine`；algorithm 合法值集合 {HKDF, PBKDF2, HMAC} 在 `KdfSpec` 工厂内校验、非法抛 `KdfException`；`KdfSpec` 三静态工厂是构造唯一入口、值对象不可变（私有构造器、salt/info 防御性拷贝）；HKDF salt 可空（默认全 0 HashLen 字节）、info 可空；PBKDF2 salt 不可空、iterations > 0；HMAC 无 salt/iterations（getSalt 返回 null、getIterations 返回 0）；HMAC 派生原语为 `HMAC(ikm, ikm)`（自 HMAC，输出 HashLen 字节，spec.keyLen 仅校验合法性、不影响输出长度）；`javax.crypto.*` / `java.security.*` import 仅 `kdf/internal/`（captcha/internal 既有 `SecureRandom` 保留，门禁⑲偏离已记录）；公共签名零 JDK 加密类型、零第三方（门禁⑳′）；PBKDF2 实现偏离原设计 `SecretKeyFactory` 手法，改用手动 HMAC PRF 循环（见 design §8-F 实现期偏离记录）。
 
 ## 测试纪律
 
@@ -155,17 +165,18 @@ cn.hg.aifei.tools.mask         mask：3 公共类型 + internal（非承诺）
 **命令在 `aifei-tools/` 根目录执行**（门禁依赖相对路径 `src/main/java`；仓库根无聚合 pom）：
 
 ```bash
-mvn clean verify                                  # 必须 123 例 0 failure / 0 error（含架构门禁 17 例）
-mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（17 例）
-mvn dependency:tree                                # 断言：aifei-all(provided) + ip2region/zxing/aifei-cache(optional) + junit(test)，无 javase/jcommander/jai-imageio
+mvn clean verify                                  # 必须 178 例 0 failure / 0 error（含架构门禁 21 例）
+mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（21 例）
+mvn dependency:tree                                # 断言：aifei-all(provided) + ip2region/zxing/aifei-cache(optional) + junit(test)，无 javese/jcommander/jai-imageio，kdf 无新增第三方
 javap -verbose target/classes/cn/hg/aifei/tools/ipdb/IpSearcher.class | findstr "major version"   # 期望 52
+javap -verbose target/classes/cn/hg/aifei/tools/kdf/KdfKit.class | findstr "major version"        # 期望 52
 ```
 
 > **零联网纪律**：全部单测离线可重复；xdb 样本内嵌 base64、不提交二进制、不外链生产数据。
 
 ## 冻结契约 vs 可演进
 
-- **冻结契约（改动须先过设计决策并更新测试断言）**：16 个公共类型与 §3 逐字签名；四类异常消息措辞与前缀唯一定义点；region 五段解析与 `"0"`→空串语义；依赖坐标/scope（含 zxing 不引 javase）；默认模式 VECTOR_INDEX 与并发策略；`IpRegion.of` null 归一口径；maskIp IPv6 展开与退化口径；qr 空串哨兵契约；17 例门禁判定口径。
+- **冻结契约（改动须先过设计决策并更新测试断言）**：20 个公共类型与 §3 逐字签名；五类异常消息措辞与前缀唯一定义点；region 五段解析与 `"0"`→空串语义；依赖坐标/scope（含 zxing 不引 javase，kdf 无新增第三方）；默认模式 VECTOR_INDEX 与并发策略；`IpRegion.of` null 归一口径；maskIp IPv6 展开与退化口径；qr 空串哨兵契约；21 例门禁判定口径（含 kdf 追加 4 例 ⑱⑲⑳⑳′与 ⑪⑧扩充覆盖）。
 - **可自主演进（不破坏门禁与冻结契约前提下）**：`internal/*` 实现细节与私有工具类；测试样本的具体字节与桩实现；文档措辞与 javadoc 细化；demo（本轮不配，后续可选立项）。
 - 本模块为 Java 8 / class major 52 硬基线；若将来拟放宽 Java 基线（如 ip2region 3.3.8），须重走设计决策并同步 design §0 实证记录。
 

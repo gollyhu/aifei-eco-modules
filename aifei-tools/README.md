@@ -2,11 +2,11 @@
 
 ## 1. 定位与场景
 
-把“几十行就能写完、却每个应用都要抄一遍”的极简能力收拢到一个 JAR：**图形验证码、离线 IP 归属地、二维码、通用脱敏**，四个工具互不相关、各用一个子包，取用哪个就只用哪个，互不牵连。
+把“几十行就能写完、却每个应用都要抄一遍”的极简能力收拢到一个 JAR：**图形验证码、离线 IP 归属地、二维码、通用脱敏、KDF 密钥派生**，五个工具互不相关、各用一个子包，取用哪个就只用哪个，互不牵连。
 
 - 坐标：`io.github.gollyhu:aifei-tools:1.0.0`（`packaging=jar`）
 - 包名：`cn.hg.aifei.tools`；Java 8（class major 52）；根包零公共类型
-- 首批四个工具：`captcha` 验证码 / `ipdb` IP 归属地 / `qr` 二维码 / `mask` 脱敏
+- 五个工具：`captcha` 验证码 / `ipdb` IP 归属地 / `qr` 二维码 / `mask` 脱敏 / `kdf` 密钥派生
 
 **适合**：单体或小应用里需要上述某一项能力、又不愿为它单独引一个框架或起一个服务；**不适合**：滑块 / 点选行为验证、短信邮件验证码发送、联网 IP 库、经纬度与风控画像——这些都不在本模块范围内。
 
@@ -22,7 +22,7 @@
 </dependency>
 ```
 
-`aifei-all:1.1.2` 由消费方自带（本模块对它 `provided`、不传递）。四个工具各给一个最小闭环，按需取用即可。
+`aifei-all:1.1.2` 由消费方自带（本模块对它 `provided`、不传递）。五个工具各给一个最小闭环，按需取用即可。
 
 **脱敏（纯 JDK，零额外依赖）**
 
@@ -88,7 +88,7 @@ String country = region.getCountry();   // 中国
 
 ## 3. 常用用法
 
-四个工具各是一个静态门面 / 无状态工具，随取随用，没有装配期、没有配置键。
+五个工具各是一个静态门面 / 无状态工具，随取随用，没有装配期、没有配置键。
 
 ### 验证码：`CaptchaKit`
 
@@ -143,6 +143,28 @@ String f = MaskUtil.maskPassword("abc123");             // 恒为 ******
 ```
 
 九个默认规则：`phone` / `idCard` / `bankCard` / `email` / `name` / `fixedPhone` / `password` / `address` / `ip`，均可经 `MaskKit.use("规则名")` 取用；规则可自定义注册与替换（见 §4 场景四）。
+
+### 密钥派生：`KdfKit`（纯 JDK，零额外依赖）
+
+```java
+import cn.hg.aifei.tools.kdf.KdfHash;
+import cn.hg.aifei.tools.kdf.KdfKit;
+import cn.hg.aifei.tools.kdf.KdfSpec;
+
+// HKDF（RFC 5869）：从 IKM 派生 32 字节密钥，salt/info 可空
+KdfSpec hkdf = KdfSpec.hkdf(KdfHash.SHA256, salt, info, 32);
+byte[] key1 = KdfKit.derive(hkdf, ikm);
+
+// PBKDF2（RFC 8018）：口令 + 盐 + 迭代次数派生密钥
+KdfSpec pbkdf2 = KdfSpec.pbkdf2(KdfHash.SHA256, salt, 10000, 32);
+byte[] key2 = KdfKit.derive(pbkdf2, "user-password".getBytes());
+
+// HMAC 派生原语（RFC 4231）：HMAC(ikm, ikm) → HashLen 字节
+KdfSpec hmac = KdfSpec.hmac(KdfHash.SHA512, 64);
+byte[] key3 = KdfKit.derive(hmac, secret);
+```
+
+三种算法 + 两档哈希（SHA-256 / SHA-512）经 `KdfSpec` 工厂组合，`KdfKit.derive` 按 `algorithm` 分派；`javax.crypto` / `java.security` 仅 `kdf/internal` 引用，公共签名零 JDK 加密类型。
 
 ## 4. 深入使用
 
@@ -263,8 +285,9 @@ public class CustomerExportService {
 | IP 归属地 | `org.lionsoul:ip2region:3.3.7` | 首次调用 `IpSearcher` / `IpKit` 抛可读 `IpException` |
 | 二维码 | `com.google.zxing:core:3.5.3` | 首次调用 `QrKit` 抛可读 `QrException` |
 | 验证码集群存储 | `io.github.gollyhu:aifei-cache:1.1.0` | 调用 `enableClusterStore()` 抛可读 `CaptchaException` |
+| 密钥派生 | 无（纯 JDK `javax.crypto` / `java.security`） | 始终可用，无缺失场景 |
 
-- 验证码单机模式、脱敏不依赖任何内核，引了本模块即可用。
+- 验证码单机模式、脱敏、密钥派生不依赖任何内核，引了本模块即可用。
 - `zxing` 只引 `core`，**不引 `javase`**（后者会额外拖入命令行与图像 IO 库）；二维码 PNG 由模块内部绘制。
 - 缺失内核时抛的是本模块异常、消息里写明需要补齐的坐标，且保留底层 cause——这是“能力按需引入”，不是“功能降级”。
 - 版本口径：`ip2region` / `zxing` 版本由本模块 pom 的属性（`ip2region.version` / `zxing.version`）管理；`aifei-cache` 版本在 pom 中直接写死为 `1.1.0`（无对应属性）。消费方需与上表坐标一致。
@@ -285,10 +308,11 @@ public class CustomerExportService {
 - **二维码解码失败不静默**：无法识别的图片抛 `QrException` 并保留 cause，不返回 null；`decode(InputStream)` 不关闭调用方传入的流，流的开关由调用方负责。
 - **脱敏是宽松文本处理**：`maskIp` 对非法文本不抛异常——按分隔符特征打码，`::` 压缩形式会先展开为完整 8 段再打码（如 `2001:db8:85a3::8a2e:370:7334` → `2001:*:*:*:*:*:*:*`），等价写法结果一致，畸形输入健壮退化。`value` 为 null 返回 null、空串返回空串；`MaskException` 只用于规则注册类错误与负数保留位。
 - **双许可署名**：`ip2region` 采用 **Apache-2.0 OR MIT** 双许可。消费方引入该内核时，须按其许可要求随产品保留相应署名与许可声明；许可文本随依赖自带，本模块不复制。完整署名与许可信息见 `THIRD_PARTY_NOTICES.md`。
+- **密钥派生纯 JDK**：`kdf` 子包用 JDK 8 自带的 `javax.crypto.Mac` / `java.security` 实现 HKDF（RFC 5869）、PBKDF2（RFC 8018）、HMAC（RFC 4231）三算法，零第三方依赖；`javax.crypto` / `java.security` import 仅出现在 `kdf/internal/`，公共签名零 JDK 加密类型（门禁⑲⑳′）。
 
 ## 7. 参考
 
-### 公共类型一览（四子包共 16 个，根包零公共类型）
+### 公共类型一览（五子包共 20 个，根包零公共类型）
 
 | 子包 | 公共类型 |
 | --- | --- |
@@ -296,6 +320,7 @@ public class CustomerExportService {
 | `cn.hg.aifei.tools.ipdb` | `IpSearcher` / `IpKit` / `IpRegion` / `IpException` / `IpQueryMode` |
 | `cn.hg.aifei.tools.qr` | `QrKit` / `QrOptions` / `QrErrorCorrection` / `QrException` |
 | `cn.hg.aifei.tools.mask` | `MaskUtil` / `MaskKit` / `MaskException` |
+| `cn.hg.aifei.tools.kdf` | `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException` |
 
 ### 依赖坐标
 
@@ -311,7 +336,7 @@ public class CustomerExportService {
 
 ### 异常对照
 
-四个工具各有统一异常，均为 `RuntimeException`，公共方法不声明 `throws`；业务只 `catch`、不 `new`。
+五个工具各有统一异常，均为 `RuntimeException`，公共方法不声明 `throws`；业务只 `catch`、不 `new`。
 
 | 异常 | 典型场景 | 备注 |
 | --- | --- | --- |
@@ -319,6 +344,7 @@ public class CustomerExportService {
 | `CaptchaException` | 配置项非正 / 集群存储缺 `aifei-cache` / 存储不可用 | 消息前缀 `captcha: `；token 业务失败返回 `false` 不抛异常 |
 | `QrException` | 内核缺失 / null 或空输入 / 编解码失败 | 消息前缀 `qr: `，失败保留 cause、不返回 null |
 | `MaskException` | 规则重复注册 / 替换或取用未注册规则 / 名称或函数 null / 保留位为负 | 消息前缀 `mask: `；文本内容非法不抛异常 |
+| `KdfException` | spec/ikm 为 null / algorithm 非法 / keyLen 非正 / PBKDF2 salt 为 null 或 iterations 非正 / HKDF 超 RFC5869 上限 / 底层 JDK 算法不可用 / 派生失败 | 消息前缀 `kdf: `，保留 cause |
 
 精确消息措辞见 `docs/design.md` §7.2。
 
@@ -327,15 +353,16 @@ public class CustomerExportService {
 | 文档 | 内容 |
 | --- | --- |
 | `docs/design.md` | 契约事实来源：公共面逐字签名、异常语义、已定档决策、架构门禁 |
-| `docs/testing.md` | 测试策略与用例清单（123 例构成、样本策略、覆盖映射） |
+| `docs/testing.md` | 测试策略与用例清单（178 例构成、样本策略、覆盖映射） |
 | `THIRD_PARTY_NOTICES.md` | 第三方运行内核的版权与许可署名声明 |
 
 ### 构建与验证
 
 ```bash
 cd aifei-tools
-mvn clean verify                 # 0 failure / 0 error（123 例：门禁 17 + 功能 106）
-mvn test -Dtest=ArchitectureBoundaryTest   # 仅跑架构门禁（17 例）
-mvn dependency:tree              # 核对：仅 aifei-all(provided) + 三个 optional 内核 + junit(test)
+mvn clean verify                 # 0 failure / 0 error（178 例：门禁 21 + 功能 157）
+mvn test -Dtest=ArchitectureBoundaryTest   # 仅跑架构门禁（21 例）
+mvn dependency:tree              # 核对：仅 aifei-all(provided) + 三个 optional 内核 + junit(test)，kdf 无新增第三方
 javap -verbose target/classes/cn/hg/aifei/tools/ipdb/IpSearcher.class | findstr "major version"   # 期望 52
+javap -verbose target/classes/cn/hg/aifei/tools/kdf/KdfKit.class | findstr "major version"        # 期望 52
 ```

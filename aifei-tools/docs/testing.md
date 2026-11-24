@@ -23,22 +23,23 @@
 
 | 分组 | 测试类 | 用例数 |
 | --- | --- | --- |
-| 架构门禁 | `ArchitectureBoundaryTest` | 17 |
+| 架构门禁 | `ArchitectureBoundaryTest` | 21 |
 | ipdb | `IpSearcherTest` 15 / `IpRegionTest` 8 / `IpKitTest` 3 / `PublicApiContractIpTest` 9 | 35 |
 | captcha | `CaptchaKitTest` 10 / `CaptchaStoreTest` 7 / `PublicApiContractCaptchaTest` 8 | 25 |
 | qr | `QrKitTest` 11 / `PublicApiContractQrTest` 8 | 19 |
 | mask | `MaskUtilTest` 12 / `MaskKitTest` 8 / `PublicApiContractMaskTest` 7 | 27 |
-| **合计** | 门禁 17 + 功能 106 | **123** |
+| kdf | `HkdfTest` 6 / `Pbkdf2Test` 6 / `HmacTest` 10 / `KdfKitTest` 20 / `PublicApiContractKdfTest` 9 | 51 |
+| **合计** | 门禁 21 + 功能 157 | **178** |
 
-**结果：`Tests run: 123, Failures: 0, Errors: 0, Skipped: 0`。** `target/aifei-tools-1.0.0.jar` 产出，主 JAR class major 52（门禁⑨ + 各 `PublicApiContract*Test.mainClasses_majorVersionIsJava8` 双重断言）。
+**结果：`Tests run: 178, Failures: 0, Errors: 0, Skipped: 0`。** `target/aifei-tools-1.0.0.jar` 产出，主 JAR class major 52（门禁⑨ + 各 `PublicApiContract*Test.mainClasses_majorVersionIsJava8` 双重断言）。
 
-> **数字口径（最终确认）**：用例总数 **123（门禁 17 + 功能 106）**，已由主理人独立复跑确认（`Tests run: 123, Failures: 0, Errors: 0, Skipped: 0`，`BUILD SUCCESS`）。功能用例含测试关卡最后补强新增的 1 例 §8-D14 权威向量逐字断言（`MaskUtilTest`）。本文所有数字以磁盘源码 `@Test`（123 个）与 surefire 报告为准，`mvn clean verify` 无任何跳过；请勿再引用补强前的旧总数。
+> **数字口径（最终确认）**：用例总数 **178（门禁 21 + 功能 157）**，其中 kdf 子包 51 例（HkdfTest 6 + Pbkdf2Test 6 + HmacTest 10 + KdfKitTest 20 + PublicApiContractKdfTest 9），门禁 17→21（追加 ⑱⑲⑳⑳′ 四例）。本文所有数字以磁盘源码 `@Test`（178 个）与 surefire 报告为准，`mvn clean verify` 无任何跳过。
 
 ## 3. 用例清单（按子包）
 
-### 3.1 架构门禁 `ArchitectureBoundaryTest`（17 例）
+### 3.1 架构门禁 `ArchitectureBoundaryTest`（21 例）
 
-对应 §6.2 定档的 17 条，纯追加、原 14 例断言不删减：
+对应 §6.2 定档的 21 条，原 17 例断言逐字保留，kdf 追加 ⑱⑲⑳⑳′ 四例：
 
 | # | 方法 | 判定口径 |
 | --- | --- | --- |
@@ -49,16 +50,20 @@
 | ⑤ | `cacheOnlyInCaptchaInternal` | `import cn.hg.aifei.cache.` 仅 `captcha/internal/` |
 | ⑥ | `noFrameworkReference` | 全模块禁 `import cn.aifei.` |
 | ⑦ | `noWebSqlOrLogBinding` | 禁 undertow / `java.sql` / slf4j，pom 无日志绑定 |
-| ⑧ | `publicSignaturesNoThirdParty` | 公共层源码无第三方 / 框架类型字面量 |
+| ⑧ | `publicSignaturesNoThirdParty` | 五子包公共层源码无第三方 / 框架类型字面量（kdf 扩充覆盖扫描） |
 | ⑨ | `java8Compatibility` | 禁 `var` / `record` / `List.of` / text block 等 Java 8+ 语法 API |
 | ⑩ | `classForNameOnlyInDeps` | `Class.forName` 仅 `*Deps` 两个文件 |
-| ⑪ | `errorMessagesOnlyInErrors` | 四类消息前缀仅 `*Errors` 定义（本轮扩充覆盖 qr/mask） |
+| ⑪ | `errorMessagesOnlyInErrors` | 五类消息前缀（ip/captcha/qr/mask/kdf）仅 `*Errors` 定义（kdf 扩充覆盖） |
 | ⑫ | `regionParsingOnlyInParser` | region 分隔符与 `"0"` / `"Reserved"` 归空串唯一实现在 `RegionParser` |
 | ⑬ | `noServiceProvider` | 禁 `ServiceLoader` / `META-INF/services` |
 | ⑭ | `testSourcesOfflineOnly` | 测试源 URL host 仅回环地址，base64 常量允许 |
 | ⑮ | `qrPublicSurfaceExact` | `qr/` 精确 4 且集合相等 |
 | ⑯ | `zxingOnlyInQrInternal` | `import com.google.zxing.` 仅 `qr/internal/` |
 | ⑰ | `maskPublicSurfaceExact` | `mask/` 精确 3 且集合相等 |
+| ⑱ | `kdfPublicSurfaceExact` | `kdf/` 精确 4 且集合相等 = {KdfKit,KdfSpec,KdfHash,KdfException} |
+| ⑲ | `cryptoOnlyInKdfInternal` | `import javax.crypto.` 仅 `kdf/internal/`；`import java.security.` 仅 `kdf/internal/` 与 `captcha/internal/`（既有 SecureRandom 保留） |
+| ⑳ | `kdfPrefixOnlyInErrors` | `kdf: ` 前缀仅 `KdfErrors.java` |
+| ⑳′ | `publicSignaturesNoThirdPartyKdf` | kdf 公共层零 JDK 加密类型 / 零第三方字面量 |
 
 ### 3.2 ipdb（35 例）
 
@@ -98,17 +103,30 @@
 
 **权威口径（§8-D14，实测向量，QA 固定断言）**：`maskIp` 保留首段、其余每段一个 `*`；IPv4 `192.168.2.1` → `192.*.*.*`；IPv6 压缩式 `2001:db8:85a3::8a2e:370:7334` 与逐段补全式 `2001:0db8:85a3:0000:0000:8a2e:0370:7334` 与展开式 `2001:db8:85a3:0:0:8a2e:370:7334` **三者结果一致**，均 → `2001:*:*:*:*:*:*:*`（**7 个 `*`**，`::` 先展开为完整 8 段再打码）；畸形输入（`::` / `:::` / `:a::b` / 超 9 段 / 非法字符 / `garbage` / `a.b.c`）健壮不抛异常，无分隔符特征者退化为保留首字符 + 其余等长 `*`。文本内容非法一律不抛异常，`MaskException` 仅用于规则注册与负数保留位（§8-D13）。
 
+### 3.6 kdf（51 例）
+
+对应 §9「HKDF/PBKDF2/HMAC 三算法对标 RFC 测试向量 + 门面分派 + 参数非法 + 公共面」验收要点：
+
+- **`HkdfTest`（6）**：RFC 5869 附录 A 测试向量——SHA-256 档照抄 Case 1（IKM=0x0b*22, salt=0..12, info=0xf0..0xf9, L=42）与 Case 2（salt/info 空）的 OKM 逐字比对；SHA-512 档输入同 Case 1/2、OKM 为按 RFC 5869 算法用 HmacSHA512 独立计算的参考值（RFC 5869 附录 A 无 SHA-512 向量，F9-b 硬编码常量）；HKDF keyLen 超 RFC5869 上限（255×HashLen=8160）抛 `kdf: keyLen 8161 exceeds RFC5869 maximum 8160 for SHA256`；keyLen 恰为 HashLen 倍数边界。
+- **`Pbkdf2Test`（6）**：RFC 7914 §B.1 两组 SHA-256 官方向量（passwd/salt/1/64、Password/NaCl/80000/64）逐字比对；SHA-512 档输入同第一组、OKM 为按 RFC 8018 §5.2 用 HmacSHA512 独立计算的参考值；任意 keyLen 输出（跨块 50、整块 64、SHA-512 100）；不同迭代次数输出必然不同；null ikm 抛 `kdf: input key material must not be null`。
+- **`HmacTest`（10）**：RFC 4231 标准向量验证 JDK `Mac` 实现正确（TC2/TC3/TC6 三组，间接证明 HmacEngine 依赖的 Mac 正确）；HmacEngine 输出 = `HMAC(ikm, ikm)` 与 JDK Mac 独立计算逐字一致（SHA-256/SHA-512 两档，F9-b 硬编码常量）；HMAC 原始输出 HashLen 字节、spec.keyLen 不影响输出长度。
+- **`KdfKitTest`（20）**：三算法门面分派（HKDF/PBKDF2/HMAC 各档 keyLen 正确，含 HMAC 三参重载 data=message 路径、keyLen 截断与扩展）；参数非法路径全覆盖——null spec / null ikm / HKDF keyLen≤0 / PBKDF2 salt null / iterations≤0 / keyLen≤0 / HMAC keyLen≤0 / 三工厂 hash null（断言 `kdf: hash must not be null`）；HKDF 任意 keyLen 输出（1/100/500）。
+- **`PublicApiContractKdfTest`（9）**：`KdfKit` / `KdfSpec` / `KdfHash` / `KdfException` 类型 final、逐字签名（KdfSpec 三静态工厂 + 6 getter、KdfHash SHA256/SHA512 常量）、异常仅两公共构造、公共方法无 `throws`、签名零第三方类型、KdfSpec 不可变（salt/info 防御性拷贝、getter 返回副本）、class major 52。
+
+**权威口径（§8-F9-a，F9-a 实测结论）**：当前 JDK（实测 JDK 19 SunJCE）`PBKDF2WithHmacSHA256` / `PBKDF2WithHmacSHA512` / `HmacSHA256` / `HmacSHA512` **四算法名全部可用**。但 SunJCE 的 `SecretKeyFactory.generateSecret(PBEKeySpec).getEncoded()` 返回的 key 长度由 PBE cipher 约束决定（默认 8 字节），不等于 `PBEKeySpec` 请求的 keyLen，无法满足"任意 keyLen 输出"契约；故 `Pbkdf2Engine` 改用手动 HMAC PRF 循环实现 RFC 8018 §5.2（纯 JDK、零第三方，偏离原设计手法已记录于 design §8-F）。
+
 ## 4. 运行方法
 
 构建、测试**必须在模块目录执行**（门禁测试依赖相对路径 `src/main/java`，仓库根无聚合 pom，禁止在根执行）：
 
 ```bash
 cd aifei-tools
-mvn clean verify                                  # 全部 123 例，0 failure / 0 error
-mvn test -Dtest=ArchitectureBoundaryTest           # 仅门禁 17 例
+mvn clean verify                                  # 全部 178 例，0 failure / 0 error
+mvn test -Dtest=ArchitectureBoundaryTest           # 仅门禁 21 例
 mvn test -Dtest=IpSearcherTest                     # 仅 ip 会话功能 15 例
 mvn test -Dtest="cn.hg.aifei.tools.qr.*"           # 仅 qr 子包
-mvn dependency:tree                               # 依赖口径核对
+mvn test -Dtest="HkdfTest,Pbkdf2Test,HmacTest,KdfKitTest,PublicApiContractKdfTest"  # 仅 kdf 子包 51 例
+mvn dependency:tree                               # 依赖口径核对（kdf 无新增第三方）
 ```
 
 - **无需任何开关**：ip 测试走内嵌 xdb 样本（解码到 `target/`），不依赖外部数据文件与网络；captcha 集群用内存 Mock，不连 Redis。设计 §8-A1 提及的「默认关闭的 xdb 集成测试退化方案」**未启用**（因 maker 一次性生成样本已成功固化，无需外部 xdb），故不存在 `-Dip.integration` 之类的开关；开启外部集成测试不是本模块交付内容。
@@ -126,7 +144,8 @@ mvn dependency:tree                               # 依赖口径核对
 | 二维码闭环、四档 EC、中文 UTF-8、流不关闭、空串往返、依赖缺失 | `QrKitTest` | PASS |
 | 通用 mask、9 默认规则、座机/密码/地址/IP 新规则、IPv6 7 星与畸形健壮 | `MaskUtilTest` | PASS |
 | 三态异常、默认规则在册不可删、replace 跟随 | `MaskKitTest` | PASS |
-| 公共面形态 / 签名逐字一致 / 零第三方 / class major 52 | 四 `PublicApiContract*Test` | PASS |
-| 根包零类型 + 各子包精确 N、依赖边界、Java8、离线 | `ArchitectureBoundaryTest`（17） | PASS |
+| 公共面形态 / 签名逐字一致 / 零第三方 / class major 52 | 五 `PublicApiContract*Test` | PASS |
+| 根包零类型 + 各子包精确 N、依赖边界、Java8、离线 | `ArchitectureBoundaryTest`（21） | PASS |
+| kdf HKDF/PBKDF2/HMAC 对标 RFC 测试向量逐字比对、三算法门面分派、参数非法、任意 keyLen | `HkdfTest` / `Pbkdf2Test` / `HmacTest` / `KdfKitTest` | PASS |
 
-> 全部 123 例 0 failure / 0 error；无已知遗留问题。任何门禁断言不得放宽；冻结契约的判定规则与异常消息变更须先更新断言（根 `AGENTS.md`）。
+> 全部 178 例 0 failure / 0 error；无已知遗留问题（kdf PBKDF2 实现手法偏离已记录于 design §8-F，待主理人回写）。任何门禁断言不得放宽；冻结契约的判定规则与异常消息变更须先更新断言（根 `AGENTS.md`）。
