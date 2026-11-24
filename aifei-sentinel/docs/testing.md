@@ -45,8 +45,11 @@
 | `testAnnotatedResourceNameCached` | 注解方法重复解析返回同一实例，且 `RESOURCE_CACHE` 中存在该 `Method` 条目 |
 | `testDefaultResourceNameCached` | 未标注方法回退默认名同样被缓存，重复解析返回同一实例 |
 | `testConcurrentResourceNameConsistent` | 8 线程并发解析同一 `Method`，结果全部一致 |
+| `testParamFlowHitWithMethodArgs` | Proxy 路径构造期带入实参，`ParamFlowRule`（count=0, paramIdx=0）命中 → 降级返回值被写入、业务未执行 |
+| `testParamFlowHitWithOverriddenArgs` | AOP 路径构造期 args 为空，覆盖 `argsOf` 提供实参后热点规则命中 → 降级返回值被写入、业务未执行 |
+| `testParamFlowPassWhenArgsMissing` | 无实参时 `ParamFlowChecker` 下标越界直接放行 → 业务执行（回归保护：热点规则不静默拒绝） |
 
-既有内嵌 `DemoService` 不加注解，继续覆盖默认资源名的回退路径；注解用例放在新增内嵌 `AnnotatedService`。
+既有内嵌 `DemoService` 不加注解，继续覆盖默认资源名的回退路径；注解用例放在新增内嵌 `AnnotatedService`；带参用例放在 `ParamService`（资源名 `unit.param.hot`）。热点用例用 `count=0` 使判定不依赖时间窗口。
 
 ### 3.3 热生效测试 `SentinelRuleWatchTest`
 
@@ -84,7 +87,8 @@ mvn test           # 快速迭代：仅跑测试阶段（架构门禁 KernelBind
 | transport 缺失的 fail-fast 分支 | 配了 Dashboard 但 classpath 无 transport 时抛 `IllegalStateException`，当前无自动用例，需人工构造缺依赖场景 |
 | Dashboard 端到端 | 起官方控制台 → 控制台改规则 → 本地 `sentinel-rules.json` 更新 → 重启规则仍在，由 demo 人工验证（`start-dashboard.bat` / `start-demo-dashboard.bat`） |
 | transport 推送链路 | `sentinel-transport-simple-http` 的命令处理与推送依赖真实控制台，单测不覆盖 |
-| 系统保护 / 热点参数 / 黑白名单 | 依赖机器负载、`ContextUtil.enter(origin)` 等运行时上下文，当前仅覆盖流控路径，其余共用同一埋点与加载链路 |
+| 系统保护 / 黑白名单 | 依赖机器负载、`ContextUtil.enter(origin)` 等运行时上下文，当前仅覆盖流控与热点参数路径，其余共用同一埋点与加载链路 |
+| Dashboard 控制台「拒绝 QPS」实时展示 | 需真实控制台与 transport 推送，单测不覆盖；由 demo 端到端连发验证返回码（见 `aifei-sentinel-demo/docs/hotspot-param-fix.md`） |
 
 ## 6. 变更时的测试要求
 

@@ -19,8 +19,8 @@ import cn.aifei.log.log4j.Log4jLogFactory;
 import cn.aifei.server.undertow.UndertowServer;
 import cn.aifei.util.Prop;
 import cn.aifei.util.PropKit;
-import cn.hg.aifei.sentinel.aifei.SentinelInterceptor;
 import cn.hg.aifei.sentinel.core.SentinelKit;
+import cn.hg.aifei.sentinel.demo.aifei.DemoSentinelInterceptor;
 
 /** 装配中心：自写 HIO + Sentinel 拦截器 + 规则加载（两种运行模式由配置文件决定） */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
@@ -54,7 +54,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     @Override
     public void config(Routes routes) {
         // 限流拦截器放最前：被限流的请求不再走后续拦截器
-        routes.scan("cn.hg.aifei.sentinel.demo", new SentinelInterceptor(e -> Out.fail(OutCode.RATE_LIMIT)));
+        routes.scan("cn.hg.aifei.sentinel.demo", new DemoSentinelInterceptor(e -> Out.fail(OutCode.RATE_LIMIT)));
     }
 
     @Override

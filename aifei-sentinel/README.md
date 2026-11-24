@@ -255,6 +255,25 @@ public class DemoService {
 
 注解只在 `SentinelInterceptor` 默认的 `resourceOf` 实现中读取；子类覆盖 `resourceOf` 时注解不生效。需要按 HTTP path 维度限流时，继承 `SentinelInterceptor` 覆盖 `resourceOf` 返回 path（此时无需注解）。
 
+### 热点参数
+
+埋点把实参一并交给 Sentinel：`SphU.entry(..., argsOf(inv))`，`argsOf` 默认返回方法实参；规则 `paramIdx` 指的就是返回数组的下标。
+
+- Proxy 路径（`@Inject` service 被代理调用）：实参构造期就位，默认实现即可命中热点规则。
+- `routes.scan` 的 AOP 路径：aifei 在拦截器链全部执行后才解析实参，拦截器内 `inv.getArgs()` 为 `null`。此时须继承 `SentinelInterceptor` 覆盖 `argsOf` 从 `Input` 取值，见 demo 的 `DemoSentinelInterceptor`：
+
+```java
+public class DemoSentinelInterceptor extends SentinelInterceptor {
+    @Override
+    protected Object[] argsOf(Invocation inv) {
+        Integer id = inv.getInput().getInt("id");
+        return new Object[]{id == null ? 0 : id};
+    }
+}
+```
+
+未携带实参时 Sentinel 的 `ParamFlowChecker` 会直接放行，热点规则形同虚设（控制台「拒绝 QPS」恒 0）——这是热点参数不生效的典型原因。
+
 ## 规则文件
 
 规则文件是一份「单文件 + 分 key」的 JSON，五类规则各占一个 key：

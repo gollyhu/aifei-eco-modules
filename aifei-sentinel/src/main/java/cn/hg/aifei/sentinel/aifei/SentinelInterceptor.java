@@ -11,6 +11,7 @@ import cn.aifei.aop.Invocation;
 import cn.hg.aifei.sentinel.annotation.SentinelResource;
 import cn.hg.aifei.sentinel.spi.SentinelBlockHandler;
 import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.EntryType;
 import com.alibaba.csp.sentinel.SphU;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import java.lang.reflect.Method;
@@ -34,6 +35,8 @@ public class SentinelInterceptor implements Interceptor {
                 }
             };
 
+    private static final Object[] EMPTY_ARGS = new Object[0];
+
     private final SentinelBlockHandler blockHandler;
 
     public SentinelInterceptor(SentinelBlockHandler blockHandler) {
@@ -42,11 +45,17 @@ public class SentinelInterceptor implements Interceptor {
 
     @Override
     public void intercept(Invocation inv) throws Exception {
-        try (Entry entry = SphU.entry(resourceOf(inv));) {
+        Object[] args = argsOf(inv);
+        try (Entry entry = SphU.entry(resourceOf(inv), EntryType.IN, 1, args != null ? args : EMPTY_ARGS)) {
             inv.invoke();
         } catch (BlockException e) {
             inv.setReturnValue(blockHandler.handle(e));
         }
+    }
+
+    /** 埋点实参：默认取方法实参；AOP 路径下拦截器执行时实参尚未解析，需子类覆盖本方法从 Input 读取。 */
+    protected Object[] argsOf(Invocation inv) {
+        return inv.getArgs();
     }
 
     /**

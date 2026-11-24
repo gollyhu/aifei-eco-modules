@@ -14,6 +14,8 @@ import cn.hg.aifei.sentinel.spi.SentinelBlockHandler;
 import com.alibaba.csp.sentinel.slots.block.RuleConstant;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRule;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager;
+import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRule;
+import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowRuleManager;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -60,6 +62,16 @@ public class SentinelInterceptorTest {
         public String blank() {
             blankCalls++;
             return "ok";
+        }
+    }
+
+    public static class ParamService {
+        int calls;
+
+        @SentinelResource("unit.param.hot")
+        public String detail(int id) {
+            calls++;
+            return "ok-" + id;
         }
     }
 
@@ -156,6 +168,72 @@ public class SentinelInterceptorTest {
         for (String r : results) {
             Assert.assertEquals("unit.logic", r);
         }
+    }
+
+    @Test
+    public void testParamFlowHitWithMethodArgs() throws Exception {
+        paramRule();
+        ParamService svc = new ParamService();
+        Method m = ParamService.class.getMethod("detail", int.class);
+        Callback callback = args -> {
+            svc.calls++;
+            return "ok";
+        };
+
+        Assert.assertEquals(BLOCKED, invokeWithArgs(new SentinelInterceptor(BLOCK_HANDLER), svc, m,
+                new Object[]{7}, callback));
+        Assert.assertEquals(0, svc.calls);
+    }
+
+    @Test
+    public void testParamFlowHitWithOverriddenArgs() throws Exception {
+        paramRule();
+        ParamService svc = new ParamService();
+        Method m = ParamService.class.getMethod("detail", int.class);
+        SentinelInterceptor interceptor = new SentinelInterceptor(BLOCK_HANDLER) {
+            @Override
+            protected Object[] argsOf(Invocation inv) {
+                return new Object[]{7};
+            }
+        };
+        Callback callback = args -> {
+            svc.calls++;
+            return "ok";
+        };
+
+        // AOP 路径构造期 args 为空，由覆盖的 argsOf 提供实参后热点规则命中
+        Assert.assertEquals(BLOCKED, invokeWithArgs(interceptor, svc, m, new Object[]{}, callback));
+        Assert.assertEquals(0, svc.calls);
+    }
+
+    @Test
+    public void testParamFlowPassWhenArgsMissing() throws Exception {
+        paramRule();
+        ParamService svc = new ParamService();
+        Method m = ParamService.class.getMethod("detail", int.class);
+        Callback callback = args -> {
+            svc.calls++;
+            return "ok";
+        };
+
+        Assert.assertEquals("ok", invokeWithArgs(new SentinelInterceptor(BLOCK_HANDLER), svc, m,
+                new Object[]{}, callback));
+        Assert.assertEquals(1, svc.calls);
+    }
+
+    private static void paramRule() {
+        ParamFlowRule rule = new ParamFlowRule("unit.param.hot");
+        rule.setGrade(RuleConstant.FLOW_GRADE_QPS);
+        rule.setCount(0);
+        rule.setParamIdx(0);
+        ParamFlowRuleManager.loadRules(Collections.singletonList(rule));
+    }
+
+    private static Object invokeWithArgs(SentinelInterceptor interceptor, Object target, Method m,
+                                         Object[] args, Callback callback) throws Exception {
+        Invocation inv = new Invocation(target, m, args, new Interceptor[]{interceptor}, callback);
+        inv.invoke();
+        return inv.getReturnValue();
     }
 
     private static Invocation invocationOf(Object target, Method m) {

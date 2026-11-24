@@ -121,7 +121,8 @@ public class SentinelInterceptor implements Interceptor {
     public void intercept(Invocation inv) throws Exception {
         Entry entry = null;
         try {
-            entry = SphU.entry(resourceOf(inv));
+            Object[] args = argsOf(inv);
+            entry = SphU.entry(resourceOf(inv), EntryType.IN, 1, args != null ? args : EMPTY_ARGS);
             inv.invoke();
         } catch (BlockException e) {
             inv.setReturnValue(blockHandler.handle(e));   // 复用消费方 IoHandler 的输出渲染
@@ -130,6 +131,11 @@ public class SentinelInterceptor implements Interceptor {
                 entry.exit();                              // 必须成对退出，否则统计计数器泄漏
             }
         }
+    }
+
+    /** 埋点实参：默认取方法实参；AOP 路径下实参晚于拦截器解析，需子类覆盖从 Input 读取 */
+    protected Object[] argsOf(Invocation inv) {
+        return inv.getArgs();
     }
 
     /** 资源名：注解非空白 value 优先（trim 后），否则回退「全限定类名#方法名」；结果按 Method 缓存，子类覆盖则不读注解与缓存 */
@@ -149,6 +155,8 @@ public class SentinelInterceptor implements Interceptor {
 ```
 
 要点：埋点只写一次，流控/熔断/热点参数/系统保护/黑白名单共用同一 `SphU.entry`，差异只在规则类型。
+
+热点参数额外依赖实参：埋点以 `EntryType.IN`、批量数 1、`argsOf(inv)` 传入的实参与 `ParamFlowRule.paramIdx` 对齐。Proxy 路径（`new Invocation(target, method, args, ...)`）实参构造期就位，默认 `argsOf` 即可命中；`routes.scan` 的 AOP 路径下 aifei 在拦截器链执行完毕后才解析实参，拦截器进入时 `inv.getArgs()` 为 `null`，须由消费方覆盖 `argsOf` 从 `Input` 读取（见 demo 的 `DemoSentinelInterceptor`）。未携带实参时 Sentinel 的 `ParamFlowChecker` 因下标越界直接放行，热点规则不生效。
 
 ### 4.3 规则加载：`SentinelRuleLoader`
 
@@ -243,6 +251,12 @@ public final class SentinelKit {
 new SentinelInterceptor(e -> Out.fail(OutCode.RATE_LIMIT))
 ```
 
+### 5.4 埋点实参（热点参数）
+
+- `SphU.entry` 统一以 `EntryType.IN`、批量数 1、实参 `argsOf(inv)` 埋点；`argsOf` 默认返回 `inv.getArgs()`，`null` 以空数组兜底。
+- `ParamFlowRule.paramIdx` 指向 `argsOf` 返回数组的下标。热点命中的前提是埋点携带该下标的实参；空数组或 `null` 时 Sentinel 直接放行。
+- AOP 路径（`routes.scan`）实参在拦截器执行后才解析，须覆盖 `argsOf` 从 `Input` 取值；Proxy 路径无需覆盖。
+
 ## 6. 运行模式（两种，互斥）
 
 由「是否配置 `sentinel.dashboard.server`」自动切换：
@@ -331,3 +345,4 @@ Dashboard 模式下的启动顺序为：注入属性 → 注册回写（替换 p
 | 规则文件是 classpath 资源 | 不启热读、不回写，按一次性加载 |
 | 注解 `value` 与规则 `resource` 不一致 → 限流静默失效 | 逻辑名在注解与规则 JSON 两处同源维护；空白值回退默认名；子类覆盖 `resourceOf` 时注解不生效须自行保证对齐 |
 | 缓存强引用 `Method` 阻塞类卸载 | 缓存用 `ClassValue` 承载，随 `Class` 卸载自动回收，不用静态 `ConcurrentHashMap` 直接持有 `Method` |
+| 热点参数未透传实参 → 规则静默失效、拒绝 QPS 恒 0 | `SphU.entry` 统一携 `argsOf(inv)` 实参；AOP 路径由消费方覆盖 `argsOf` 从 `Input` 取值，未携带时 Sentinel 直接放行 |
