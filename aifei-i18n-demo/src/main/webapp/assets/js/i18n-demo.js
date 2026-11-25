@@ -13,7 +13,7 @@ var listShown = false;
 var currentMessages = {};
 var currentSymbol = '';
 
-// 当前 locale 由服务端经 <html lang> 输出；P-03 切换走整页重渲染，故此处只读。
+// 当前 locale 由服务端经 <html lang> 输出；切换走整页重渲染，故此处只读。
 function currentLocale(){
   return document.documentElement.lang || 'zh-CN';
 }
@@ -219,17 +219,69 @@ function loadMoney(locale){
     });
 }
 
+// 当前 locale 在 Db 中已有的译文，供编辑区回填
+var editableItems = {};
+
+function loadEditable(locale){
+  return fetch('/i18n/demo/editable?locale=' + encodeURIComponent(locale))
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      var items = (resp && resp.data && resp.data.items) || [];
+      editableItems = {};
+      var sel = document.getElementById('editKey');
+      sel.textContent = '';
+      items.forEach(function(it){
+        editableItems[it.key] = it.value;
+        var opt = document.createElement('option');
+        opt.value = it.key;
+        opt.textContent = it.key;
+        sel.appendChild(opt);
+      });
+      fillEditableValue();
+    });
+}
+
+function fillEditableValue(){
+  var sel = document.getElementById('editKey');
+  var value = editableItems[sel.value];
+  document.getElementById('editValue').value = value == null ? '' : value;
+}
+
+function saveEditable(){
+  var body = {
+    locale: currentLocale(),
+    key: document.getElementById('editKey').value,
+    value: document.getElementById('editValue').value
+  };
+  fetch('/i18n/demo/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  })
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      toastText((resp && resp.msg) || '保存失败');
+      if(resp && resp.code === 0){
+        // 模板是服务端渲染，必须整页重载才会显示新文案
+        location.href = location.pathname + '?lang=' + encodeURIComponent(currentLocale()) + '&t=' + Date.now();
+      }
+    });
+}
+
 var toastTimer;
-function toast(key, args){
+function toastText(text){
   var box = document.getElementById('toast');
-  document.getElementById('toast-text').textContent = tr(key, args);
+  document.getElementById('toast-text').textContent = text;
   box.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ box.classList.remove('show'); }, 2600);
 }
+function toast(key, args){
+  toastText(tr(key, args));
+}
 
 document.getElementById('langSelect').addEventListener('change', function(e){
-  // P-03：整页真实重渲染，服务端模板顶部 #lang(lang) 设页面级默认语言
+  // 整页真实重渲染，服务端模板顶部 #lang(lang) 设页面级默认语言
   location.href = '?lang=' + encodeURIComponent(e.target.value);
 });
 document.getElementById('btnSearch').addEventListener('click', function(){
@@ -245,11 +297,14 @@ document.getElementById('btnReset').addEventListener('click', function(){
   clearTable();
   toast('toast.reset');
 });
+document.getElementById('editKey').addEventListener('change', fillEditableValue);
+document.getElementById('btnSave').addEventListener('click', saveEditable);
 
-// 选中当前 locale（首屏取服务端渲染的 <html lang> = i18n.defaultLocale，P-01）
+// 选中当前 locale（首屏取服务端渲染的 <html lang> = i18n.defaultLocale）
 var sel = document.getElementById('langSelect');
 if(sel){ sel.value = currentLocale(); }
 
 initDatePicker();
 var locale = currentLocale();
 loadBundle(locale).then(function(){ return loadMoney(locale); });
+loadEditable(locale);

@@ -1,10 +1,11 @@
 # ===== aifei-i18n-demo 配置 =====
 # HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18170 传入。
 
-# P-01：首屏默认中文；aifei-i18n 库唯一必填配置键
+# 首屏默认中文；aifei-i18n 库唯一必填配置键
 i18n.defaultLocale = zh-CN
-# 仅用本地语言包，零外部依赖（不配 i18n.locales = 不设白名单）
-i18n.sources = properties
+# db 优先、properties 兜底：初始译文从 i18n.properties 迁移到 H2，热改只 UPDATE 已有 key
+# 不配 i18n.locales = 不设白名单
+i18n.sources = db,properties
 
 # Enjoy 模板热加载：改 view/i18n/*.html 后刷新浏览器即生效
 enjoyDevMode = true

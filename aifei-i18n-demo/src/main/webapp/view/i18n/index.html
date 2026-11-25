@@ -177,25 +177,46 @@
       <div class="pcard lv1">
         <span class="rank">01 · #('#')i18n(..., lang='ar-SA')</span>
         <h3>#i18n('priority.local.title')</h3>
-        <div class="val" id="p6-local-value" dir="rtl" lang="ar-SA">#i18n('hello', lang='ar-SA', 'Bob')</div>
+        <div class="val" id="priority-local-value" dir="rtl" lang="ar-SA">#i18n('hello', lang='ar-SA', 'Bob')</div>
         <p class="desc">#i18n('priority.local.desc')</p>
       </div>
       <div class="pcard">
         <span class="rank">02 · #('#')lang('xxx')</span>
         <h3>#i18n('priority.page.title')</h3>
-        <div class="val" id="p6-page-value">#i18n('hello', 'Bob')</div>
+        <div class="val" id="priority-page-value">#i18n('hello', 'Bob')</div>
         <p class="desc">#i18n('priority.page.desc')</p>
       </div>
       <div class="pcard">
         <span class="rank">03 · #('#')lang()</span>
         <h3>#i18n('priority.default.title')</h3>
-        <div class="val" id="p6-default-value">读值 <b>#lang()</b> · #i18n('hello', 'Bob')</div>
+        <div class="val" id="priority-default-value">读值 <b>#lang()</b> · #i18n('hello', 'Bob')</div>
         <p class="desc">#i18n('priority.default.desc')</p>
       </div>
     </div>
     <div class="code-block">
       <div class="cb-head"><svg class="icon"><use href="#i-code"/></svg><span>#i18n('code.title')</span></div>
 <pre><code><span class="code-line"><span class="code-expr">#('#')lang('en-US')</span>                       <span class="code-note">#i18n('code.note1')</span></span><span class="code-line"><span class="code-expr">#('#')i18n('hello', lang='ar-SA', 'Bob')</span>  <span class="code-note">#i18n('code.note2')</span></span><span class="code-line"><span class="code-expr">#('#')i18n('hello', 'Bob')</span>                <span class="code-note">#i18n('code.note3')</span></span><span class="code-line"><span class="code-expr">#('#')lang()</span>                              <span class="code-note">#i18n('code.note4')</span></span></code></pre>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="sec-head">
+      <div class="title"><svg class="icon"><use href="#i-code"/></svg><span>实时修改译文（Db 热重载）</span></div>
+      <span class="tag">UPDATE → I18nKit.refresh()</span>
+    </div>
+    <div class="edit-grid">
+      <div class="field">
+        <label for="editKey">译文 key</label>
+        <select id="editKey"></select>
+      </div>
+      <div class="field">
+        <label for="editValue">译文内容</label>
+        <textarea id="editValue" rows="4" placeholder="选择 key 后回填，可直接修改"></textarea>
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button type="button" class="btn btn-primary" id="btnSave">保存并刷新</button>
+      <span class="hint">只改 Db 中已有的 key；内存库重启复位</span>
     </div>
   </section>
 

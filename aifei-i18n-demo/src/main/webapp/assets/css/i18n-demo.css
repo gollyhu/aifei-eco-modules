@@ -205,3 +205,14 @@ footer{text-align:center;color:var(--color-muted-foreground);font:500 12px var(-
 @media(max-width:768px){.wrap{padding:20px 15px 44px}.form-grid{grid-template-columns:1fr}.state-grid,.priority-grid{grid-template-columns:1fr}.priority-grid .pcard:last-child{grid-column:auto}.lang-switch .hint{margin-left:0}.checks{gap:16px}}
 @media(max-width:480px){.brand h1{font-size:17px}.brand p{font-size:12px}.config-badge{font-size:11px;padding:7px 10px}.metric .v{font-size:20px}section.card{padding:16px}.select-wrap,select{width:100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Db 热重载编辑区 */
+.edit-grid{display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:16px 20px}
+.edit-grid textarea{width:100%;min-height:104px;resize:vertical;
+  font:400 14px/1.6 var(--font-mono);color:var(--color-card-foreground);
+  background:var(--color-primary);border:1px solid var(--color-border);border-radius:8px;padding:10px 12px;
+  transition:border-color 180ms ease,box-shadow 180ms ease}
+.edit-grid textarea:focus{border-color:var(--color-accent);box-shadow:0 0 0 3px rgba(34,197,94,.16);outline:none}
+.edit-actions{display:flex;align-items:center;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--color-border)}
+.edit-actions .hint{font-size:12px;color:var(--color-muted-foreground)}
+@media(max-width:768px){.edit-grid{grid-template-columns:1fr}}

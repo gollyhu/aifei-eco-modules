@@ -42,6 +42,13 @@
             <version>${undertow.version}</version>
         </dependency>
 
+        <!-- H2 内存库：i18n_message 初始译文迁移 + 热重载落点；重启复位 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.2.224</version>
+        </dependency>
+
         <!-- 零日志绑定：demo 自带极简 ConsoleLogFactory（System.out） -->
     </dependencies>
 

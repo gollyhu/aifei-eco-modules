@@ -7,19 +7,24 @@
 package cn.hg.aifei.i18n.demo.service;
 
 import cn.aifei.core.Path;
+import cn.aifei.db.core.Db;
+import cn.aifei.db.core.Row;
 import cn.aifei.util.PropKit;
+import cn.aifei.util.StrUtil;
 import cn.hg.aifei.i18n.FormatKit;
 import cn.hg.aifei.i18n.I18nKit;
 import cn.hg.aifei.i18n.LanguageBundle;
 import cn.hg.aifei.i18n.demo.arch.In;
 import cn.hg.aifei.i18n.demo.arch.Out;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
- * 演示 Service：真实 Enjoy 渲染三条指令 + 语言包下发 + 货币格式化（设计 §6.5 / §6.6）。
+ * 演示 Service：真实 Enjoy 渲染三条指令 + 语言包下发 + 货币格式化。
  *
- * <p>所有端点 HTTP 状态恒 200，语义由信封 code 承载。页面结构 / 状态卡 / P-06 优先级卡由模板指令渲染；
+ * <p>所有端点 HTTP 状态恒 200，语义由信封 code 承载。页面结构 / 状态卡 / 优先级卡由模板指令渲染；
  * 控件文案走 bundle JSON；货币符号由 JDK / FormatKit 产出，demo 不写死符号常量。</p>
  */
 @Path("/i18n/demo")
@@ -47,7 +52,7 @@ public class I18nDemoService {
     }
 
     /**
-     * 语言包下发：前端控件文案走此四字段 JSON（原 design §9.4 契约，原文含 {0}）。
+     * 语言包下发：前端控件文案走此四字段 JSON（原文含 {0}）。
      *
      * @param in 请求输入（可选 {@code ?locale=xx}）
      * @return data = { locale, localeName, dir, messages }
@@ -80,7 +85,7 @@ public class I18nDemoService {
     }
 
     /**
-     * RTL iframe 页面：模板顶部写死 {@code #lang('ar-SA')} → {@code #i18n(key)} → {@code #dir()}（P-04）。
+     * RTL iframe 页面：模板顶部写死 {@code #lang('ar-SA')} → {@code #i18n(key)} → {@code #dir()}。
      *
      * @return view
      */
@@ -91,7 +96,7 @@ public class I18nDemoService {
 
     /**
      * 货币展示：demo 演示逻辑选币种（en-US→USD / ja-JP→JPY / 其它→CNY），
-     * 符号与小数位一律由 JDK / FormatKit 产出，demo 不写死符号表（P-05）。
+     * 符号与小数位一律由 JDK / FormatKit 产出，demo 不写死符号表。
      *
      * @param in 请求输入（可选 {@code ?locale=xx&amount=yy}）
      * @return data = { locale, currencyCode, amount, formatted, symbol }
@@ -111,6 +116,54 @@ public class I18nDemoService {
         data.put("formatted", formatted);
         data.put("symbol", leadingSymbol(formatted));
         return Out.ok().data(data);
+    }
+
+    /**
+     * 可编辑译文列表：只列 Db 表中该 locale 已有的 key，避免改了却 UPDATE 不到。
+     *
+     * @param in 请求输入（可选 {@code ?locale=xx}）
+     * @return data = { locale, items: [{ key, value }] }
+     */
+    @Path("editable")
+    public Out editable(In in) {
+        String locale = resolveTarget(in.getStr("locale"));
+        List<Row> rows = Db.sql("SELECT msg_key, content FROM i18n_message WHERE locale=? ORDER BY msg_key", locale).find();
+        List<Map<String, Object>> items = new ArrayList<Map<String, Object>>();
+        if (rows != null) {
+            for (Row row : rows) {
+                Map<String, Object> item = new LinkedHashMap<String, Object>();
+                item.put("key", row.getStr("msg_key"));
+                item.put("value", row.getStr("content"));
+                items.add(item);
+            }
+        }
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("locale", locale);
+        data.put("items", items);
+        return Out.ok().data(data);
+    }
+
+    /**
+     * 保存译文：命中已有行才 UPDATE，成功后立即刷新门面（TTL 内不刷新仍读旧值）。
+     *
+     * @param in JSON body { locale, key, value }
+     * @return code=0 已保存并刷新；参数空白或译文不存在返回 fail
+     */
+    @Path("save")
+    public Out save(In in) {
+        String locale = in.getStr("locale");
+        String key = in.getStr("key");
+        String value = in.getStr("value");
+        if (StrUtil.isBlank(locale) || StrUtil.isBlank(key) || StrUtil.isBlank(value)) {
+            return Out.fail("locale / key / value 不能为空");
+        }
+        int rows = Db.sql("UPDATE i18n_message SET content=? WHERE locale=? AND msg_key=?",
+                value, locale, key).update();
+        if (rows == 0) {
+            return Out.fail("译文不存在，请刷新列表");
+        }
+        I18nKit.refresh();
+        return Out.ok("已保存并刷新");
     }
 
     /** 空 locale 落 defaultLocale；非空交由 I18nKit.bundle 统一规范化 / 校验。 */
