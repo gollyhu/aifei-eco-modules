@@ -10,6 +10,7 @@ import cn.aifei.core.Handler;
 import cn.aifei.log.Log;
 import cn.aifei.server.Dispatcher;
 import io.undertow.server.HttpServerExchange;
+import io.undertow.util.Headers;
 
 /**
  * IoDispatcher 承接 Server 请求，并将请求参数转换为 Input、Output 派发给 Aifei Handler
@@ -28,7 +29,14 @@ public class IoDispatcher implements Dispatcher<HttpServerExchange, Void, In, Ou
     @Override
     public void dispatch(HttpServerExchange exchange, Void v) {
         try {
-            handler.handle(exchange.getRequestPath(), new In(exchange), null);
+            String path = exchange.getRequestPath();
+            if ("/".equals(path)) {
+                exchange.setStatusCode(302);
+                exchange.getResponseHeaders().put(Headers.LOCATION, "/job/demo/page");
+                exchange.endExchange();
+                return;
+            }
+            handler.handle(path, new In(exchange), null);
         } catch(Throwable e) {
             log.error(e.getMessage(), e);
             exchange.endExchange();

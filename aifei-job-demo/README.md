@@ -6,7 +6,7 @@
 - **示例工程，不发布**：不在 `aifei-job` 的发布件里，坐标仅供本地运行（`io.github.gollyhu:aifei-job-demo:1.0.0-SNAPSHOT`）。
 - **不改模块**：本工程只消费 `aifei-job` 的公共面（`JobPlugin` / 3 个触发注解 / `JobKit` / `JobListener` / `JobEvent`），
   不引用其 `internal` 包，也不为 demo 反向要求模块新增 API。
-- 技术基线：Java 8、Maven、Aifei + Undertow、自写 HIO（`cn.aifei.demo.common.arch`，与 `aifei-mq-demo` 逐字同步）。
+- 技术基线：Java 8、Maven、Aifei + Undertow、自写 HIO（`cn.aifei.demo.common.arch`，与 `aifei-mq-demo` 同源，仅 `IoDispatcher` 增加根路径 302 跳转）。
 
 ## 1. 环境与准备
 
@@ -44,6 +44,7 @@ java -Ddemo.config=app-config.txt -Dundertow.port=18110 -Dundertow.host=0.0.0.0 
 | 项 | 值 |
 | --- | --- |
 | HTTP 端口 | **18110** |
+| 根路径 | `http://localhost:18110/` → 302 跳转到 `/job/demo/page` |
 | 演示页 | `http://localhost:18110/job/demo/page`（Enjoy 渲染 `view/job/demo.html`） |
 | 同一页的静态地址 | `http://localhost:18110/view/job/demo.html`（含 `.` 的路径由 Undertow 直出静态资源） |
 | 静态资源 | `/assets/**`（`job-demo.css` / `job-demo.js` / `vue.global.prod.js`） |
@@ -154,9 +155,10 @@ aifei-job-demo/
 ```
 
 `cn.aifei.demo.common.arch` 的 11 个类（`In` / `Out` / `IoHandler` / `IoDispatcher` / `InParser` /
-`TargetFactory` / `ActionPrinter` / `Code` / `OutCode` / `ContentType` / `CorsHandler`）**全部保留、逐字同步**，
-包名、版权块与缩进均未改动：它们是 HIO 的应用侧实现，删减任一都会牵动其它类的编译；本 demo 只经
-`IoHandler(printAction, "view")` 使用其中的 action 派发、JSON 输出与 Enjoy 渲染三块能力。
+`TargetFactory` / `ActionPrinter` / `Code` / `OutCode` / `ContentType` / `CorsHandler`）**全部保留**，
+包名、版权块与缩进均未改动；其中仅 `IoDispatcher` 在分发前对根路径 `/` 做 302 跳转到 `/job/demo/page`
+（同 `aifei-oss-demo`），其余与 `aifei-mq-demo` 逐字同步。它们是 HIO 的应用侧实现，删减任一都会牵动其它类的编译；
+本 demo 只经 `IoHandler(printAction, "view")` 使用其中的 action 派发、JSON 输出与 Enjoy 渲染三块能力。
 
 ## 9. 注意事项
 

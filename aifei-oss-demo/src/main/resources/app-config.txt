@@ -12,4 +12,4 @@ oss.local-1.base-path = data/oss-demo/
 oss.local-1.domain = http://localhost/files/
 
 # 打印路由动作日志（非必须）
-printAction = true
+printAction = false
