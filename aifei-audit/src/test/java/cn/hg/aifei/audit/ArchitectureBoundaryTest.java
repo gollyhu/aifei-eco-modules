@@ -76,6 +76,13 @@ public class ArchitectureBoundaryTest {
 
     private static final Pattern URL = Pattern.compile("https?://([^/'\"\\s<>()]+)");
 
+    /**
+     * 协议相对 URL（`//host/...`）：`(?<!:)` 排除被 scheme 冒号占用的 `//`，
+     * 使 `http://127.0.0.1:18160/...` 只由 {@link #URL} 命中，不被重复扫描。
+     */
+    private static final Pattern PROTOCOL_RELATIVE_URL =
+            Pattern.compile("(?<!:)//([A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)");
+
     @Test
     public void g01RootPackageHasExactlyFourPublicTypes() throws Exception {
         Set<String> names = new TreeSet<String>();
@@ -294,6 +301,13 @@ public class ArchitectureBoundaryTest {
                 boolean allowed = host.equals("127.0.0.1") || host.startsWith("127.0.0.1:")
                         || host.equals("localhost") || host.startsWith("localhost:");
                 Assert.assertTrue("demo 只允许本机 host: " + file + " -> " + host, allowed);
+            }
+            Matcher relative = PROTOCOL_RELATIVE_URL.matcher(text);
+            while (relative.find()) {
+                String host = relative.group(1);
+                boolean allowed = host.equals("127.0.0.1") || host.startsWith("127.0.0.1:")
+                        || host.equals("localhost") || host.startsWith("localhost:");
+                Assert.assertTrue("demo 协议相对 URL 只允许本机 host: " + file + " -> " + host, allowed);
             }
         }
     }

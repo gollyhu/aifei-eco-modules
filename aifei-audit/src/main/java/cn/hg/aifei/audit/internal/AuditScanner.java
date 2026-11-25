@@ -18,7 +18,7 @@ import java.util.Set;
  */
 public final class AuditScanner {
 
-    private static final String RULE_CLASS = "每项须为全限定类名";
+    private static final String RULE_CLASS = "每项须为 classpath 上可加载的全限定类名";
 
     private AuditScanner() {
     }

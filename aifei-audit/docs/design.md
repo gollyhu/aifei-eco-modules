@@ -20,7 +20,7 @@
 | sink 切换 | 框架不容许同类型二次注册（PV-04 实证），故「运行期切换落点」只能在消费方用**可切换委托 sink** 实现，模块不开新 API |
 | 门禁 | `ArchitectureBoundaryTest` 14 条（`G-01`~`G-13` + `G-14` = AC-26 的 Java 8 兜底），另追加 1 条加固门禁 `G-15`（时钟 / 事件号白名单）；`G-03` 白名单**精确等于 1 条**（`internal/SafeInvoker.java` ← `cn.aifei.log.`） |
 | 实现偏差裁决 | **§21**：11 条逐条裁决（8 条接受并回写、1 条退回返工、2 条确认非契约问题）。**`G-03` 取方案 A**：`internal` 框架引用面收敛为 0，框架能力经 `AuditInvocation` / `AuditEnvironment` 两个端口下沉到 `aifei` 包 —— 需开发返工（预估 0.5 人天，不改任何 AC 与 demo 行为） |
-| 待明确事项 | 3 条（U-01 要素「13 vs 表中 14 行」口径澄清；U-08 / U-09 为可选加固，均不影响实现与 AC 措辞） |
+| 待明确事项 | 3 条（U-01 要素「13 vs 表中 14 行」口径澄清；U-08 为可选加固、U-09 已执行，均不影响实现与 AC 措辞） |
 
 ---
 
@@ -1135,7 +1135,7 @@ AopKit.get().addSingletonObject(AuditActorProvider.class, new SaTokenActorProvid
 | U-06 | `AC-26` 的 class major 断言需 `javap`，不进 `mvn test` | 构建期自检项 | 写入 `docs/testing.md` 的「构建前自检」章节 |
 | U-07 | `G-15` 为设计关追加的加固门禁 | 需求 §6.1 表外 | 若需与需求表格严格 1:1，可将其视为"附加用例"保留；不放宽任何既有断言 |
 | U-08 | `G-14` 的 `record` 语法模式 `\brecord\s+[A-Z]\w*\s*\(` 不覆盖泛型记录（`record Foo<T>(...)`）与小写类型名记录 | 理论漏检面；`AC-26` 主防线（编译期 + `javap`）不受影响 | **不阻塞交付**。可选加固：模式改为 `\brecord\s+[A-Za-z_$]\w*\s*[<(]`；如改，须同步 §10 第 2 点登记文字。建议与 `docs/testing.md` 的兜底门禁说明一起处理 |
-| U-09 | `audit.scan.classes` 类加载失败的消息规则文本为「每项须为全限定类名」，而失败原因可能是"格式合法但 classpath 不存在" | 运营可读性（不涉及 AC，`AC-19` 只断言键名与原值） | **不阻塞交付**。可选：扫描段专用规则文本改为「每项须为 classpath 上可加载的全限定类名」，改动落在 `AuditScanner.RULE_CLASS`（`internal/AuditConfig.RULE_CLASS` 保持语法段语义） |
+| U-09 | `audit.scan.classes` 类加载失败的消息规则文本为「每项须为全限定类名」，而失败原因可能是"格式合法但 classpath 不存在" | 运营可读性（不涉及 AC，`AC-19` 只断言键名与原值） | **已执行（2026-11-25 增量评审）**：扫描段规则文本已改为「每项须为 classpath 上可加载的全限定类名」，改动落在 `AuditScanner.RULE_CLASS`（`internal/AuditConfig.RULE_CLASS` 保持语法段语义，`AC-19` 判据不变） |
 
 ---
 
@@ -1268,5 +1268,5 @@ B 的代价（须在裁决时一并接受）：`G-03` 从「`internal` 零框架
 | 2 | 门禁实现两点口径（门禁文件自扫豁免、`G-14` 语法模式替代字面量），结论为**不算放宽**（§10 已登记） | 报备 |
 | 3 | `internal` 全 `public` + 「非承诺 API」声明（Java 跨包硬约束，非设计选择）；README / AGENTS 须同步 | 报备 |
 | 4 | demo 侧四处实现取舍（拆 `/masked`、`/failure/evidence` 取证、`/login` 回传 token 头、undertow `2.2.40.Final`）：模块容器与 AC 零影响 | 报备 |
-| 5 | `U-08`（`G-14` 对泛型 / 小写类型名记录的漏检面）、`U-09`（扫描段错误文案）为可选加固，不阻塞交付 | 提示 |
+| 5 | `U-08`（`G-14` 对泛型 / 小写类型名记录的漏检面）为可选加固，不阻塞交付；`U-09`（扫描段错误文案）已执行（`AuditScanner.RULE_CLASS` 文案已改） | 提示 |
 | 6 | 返工后请重跑 `mvn -o clean verify`（期望 70 例 + 15 条门禁全绿），并在 `docs/testing.md` 记「`AC-23` ↔ `G-03` 白名单集合 == 1」的实测结果 | 提示 |
