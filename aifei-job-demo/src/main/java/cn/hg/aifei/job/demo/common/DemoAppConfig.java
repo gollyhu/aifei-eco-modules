@@ -73,6 +73,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         DemoRuntimeConfig.init(p);
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
+                .addHandler(new RootRedirectHandler())
                 .addHandler(new IoHandler(p.getBoolean("printAction", false), "view"));
         // 单例必须在插件 start() 之前进容器：JobPlugin 启动时按类型取一次
         registerSingletons();

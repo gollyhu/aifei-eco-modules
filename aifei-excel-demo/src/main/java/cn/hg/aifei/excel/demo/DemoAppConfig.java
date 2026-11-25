@@ -16,6 +16,7 @@ import cn.hg.aifei.excel.demo.arch.In;
 import cn.hg.aifei.excel.demo.arch.IoDispatcher;
 import cn.hg.aifei.excel.demo.arch.IoHandler;
 import cn.hg.aifei.excel.demo.arch.Out;
+import cn.hg.aifei.excel.demo.arch.RootRedirectHandler;
 import cn.hg.aifei.excel.demo.console.ConsoleLogFactory;
 
 /**
@@ -26,7 +27,8 @@ import cn.hg.aifei.excel.demo.console.ConsoleLogFactory;
  * 随取随用，无需装配期。HTTP 端口由 {@code -Dundertow.port=18150} 传入。</p>
  *
  * <p>日志工厂用 demo 自带的 {@link ConsoleLogFactory}（System.out），零日志绑定；
- * Handler 链只有 {@link IoHandler}，静态资源（webapp/assets）由内核基于 webroot 默认提供。</p>
+ * Handler 链首 {@link RootRedirectHandler} 把根路径重定向到主页面，次 {@link IoHandler}，
+ * 静态资源（webapp/assets）由内核基于 webroot 默认提供。</p>
  */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
 
@@ -37,6 +39,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         // aifei 内核默认 NoLogFactory 每次取日志即抛，必须给一个真实实现；此处零日志绑定
         settings.setLogFactory(new ConsoleLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
+                .addHandler(new RootRedirectHandler())
                 .addHandler(new IoHandler("view"));
     }
 
