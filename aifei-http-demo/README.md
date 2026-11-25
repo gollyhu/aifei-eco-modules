@@ -3,15 +3,15 @@
 `io.github.gollyhu:aifei-http` 的**示例工程**（应用工程，非库），用真实装配的 `@Inject HttpClient` 请求
 **本机自己的回环端点**，现场演示出站 HTTP 的四类能力：统一超时、统一重试、统一拦截、统一编解码（含资源名）。
 
-- 端口 **18120**（`aifei-job-demo` 占 18110）
+- 端口 **18120**（`aifei-job-demo` 占 18110）；IDEA 直接启动未带 `-Dundertow.port` 时落在 Undertow 默认 **80**
 - 依赖 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all:1.1.2`（`aifei-http` 以 `provided` 声明，消费方自带）
-- 页面入口 `http://127.0.0.1:18120/http/demo/page`（静态层：`view/http/index.html` + `assets/{js,css}` + 本地全局 Vue，零 CDN）；直接访问根路径 `http://127.0.0.1:18120/` 会以 302 跳转到该页面
+- 页面入口：`http://127.0.0.1:18120/http/demo/page`（IDEA 直接启动时为 `http://localhost/http/demo/page`；静态层：`view/http/index.html` + `assets/{js,css}` + 本地全局 Vue，零 CDN）；根路径 `/` 会以 302 跳转到该页面
 
 ## ★ 全程零外网声明
 
-**本 demo 的任何请求目标都只能是 `127.0.0.1:18120` 自身**：
+**本 demo 的任何请求目标都只能是 `127.0.0.1:<port>` 自身**（`<port>` 跟随 `-Dundertow.port`，缺失取 80）：
 
-1. 演示端点请求的 URL 一律由 `demo.self-base-url`（默认 `http://127.0.0.1:18120`）拼出；
+1. 演示端点请求的 URL 一律由回环基址拼出：未显式配置 `demo.self-base-url` 时按 `-Dundertow.port` 推导为 `http://127.0.0.1:<port>`（host 恒为 `127.0.0.1`，不读 `undertow.host`），显式配置（非空）时以配置值为准，请同样指向本机回环地址；
 2. 「连接被拒」演示打的是 `http://127.0.0.1:1/...`（本机未监听端口），仍属回环；
 3. `/http/demo/send` 只接收**相对路径** `path`，传入含 `://` 的外部地址会被当场拒绝（`code=1`）；
 4. 源码与页面中不存在任何外部域名，断网环境下功能完整可用。
@@ -57,7 +57,7 @@ java -Ddemo.config=app-config.txt -Dundertow.port=18120 -Dundertow.host=0.0.0.0 
 | `http.gzip` | `true` | 置 `true` 才会发 `Accept-Encoding: gzip` 并在模块内解压 |
 | `http.user-agent` | `aifei-http-demo/1.0.0` | 默认 UA |
 
-另有 demo 自身键 `demo.self-base-url`（回环基址，**改端口时必须同步改它**）与 `enjoyDevMode` / `printAction`。
+另有 demo 自身键 `demo.self-base-url`（回环基址，**默认留空**：按 `-Dundertow.port` 动态推导为 `http://127.0.0.1:<port>`，端口缺失取 80；显式配置非空值时以配置为准）与 `enjoyDevMode` / `printAction`。
 
 ## 端点全表（全部 GET，HTTP 恒 200，语义由业务 `code` 承载，`0` 为成功）
 

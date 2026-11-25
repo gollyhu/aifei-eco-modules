@@ -1,7 +1,8 @@
 # ===== aifei-http-demo 配置 =====
 # HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18120 传入。
 # 本文件放两类配置：aifei-http 的 http.* 七键（键名全写前缀，不省略）与 demo 自身的回环地址。
-# 全程零外网：demo 唯一请求目标是 http://127.0.0.1:18120 自己的 /demo/echo 端点。
+# 全程零外网：demo 唯一请求目标是 http://127.0.0.1:<port> 自己的 /demo/echo 端点；
+# <port> 跟随 -Dundertow.port 推导（缺失取 80），host 恒为 127.0.0.1，不读 undertow.host。
 
 # ===== aifei-http 七键（全部可选，缺失即取默认值）=====
 # 建连超时（毫秒），默认 5000
@@ -21,8 +22,10 @@ http.gzip = true
 http.user-agent = aifei-http-demo/1.0.0
 
 # ===== demo 自身 =====
-# 回环目标基址：即便改动 undertow.port，也请同步改这里，否则演示端点会请求错误的端口
-demo.self-base-url = http://127.0.0.1:18120
+# 回环目标基址：默认留空（如下保持注释），按 -Dundertow.port 推导为 http://127.0.0.1:<port>（缺失取 80）
+# 显式配置（非空）时以配置值为准，请同样指向本机回环地址（零外网硬约束）
+# 若固定端口与实际监听端口不一致，演示端点会请求错误的端口并报连接被拒
+# demo.self-base-url = http://127.0.0.1:18120
 
 # ===== 演示开关（非 http.* 键）=====
 # Enjoy 模板热加载：改 view/*.html 后刷新浏览器即生效

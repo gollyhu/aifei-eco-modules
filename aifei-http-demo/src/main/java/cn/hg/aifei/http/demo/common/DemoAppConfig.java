@@ -34,6 +34,11 @@ import cn.hg.aifei.http.demo.echo.EchoHandler;
  * <p>拦截器必须<b>在 {@code start()} 之前</b>经 {@code addInterceptor} 按序登记：模块不从容器按类型取拦截器，
  * 顺序就是这里的调用顺序。本 demo 用同一个记录型拦截器登记 3 个实例（{@code demo-a/b/c}），
  * 以便页面直接看到「进入正序、收尾逆序」。</p>
+ *
+ * <p>回环基址默认按 {@code undertow.port} 推导为 {@code http://127.0.0.1:<port>}（缺失取 80）；
+ * 显式配置 {@code demo.self-base-url} 且非空时以配置为准。host 恒为 127.0.0.1，不读 {@code undertow.host}。</p>
+ *
+ * <p>本类由开发工程师寇戴码产出。</p>
  */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
 
@@ -48,14 +53,24 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     public static final String DEFAULT_CONFIG = "app-config.txt";
 
     /**
-     * demo 回环目标基址配置键（只允许指向本机自身）。
+     * 回环目标基址配置键：显式配置（非空）时优先于端口推导；只允许指向本机自身。
      */
     public static final String SELF_BASE_URL_KEY = "demo.self-base-url";
 
     /**
-     * 回环目标基址默认值，与 {@code start-demo.bat} 的端口保持一致。
+     * 回环目标 host：恒为本机，绝不读取 {@code undertow.host}（它可能是 0.0.0.0）。
      */
-    public static final String DEFAULT_SELF_BASE_URL = "http://127.0.0.1:18120";
+    private static final String LOOPBACK_HOST = "127.0.0.1";
+
+    /**
+     * Undertow 端口系统属性名；回环基址端口跟随它推导。
+     */
+    private static final String UNDERTOW_PORT_KEY = "undertow.port";
+
+    /**
+     * 回环目标默认端口，与 Undertow 未配置 {@code undertow.port} 时的默认端口一致。
+     */
+    private static final String DEFAULT_HTTP_PORT = "80";
 
     /**
      * 可控回环目标端点路径，回环基址 + 本路径即演示端点的请求目标。
@@ -68,9 +83,10 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     public static final String[] INTERCEPTOR_NAMES = {"demo-a", "demo-b", "demo-c"};
 
     /**
-     * 回环基址（已去掉结尾斜杠）；装配期由 {@link #config(Settings)} 写入，供 Service 与 echo 使用。
+     * 回环基址（已去掉结尾斜杠）；装配期由 {@link #config(Settings)} 按配置或端口推导写入，
+     * 供 Service 与 echo 使用。
      */
-    private static volatile String selfBaseUrl = DEFAULT_SELF_BASE_URL;
+    private static volatile String selfBaseUrl = "http://" + LOOPBACK_HOST + ":" + DEFAULT_HTTP_PORT;
 
     /**
      * 配置源；在 {@link #config(Settings)} 内载入，供 {@link #config(Plugins)} 与 {@link #onStart()} 使用。
@@ -90,8 +106,8 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     public void config(Settings<In, Out> settings) {
         // 用 -Ddemo.config=xxx.txt 可切换配置文件；端口由 -Dundertow.port 决定
         p = PropKit.use(System.getProperty(CONFIG_KEY, DEFAULT_CONFIG));
-        String baseUrl = p.get(SELF_BASE_URL_KEY, DEFAULT_SELF_BASE_URL);
-        selfBaseUrl = trimTrailingSlash(baseUrl);
+        String configured = p.get(SELF_BASE_URL_KEY, "");
+        selfBaseUrl = StrUtil.isBlank(configured) ? deriveSelfBaseUrl() : trimTrailingSlash(configured);
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
                 .addHandler(new RootRedirectHandler())
@@ -133,7 +149,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
                 + "，http.retry-times: " + p.get("http.retry-times", "0")
                 + "，回环基址: " + selfBaseUrl
                 + "，拦截器: " + String.join("/", INTERCEPTOR_NAMES)
-                + "，验证地址: http://localhost:18120/http/demo/state");
+                + "，验证地址: " + selfBaseUrl + "/http/demo/state");
     }
 
     /**
@@ -180,8 +196,34 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         return selfBaseUrl + p;
     }
 
+    /**
+     * 按 {@code undertow.port} 推导回环基址：缺失取 80，非法值回退 80 并告警。
+     * host 固定为 {@link #LOOPBACK_HOST}，与监听地址解耦，守住零外网硬约束。
+     */
+    private static String deriveSelfBaseUrl() {
+        String port = System.getProperty(UNDERTOW_PORT_KEY, DEFAULT_HTTP_PORT);
+        if (!isUsablePort(port)) {
+            System.out.println("[aifei-http-demo] 忽略非法 " + UNDERTOW_PORT_KEY + "=" + port
+                    + "，回环基址端口回退为 " + DEFAULT_HTTP_PORT);
+            port = DEFAULT_HTTP_PORT;
+        }
+        return "http://" + LOOPBACK_HOST + ":" + port.trim();
+    }
+
+    private static boolean isUsablePort(String value) {
+        if (StrUtil.isBlank(value)) {
+            return false;
+        }
+        try {
+            int port = Integer.parseInt(value.trim());
+            return port >= 1 && port <= 65535;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     private static String trimTrailingSlash(String url) {
-        String u = StrUtil.isBlank(url) ? DEFAULT_SELF_BASE_URL : url.trim();
+        String u = url.trim();
         while (u.endsWith("/")) {
             u = u.substring(0, u.length() - 1);
         }
