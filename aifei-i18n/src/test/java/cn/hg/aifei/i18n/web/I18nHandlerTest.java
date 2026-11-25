@@ -25,7 +25,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 /**
- * Web 入口 Locale 绑定与清理单测（AC-08-5 / AC-08-6，D-02 Web 用例）。
+ * Web 入口 Locale 绑定与清理单测。
  */
 public class I18nHandlerTest {
 

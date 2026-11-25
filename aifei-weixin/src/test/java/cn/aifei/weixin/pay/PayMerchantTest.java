@@ -19,7 +19,7 @@ import java.security.PrivateKey;
 import org.junit.Test;
 
 /**
- * P0：商户凭据 fail-fast 与 PEM 解析
+ * 商户凭据 fail-fast 与 PEM 解析
  */
 public class PayMerchantTest {
 

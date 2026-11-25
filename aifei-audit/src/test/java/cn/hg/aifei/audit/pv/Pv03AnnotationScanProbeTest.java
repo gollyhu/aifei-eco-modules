@@ -90,7 +90,7 @@ public class Pv03AnnotationScanProbeTest {
     }
 
     /**
-     * ① + ②：目录形态下扫描出全部被标注方法，且未标注方法不被计入（等价于 AC-29 启动期校验的输入）。
+     * ① + ②：目录形态下扫描出全部被标注方法，且未标注方法不被计入。
      */
     @Test
     public void scanFindsAnnotatedMethodsWithoutContainer() {

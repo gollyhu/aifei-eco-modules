@@ -30,7 +30,7 @@ import org.junit.Test;
  * <p>两个存储实现各司其职：{@link FakeSegmentStore} 负责「按脚本给段末端 / 注入故障」的精确用例（含回退），
  * {@link LocalSegmentStore} 负责真实推进与并发用例——本地实现无网络、无过期，适合做并发唯一性验证。</p>
  *
- * <p>覆盖设计文档 §7.5 场景 9 / 11 与 AC-07；消息断言照抄 §7.6 的措辞。</p>
+ * <p>覆盖设计文档 §7.5 场景 9 / 11；消息断言照抄 §7.6 的措辞。</p>
  */
 public class SegmentIdGeneratorTest {
 
@@ -127,7 +127,7 @@ public class SegmentIdGeneratorTest {
     // ─────────── 本地退化 ───────────
 
     /**
-     * AC-07：{@code local} 存储按 key 各自一条序列，互不干扰。
+     * {@code local} 存储按 key 各自一条序列，互不干扰。
      */
     @Test
     public void localStoreKeepsKeysIndependent() {

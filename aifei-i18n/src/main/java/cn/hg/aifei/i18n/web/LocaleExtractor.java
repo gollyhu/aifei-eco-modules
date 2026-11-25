@@ -9,7 +9,7 @@ package cn.hg.aifei.i18n.web;
 import cn.aifei.core.Input;
 
 /**
- * 从请求提取原始 {@code Accept-Language} 头的函数式接口（设计 D-13）。
+ * 从请求提取原始 {@code Accept-Language} 头的函数式接口。
  *
  * <p>框架 {@code Input} 无 header 访问 API：消费方自定义 Input 暴露 header 后以 lambda 提供，
  * 如 {@code input -> input.getHeader("Accept-Language")}。无法提取返回 {@code null}。

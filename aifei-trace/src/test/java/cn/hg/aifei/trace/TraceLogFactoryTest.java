@@ -19,7 +19,7 @@ import cn.aifei.log.LogFactory;
 import cn.hg.aifei.trace.support.RecordingLog;
 
 /**
- * TraceLogFactory 单元测试：三个 getLog 均返回包装 TraceLog、null delegate 拒绝（AC-10）。
+ * TraceLogFactory 单元测试：三个 getLog 均返回包装 TraceLog、null delegate 拒绝。
  */
 public class TraceLogFactoryTest {
 

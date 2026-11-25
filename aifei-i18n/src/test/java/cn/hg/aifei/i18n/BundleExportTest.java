@@ -28,7 +28,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 整包导出与单点一致性单测（AC-09/10/14/15，D-03 的 dir 数据源审查与降级）。
+ * 整包导出与单点一致性单测（dir 数据源审查与降级）。
  */
 public class BundleExportTest {
 

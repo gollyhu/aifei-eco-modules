@@ -11,7 +11,7 @@ import cn.hg.aifei.i18n.MessageSource;
 import java.util.List;
 
 /**
- * 回退链唯一定义点（设计 §5.3 / §6.2 / Q4）：
+ * 回退链唯一定义点（设计 §5.3 / §6.2）：
  * {@code 按 locale 逐来源 → 默认 locale 逐来源 → 返回 key 原文}，固定不可配、无 strict 模式。
  *
  * <p>日志分级：未命中 DEBUG（含 key + locale），来源运行期故障 WARN（含稳定名 + key）后按「本次无译文」

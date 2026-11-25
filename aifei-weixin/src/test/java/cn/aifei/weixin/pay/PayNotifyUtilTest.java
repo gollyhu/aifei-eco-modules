@@ -24,7 +24,7 @@ import java.util.Map;
 import org.junit.Test;
 
 /**
- * P2：支付回调验签 + 解密（官方报文结构 + 测试向量自洽）
+ * 支付回调验签 + 解密（官方报文结构 + 测试向量自洽）
  */
 public class PayNotifyUtilTest {
 

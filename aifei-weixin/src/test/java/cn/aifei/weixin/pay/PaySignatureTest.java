@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * P0：请求签名 / Authorization 头格式 / 拉起支付二次签名
+ * 请求签名 / Authorization 头格式 / 拉起支付二次签名
  */
 public class PaySignatureTest {
 

@@ -7,7 +7,7 @@
 package cn.hg.aifei.i18n.internal;
 
 /**
- * 上下文 Locale 的 ThreadLocal 唯一持有点（设计 D-12 / Q 同构 aifei-trace）。
+ * 上下文 Locale 的 ThreadLocal 唯一持有点（同构 aifei-trace）。
  *
  * <p>普通 {@code ThreadLocal}（非 {@code InheritableThreadLocal}），避免线程池复用线程串语言；
  * 只做 set / get / clear，零业务语义。请求结束必须由 {@code web.I18nHandler} 在 finally 中清理。</p>

@@ -145,7 +145,7 @@ public class DirectiveTest {
         assertEquals("lang 置尾不应打乱 args 顺序", middle, last);
     }
 
-    /** AC-INC-03：{0} 插值生效；缺参时占位符原样保留（复用 E-6 唯一定义点）。 */
+    /** {0} 插值生效；缺参时占位符原样保留。 */
     @Test
     public void testInterpolationAndMissingArg() {
         assertEquals("有参应插值", ZH_HELLO, render("#i18n('hello', lang='zh-CN', 'Bob')"));

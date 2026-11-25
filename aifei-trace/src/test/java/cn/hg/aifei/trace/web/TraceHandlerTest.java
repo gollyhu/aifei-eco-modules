@@ -23,7 +23,7 @@ import cn.aifei.core.Output;
 import cn.hg.aifei.trace.TraceKit;
 
 /**
- * TraceHandler 单元测试：覆盖设计 §7.2 场景 4–6 / 12 与 AC-11（纯生成、提取绑定、空白回退、提取异常吞掉回退、
+ * TraceHandler 单元测试：覆盖设计 §7.2 场景 4–6 / 12（纯生成、提取绑定、空白回退、提取异常吞掉回退、
  * 下游异常原样传播且 finally 清理、next == null 安全结束）。
  */
 public class TraceHandlerTest {

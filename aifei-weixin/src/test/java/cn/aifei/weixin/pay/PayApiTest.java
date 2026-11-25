@@ -24,7 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * P1：下单 / 查单 / 关单 / 退款的路径、Authorization 与报文、错误语义
+ * 下单 / 查单 / 关单 / 退款的路径、Authorization 与报文、错误语义
  */
 public class PayApiTest {
 

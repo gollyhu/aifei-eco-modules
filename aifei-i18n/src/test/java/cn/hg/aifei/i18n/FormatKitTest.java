@@ -31,7 +31,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 格式化薄门面单测（AC-16 / D-03）。
+ * 格式化薄门面单测。
  *
  * <p>断言严格遵守跨 provider 稳定口径：不写死货币符号字符与完整日期串，只断言「不相等 / 含本币种符号 /
  * 月份名与日的相对位置 / 小数位」等稳定性质（设计 §9.8）。</p>

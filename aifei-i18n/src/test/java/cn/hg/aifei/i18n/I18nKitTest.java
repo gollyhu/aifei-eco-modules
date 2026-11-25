@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 取文案核心路径单测（AC-01/02/03/05/07/15，D-02 服务层与模板渲染端到端用例）。
+ * 取文案核心路径单测（服务层与模板渲染端到端用例）。
  */
 public class I18nKitTest {
 

@@ -45,7 +45,7 @@ public class HttpResourceTest {
     }
 
     /**
-     * Q3：authority 含非默认端口，便于同机多端口服务区分。
+     * authority 含非默认端口，便于同机多端口服务区分。
      */
     @Test
     public void shouldKeepNonDefaultPort() {

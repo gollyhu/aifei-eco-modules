@@ -17,15 +17,15 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 /**
- * 格式化薄封装的唯一定义点（设计 §5.8 / §6.2 / AC-16）。
+ * 格式化薄封装的唯一定义点（设计 §5.8 / §6.2）。
  *
  * <p>把生效 Locale 交给 JDK 的 {@link NumberFormat} / {@link DateFormat} / {@link Currency}，
  * 模块零自建规则数据（无模式串、无货币符号表、无小数位表、无方向表）。locale 解析复用
- * {@link LocaleResolver#resolve(String)} 同一实现（AC-16-4），档位映射是本类唯一的枚举→JDK 常量表。</p>
+ * {@link LocaleResolver#resolve(String)} 同一实现，档位映射是本类唯一的枚举→JDK 常量表。</p>
  */
 public final class FormatSupport {
 
-    /** 默认风格档位：硬编码契约，不占配置键（AC-16-8）。 */
+    /** 默认风格档位：硬编码契约，不占配置键。 */
     public static final DateStyle DEFAULT_STYLE = DateStyle.MEDIUM;
 
     private FormatSupport() {

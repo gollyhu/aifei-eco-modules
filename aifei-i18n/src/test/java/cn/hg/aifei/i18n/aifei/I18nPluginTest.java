@@ -20,7 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 装配插件单测（AC-04/11/12，D-01 配置键口径）：幂等、重名、依赖探测、配置校验、未装配调用。
+ * 装配插件单测（配置键口径）：幂等、重名、依赖探测、配置校验、未装配调用。
  */
 public class I18nPluginTest {
 
@@ -192,7 +192,7 @@ public class I18nPluginTest {
 
     @Test
     public void kvDependencyMissingFailsStartupWithStableName() throws Exception {
-        // 用隔离 ClassLoader 屏蔽 aifei-cache，模拟 classpath 无缓存依赖（AC-11-1）
+        // 用隔离 ClassLoader 屏蔽 aifei-cache，模拟 classpath 无缓存依赖
         ClassLoader original = Thread.currentThread().getContextClassLoader();
         ClassLoader blocking = new ClassLoader(original) {
             @Override

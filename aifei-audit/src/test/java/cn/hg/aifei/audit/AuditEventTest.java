@@ -28,7 +28,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 事件模型用例：AC-04 / AC-05 / AC-06 / AC-13（toString 部分）。
+ * 事件模型用例（toString 部分）。
  */
 public class AuditEventTest {
 

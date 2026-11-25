@@ -9,7 +9,7 @@ package cn.hg.aifei.i18n.internal;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 缓存键拼装 + TTL 判定 + 全清的唯一定义点（设计 §6.2 / AC-07）。
+ * 缓存键拼装 + TTL 判定 + 全清的唯一定义点（设计 §6.2）。
  *
  * <p>db / kv 来源按 key 懒加载并本地缓存；TTL≤0 直接回源（不缓存）；空串是合法命中、
  * {@code null} 是未命中哨兵，二者分别缓存，绝不把空串当未命中而重复回源。</p>

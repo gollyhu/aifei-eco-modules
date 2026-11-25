@@ -21,7 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 注入值用例：AC-20（链路标识 / 客户端标识由消费方注入，模块零生态依赖）。
+ * 注入值用例：链路标识 / 客户端标识由消费方注入，模块零生态依赖。
  */
 public class TraceSupplierTest {
 

@@ -20,7 +20,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 手动埋点用例：AC-07 / AC-09b。
+ * 手动埋点用例。
  */
 public class ManualRecordTest {
 

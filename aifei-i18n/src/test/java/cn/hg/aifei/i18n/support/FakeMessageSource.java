@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * 测试替身来源：可配置稳定名、数据、是否可列举、是否在 get/list/refresh 抛异常，并录制调用次数。
  *
- * <p>用于覆盖 AC-02/03/04/05/09/10/15 等回退、叠加、故障与导出场景；与来源形态无关（AC-04-3）。</p>
+ * <p>用于覆盖回退、叠加、故障与导出场景；与来源形态无关。</p>
  */
 public final class FakeMessageSource implements MessageSource {
 

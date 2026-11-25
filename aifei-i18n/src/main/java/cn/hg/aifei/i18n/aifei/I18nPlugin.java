@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 装配插件：解析 {@code i18n.*} 配置、构建来源注册表、安装引擎到门面，管理生命周期（设计 D-10 / §5.9）。
+ * 装配插件：解析 {@code i18n.*} 配置、构建来源注册表、安装引擎到门面，管理生命周期（设计 §5.9）。
  *
  * <p>构造期只持 {@link Prop} 引用与来源列表，不解析、不校验；{@link #start()} 统一完成配置解析、
  * 注册表构建与门面安装，失败 {@code catch(RuntimeException|Error)} 回滚（清门面），不留半装配。</p>

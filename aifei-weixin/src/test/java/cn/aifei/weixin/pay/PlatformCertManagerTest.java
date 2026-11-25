@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 /**
- * P0：平台证书下载 + 解密 + 惰性刷新
+ * 平台证书下载 + 解密 + 惰性刷新
  */
 public class PlatformCertManagerTest {
 

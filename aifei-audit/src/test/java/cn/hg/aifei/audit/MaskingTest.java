@@ -20,7 +20,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 脱敏与截断用例：AC-13 / AC-14 / AC-15。
+ * 脱敏与截断用例。
  */
 public class MaskingTest {
 

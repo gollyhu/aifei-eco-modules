@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * 整包导出的唯一定义点（设计 §5.4 / §6.2 / D-2 / Q2 / Q6 / Q9）。
+ * 整包导出的唯一定义点（设计 §5.4 / §6.2）。
  *
  * <p>按叠加顺序合并可列举来源（先命中先返回），{@link TreeMap} 自然序保证 key 稳定排序；
  * value 恒为原文（{@code {0}} 不替换）；不可列举 / 故障来源跳过 + WARN；四字段由

@@ -32,11 +32,11 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * QA 独立复验补充用例：日志分级口径（AC-02-2 / AC-09-6 / AC-14-5 / AC-15-4）。
+ * QA 独立复验补充用例：日志分级口径。
  *
  * <p>开发现有用例只断言「返回值 / 不抛 / 跳过」等行为，未断言日志**级别**。本类注入可插拔日志工厂，
- * 直接断言：未命中=DEBUG 且无 WARN/ERROR（AC-02-2）；来源故障=WARN 含稳定名+key（AC-15-4/15-1）；
- * 不可列举来源跳过=WARN（AC-09-6）；dir 判定降级=WARN（AC-14-5）；故障 WARN 区别于未命中 DEBUG。</p>
+ * 直接断言：未命中=DEBUG 且无 WARN/ERROR；来源故障=WARN 含稳定名+key；
+ * 不可列举来源跳过=WARN；dir 判定降级=WARN；故障 WARN 区别于未命中 DEBUG。</p>
  */
 public class QaLogLevelTest {
 
@@ -72,7 +72,7 @@ public class QaLogLevelTest {
         I18nHolder.install(new I18nEngine(config, list));
     }
 
-    /** AC-02-2：全部来源未命中 → DEBUG（含 key+locale），且无 WARN / ERROR。 */
+    /** 全部来源未命中 → DEBUG（含 key+locale），且无 WARN / ERROR。 */
     @Test
     public void missLogsDebugOnly() {
         install(60000, new FakeMessageSource("properties"));
@@ -86,7 +86,7 @@ public class QaLogLevelTest {
                 recorder.ofLevel("ERROR").isEmpty());
     }
 
-    /** AC-15-4 / AC-15-1：单来源故障后回退成功 → WARN 含稳定名+key，且不向上抛。 */
+    /** 单来源故障后回退成功 → WARN 含稳定名+key，且不向上抛。 */
     @Test
     public void sourceFailureLogsWarnWithNameAndKey() {
         install(60000,
@@ -98,7 +98,7 @@ public class QaLogLevelTest {
                 recorder.has("WARN", "db", "k"));
     }
 
-    /** AC-15-2 / AC-15-4：全部来源故障 → 每个故障来源各一条 WARN，返回 key，仍无 ERROR。 */
+    /** 全部来源故障 → 每个故障来源各一条 WARN，返回 key，仍无 ERROR。 */
     @Test
     public void allSourcesFailLogsWarnPerSource() {
         install(60000,
@@ -112,7 +112,7 @@ public class QaLogLevelTest {
                 recorder.ofLevel("ERROR").isEmpty());
     }
 
-    /** AC-09-6：导出遇不可列举来源 → 跳过 + WARN 含稳定名。 */
+    /** 导出遇不可列举来源 → 跳过 + WARN 含稳定名。 */
     @Test
     public void nonListableSourceLogsWarnOnExport() {
         install(60000, new FakeMessageSource("remote").listable(false));
@@ -123,7 +123,7 @@ public class QaLogLevelTest {
                 recorder.has("WARN", "remote", "整包列举"));
     }
 
-    /** AC-15-5：导出期间可列举来源抛异常 → 跳过 + WARN 含稳定名，导出仍成功。 */
+    /** 导出期间可列举来源抛异常 → 跳过 + WARN 含稳定名，导出仍成功。 */
     @Test
     public void listFailureLogsWarnOnExport() {
         install(60000, new FakeMessageSource("db").listFailing(true));
@@ -134,7 +134,7 @@ public class QaLogLevelTest {
                 recorder.has("WARN", "db", "整包列举失败"));
     }
 
-    /** AC-14-5：dir 判定能力不可用 → 降级 ltr + WARN，导出仍成功。 */
+    /** dir 判定能力不可用 → 降级 ltr + WARN，导出仍成功。 */
     @Test
     public void dirDegradationLogsWarn() {
         install(60000, new FakeMessageSource("properties").put("zh-CN", "k", "v"));
@@ -145,7 +145,7 @@ public class QaLogLevelTest {
         LanguageBundle bundle = I18nKit.bundle("zh-CN");
         assertEquals("降级为 ltr", "ltr", bundle.dir());
         assertEquals("导出仍成功", "v", bundle.messages().get("k"));
-        // AC-14-5 只要求 WARN 含 locale；LocaleMeta 打印的是 Locale.toString()（zh_CN），
+        // 只要求 WARN 含 locale；LocaleMeta 打印的是 Locale.toString()（zh_CN），
         // 而非规范化 tag（zh-CN），故断言 "locale=" 字段存在即可，不写死具体格式。
         assertTrue("dir 降级应 WARN 且含 locale，实际=" + recorder.events(),
                 recorder.has("WARN", "dir", "ltr", "locale="));

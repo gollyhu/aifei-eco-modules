@@ -29,7 +29,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 执行编排（AC-R-04 / R-05 / R-10 / R-11 / R-12 / R-13 / R-14 与 Q4 的非 2xx 语义）：全部经伪传输，不联网。
+ * 执行编排与非 2xx 语义：全部经伪传输，不联网。
  */
 public class DefaultHttpClientTest {
 

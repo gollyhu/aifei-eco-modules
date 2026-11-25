@@ -43,7 +43,7 @@ import org.junit.Test;
  * 装配入口单元测试：生命周期（幂等、失败回滚、停机收敛）、workerId 三来源的装配分支，以及可选依赖缺失 /
  * 协同模块未装配两类启动期失败。
  *
- * <p>覆盖设计文档 §7.5 场景 1、5、10、12、13、14、15、16、17、18、19、23 与 AC-08 / AC-10 / AC-12。全部用例
+ * <p>覆盖设计文档 §7.5 场景 1、5、10、12、13、14、15、16、17、18、19、23。全部用例
  * 只经由替身与 {@code Prop} 构造：{@code aifei-cache} 的实例用 {@link FakeCache} 注册进 {@code CacheManager}，
  * {@code aifei-lock} 的存储用 {@link FakeLockStore} 注册进 {@code LockHolder}，因此无需真实 Redis、
  * 无需真实锁，也不含任何秒级等待。</p>
@@ -168,7 +168,7 @@ public class IdPluginTest {
         AopKit.get().setAopFactory(previousFactory);
     }
 
-    // ─────────── AC-10：入口校验与生命周期 ───────────
+    // ─────────── 入口校验与生命周期 ───────────
 
     /**
      * 场景 1 / 消息 A：构造期拒绝空配置，不解析、不取 workerId。
@@ -224,7 +224,7 @@ public class IdPluginTest {
     }
 
     /**
-     * AC-10 的失败回滚：装配在「workerId 来源已创建、生成器已安装」之后中断（框架同类型单例已存在）时，
+     * 失败回滚：装配在「workerId 来源已创建、生成器已安装」之后中断（框架同类型单例已存在）时，
      * 必须清空持有器并关闭已创建的来源（释放租约），不留半装配。
      *
      * <p>用 {@code lock} 来源而非 {@code config}：只有租约来源有可观测的释放动作，能证明回滚确实执行了
@@ -250,7 +250,7 @@ public class IdPluginTest {
                 Arrays.asList(IdNames.workerLockName(5)), store.released());
     }
 
-    // ─────────── AC-08：workerId 三来源 ───────────
+    // ─────────── workerId 三来源 ───────────
 
     /**
      * 场景 16 / 消息 N：{@code source=config} 时 {@code id.workerId} 必须落在 {@code 0..1023}，越界拒绝
@@ -266,7 +266,7 @@ public class IdPluginTest {
     }
 
     /**
-     * AC-08 的 {@code cache} 来源：{@code (计数 - 1) % 1024}，并如实把分区名、计数键、步长与 TTL 下传。
+     * {@code cache} 来源：{@code (计数 - 1) % 1024}，并如实把分区名、计数键、步长与 TTL 下传。
      *
      * <p>预置计数为 1025，取号后为 1026，取模得 1——若实现退化成截断或越界判断，本用例立即失败。</p>
      */
@@ -291,7 +291,7 @@ public class IdPluginTest {
     }
 
     /**
-     * AC-08 的 {@code lock} 来源：{@code 0..1023} 升序抢占，首个成功即持有；停机释放该租约。
+     * {@code lock} 来源：{@code 0..1023} 升序抢占，首个成功即持有；停机释放该租约。
      */
     @Test
     public void lockWorkerIdAcquiredInAscendingOrder() {
@@ -357,7 +357,7 @@ public class IdPluginTest {
         assertTrue("租约丢失必须把来源置为不可用", !source.healthy());
     }
 
-    // ─────────── AC-12：可选依赖缺失与协同模块未装配 ───────────
+    // ─────────── 可选依赖缺失与协同模块未装配 ───────────
 
     /**
      * 场景 12 / 13 / 消息 J：{@code aifei-cache} 不在 classpath 上时，{@code cache} 来源与

@@ -11,7 +11,7 @@ import java.awt.ComponentOrientation;
 import java.util.Locale;
 
 /**
- * {@code localeName} 与 {@code dir} 判定的唯一定义点（设计 D-4 / Q9 / AC-14）。
+ * {@code localeName} 与 {@code dir} 判定的唯一定义点。
  *
  * <p>{@code localeName} 取 JDK {@link Locale#getDisplayName(Locale)}（该语言在该语言中的名称），
  * 禁语言名译名表；{@code dir} 只走 JDK 公开 API {@link ComponentOrientation}，

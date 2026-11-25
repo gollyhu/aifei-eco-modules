@@ -23,7 +23,7 @@ import org.junit.Test;
 import cn.hg.aifei.trace.support.RecordingLog;
 
 /**
- * TraceLog 单元测试：覆盖设计 §7.2 场景 8–9 与 AC-09（前缀拼装、TraceId 缺失原样透出、Supplier 打印时刻求值、
+ * TraceLog 单元测试：覆盖设计 §7.2 场景 8–9（前缀拼装、TraceId 缺失原样透出、Supplier 打印时刻求值、
  * isXxxEnabled / getName 透传、30 个打印方法 + 5 个开关全覆盖、null delegate 拒绝）。
  */
 public class TraceLogTest {
@@ -123,7 +123,7 @@ public class TraceLogTest {
     }
 
     /**
-     * 场景 8 反例 + AC-09：TraceId 已绑定时，String 变体全部拼装 "[traceId] " 前缀，级别与异常、占位参数原样透传。
+     * 场景 8 反例：TraceId 已绑定时，String 变体全部拼装 "[traceId] " 前缀，级别与异常、占位参数原样透传。
      */
     @Test
     public void stringVariantsShouldPrefixWhenTraceIdBound() {
@@ -166,7 +166,7 @@ public class TraceLogTest {
     }
 
     /**
-     * AC-09：Supplier 变体懒求值——五个级别的 Supplier 变体均在 flush（打印时刻）才求值，且带前缀。
+     * Supplier 变体懒求值——五个级别的 Supplier 变体均在 flush（打印时刻）才求值，且带前缀。
      */
     @Test
     public void supplierVariantsShouldEvaluateAtPrintTimeForAllLevels() {
@@ -188,7 +188,7 @@ public class TraceLogTest {
     }
 
     /**
-     * AC-09：懒求值时序证明——先调用后绑定，打印时刻取到的是打印线程当下的 TraceId（调用时刻未绑定也不影响）。
+     * 懒求值时序证明——先调用后绑定，打印时刻取到的是打印线程当下的 TraceId（调用时刻未绑定也不影响）。
      */
     @Test
     public void supplierShouldReadContextAtFlushNotAtCall() {
@@ -212,7 +212,7 @@ public class TraceLogTest {
     }
 
     /**
-     * AC-09 反向时序：调用时已绑定、打印（flush）时已清理——前缀应缺失，证明前缀读取发生在打印时刻。
+     * 反向时序：调用时已绑定、打印（flush）时已清理——前缀应缺失，证明前缀读取发生在打印时刻。
      */
     @Test
     public void supplierShouldNotPrefixWhenTraceIdClearedBeforeFlush() {
@@ -231,7 +231,7 @@ public class TraceLogTest {
     }
 
     /**
-     * AC-09：isXxxEnabled 与 getName 纯透传 delegate，不拼前缀。
+     * isXxxEnabled 与 getName 纯透传 delegate，不拼前缀。
      */
     @Test
     public void enabledFlagsAndNameShouldPassThrough() {

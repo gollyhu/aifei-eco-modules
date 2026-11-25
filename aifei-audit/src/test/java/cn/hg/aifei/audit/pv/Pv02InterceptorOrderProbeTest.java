@@ -107,7 +107,7 @@ public class Pv02InterceptorOrderProbeTest {
     }
 
     /**
-     * ① 补充：业务方法自身抛异常时，外层同样能捕获（AC-03 / AC-21 的形态）。
+     * ① 补充：业务方法自身抛异常时，外层同样能捕获。
      */
     @Test
     public void outermostSeesBusinessExceptionAndReturnValue() throws Exception {

@@ -22,7 +22,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 落点交付用例：AC-08 / AC-09 / AC-16 / AC-17a / AC-17b。
+ * 落点交付用例。
  */
 public class SinkDeliveryTest {
 

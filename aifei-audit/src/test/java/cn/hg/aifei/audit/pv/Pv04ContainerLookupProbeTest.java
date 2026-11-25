@@ -14,7 +14,7 @@ import org.junit.Test;
 /**
  * PV-04（设计关自加实证，非需求指定的三项之一）：SPI 实现「从容器按类型取」的实际语义。
  *
- * <p>需求 Q14 的默认假设是「从容器按类型取（与 {@code MqPlugin} / {@code JobPlugin} 同通道），同一类型多实现视为
+ * <p>默认假设是「从容器按类型取（与 {@code MqPlugin} / {@code JobPlugin} 同通道），同一类型多实现视为
  * 配置错误并启动失败」。框架只有 {@code AopKit.addSingletonObject(type, obj)} 一个注册入口，本用例确认：</p>
  *
  * <pre>

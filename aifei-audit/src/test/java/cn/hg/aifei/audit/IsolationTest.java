@@ -24,7 +24,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 失败隔离用例：AC-10 / AC-11 / AC-12。
+ * 失败隔离用例。
  */
 public class IsolationTest {
 

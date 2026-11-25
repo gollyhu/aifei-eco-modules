@@ -10,7 +10,7 @@ import java.util.IllformedLocaleException;
 import java.util.Locale;
 
 /**
- * locale 规范化 + 严格 BCP 47 校验的唯一定义点（设计 D-7，实证 E-2）。
+ * locale 规范化 + 严格 BCP 47 校验的唯一定义点。
  *
  * <p>规则：{@code _} 归一为 {@code -}、语言码小写、地区码大写、脚本码首字母大写；
  * 基于 Java 8 {@code Locale.Builder#setLanguageTag}（严格）实现，一次性覆盖全部规范化规则与非法校验。</p>
@@ -24,7 +24,7 @@ public final class LocaleNormalizer {
     }
 
     /**
-     * 严格规范化：非法即抛 IAE（显式入参路径，Q8）。
+     * 严格规范化：非法即抛 IAE（显式入参路径）。
      *
      * @param localeTag 原始 locale tag，非空
      * @return 规范化后的 BCP 47 tag（如 {@code zh_CN → zh-CN}、{@code zh-hant-tw → zh-Hant-TW}）
@@ -43,7 +43,7 @@ public final class LocaleNormalizer {
     }
 
     /**
-     * 容错规范化：非法返回 {@code null} 而不抛（Accept-Language 请求头外部输入路径，Q8）。
+     * 容错规范化：非法返回 {@code null} 而不抛（Accept-Language 请求头外部输入路径）。
      *
      * @param localeTag 原始 locale 片段，可为 {@code null}
      * @return 规范化后的 BCP 47 tag；非法 / 空白 / {@code null} 返回 {@code null}

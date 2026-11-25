@@ -32,9 +32,9 @@ import org.junit.Test;
 /**
  * 验收补测：覆盖既有用例未逐项固化的断言点。
  *
- * <p>补测范围：AC-04 全要素取值、AC-07 同 sink / 同类型、AC-09b 启动失败态、
- * AC-13 toString 真覆写、AC-14 0-based 下标、AC-15 上限 0 边界、
- * AC-18 重复 start 幂等、AC-29 注解四属性运行期可读。</p>
+ * <p>补测范围：全要素取值、同 sink / 同类型、启动失败态、
+ * toString 真覆写、0-based 下标、上限 0 边界、
+ * 重复 start 幂等、注解四属性运行期可读。</p>
  */
 public class AcceptanceSupplementTest {
 
@@ -68,7 +68,7 @@ public class AcceptanceSupplementTest {
     }
 
     /**
-     * AC-04 全要素的取材对象。
+     * 全要素的取材对象。
      */
     public static class ElementService {
 
@@ -84,7 +84,7 @@ public class AcceptanceSupplementTest {
     }
 
     /**
-     * AC-14 0-based 下标对象：剔除索引 0（第一个参数）。
+     * 0-based 下标对象：剔除索引 0（第一个参数）。
      */
     public static class ZeroBasedService {
 
@@ -95,7 +95,7 @@ public class AcceptanceSupplementTest {
     }
 
     /**
-     * AC-15 超长入参对象。
+     * 超长入参对象。
      */
     public static class LongService {
 

@@ -22,7 +22,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 注解路径用例：AC-01 / AC-02 / AC-03 / AC-21。
+ * 注解路径用例。
  */
 public class AnnotationCollectTest {
 

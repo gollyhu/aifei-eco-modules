@@ -18,12 +18,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 默认来源·properties：零第三方依赖，启动期一次全量载入 classpath 资源到内存快照（AC-06-1）。
+ * 默认来源·properties：零第三方依赖，启动期一次全量载入 classpath 资源到内存快照。
  *
  * <p>资源格式：默认读取 classpath 根下的 {@code i18n.properties}，UTF-8 编码，每行形如
  * {@code <locale>|<key>=<原文>}（例如 {@code zh-CN|login.title=登录}）。改值须重启（选修要素⑤缺失）。</p>
  *
- * <p>可列举（D-6）：{@link #list(String)} 返回该 locale 的全量映射；{@link #refresh()} 无操作。</p>
+ * <p>可列举：{@link #list(String)} 返回该 locale 的全量映射；{@link #refresh()} 无操作。</p>
  */
 public final class PropertiesSource implements MessageSource {
 

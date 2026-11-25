@@ -16,7 +16,7 @@ import cn.aifei.weixin.support.PayTestKeys;
 import org.junit.Test;
 
 /**
- * P0：AES-256-GCM 解密（官方回调 resource / 平台证书密文同算法）
+ * AES-256-GCM 解密（官方回调 resource / 平台证书密文同算法）
  */
 public class AesGcmTest {
 

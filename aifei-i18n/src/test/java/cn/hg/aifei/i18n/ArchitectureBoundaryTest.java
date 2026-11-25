@@ -288,7 +288,7 @@ public class ArchitectureBoundaryTest {
             }
         }
         assertTrue("dir 判定只允许在 LocaleMeta，违规：" + offenders, offenders.isEmpty());
-        // Q9：不得存在语言码→方向的映射表（同时含 rtl 常量与语言码数组的字面量）
+        // 不得存在语言码→方向的映射表（同时含 rtl 常量与语言码数组的字面量）
         for (Path file : javaFiles(SOURCE_ROOT)) {
             String code = stripComments(read(file));
             if (code.contains("\"rtl\"") && code.matches("(?s).*\\{\\s*\"(ar|he|fa|ur)\".*")) {
