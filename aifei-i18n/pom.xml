@@ -19,6 +19,14 @@
         <aifei.version>1.1.2</aifei.version>
         <aifei-cache.version>1.1.0</aifei-cache.version>
         <junit.version>4.13.2</junit.version>
+        <h2.version>2.2.224</h2.version>
+        <jedis.version>8.0.1</jedis.version>
+        <fury.version>0.10.3</fury.version>
+        <!-- 真实来源集成测试开关，默认关闭：-Ddb.integration=true / -Dkv.integration=true -->
+        <db.integration>false</db.integration>
+        <db.jdbcUrl>jdbc:h2:mem:i18n_it;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1</db.jdbcUrl>
+        <kv.integration>false</kv.integration>
+        <redis.uri>redis://127.0.0.1:6379/0</redis.uri>
     </properties>
 
     <dependencies>
@@ -45,6 +53,26 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- 集成测试专用（test scope，非 compile）：db 来源用 H2 内存库，kv 来源用真实 Redis -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>${h2.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>${jedis.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.fury</groupId>
+            <artifactId>fury-core</artifactId>
+            <version>${fury.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -67,6 +95,12 @@
                     <!-- 门禁依赖模块根相对路径 src/main/java，工作目录固定为模块根 -->
                     <workingDirectory>${project.basedir}</workingDirectory>
                     <trimStackTrace>false</trimStackTrace>
+                    <systemPropertyVariables>
+                        <db.integration>${db.integration}</db.integration>
+                        <db.jdbcUrl>${db.jdbcUrl}</db.jdbcUrl>
+                        <kv.integration>${kv.integration}</kv.integration>
+                        <redis.uri>${redis.uri}</redis.uri>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>

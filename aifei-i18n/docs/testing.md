@@ -38,7 +38,9 @@
 - **QA 新增替身**：`support/RecordingLogFactory`（可插拔日志工厂，按「级别+首参」录制日志）——注入框架 `LogKit`，用于独立断言日志分级口径（AC-02-2/09-6/14-5/15-4）。`@After` 恢复原工厂，测试间无污染。
 - **跨 provider 稳定断言**：涉及 JDK 输出字面量的用例只断言「不相等 / 含本币种符号 / 月份名与日的相对位置 / 小数位」，不写死符号字符与完整日期串（设计 §9.8）。
 - **状态隔离**：`@After` 清理 `I18nHolder` / `LocaleContext` / `LocaleMeta` 判定器 / 日志工厂，用例无顺序依赖。
+- **真实来源集成测试（默认关闭）**：`DbSourceIntegrationTest`（H2 内存库）/ `KvSourceIntegrationTest`（回环 Redis）以系统属性开关控制，默认关闭；开启用 `mvn test -Ddb.integration=true` 或 `-Dkv.integration=true -Dredis.uri=redis://127.0.0.1:6379/0`，开启后连不上必须失败（不静默跳过）。
 - **Demo 分工**：Q7 已于 §十一 突破，新建 `aifei-i18n-demo` 做真实 Enjoy 渲染端到端核对；模块内测试零联网、零 HTTP 依赖。
+- **端到端基线**：126 用例全绿、两项门禁（公共面精确 10 类型 + `ClassFileVersionTest` class major 52）全绿；demo 的 `page` / `bundle` / `rtl` / `money` 端点真实启动渲染均为 HTTP 200，内容符合四字段 JSON 与 Enjoy 渲染契约（端点清单见 `aifei-i18n-demo/README.md`）。
 
 ---
 

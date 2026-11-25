@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 rem aifei-i18n demo: HTTP on 18170, host 0.0.0.0
-rem Endpoints: /i18n/demo/page  /bundle  /rtl  /money
+rem Endpoints: /i18n/demo/page  /bundle  /rtl  /money  /header
 rem NOTICE: aifei-i18n must be installed to local repo first:
 rem   cd ..\aifei-i18n ^&^& mvn -q -DskipTests clean install
 

@@ -31,14 +31,9 @@ function tr(key, args){
   return fmt(s, args);
 }
 
+// SDK 不提供前端格式化运行时，此处用浏览器 Intl；隐藏 input 仍保留 ISO 原值供 dpReadIso 读取。
 function formatDate(iso, locale){
-  var p = iso.split('-');
-  if(locale === 'en-US'){
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[Number(p[1]) - 1] + ' ' + Number(p[2]) + ', ' + p[0];
-  }
-  if(locale === 'ja-JP'){ return p[0] + '/' + p[1] + '/' + p[2]; }
-  return iso;
+  return new Intl.DateTimeFormat(locale).format(new Date(iso + 'T00:00:00'));
 }
 
 // 日历控件：隐藏 input 保留 ISO 值，显示框按 locale 呈现；面板文案全部经 tr 取自语言包。

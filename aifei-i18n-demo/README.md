@@ -21,6 +21,7 @@ stop-demo.bat         :: 按端口 18170 结束进程
 | `GET /i18n/demo/bundle?locale=xx` | 语言包四字段 JSON（`locale`/`localeName`/`dir`/`messages`），前端控件文案来源 |
 | `GET /i18n/demo/rtl` | RTL iframe 页，模板顶部 `#lang('ar-SA')` → `#i18n(key)` → `#dir()` |
 | `GET /i18n/demo/money?locale=xx&amount=yy` | `FormatKit` 货币展示，符号/小数位由 JDK 产出（英文显 `$`，不写死） |
+| `GET /i18n/demo/header`（头 `Accept-Language: ja-JP`） | 请求头经 `I18nHandler` 绑定 locale，文案自动切换（demo 只用公开 API） |
 
 ## 三条指令演示
 

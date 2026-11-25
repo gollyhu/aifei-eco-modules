@@ -65,6 +65,21 @@ public class I18nDemoService {
     }
 
     /**
+     * Accept-Language 端到端：请求头经 I18nHandler 绑定上下文，页面 locale 自动切换。
+     *
+     * @param in 请求输入（Accept-Language 头）
+     * @return data = { acceptLanguage, title, hello }，文案本身证明 locale 切换生效
+     */
+    @Path("header")
+    public Out header(In in) {
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("acceptLanguage", in.getHeader("Accept-Language"));
+        data.put("title", I18nKit.message("page.title"));
+        data.put("hello", I18nKit.message("hello", "Bob"));
+        return Out.ok().data(data);
+    }
+
+    /**
      * RTL iframe 页面：模板顶部写死 {@code #lang('ar-SA')} → {@code #i18n(key)} → {@code #dir()}（P-04）。
      *
      * @return view

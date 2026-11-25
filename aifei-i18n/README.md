@@ -10,6 +10,12 @@
 
 ## 一、它能做什么
 
+> **模块定位与边界（基线）**：底座只做四件事，并做到极致、冻结边界——**locale 贯通的取文案 + 整包下发 + JDK 格式化 + 开放来源**；其余全部以扩展点形式交给业务方。
+>
+> - **做什么**：单条取文案（唯一回退链、缺译不 500）、整包语言包下发（四字段 JSON、`messages` 稳定排序、与单点同源）、Locale 贯通到 JDK 数值/百分比/货币/日期格式化（零自建规则数据）、来源开放扩展（实现 `MessageSource` 显式注册即可，零改模块代码）。
+> - **不做什么**（交给业务方，底座只留挂点）：复数 / 性别 / 序数 / 语境形态、度量衡换算、前端 i18n 运行时与 TypeScript key 类型检查、语言切换 UI 与全局状态、URL 路径 / 子域名 / 浏览器语言识别、热重载触发编排。挂点分别是自定义 `MessageSource` 拆 key、`#lang(tag)` / `I18nKit.local(tag)` 显式注入、`Accept-Language` + `LocaleExtractor`、四字段 JSON 契约、业务侧显式 `I18nKit.refresh()`；详见 `docs/design.md` §1.5。
+> - **冻结边界**：公共面精确 10 类型、恰好 4 个配置键、回退链唯一不可配、Java 8 class major 52；扩张须先走 `docs/design.md` 设计决策。
+
 1. 单条取文案，自带唯一回退链：`按 locale 逐来源 → 默认 locale 逐来源 → 返回 key 原文`，缺译永不 500。
 2. 支持 `{0}` 位置占位插值（缺参占位符原样保留）。
 3. Locale 四级优先级：`显式 > 上下文 > Accept-Language > i18n.defaultLocale`。
@@ -94,6 +100,8 @@ JSON 契约（四字段固定，`messages` 为有序映射、value 恒为原文�
 - `localeName`：JDK `Locale#getDisplayName(该Locale)`，模块不含语言名译名表。
 - `dir`：`ltr` / `rtl`，只由 JDK `ComponentOrientation` 判定，无自建方向表。
 
+> **整包导出边界**：`bundle(locale)` 按来源可列举范围**原样输出、不补齐缺译**；「逐来源 → 默认 locale → key 原文」的唯一回退链**只在单条取文案路径**（`I18nKit.message` / `#i18n`）生效，不作用于整包导出。例如某 locale 仅收录少量 key，整包就只导出这些 key，不会用默认 locale 补齐。不可列举来源（如 `kv`）整包跳过 + WARN，单点取仍可用。
+
 ### 6. 格式化
 
 ```java
@@ -126,8 +134,10 @@ zh-CN|login.submit=提交
 en|login.title=Login
 ```
 
-> **重要：`properties` 来源改值须重启应用才生效**（启动期全量快照，选修要素「运行期刷新」缺失，
-> 属既定行为而非缺陷）。需热更新的文案请放 `db` / `kv` 来源并调用 `I18nKit.refresh()`。
+> **重要：`properties` 来源改值须重启应用才生效**（启动期全量快照，`refresh()` 为空操作；
+> 属既定行为而非缺陷）。`db` / `kv` 来源支持运行期刷新，但模块自身**无定时任务 / 文件监听 / 热重载**，
+> 须由业务侧**显式调用 `I18nKit.refresh()`** 才生效（如管理后台保存译文后触发）。需要周期刷新时，
+> 业务侧用 `aifei-job` 注册定时任务调 `I18nKit.refresh()` 即可——模块不新增配置键、公共面或跨模块依赖。
 
 ### db 来源建表 SQL（模块只读，DDL 由消费方执行）
 

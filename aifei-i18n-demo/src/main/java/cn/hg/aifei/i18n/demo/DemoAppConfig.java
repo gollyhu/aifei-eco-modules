@@ -18,12 +18,14 @@ import cn.hg.aifei.i18n.demo.arch.IoDispatcher;
 import cn.hg.aifei.i18n.demo.arch.IoHandler;
 import cn.hg.aifei.i18n.demo.arch.Out;
 import cn.hg.aifei.i18n.demo.console.ConsoleLogFactory;
+import cn.hg.aifei.i18n.web.I18nHandler;
 
 /**
  * 装配中心：aifei-i18n 指令与语言包下发的演示入口。
  *
  * <p>{@code config(Plugins)} 注册 {@link I18nPlugin}（解析 i18n.* 并装门面，否则 I18nKit 未装配）；
- * Handler 链只有 {@link IoHandler}，构造引擎时注册三条指令并在 render 前后清理页面级状态。</p>
+ * Handler 链首 {@link I18nHandler} 绑定 Accept-Language，次 {@link IoHandler} 构造引擎、注册三条指令并在
+ * render 前后清理页面级状态。</p>
  */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
 
@@ -34,6 +36,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         // aifei 内核默认 NoLogFactory 每次取日志即抛，给一个真实实现；零日志绑定
         settings.setLogFactory(new ConsoleLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
+                .addHandler(new I18nHandler<In, Out>(in -> in.getHeader("Accept-Language")))
                 .addHandler(new IoHandler("view"));
     }
 
@@ -52,7 +55,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     public void onStart() {
         System.out.println("[aifei-i18n-demo] 启动完成（真实 Enjoy 渲染，端口 18170）");
         System.out.println("[aifei-i18n-demo] 验证地址: http://localhost:18170/i18n/demo/page");
-        System.out.println("[aifei-i18n-demo] 端点: /page /bundle /rtl /money");
+        System.out.println("[aifei-i18n-demo] 端点: /page /bundle /rtl /money /header");
     }
 
     @Override
