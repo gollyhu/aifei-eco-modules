@@ -5,7 +5,7 @@
 
 - 端口 **18120**（`aifei-job-demo` 占 18110）
 - 依赖 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all:1.1.2`（`aifei-http` 以 `provided` 声明，消费方自带）
-- 页面入口 `http://127.0.0.1:18120/http/demo/page`（静态层：`view/http/index.html` + `assets/{js,css}` + 本地全局 Vue，零 CDN）
+- 页面入口 `http://127.0.0.1:18120/http/demo/page`（静态层：`view/http/index.html` + `assets/{js,css}` + 本地全局 Vue，零 CDN）；直接访问根路径 `http://127.0.0.1:18120/` 会以 302 跳转到该页面
 
 ## ★ 全程零外网声明
 

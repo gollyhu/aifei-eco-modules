@@ -80,8 +80,9 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     /**
      * 偏好配置：载入 {@code app-config.txt}，装配日志工厂、Server 与两级 Handler。
      *
-     * <p>Handler 顺序即责任链顺序：{@link EchoHandler} 在前，命中 {@code /demo/echo} 时自行应答（指定状态码 /
-     * 延迟 / gzip / 302），其余路径交棒给 {@link IoHandler}（路由到 Service 或静态资源）。</p>
+     * <p>Handler 顺序即责任链顺序：{@link RootRedirectHandler} 在最前，命中 {@code /} 时以 302 跳转到演示主页；
+     * {@link EchoHandler} 次之，命中 {@code /demo/echo} 时自行应答（指定状态码 / 延迟 / gzip / 302）；
+     * 其余路径交棒给 {@link IoHandler}（路由到 Service 或静态资源）。</p>
      *
      * @param settings aifei 偏好设置，用于挂载日志工厂、Server 与 Handler 链
      */
@@ -93,6 +94,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         selfBaseUrl = trimTrailingSlash(baseUrl);
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
+                .addHandler(new RootRedirectHandler())
                 .addHandler(new EchoHandler())
                 .addHandler(new IoHandler(p.getBoolean("printAction", false), "view"));
     }
