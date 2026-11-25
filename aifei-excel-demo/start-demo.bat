@@ -19,6 +19,6 @@ set "CP="
 for /f "usebackq delims=" %%i in ("target\cp.txt") do set "CP=%%i"
 
 echo [2/3] Starting demo, HTTP 18150, press Ctrl+C to stop...
-echo [3/3] Verify: http://localhost:18150/excel/demo/page
+echo [3/3] Verify: http://localhost:18150/
 echo.
 java -Dundertow.port=18150 -Dundertow.host=0.0.0.0 -cp ".\target\classes;%CP%" cn.hg.aifei.excel.demo.DemoApp

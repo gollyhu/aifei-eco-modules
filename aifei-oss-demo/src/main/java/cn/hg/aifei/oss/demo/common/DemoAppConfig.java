@@ -53,7 +53,6 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         p = PropKit.use(System.getProperty(CONFIG_KEY, DEFAULT_CONFIG));
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
-                .addHandler(new RootRedirectHandler())
                 .addHandler(new IoHandler(p.getBoolean("printAction", false), "view"));
     }
 

@@ -18,7 +18,7 @@ start-demo.bat                                           :: 编译 + 启动，18
 
 也可先在仓库根按 [根 README 构建小节](../README.md#构建) 安装全部模块，再回到本目录启动。
 
-页面：`http://localhost:18160/audit/demo/page`｜停服：`stop-demo.bat`
+页面：`http://localhost:18160/`（根路径经跳转页进入 `/audit/demo/page`）｜停服：`stop-demo.bat`
 
 日志：`src/main/resources/log4j2.xml` 只把 `cn.hg.aifei.audit` 放开到 **WARN** 输出到控制台，根 logger 保持 `error`（框架内部日志不刷屏）。故**场景 8 可在控制台看到模块 WARN**，例如：
 

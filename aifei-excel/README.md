@@ -168,7 +168,7 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 
 ## 示例工程
 
-[aifei-excel-demo](../aifei-excel-demo/)（**示例工程，不发布**）：自写 HIO、单页演示，端口 **18150**，真实演示「上传解析 → 分批统计 / 一次性导出 / 流式导出」。启动 `start-demo.bat`、停止 `stop-demo.bat`，验证地址 `http://localhost:18150/excel/demo/page`。demo 以 `compile` 自带 `com.alibaba:easyexcel:3.3.2` 与 `cn.aifei:aifei-all`，用于验证 `optional` / `provided` 口径。
+[aifei-excel-demo](../aifei-excel-demo/)（**示例工程，不发布**）：自写 HIO、单页演示，端口 **18150**，真实演示「上传解析 → 分批统计 / 一次性导出 / 流式导出」。启动 `start-demo.bat`、停止 `stop-demo.bat`，验证地址 `http://localhost:18150/`。demo 以 `compile` 自带 `com.alibaba:easyexcel:3.3.2` 与 `cn.aifei:aifei-all`，用于验证 `optional` / `provided` 口径。
 
 ## 文档
 

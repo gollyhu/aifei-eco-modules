@@ -38,7 +38,7 @@ stop-demo.bat     :: 按端口 18090 找到监听进程并结束
 
 ## Web 演示页面
 
-浏览器打开 <http://localhost:18090/> 即进入演示页面（若页面 404，确认静态目录 `src/main/webapp` 在启动前已存在）。
+浏览器打开 <http://localhost:18090/> 即进入演示页面（根路径经跳转页进入 `/ws/demo/page`）。
 
 ![演示页面](demo.png)
 

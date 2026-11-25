@@ -8,17 +8,10 @@ package cn.hg.aifei.websocket.demo.service;
 
 import cn.aifei.core.Path;
 
-/**
- * 演示 Demo：Web 演示 aifei-websocket
- */
+/** 根路径入口：把 {@code /} 引导至演示主页面 {@code /ws/demo/page}。 */
 @Path("/")
-public class DemoPageService {
-
-    /**
-     * 演示页
-     */
+public class RootPageService {
     public String index() {
-        return "ws/index.html";
+        return "/demo/redirect.html";
     }
-
 }

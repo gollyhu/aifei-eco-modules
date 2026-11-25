@@ -17,7 +17,6 @@ import cn.hg.aifei.i18n.demo.arch.In;
 import cn.hg.aifei.i18n.demo.arch.IoDispatcher;
 import cn.hg.aifei.i18n.demo.arch.IoHandler;
 import cn.hg.aifei.i18n.demo.arch.Out;
-import cn.hg.aifei.i18n.demo.arch.RootRedirectHandler;
 import cn.hg.aifei.i18n.demo.console.ConsoleLogFactory;
 import cn.hg.aifei.i18n.demo.db.I18nDbSeed;
 import cn.hg.aifei.i18n.web.I18nHandler;
@@ -26,7 +25,7 @@ import cn.hg.aifei.i18n.web.I18nHandler;
  * 装配中心：aifei-i18n 指令与语言包下发的演示入口。
  *
  * <p>{@code config(Plugins)} 注册 {@link I18nPlugin}（解析 i18n.* 并装门面，否则 I18nKit 未装配）；
- * Handler 链首 {@link I18nHandler} 绑定 Accept-Language，次 {@link RootRedirectHandler} 把根路径重定向到主页面，
+ * Handler 链首 {@link I18nHandler} 绑定 Accept-Language，
  * 末 {@link IoHandler} 构造引擎、注册三条指令并在 render 前后清理页面级状态。</p>
  */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
@@ -41,7 +40,6 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         I18nDbSeed.init();
         settings.setServer(new UndertowServer(), new IoDispatcher())
                 .addHandler(new I18nHandler<In, Out>(in -> in.getHeader("Accept-Language")))
-                .addHandler(new RootRedirectHandler())
                 .addHandler(new IoHandler("view"));
     }
 

@@ -231,17 +231,17 @@ cd aifei-tools     && mvn clean verify      # 门禁验收命令
 
 | demo 目录 | 启动 / 停止脚本 | 端口 | 验证地址 | 外部依赖 |
 | --- | --- | --- | --- | --- |
-| `aifei-sentinel-demo` | `start-demo.bat` / `stop-demo.bat` | 18080 | `http://localhost:18080/demo/index` | 无（本地模式）；Dashboard 模式另需自备 sentinel-dashboard jar（8858） |
-| `aifei-oss-demo` | `start-demo.bat` / `stop-demo.bat` | 18092 | `http://localhost:18092/oss/demo/state` | 无（本地存储） |
-| `aifei-websocket-demo` | `start-demo.bat` / `stop-demo.bat` | 18090（WS 18091） | `http://localhost:18090/ws/demo/state` | 无（本地回环） |
-| `aifei-mq-demo` | `start-demo.bat` / `stop-demo.bat` | 18100 | `http://localhost:18100/mq/demo/state` | 默认需公网 MQTT broker（emqx / hivemq）与本机 Redis，离线时先精简 `mq.names` |
-| `aifei-job-demo` | `start-demo.bat` / `stop-demo.bat` | 18110 | `http://localhost:18110/job/demo/page` | 无 |
-| `aifei-http-demo` | `start-demo.bat` / `stop-demo.bat` | 18120 | `http://localhost:18120/http/demo/state` | 无（全程回环） |
-| `aifei-trace-demo` | `start-demo.bat` / `stop-demo.bat` | 18130 | `http://localhost:18130/trace/demo/page` | 无 |
-| `aifei-id-demo` | `start-demo.bat`（雪花）/ `start-demo-segment.bat`（号段）/ `stop-demo.bat` | 18140 | `http://localhost:18140/id/demo/page` | 无（两脚本互斥，勿同时运行） |
-| `aifei-excel-demo` | `start-demo.bat` / `stop-demo.bat` | 18150 | `http://localhost:18150/excel/demo/page` | 无 |
-| `aifei-audit-demo` | `start-demo.bat` / `stop-demo.bat` | 18160 | `http://localhost:18160/audit/demo/page` | 无 |
-| `aifei-i18n-demo` | `start-demo.bat` / `stop-demo.bat` | 18170 | `http://localhost:18170/i18n/demo/page` | 无 |
+| `aifei-sentinel-demo` | `start-demo.bat` / `stop-demo.bat` | 18080 | `http://localhost:18080/` | 无（本地模式）；Dashboard 模式另需自备 sentinel-dashboard jar（8858） |
+| `aifei-oss-demo` | `start-demo.bat` / `stop-demo.bat` | 18092 | `http://localhost:18092/` | 无（本地存储） |
+| `aifei-websocket-demo` | `start-demo.bat` / `stop-demo.bat` | 18090（WS 18091） | `http://localhost:18090/` | 无（本地回环） |
+| `aifei-mq-demo` | `start-demo.bat` / `stop-demo.bat` | 18100 | `http://localhost:18100/` | 默认需公网 MQTT broker（emqx / hivemq）与本机 Redis，离线时先精简 `mq.names` |
+| `aifei-job-demo` | `start-demo.bat` / `stop-demo.bat` | 18110 | `http://localhost:18110/` | 无 |
+| `aifei-http-demo` | `start-demo.bat` / `stop-demo.bat` | 18120 | `http://localhost:18120/` | 无（全程回环） |
+| `aifei-trace-demo` | `start-demo.bat` / `stop-demo.bat` | 18130 | `http://localhost:18130/` | 无 |
+| `aifei-id-demo` | `start-demo.bat`（雪花）/ `start-demo-segment.bat`（号段）/ `stop-demo.bat` | 18140 | `http://localhost:18140/` | 无（两脚本互斥，勿同时运行） |
+| `aifei-excel-demo` | `start-demo.bat` / `stop-demo.bat` | 18150 | `http://localhost:18150/` | 无 |
+| `aifei-audit-demo` | `start-demo.bat` / `stop-demo.bat` | 18160 | `http://localhost:18160/` | 无 |
+| `aifei-i18n-demo` | `start-demo.bat` / `stop-demo.bat` | 18170 | `http://localhost:18170/` | 无 |
 
 **正式部署**：库模块以 Maven 依赖方式集成进消费方应用，由消费方自行打包启动；本仓库不提供 `aifei-*.sh` / `aifei-*.bat` 的 `start` / `stop` / `restart` 部署脚本，示例工程也不作为部署形态。
 

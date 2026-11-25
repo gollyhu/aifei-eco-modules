@@ -34,7 +34,7 @@ stop-demo.bat               :: 按端口 80 找到监听进程并结束（与启
 
 ## 主页面与模式识别
 
-启动后访问 <http://localhost:80/> 即进入 Web 演示页（根路径由 `SentinelPageService.index()` 提供）。
+启动后访问 <http://localhost:80/> 即进入 Web 演示页（根路径由 `RootPageService.index()` 提供跳转页，meta refresh 到 `/demo/page`）。
 
 页面加载时请求 `GET /demo/state`，按配置文件里的 `sentinel.dashboard.server` **自动识别运行模式**，无需随启动脚本手动切换：
 

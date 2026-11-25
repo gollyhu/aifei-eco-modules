@@ -8,17 +8,10 @@ package cn.hg.aifei.id.demo.service;
 
 import cn.aifei.core.Path;
 
-/**
- * 根路径演示页入口。
- */
+/** 根路径入口：把 {@code /} 引导至演示主页面 {@code /id/demo/page}。 */
 @Path("/")
-public class DemoPageService {
-
-    /**
-     * 渲染演示主页，与 {@code /id/demo/page} 共用模板。
-     */
+public class RootPageService {
     public String index() {
-        return "/id/index.html";
+        return "/demo/redirect.html";
     }
-
 }

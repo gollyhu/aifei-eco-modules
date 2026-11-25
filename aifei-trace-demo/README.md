@@ -3,7 +3,7 @@
 `io.github.gollyhu:aifei-trace` 的**示例工程**（**示例工程，不发布**）：全程离线演示链路贯通能力——TraceId 绑定与 `finally` 清理、日志 `[traceId] ` 前缀、线程池手动传递、请求头提取与回退生成。
 
 - HTTP 端口 **18130**（回环访问 `localhost`），零外部服务、零外网、零 CDN
-- 单页入口 `http://localhost:18130/trace/demo/page`（页面模板 `src/main/webapp/view/demo/index.html`，本地 Vue）
+- 单页入口 `http://localhost:18130/`（根路径经跳转页进入 `/trace/demo/page`；页面模板 `src/main/webapp/view/demo/index.html`，本地 Vue）
 - 依赖 `cn.aifei:aifei-all:1.1.2` + `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`（均以 `compile` 自带）+ `io.undertow:undertow-core:2.2.39.Final`；零日志绑定（demo 自带 `ConsoleLogFactory`）
 
 ## 前置：先把 aifei-trace 装入本地仓库
@@ -25,7 +25,7 @@ stop-demo.bat     :: 按端口 18130 找到监听进程并结束
 
 脚本做三步：`mvn compile dependency:build-classpath` → 读 classpath → 以 `-Ddemo.config=app-config.txt -Dundertow.port=18130 -Dundertow.host=0.0.0.0` 启动 `cn.hg.aifei.trace.demo.DemoApp`。
 
-启动后访问 `http://localhost:18130/trace/demo/page` 即为正常。
+启动后访问 `http://localhost:18130/`（自动进入 `/trace/demo/page`）即为正常。
 
 ## 演示端点（全部 GET，HTTP 恒 200，语义由信封 `code` 承载，`0` 成功）
 

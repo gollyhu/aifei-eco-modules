@@ -11,7 +11,7 @@ start-demo.bat        :: 编译 + 组 classpath，HTTP 监听 18170
 stop-demo.bat         :: 按端口 18170 结束进程
 ```
 
-验证地址：<http://localhost:18170/i18n/demo/page>
+验证地址：<http://localhost:18170/>（自动进入 `/i18n/demo/page`）
 
 ## 端点
 

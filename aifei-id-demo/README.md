@@ -3,7 +3,7 @@
 `io.github.gollyhu:aifei-id` 的**示例工程**（**示例工程，不发布**）：全程离线演示雪花与号段两种发号策略，覆盖单号生成、并发生重、号段换段与装配状态四个场景。
 
 - HTTP 端口 **18140**（回环访问 `localhost`），零外部服务、零 CDN
-- 单页入口 `http://localhost:18140/`（与 `http://localhost:18140/id/demo/page` 等价；页面模板 `src/main/webapp/view/id/index.html`，本地 Vue）
+- 单页入口 `http://localhost:18140/`（根路径经跳转页进入 `/id/demo/page`；页面模板 `src/main/webapp/view/id/index.html`，本地 Vue）
 - 依赖 `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all:1.1.2`（均以 `compile` 自带）+ `io.undertow:undertow-core:2.2.39.Final`；零日志绑定（demo 自带 `ConsoleLogFactory`）
 
 ## 前置：先把 aifei-id 装入本地仓库
@@ -33,7 +33,7 @@ stop-demo.bat            :: 按端口 18140 找到监听进程并结束
 
 两个脚本都做三步：`mvn compile dependency:build-classpath` → 读 classpath → 以 `-Ddemo.config=<配置文件> -Dundertow.port=18140 -Dundertow.host=127.0.0.1` 启动 `cn.hg.aifei.id.demo.DemoApp`。
 
-启动后访问 `http://localhost:18140/` 即为正常（根路径直接渲染演示主页，与 `/id/demo/page` 等价）。
+启动后访问 `http://localhost:18140/` 即为正常（根路径经跳转页进入 `/id/demo/page`）。
 
 > 号段模式用 `local` 存储，进程重启会从 `[1, step]` 重新取段、**与重启前的号重叠**，仅限单实例 / 开发测试；生产多实例场景请改用 `cache` 号段存储与 `cache` / `lock` workerId 来源（见 [aifei-id README](../aifei-id/README.md)）。
 

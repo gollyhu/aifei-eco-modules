@@ -80,7 +80,6 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         MqInstanceCatalog.init(p.getProperties());
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new IoDispatcher())
-                .addHandler(new RootRedirectHandler())
                 .addHandler(new IoHandler(p.getBoolean("printAction", false), "view"));
     }
 

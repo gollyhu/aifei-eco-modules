@@ -15,7 +15,6 @@ import cn.hg.aifei.trace.demo.arch.In;
 import cn.hg.aifei.trace.demo.arch.IoDispatcher;
 import cn.hg.aifei.trace.demo.arch.IoHandler;
 import cn.hg.aifei.trace.demo.arch.Out;
-import cn.hg.aifei.trace.demo.arch.RootRedirectHandler;
 import cn.hg.aifei.trace.demo.console.ConsoleLogFactory;
 import cn.hg.aifei.trace.web.TraceHandler;
 import cn.hg.aifei.trace.web.TraceIdExtractor;
@@ -36,8 +35,6 @@ import cn.aifei.util.PropKit;
  * {@code cn.aifei.core.Input} 公开接口只有参数读取能力、无 header 访问，故 demo 的 {@link In}
  * 实现暴露 {@code getHeader(...)}，extractor 写作 {@code in -> in.getHeader("X-Trace-Id")}。</p>
  *
- * <p>{@link RootRedirectHandler} 紧随 TraceHandler 之后，把根路径重定向到主页面，其余路径透传给
- * {@link IoHandler}。</p>
  */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
 
@@ -55,7 +52,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
      * 偏好配置：装配日志工厂（TraceLogFactory 装饰 ConsoleLogFactory）、Server 与两级 Handler。
      *
      * <p>Handler 顺序即责任链顺序：{@link TraceHandler} 在<b>第一位</b>（绑定 → 透传下游 → finally 清理），
-     * 次 {@link RootRedirectHandler} 把根路径重定向到主页面，最后 {@link IoHandler}（路由到 Service 或 404）。</p>
+     * 最后是 {@link IoHandler}（路由到 Service 或 404）。</p>
      *
      * @param settings aifei 偏好设置，用于挂载日志工厂、Server 与 Handler 链
      */
@@ -76,7 +73,6 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
                         return in.getHeader(TRACE_HEADER);
                     }
                 }))
-                .addHandler(new RootRedirectHandler())
                 .addHandler(new IoHandler("view"));
     }
 
@@ -107,7 +103,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     @Override
     public void onStart() {
         System.out.println("[aifei-trace-demo] 日志工厂链: TraceLogFactory -> ConsoleLogFactory（System.out，无日志绑定）");
-        System.out.println("[aifei-trace-demo] Handler 链: TraceHandler（第一位，提取头 " + TRACE_HEADER + "）-> RootRedirectHandler -> IoHandler");
+        System.out.println("[aifei-trace-demo] Handler 链: TraceHandler（第一位，提取头 " + TRACE_HEADER + "）-> IoHandler");
         System.out.println("[aifei-trace-demo] 验证地址: http://localhost:18130/trace/demo/page");
     }
 

@@ -15,6 +15,6 @@ set "CP="
 for /f "usebackq delims=" %%i in ("target\cp.txt") do set "CP=%%i"
 
 echo [2/3] Starting demo, HTTP 80, press Ctrl+C to stop...
-echo [3/3] Verify: http://localhost/oss/demo/index
+echo [3/3] Verify: http://localhost/
 echo.
 java -Ddemo.config=app-config.txt -Dundertow.port=80 -Dundertow.host=0.0.0.0 -cp ".\target\classes;%CP%" cn.hg.aifei.oss.demo.DemoApp

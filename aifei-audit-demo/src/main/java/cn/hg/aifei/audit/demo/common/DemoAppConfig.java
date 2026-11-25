@@ -47,7 +47,7 @@ import cn.hg.aifei.trace.web.TraceHandler;
  * <p>审计拦截器必须第一个传入 {@code routes.scan}（拦截器数组下标 0 即最外层）；
  * {@code service} 包（页面端点）不挂审计拦截器，否则页面自身的查询请求也会产事件、干扰计数。</p>
  *
- * <p>Handler 链：{@code TraceHandler} → {@link RootRedirectHandler}（根路径跳主页面）→ {@code IoHandler}。</p>
+ * <p>Handler 链：{@code TraceHandler} → {@code IoHandler}。</p>
  */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
 
@@ -69,7 +69,6 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
         settings.setLogFactory(new Log4jLogFactory());
         settings.setServer(new UndertowServer(), new SaTokenUndertowDispatcher<In, Out>(new IoDispatcher()))
                 .addHandler(new TraceHandler<In, Out>())
-                .addHandler(new RootRedirectHandler())
                 .addHandler(new IoHandler(prop.getBoolean("printAction", false), "view"));
 
         // 读模型与落点解耦：三个落点都写同一份 feed，页面统一可见

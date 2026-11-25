@@ -47,7 +47,7 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 
 ### 1.3 验证
 
-打开 <http://localhost:18100/> 进入实例入口页，应有 **4 张实例卡**：`__MAIN__` / memory、`demoA` / mqtt、`demoB` / redisstream、`demoC` / mqtt5。
+打开 <http://localhost:18100/> 自动进入主实例演示页（`/mq/demo/page`）；需要看 **4 张实例卡**（`__MAIN__` / memory、`demoA` / mqtt、`demoB` / redisstream、`demoC` / mqtt5）时，访问 <http://localhost:18100/view/mq/index.html>。
 
 访问 <http://localhost:18100/mq/demo/state>，看到 `mqType=memory`、`subscribedTopics` 含默认主题即为正常（省略 `instance` 时取主实例）。
 
@@ -59,7 +59,7 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 
 | 页面 | 地址 | 内容 |
 | --- | --- | --- |
-| 实例入口页 | `GET /` | 按 `mq.names`（+ 主实例）列出实例卡（类型 / 配置前缀 / 就绪状态 / 订阅数 / 记录数），点击在**新标签页**打开该实例演示页（同名实例复用同一标签，不重复打开） |
+| 根路径跳转页 | `GET /` | 返回跳转页并 meta refresh 到 `/mq/demo/page`（省略 `instance` 时为主实例）；不再直接列出实例卡 |
 | 实例演示页 | `GET /mq/demo/page?instance=<实例名>` | 订阅区（可运行时订阅 / 取消）+ 发布区（文本捷径 / Message 对象两种方式）+ **E2 事件演示区**（业务域 / 事件类型 / 命中表）+ 消息流日志（2 秒轮询）；顶部「返回实例列表」在由首页打开时**关闭该标签页**，直接访问时回首页 |
 
 ![演示页面](./demo.png)
@@ -76,7 +76,7 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 
 | 端点 | 作用 |
 | --- | --- |
-| `GET /` | 实例入口页视图 |
+| `GET /` | 根路径跳转页视图 |
 | `GET /mq/demo/page?instance=...` | 实例演示页视图（`instance` 仅由前端读取） |
 | `GET /mq/demo/instances` | 实例清单：`__MAIN__` 在首，其后按 `mq.names` 声明顺序；每项含 `instanceName` / `type` / `main` / `configPrefix` / `ready` / `subscribedTopicCount` / `messageLogSize` / `messageLogCapacity` |
 | `GET /mq/demo/state` | 现场快照（按实例）：`mqType` / `configPrefix` / `subscribedTopics` / `subscribers`（含 `source`：`startup` / `page`）/ `sentCount` / `receivedCount` / `messageLogSize` / `messageLogCapacity` |

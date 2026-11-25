@@ -3,7 +3,7 @@
 `io.github.gollyhu:aifei-excel` 的**示例工程**（不发布）：用真实读写演示 Excel 三类能力——上传解析、一次性导出、流式导出。所有数据来自真实读写：`/parse` 真实解析上传文件，`/export-*` 真实生成可打开的 xlsx。
 
 - HTTP 端口 **18150**（回环访问 `localhost`）
-- 单页入口 `http://localhost:18150/excel/demo/page`（页面模板 `src/main/webapp/view/excel/index.html`，零 CDN）
+- 单页入口 `http://localhost:18150/`（根路径经跳转页进入 `/excel/demo/page`；页面模板 `src/main/webapp/view/excel/index.html`，零 CDN）
 - 依赖 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` + `com.alibaba:easyexcel:3.3.2`（见文末「依赖引入」）
 
 ## 前置：先把 aifei-excel 装入本地仓库
@@ -22,7 +22,7 @@ start-demo.bat        :: 编译 + 打包 classpath + 启动（-Dundertow.port=18
 stop-demo.bat         :: 按 18150 找监听进程并结束
 ```
 
-启动后浏览器打开 `http://localhost:18150/excel/demo/page`。
+启动后浏览器打开 `http://localhost:18150/`（自动进入 `/excel/demo/page`）。
 
 ## 端点全表（HTTP 恒 200，语义由信封 `code` 承载，`0` 成功）
 
