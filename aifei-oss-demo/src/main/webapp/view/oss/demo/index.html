@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-oss 演示台</title>
+    <link rel="stylesheet" href="/assets/css/oss-demo.css">
+</head>
+<body>
+<main class="page">
+    <header class="topbar">
+        <div class="topbar-title">
+            <h1>aifei-oss 演示台</h1>
+            <p>直接调用 <code>/oss/demo/*</code>；HTTP 恒 200，业务结果以 <code>code</code> 为准。</p>
+        </div>
+        <div class="topbar-actions">
+            <span id="stateBadge" class="badge badge-wait">状态读取中…</span>
+            <button id="refreshStateBtn" type="button" class="btn btn-ghost">刷新状态</button>
+        </div>
+    </header>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <section class="status-grid" aria-label="运行状态">
+        <div class="status-card">
+            <span class="status-k">已注册平台</span>
+            <strong id="platformText" class="status-v">-</strong>
+        </div>
+        <div class="status-card">
+            <span class="status-k">演示页入口</span>
+            <strong class="status-v"><code>/oss/demo/index</code></strong>
+        </div>
+        <div class="status-card">
+            <span class="status-k">存储提示</span>
+            <strong class="status-v status-v-sm">默认本地存储 <code>local-plus</code>；生成的 <code>url</code> 仅作字段演示</strong>
+        </div>
+    </section>
+
+    <div class="layout">
+        <section class="panel browser-panel">
+            <header class="panel-head">
+                <h2>对象浏览</h2>
+                <span class="panel-note">来自 <code>/list</code> 与 <code>/page</code></span>
+            </header>
+            <div class="form-row wrap">
+                <label class="field">
+                    <span>目录 path</span>
+                    <input id="listPath" type="text" value="demo" autocomplete="off">
+                </label>
+                <label class="field field-sm">
+                    <span>每页 maxFiles</span>
+                    <input id="maxFiles" type="number" min="1" value="2">
+                </label>
+                <button id="listBtn" type="button" class="btn btn-primary">一次性列举</button>
+                <button id="pageBtn" type="button" class="btn">分页列举</button>
+                <button id="nextBtn" type="button" class="btn" disabled>下一页</button>
+                <button id="resetPageBtn" type="button" class="btn btn-ghost">重置游标</button>
+            </div>
+            <p id="pageHint" class="hint">尚未列举；分页游标为空。</p>
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>对象路径</th><th>大小</th><th>URL</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="fileRows">
+                        <tr><td colspan="4" class="empty">点击「一次性列举」查看对象</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel ops-panel">
+            <header class="panel-head">
+                <h2>操作面板</h2>
+                <span class="panel-note">上传 / 下载 / 复制 / 删除 / 签名 URL</span>
+            </header>
+
+            <article class="op-card">
+                <h3>文本上传</h3>
+                <p class="op-desc">演示文本写入；当前端点不是 multipart 文件上传。</p>
+                <label class="field"><span>path</span><input id="uploadPath" type="text" value="demo/hello.txt"></label>
+                <label class="field"><span>text</span><textarea id="uploadText" rows="2">hello aifei-oss</textarea></label>
+                <div class="btn-row">
+                    <button id="uploadBtn" type="button" class="btn btn-primary">上传（覆盖）</button>
+                    <button id="uploadIfAbsentBtn" type="button" class="btn">仅不存在时上传</button>
+                </div>
+            </article>
+
+            <article class="op-card">
+                <h3>内容查看 / 存在性</h3>
+                <label class="field"><span>path</span><input id="viewPath" type="text" value="demo/hello.txt"></label>
+                <div class="btn-row">
+                    <button id="downloadBtn" type="button" class="btn btn-primary">下载文本</button>
+                    <button id="existsBtn" type="button" class="btn">检查存在</button>
+                    <button id="copyContentBtn" type="button" class="btn btn-ghost">复制内容</button>
+                </div>
+                <span id="existsResult" class="inline-result">未检查</span>
+                <textarea id="contentResult" class="result-area" rows="4" readonly placeholder="下载后的文本内容显示在这里"></textarea>
+            </article>
+
+            <article class="op-card">
+                <h3>复制对象</h3>
+                <div class="two-fields">
+                    <label class="field"><span>源 path</span><input id="copySrc" type="text" value="demo/hello.txt"></label>
+                    <label class="field"><span>目标 path</span><input id="copyDest" type="text" value="demo/hello-copy.txt"></label>
+                </div>
+                <button id="copyBtn" type="button" class="btn btn-primary">复制</button>
+            </article>
+
+            <article class="op-card">
+                <h3>删除对象</h3>
+                <label class="field"><span>path</span><input id="deletePath" type="text" value="demo/hello-copy.txt"></label>
+                <button id="deleteBtn" type="button" class="btn btn-danger">删除（需确认）</button>
+            </article>
+
+            <article class="op-card">
+                <h3>限时访问地址</h3>
+                <div class="two-fields">
+                    <label class="field"><span>path</span><input id="urlPath" type="text" value="demo/hello.txt"></label>
+                    <label class="field field-sm"><span>ttl（秒）</span><input id="urlTtl" type="number" min="1" value="3600"></label>
+                </div>
+                <button id="urlBtn" type="button" class="btn">生成 URL</button>
+                <div id="urlResult" class="url-result">未生成</div>
+            </article>
+        </section>
+    </div>
+
+    <section class="panel log-panel">
+        <header class="panel-head">
+            <h2>调用日志</h2>
+            <div class="panel-actions">
+                <span class="panel-note">保留最近 50 次调用</span>
+                <button id="clearLogsBtn" type="button" class="btn btn-ghost btn-small">清空</button>
+            </div>
+        </header>
+        <div id="logList" class="log-list">
+            <div class="log-empty">暂无调用记录</div>
+        </div>
+    </section>
+</main>
+<script src="/assets/js/oss-demo.js"></script>
+</body>
+</html>

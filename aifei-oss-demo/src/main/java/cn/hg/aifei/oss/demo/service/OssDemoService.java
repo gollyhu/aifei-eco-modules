@@ -48,6 +48,16 @@ public class OssDemoService {
     }
 
     /**
+     * 可视化演示页入口。
+     *
+     * @return 模板路径
+     */
+    @Path("index")
+    public String index() {
+        return "/oss/demo/index.html";
+    }
+
+    /**
      * 上传一段文本到指定路径。
      *
      * @param path 对象路径

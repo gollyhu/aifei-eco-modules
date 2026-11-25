@@ -11,7 +11,7 @@ cd ..\aifei-oss
 mvn clean install
 ```
 
-再启动 demo（HTTP 端口 **18092**）：
+再启动 demo（HTTP 端口 **80**）：
 
 ```bat
 cd ..\aifei-oss-demo
@@ -29,6 +29,7 @@ stop-demo.bat
 | 端点 | 说明 |
 | --- | --- |
 | `/oss/demo/state` | 已注册平台列表 |
+| `/oss/demo/index` | 可视化演示页 |
 | `/oss/demo/upload?path=&text=` | 上传文本 |
 | `/oss/demo/upload-if-absent?path=&text=` | 仅当对象不存在时上传（不覆盖） |
 | `/oss/demo/download?path=` | 下载文本 |
@@ -42,13 +43,19 @@ stop-demo.bat
 快速验证：
 
 ```bash
-curl "http://localhost:18092/oss/demo/state"
-curl "http://localhost:18092/oss/demo/upload?path=demo/a.txt&text=hello"
-curl "http://localhost:18092/oss/demo/download?path=demo/a.txt"
-curl "http://localhost:18092/oss/demo/list?path=demo"
-curl "http://localhost:18092/oss/demo/copy?src=demo/a.txt&dest=demo/b.txt"
-curl "http://localhost:18092/oss/demo/delete?path=demo/b.txt"
+curl "http://localhost/oss/demo/state"
+curl "http://localhost/oss/demo/upload?path=demo/a.txt&text=hello"
+curl "http://localhost/oss/demo/download?path=demo/a.txt"
+curl "http://localhost/oss/demo/list?path=demo"
+curl "http://localhost/oss/demo/copy?src=demo/a.txt&dest=demo/b.txt"
+curl "http://localhost/oss/demo/delete?path=demo/b.txt"
 ```
+
+## Web 演示台
+
+启动后访问 `http://localhost/` 会自动跳转到演示页；也可直接访问 `http://localhost/oss/demo/index`。页面直接调用上述接口，可完成状态查看、文本上传、列举/分页、下载/存在性检查、复制、删除与签名 URL 生成；每次调用的 `code` 与原始响应会显示在页面底部日志区。
+
+> 本地存储下生成的 `url` 仅作字段演示，demo 未配置静态文件服务。
 
 ## 配置
 
@@ -58,11 +65,11 @@ curl "http://localhost:18092/oss/demo/delete?path=demo/b.txt"
 oss.default-platform = local-1
 oss.local-1.type = local-plus
 oss.local-1.base-path = data/oss-demo/
-oss.local-1.domain = http://localhost:18092/files/
+oss.local-1.domain = http://localhost/files/
 ```
 
 > `local-plus` 会把 `base-path` 拼进返回的访问 `url`（示例中 `url` 形如
-> `http://localhost:18092/files/data/oss-demo/demo/a.txt`）。本 demo 未提供静态文件服务，
+> `http://localhost/files/data/oss-demo/demo/a.txt`）。本 demo 未提供静态文件服务，
 > `url` 仅作字段演示；如需可访问，请让 `domain` 指向 `base-path` 对应的 Web 根。
 
 切换为云平台时，只需增加 `oss.<name>.type` 与对应配置项，并在消费方工程引入该平台的云厂商 SDK。

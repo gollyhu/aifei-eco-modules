@@ -1,5 +1,5 @@
 # ===== aifei-oss-demo 配置 =====
-# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18092 传入，本文件只放 oss.* 配置。
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=80 传入，本文件只放 oss.* 配置。
 
 # 默认平台（单平台时可省略；此处显式写出便于阅读）
 oss.default-platform = local-1
@@ -9,7 +9,7 @@ oss.local-1.type = local-plus
 # 文件落盘根目录（相对 demo 模块工作目录；local-plus 会把 base-path 拼进访问 url，故以 / 结尾）
 oss.local-1.base-path = data/oss-demo/
 # 访问域名：用于生成对象访问地址（url），注意以 / 结尾
-oss.local-1.domain = http://localhost:18092/files/
+oss.local-1.domain = http://localhost/files/
 
 # 打印路由动作日志（非必须）
-printAction = false
+printAction = true

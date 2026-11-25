@@ -1,8 +1,8 @@
 @echo off
 setlocal
 
-rem Stop the demo started by start-demo.bat (HTTP port 18092)
-set "PORT=18092"
+rem Stop the demo started by start-demo.bat (HTTP port 80)
+set "PORT=80"
 
 set "PID="
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%PORT%" ^| findstr "LISTENING"') do set "PID=%%p"

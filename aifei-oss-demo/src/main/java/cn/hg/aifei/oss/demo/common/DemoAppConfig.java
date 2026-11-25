@@ -81,8 +81,10 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
      */
     @Override
     public void onStart() {
+        String port = System.getProperty("undertow.port", "80");
         System.out.println("[aifei-oss-demo] 默认平台: " + p.get("oss.default-platform")
-                + "，访问 http://localhost:" + System.getProperty("undertow.port", "18092") + "/oss/demo/state");
+                + "，演示台: http://localhost:" + port + "/oss/demo/index");
+        System.out.println("[aifei-oss-demo] 状态接口: http://localhost:" + port + "/oss/demo/state");
     }
 
     /**
