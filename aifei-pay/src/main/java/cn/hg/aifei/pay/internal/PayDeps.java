@@ -15,12 +15,22 @@ package cn.hg.aifei.pay.internal;
 public final class PayDeps {
 
     /**
-     * 交易接口封装（IJPay）。
+     * 支付宝 V3 交易接口封装（IJPay）。
      */
     private static final String IJPAY_TRADE = "com.ijpay.alipay.v3.AliPayTradeApi";
 
     /**
-     * 开放平台 SDK 客户端。
+     * 支付宝 V2 交易门面（IJPay）。
+     */
+    private static final String IJPAY_TRADE_V2 = "com.ijpay.alipay.AliPayApi";
+
+    /**
+     * 支付宝 V2 SDK 验签工具。
+     */
+    private static final String ALIPAY_SIGNATURE_V2 = "com.alipay.api.internal.util.AlipaySignature";
+
+    /**
+     * 开放平台 V3 SDK 客户端。
      */
     private static final String ALIPAY_API_CLIENT = "com.alipay.v3.ApiClient";
 
@@ -39,14 +49,21 @@ public final class PayDeps {
      */
     private static final String IJPAY_GROUP = "com.github.javen205";
     private static final String IJPAY_ARTIFACT = "IJPay-AliPay-V3";
+    private static final String IJPAY_ARTIFACT_V2 = "IJPay-AliPay";
     private static final String IJPAY_VERSION = "3.0.0";
 
     /**
-     * 开放平台 SDK 坐标与版本，与 pom 的 {@code alipay.v3.version} 保持一致。
+     * 开放平台 V3 SDK 坐标与版本，与 pom 的 {@code alipay.v3.version} 保持一致。
      */
     private static final String SDK_GROUP = "com.alipay.sdk";
     private static final String SDK_ARTIFACT = "alipay-sdk-java-v3";
     private static final String SDK_VERSION = "3.1.89.ALL";
+
+    /**
+     * 开放平台 V2 SDK 坐标与版本，与 pom 的 {@code alipay.v2.version} 保持一致。
+     */
+    private static final String SDK_ARTIFACT_V2 = "alipay-sdk-java";
+    private static final String SDK_VERSION_V2 = "4.40.1067.ALL";
 
     /**
      * BouncyCastle 坐标与版本，与 pom 的 {@code bcprov.version} 保持一致。
@@ -65,9 +82,24 @@ public final class PayDeps {
      * 探测交易与验签所需的内核依赖（IJPay + 开放平台 SDK）。
      */
     public static void requireKernel() {
+        requireV3Kernel();
+    }
+
+    /**
+     * 探测支付宝 V3 内核依赖。
+     */
+    public static void requireV3Kernel() {
         require(IJPAY_TRADE, IJPAY_GROUP, IJPAY_ARTIFACT, IJPAY_VERSION);
         require(ALIPAY_API_CLIENT, SDK_GROUP, SDK_ARTIFACT, SDK_VERSION);
         require(ALIPAY_SIGNATURE, SDK_GROUP, SDK_ARTIFACT, SDK_VERSION);
+    }
+
+    /**
+     * 探测支付宝 V2 内核依赖。
+     */
+    public static void requireV2Kernel() {
+        require(IJPAY_TRADE_V2, IJPAY_GROUP, IJPAY_ARTIFACT_V2, IJPAY_VERSION);
+        require(ALIPAY_SIGNATURE_V2, SDK_GROUP, SDK_ARTIFACT_V2, SDK_VERSION_V2);
     }
 
     /**

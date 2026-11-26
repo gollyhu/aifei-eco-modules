@@ -68,9 +68,13 @@
 
         <aifei.version>1.1.2</aifei.version>
         <ijpay.version>3.0.0</ijpay.version>
+        <alipay.v2.version>4.40.1067.ALL</alipay.v2.version>
         <alipay.v3.version>3.1.89.ALL</alipay.v3.version>
+        <fastjson.version>2.0.66</fastjson.version>
+        <okhttp.version>4.12.0</okhttp.version>
         <dom4j.version>2.1.5</dom4j.version>
         <bcprov.version>1.86</bcprov.version>
+        <stripe.version>34.1.0</stripe.version>
         <junit.version>4.13.2</junit.version>
     </properties>
 
@@ -114,6 +118,58 @@
             </exclusions>
         </dependency>
 
+        <!-- 支付宝 V2 内核：optional 阻断传递，与 V3 内核按 type 选择 -->
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-AliPay</artifactId>
+            <version>${ijpay.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 支付宝 V2 官方 SDK：按上游排除项锁定，避免旧坐标进入 Java 8 运行时 -->
+        <dependency>
+            <groupId>com.alipay.sdk</groupId>
+            <artifactId>alipay-sdk-java</artifactId>
+            <version>${alipay.v2.version}</version>
+            <optional>true</optional>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.alibaba</groupId>
+                    <artifactId>fastjson</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcprov-jdk15on</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>dom4j</groupId>
+                    <artifactId>dom4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okio</groupId>
+                    <artifactId>okio</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>${fastjson.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>${okhttp.version}</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- 版本锁定：与上游 IJPay 的替代声明一致，使字节码断言对象是本模块 pom 的可见事实（2.2.0 起字节码 55） -->
         <dependency>
             <groupId>org.dom4j</groupId>
@@ -127,6 +183,56 @@
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
             <version>${bcprov.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 以下七个渠道构件均为 optional：按 pay.<name>.type 选择，消费方按需自带。 -->
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-QQ</artifactId>
+            <version>${ijpay.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-JDPay</artifactId>
+            <version>${ijpay.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-UnionPay</artifactId>
+            <version>${ijpay.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-PayPal</artifactId>
+            <version>${ijpay.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-Stripe</artifactId>
+            <version>${ijpay.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>${stripe.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-FuiYou</artifactId>
+            <version>${ijpay.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javen205</groupId>
+            <artifactId>IJPay-XPay</artifactId>
+            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
 

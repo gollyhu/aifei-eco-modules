@@ -28,11 +28,11 @@ public class PayChannelRegistryTest {
     @Before
     public void setUp() {
         PayChannelRegistry.clear();
-        PayChannelRegistry.register("alipay", new UnimplementedPayClient("alipay", "alipay"),
+        PayChannelRegistry.register("alipay3", new UnimplementedPayClient("alipay3", "alipay3"),
                 new UnimplementedPayVerifier());
         PayChannelRegistry.register("wxpay", new UnimplementedPayClient("wxpay", "wxpay"),
                 new UnimplementedPayVerifier());
-        PayChannelRegistry.registerDefault("alipay");
+        PayChannelRegistry.registerDefault("alipay3");
         PayChannelRegistry.setStarted(true);
     }
 
@@ -43,12 +43,12 @@ public class PayChannelRegistryTest {
 
     @Test
     public void shouldReturnDistinctNamedClients() {
-        PayClient alipay = PayKit.use("alipay");
+        PayClient alipay = PayKit.use("alipay3");
         PayClient wxpay = PayKit.use("wxpay");
 
         assertSame("默认通道应为 alipay", alipay, PayKit.defaultClient());
         assertNotSame("命名通道应返回不同实例", alipay, wxpay);
-        assertTrue("通道集合应含两个通道", PayKit.channels().containsAll(java.util.Arrays.asList("alipay", "wxpay")));
+        assertTrue("通道集合应含两个通道", PayKit.channels().containsAll(java.util.Arrays.asList("alipay3", "wxpay")));
         assertEquals("通道名", "wxpay", wxpay.channelName());
     }
 

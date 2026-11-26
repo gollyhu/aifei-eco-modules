@@ -19,28 +19,45 @@ import java.util.Set;
  */
 public final class PayTypes {
 
-    public static final String ALIPAY = "alipay";
+    public static final String ALIPAY2 = "alipay2";
+    public static final String ALIPAY3 = "alipay3";
     public static final String WXPAY = "wxpay";
+    public static final String QQ = "qq";
+    public static final String JDPAY = "jdpay";
+    public static final String UNIONPAY = "unionpay";
+    public static final String PAYPAL = "paypal";
+    public static final String STRIPE = "stripe";
+    public static final String FUIOU = "fuiou";
+    public static final String XPAY = "xpay";
 
     private static final Map<String, Set<String>> REQUIRED_KEYS;
     private static final Set<String> IMPLEMENTED;
 
     static {
         Map<String, Set<String>> required = new LinkedHashMap<String, Set<String>>();
-        required.put(ALIPAY, Collections.unmodifiableSet(new LinkedHashSet<String>(Arrays.asList(
-                "default-merchant-id", "env", "private-key"))));
+        Set<String> alipayKeys = Collections.unmodifiableSet(new LinkedHashSet<String>(Arrays.asList(
+                "default-merchant-id", "env", "private-key")));
+        required.put(ALIPAY2, alipayKeys);
+        required.put(ALIPAY3, alipayKeys);
         required.put(WXPAY, Collections.unmodifiableSet(new LinkedHashSet<String>(Arrays.asList(
                 "default-merchant-id"))));
-        String[] rest = {"qq", "jdpay", "unionpay", "paypal", "stripe", "fuiou", "xpay"};
-        for (String type : rest) {
-            required.put(type, Collections.unmodifiableSet(new LinkedHashSet<String>(
-                    Arrays.asList("default-merchant-id"))));
-        }
+        required.put(QQ, keys("default-merchant-id", "app-id", "partner-key"));
+        required.put(JDPAY, keys("default-merchant-id", "version", "rsa-private-key", "rsa-public-key", "des-key"));
+        required.put(UNIONPAY, keys("default-merchant-id", "gateway-url", "api-key"));
+        required.put(PAYPAL, keys("default-merchant-id", "client-id", "secret"));
+        required.put(STRIPE, keys("default-merchant-id", "api-key"));
+        required.put(FUIOU, keys("default-merchant-id", "mchnt-key"));
+        required.put(XPAY, keys("default-merchant-id", "app-id", "api-key", "server-url"));
         REQUIRED_KEYS = Collections.unmodifiableMap(required);
-        IMPLEMENTED = Collections.unmodifiableSet(new LinkedHashSet<String>(Arrays.asList(ALIPAY, WXPAY)));
+        IMPLEMENTED = Collections.unmodifiableSet(new LinkedHashSet<String>(Arrays.asList(ALIPAY2, ALIPAY3,
+                QQ, JDPAY, UNIONPAY, PAYPAL, STRIPE, FUIOU, XPAY)));
     }
 
     private PayTypes() {
+    }
+
+    private static Set<String> keys(String... values) {
+        return Collections.unmodifiableSet(new LinkedHashSet<String>(Arrays.asList(values)));
     }
 
     public static Set<String> supported() {

@@ -136,7 +136,7 @@ public class PayPluginTest {
             }
         }
         target.setProperty("pay.default-channel", "main");
-        target.setProperty("pay.main.type", "alipay");
+        target.setProperty("pay.main.type", "alipay3");
         target.setProperty("pay.main.default-merchant-id", APP);
         return target;
     }

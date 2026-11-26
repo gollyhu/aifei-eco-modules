@@ -34,7 +34,7 @@
 
 ```properties
 pay.default-channel = alipay-main
-pay.alipay-main.type = alipay
+pay.alipay-main.type = alipay3
 pay.alipay-main.default-merchant-id = 2021000000000001
 pay.alipay-main.env = production
 pay.alipay-main.private-key = @file:/etc/pay/alipay-app.pem
@@ -50,12 +50,13 @@ PayOrderResult order = client.createOrder(null, "T2026010100001", 1L, "测试商
 PayNotifyUtil.verifyAndParse("alipay-main", null, PayNotifyRequest.of(params));
 ```
 
-`wxpay` 通道由 `IJPay-WxPay` 支撑；用户可自行选择本模块或 `aifei-weixin`，两者并存且互不依赖。
-未落地适配器的渠道会明确抛 `PayException("支付通道适配器未落地：...")`，不会冒充可用能力。
+支付宝按版本提供显式类型：`type=alipay3` 使用 `IJPay-AliPay-V3`，`type=alipay2` 使用 `IJPay-AliPay` V2；无版本含义的 `alipay` 不是合法类型。
+`qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 七个渠道均已真实落地（下单 / 查单 / 退款 / 验签），按 `pay.<name>.type` 装配，配置键见 `docs/channels.md` §3.3；对应 IJPay 构件均为 `optional`，消费方按需声明。
+`wxpay` 与 `aifei-weixin` 并存、用户二选一，本模块源码零 `cn.aifei.weixin` import；`wxpay` 是当前唯一未落地通道，交易动作会明确抛 `PayException("支付通道适配器未落地：...")`，不会冒充可用能力。
 
 ## 2. 支付宝通道接入细节（V2.0 通道化配置见 §1.1）
 
-以下依赖与凭据说明对 `type=alipay` 的通道仍然有效；交易动作示例中的 `precreate` / `wapPay` / `pagePay`
+以下依赖与凭据说明对 `type=alipay3` / `type=alipay2` 的通道仍然有效；交易动作示例中的 `precreate` / `wapPay` / `pagePay`
 已由 `createOrder(..., payType, ...)` 取代，仅保留作支付宝内核语义参考。
 
 ### 2.1 声明依赖
@@ -179,18 +180,22 @@ pay.apps.2021000000000002.verify.0.value = @file:/etc/alipay/sandbox-alipay-publ
 
 ## 3. 配置键全表
 
+本节只列模块级键。各支付渠道的通道键、适配器状态与配置示例见 [`docs/channels.md`](docs/channels.md)。
+
 ### 3.1 全局键
 
 | 键名 | 必填 | 默认值 | 合法值 | 说明 |
 | --- | --- | --- | --- | --- |
-| `pay.default-app-id` | 否 | 无 | 非空白字符串 | `appId` 参数为 `null` / 空白时取此值 |
+| `pay.default-app-id` | 否 | 无 | 非空白字符串 | V2.0 中由通道的 `pay.<name>.default-merchant-id` 自动映射，不作为用户配置项读取 |
 | `pay.connect-timeout` | 否 | `5000` | 正整数（毫秒） | 连接超时 |
 | `pay.read-timeout` | 否 | `15000` | 正整数（毫秒） | 读取超时（支付网关往返较长） |
 | `pay.page-http-method` | 否 | `POST` | `GET` / `POST` | `POST` → `payloadType=FORM`；`GET` → `payloadType=URL` |
 | `pay.notify-url` | 否 | 无 | 非空白字符串 | 全局默认异步回调地址 |
 | `pay.return-url` | 否 | 无 | 非空白字符串 | 全局默认同步回调地址 |
 
-### 3.2 单应用键（`<appId>` 为支付宝应用编号，`<n>` 为从 0 起的凭据序号）
+### 3.2 支付宝通道映射后的应用键（`<appId>` 为 `default-merchant-id`，`<n>` 为凭据序号）
+
+用户侧应配置 `pay.<name>.*` 形式的通道键（见 `docs/channels.md`）；下表是运行时映射后的内部配置域，用于排障。
 
 | 键名 | 必填 | 默认值 | 合法值 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -311,7 +316,7 @@ PayNotify sync = PayNotifyUtil.verifyAndParse(appId, request.getQueryString());
 | **凭据与环境无法机械绑定** | 模块只能校验 `gateway-url` 的 host 与 `env` 一致；「这把私钥属于沙箱还是生产」需靠配置评审与凭据来源管理兜底 |
 | **`stop()` 后已注入字段仍持旧实例** | 框架无注销 API；`PayKit.defaultClient()` 会立即失败，但已注入的字段不会自动置空 |
 | **不做收银台页面 / Servlet 适配** | 模块只产出支付参数与跳转载荷，回调报文以 `String` / `Map` 入参 |
-| **不做其它渠道** | 微信支付见 `aifei-weixin`；QQ / 京东 / 银联 / PayPal / Stripe 等不在范围内 |
+| **微信支付本期不实现** | `wxpay` 仅登记类型，交易会报「适配器未落地」；微信支付能力见 `aifei-weixin`，两者并存、用户二选一。其它七渠道已落地 |
 | **同步跳转报文也可能为空** | 用户中途放弃支付时不会带回参数，业务需容错 |
 
 异常分类边界：调用方参数写错（空白单号、`amountFen <= 0`、超长）抛 `IllegalArgumentException`；

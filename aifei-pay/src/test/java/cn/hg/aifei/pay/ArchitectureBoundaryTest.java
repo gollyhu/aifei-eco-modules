@@ -227,7 +227,32 @@ public class ArchitectureBoundaryTest {
      */
     private static final Set<String> IJPAY_ALLOWED = new LinkedHashSet<>(Arrays.asList(
             "src/main/java/" + INTERNAL_DIR + "IjpayPayKernel.java",
-            "src/main/java/" + INTERNAL_DIR + "PayClients.java"
+            "src/main/java/" + INTERNAL_DIR + "PayClients.java",
+            "src/main/java/" + INTERNAL_DIR + "AliPayV2Clients.java",
+            "src/main/java/" + INTERNAL_DIR + "AliPayV2PayKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/ChannelResponses.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/QqKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/JdKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/UnionPayKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/PayPalKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/StripeKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/FuiYouKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/XPayKernel.java"
+    ));
+
+    /**
+     * {@code com.stripe.*} 的允许文件集合。
+     */
+    private static final Set<String> STRIPE_ALLOWED = new LinkedHashSet<>(Arrays.asList(
+            "src/main/java/" + INTERNAL_DIR + "channels/StripeKernel.java"
+    ));
+
+    /**
+     * {@code cn.hutool.*} 的允许文件集合（响应解析与富友 JSON 报文）。
+     */
+    private static final Set<String> HUTOOL_ALLOWED = new LinkedHashSet<>(Arrays.asList(
+            "src/main/java/" + INTERNAL_DIR + "channels/ChannelResponses.java",
+            "src/main/java/" + INTERNAL_DIR + "channels/FuiYouKernel.java"
     ));
 
     /**
@@ -237,7 +262,10 @@ public class ArchitectureBoundaryTest {
             "src/main/java/" + INTERNAL_DIR + "IjpayPayKernel.java",
             "src/main/java/" + INTERNAL_DIR + "PayClients.java",
             "src/main/java/" + INTERNAL_DIR + "PayVerifyKey.java",
-            "src/main/java/" + INTERNAL_DIR + "PayVerifier.java"
+            "src/main/java/" + INTERNAL_DIR + "PayVerifier.java",
+            "src/main/java/" + INTERNAL_DIR + "AliPayV2Clients.java",
+            "src/main/java/" + INTERNAL_DIR + "AliPayV2PayKernel.java",
+            "src/main/java/" + INTERNAL_DIR + "AliPayV2Verifier.java"
     ));
 
     /**
@@ -284,8 +312,20 @@ public class ArchitectureBoundaryTest {
             "cn.aifei:aifei-all:provided",
             "com.github.javen205:IJPay-AliPay-V3:optional",
             "com.alipay.sdk:alipay-sdk-java-v3:optional",
+            "com.github.javen205:IJPay-AliPay:optional",
+            "com.alipay.sdk:alipay-sdk-java:optional",
+            "com.alibaba:fastjson:optional",
+            "com.squareup.okhttp3:okhttp:optional",
             "org.dom4j:dom4j:optional",
             "org.bouncycastle:bcprov-jdk18on:optional",
+            "com.github.javen205:IJPay-QQ:optional",
+            "com.github.javen205:IJPay-JDPay:optional",
+            "com.github.javen205:IJPay-UnionPay:optional",
+            "com.github.javen205:IJPay-PayPal:optional",
+            "com.github.javen205:IJPay-Stripe:optional",
+            "com.stripe:stripe-java:optional",
+            "com.github.javen205:IJPay-FuiYou:optional",
+            "com.github.javen205:IJPay-XPay:optional",
             "junit:junit:test"
     ));
 
@@ -295,7 +335,10 @@ public class ArchitectureBoundaryTest {
     private static final Set<String> EXPECTED_EXCLUSIONS = new LinkedHashSet<>(Arrays.asList(
             "dom4j:dom4j",
             "org.bouncycastle:bcprov-jdk15on",
-            "org.openapitools:jackson-databind-nullable"
+            "org.openapitools:jackson-databind-nullable",
+            "com.alibaba:fastjson",
+            "com.squareup.okhttp3:okhttp",
+            "com.squareup.okio:okio"
     ));
 
     /**
@@ -316,6 +359,14 @@ public class ArchitectureBoundaryTest {
             "Configuration.setDefaultApiClient",
             "Configuration.getDefaultApiClient",
             "AliPayApiConfigKit",
+            "QqPayApiConfigKit",
+            "JdPayApiConfigKit",
+            "UnionPayApiConfigKit",
+            "PayPalApiConfigKit",
+            "StripeApiConfigKit",
+            "FuiYouPayApiConfigKit",
+            "ApiConfigKit.get",
+            "AccessTokenKit.get",
             "Security.addProvider",
             "System.setProperty",
             "System.getProperties().put"
@@ -496,6 +547,8 @@ public class ArchitectureBoundaryTest {
         Map<String, String> frameworkActual = new LinkedHashMap<>();
         Set<String> ijpayActual = new LinkedHashSet<>();
         Set<String> alipayActual = new LinkedHashSet<>();
+        Set<String> stripeActual = new LinkedHashSet<>();
+        Set<String> hutoolActual = new LinkedHashSet<>();
         List<String> outsideInternal = new ArrayList<>();
         for (Path file : javaFiles(SOURCE_ROOT)) {
             String path = normalize(file);
@@ -511,7 +564,14 @@ public class ArchitectureBoundaryTest {
                 if (fqn.startsWith("com.alipay.")) {
                     alipayActual.add(path);
                 }
-                boolean thirdParty = fqn.startsWith("com.ijpay.") || fqn.startsWith("com.alipay.");
+                if (fqn.startsWith("com.stripe.")) {
+                    stripeActual.add(path);
+                }
+                if (fqn.startsWith("cn.hutool.")) {
+                    hutoolActual.add(path);
+                }
+                boolean thirdParty = fqn.startsWith("com.ijpay.") || fqn.startsWith("com.alipay.")
+                        || fqn.startsWith("com.stripe.") || fqn.startsWith("cn.hutool.");
                 if (thirdParty && !path.contains(INTERNAL_DIR)) {
                     outsideInternal.add(path + " -> " + fqn);
                 }
@@ -522,6 +582,8 @@ public class ArchitectureBoundaryTest {
         // 「只允许出现在」是白名单语义（子集断言）：允许集合内的文件并非都必须出现该前缀。
         assertAllowed("com.ijpay.", IJPAY_ALLOWED, ijpayActual);
         assertAllowed("com.alipay.", ALIPAY_ALLOWED, alipayActual);
+        assertAllowed("com.stripe.", STRIPE_ALLOWED, stripeActual);
+        assertAllowed("cn.hutool.", HUTOOL_ALLOWED, hutoolActual);
         assertTrue("内核调用点必须存在：" + IJPAY_KERNEL_FILE, ijpayActual.contains(IJPAY_KERNEL_FILE));
         assertTrue("验签入口必须引用 SDK：" + PAY_VERIFIER_FILE, alipayActual.contains(PAY_VERIFIER_FILE));
         assertTrue("internal/ 之外不得出现第三方 import，违规：" + outsideInternal, outsideInternal.isEmpty());
@@ -592,7 +654,7 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
-     * G-06：直接依赖集合精确 6 项、无日志门面依赖、SDK 的三个 exclusion 精确存在。
+     * G-06：直接依赖集合精确 10 项、无日志门面依赖、V2/V3 SDK 的 exclusion 精确存在。
      *
      * @throws Exception 解析 pom 失败
      */

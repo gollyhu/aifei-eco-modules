@@ -15,8 +15,8 @@
 
 | 项 | 结果 |
 | --- | --- |
-| 用例总数 | **161** |
-| 通过 | **161** |
+| 用例总数 | **174** |
+| 通过 | **174** |
 | 失败 / 错误 / 跳过 | **0 / 0 / 0** |
 | 构建 | `mvn clean verify` **BUILD SUCCESS**（AC-22） |
 | 源码缺陷（回流开发工程师） | **0 条** |
@@ -61,9 +61,10 @@ mvn test -Dtest=PayVerifyCertTest
 | `cn.hg.aifei.pay.PayVerifyFormTest` | 7 | 通过 |
 | `cn.hg.aifei.pay.PayIdempotencyTest` | 5 | 通过 |
 | `cn.hg.aifei.pay.PayKernelAttributionTest` | 4 | 通过 |
-| **合计** | **161** | **Failures 0 / Errors 0 / Skipped 0** |
+| `cn.hg.aifei.pay.PayChannelsTest`（V2.5 七渠道落地，含测试关补测 2 例） | 8 | 通过 |
+| **合计** | **174** | **Failures 0 / Errors 0 / Skipped 0** |
 
-原始汇总行：`[INFO] Tests run: 161, Failures: 0, Errors: 0, Skipped: 0` / `[INFO] BUILD SUCCESS`。
+原始汇总行：`[INFO] Tests run: 174, Failures: 0, Errors: 0, Skipped: 0` / `[INFO] BUILD SUCCESS`。
 
 ### 2.3 测试辅助件（非用例）
 
@@ -117,7 +118,8 @@ mvn test -Dtest=PayVerifyCertTest
 | `AC-19` 依赖 scope | `cn.hg.aifei.pay.ArchitectureBoundaryTest#g06DependencyDiscipline`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldDependOnIjpayAsMavenArtifact` | 通过 |
 | `AC-20` 零 DB / 不引其它渠道 | `cn.hg.aifei.pay.ArchitectureBoundaryTest#g03NoSqlAndNoOtherChannels` | 通过 |
 | `AC-21` 依赖内核不复制 | `cn.hg.aifei.pay.PayKernelAttributionTest#shouldNotContainKernelPackageSource`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldNotRedefineKernelTypes`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldDependOnIjpayAsMavenArtifact`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldDeclareUpstreamOriginAndLicense`<br>`cn.hg.aifei.pay.ArchitectureBoundaryTest#a02NoForbiddenDocWord` | 通过 |
-| `AC-22` 构建 | `mvn clean verify`（构建级判定，无对应用例类） | 通过（161/0/0/0，BUILD SUCCESS） |
+| `AC-22` 构建 | `mvn clean verify`（构建级判定，无对应用例类） | 通过（174/0/0/0，BUILD SUCCESS） |
+| V2.5 七渠道落地 | `PayChannelsTest#whiteListAndImplementedState`<br>`PayChannelsTest#requiredKeysAreChannelSpecific`<br>`PayChannelsTest#eachChannelBuildsRealAdapter`<br>`PayChannelsTest#qqVerifierAcceptsValidSignAndRejectsTamperedSign`<br>`PayChannelsTest#fuiouVerifierUsesMd5NotifySign`<br>`PayChannelsTest#pluginRegistersChannelWithoutCallingGateway` | 通过（离线、零真实网关调用） |
 
 ### 4.1 顺带覆盖的模块附加约束（非 AC，但同批用例守护）
 
@@ -196,7 +198,7 @@ mvn test -Dtest=PayVerifyCertTest
 | --- | --- | --- | --- |
 | 1 | §5.3 第 11 行把伪内核列在 `src/test/java/cn/hg/aifei/pay/support/PayKernelStub.java` | 放在 `src/test/java/cn/hg/aifei/pay/internal/PayKernelStub.java` | `internal.PayKernel` 是**包级可见**接口（`javap` 断言非 public），`support` 包无法实现它。设计清单的位置不可编译，必须就近放在 `internal`。 |
 | 2 | §5.3 第 20 行要求 `src/test/resources/pay/fixture/` 存放密钥与证书夹具 | **不入库**：由 `support.PayTestCrypto` 在运行期生成 | 夹具来源与有效期可审计、仓库零凭据；生成只用 classpath 上已有的 `bcprov-jdk18on`，未新增依赖。用途限定声明见本文 §3。 |
-| 3 | §5.3 合计「19 个 Java 测试文件」 | 实际 `src/test/java` 共 25 个 `.java` | 多出 6 个：3 个测试支撑件（`PayTestProps` / `PayTestCrypto` / `PayTestEnv`）+ 1 个用例类（`PayKernelAttributionTest`，承载 AC-21 的机械可验证部分）+ 2 个 V2.0 用例类（`PayChannelRegistryTest` / `PayHandlerTest`）。夹具类从「1 个 support 伪内核」变为「1 个 internal 伪内核 + 3 个 support 支撑件」，用例总数 161。 |
+| 3 | §5.3 合计「19 个 Java 测试文件」 | 实际 `src/test/java` 共 26 个 `.java` | 多出 7 个：3 个测试支撑件（`PayTestProps` / `PayTestCrypto` / `PayTestEnv`）+ 1 个用例类（`PayKernelAttributionTest`，承载 AC-21 的机械可验证部分）+ 2 个 V2.0 用例类（`PayChannelRegistryTest` / `PayHandlerTest`）+ 1 个 V2.1 用例类（`PayAlipayVersionTest`，承载 AC-28）。夹具类从「1 个 support 伪内核」变为「1 个 internal 伪内核 + 3 个 support 支撑件」，用例总数 166。 |
 
 ---
 

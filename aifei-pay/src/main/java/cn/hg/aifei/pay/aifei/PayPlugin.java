@@ -11,7 +11,12 @@ import cn.aifei.plugin.Plugin;
 import cn.aifei.util.Prop;
 import cn.hg.aifei.pay.PayClient;
 import cn.hg.aifei.pay.internal.AliPayChannelVerifier;
+import cn.hg.aifei.pay.internal.AliPayV2Clients;
+import cn.hg.aifei.pay.internal.AliPayV2Verifier;
 import cn.hg.aifei.pay.internal.DefaultPayClient;
+import cn.hg.aifei.pay.internal.channels.ChannelAdapters;
+import cn.hg.aifei.pay.internal.channels.ChannelConfig;
+import cn.hg.aifei.pay.internal.channels.ChannelConfigLoader;
 import cn.hg.aifei.pay.internal.PayChannelConfigLoader;
 import cn.hg.aifei.pay.internal.PayChannelRegistry;
 import cn.hg.aifei.pay.internal.PayClients;
@@ -53,12 +58,16 @@ public class PayPlugin implements Plugin {
         String defaultName = PayChannelConfigLoader.defaultChannel(properties, specs);
         try {
             for (PayChannelConfigLoader.ChannelSpec spec : specs) {
-                if (PayTypes.ALIPAY.equals(spec.type())) {
-                    registerAlipay(spec, properties);
-                } else {
+                if (PayTypes.ALIPAY3.equals(spec.type())) {
+                    registerAlipay3(spec, properties);
+                } else if (PayTypes.ALIPAY2.equals(spec.type())) {
+                    registerAlipay2(spec, properties);
+                } else if (PayTypes.WXPAY.equals(spec.type())) {
                     PayChannelRegistry.register(spec.name(),
                             new UnimplementedPayClient(spec.name(), spec.type()),
                             new UnimplementedPayVerifier());
+                } else {
+                    registerChannel(spec, properties);
                 }
                 if (spec.name().equals(defaultName)) {
                     PayChannelRegistry.registerDefault(spec.name());
@@ -82,16 +91,37 @@ public class PayPlugin implements Plugin {
         this.started = false;
     }
 
-    private static void registerAlipay(PayChannelConfigLoader.ChannelSpec spec, Properties properties) {
-        PayConfig config = PayConfig.parse(PayChannelConfigLoader.legacyAlipayProperties(properties, spec));
-        PayDeps.requireKernel();
+    private static void registerAlipay3(PayChannelConfigLoader.ChannelSpec spec, Properties properties) {
+        PayConfig config = parseAlipayConfig(properties, spec);
+        PayDeps.requireV3Kernel();
         if (config.certMode()) {
             PayDeps.requireBouncyCastle();
         }
         PayClients clients = new PayClients(config);
         clients.preload();
-        DefaultPayClient client = DefaultPayClient.create(config, clients, spec.name());
-        PayChannelRegistry.register(spec.name(), client,
+        PayChannelRegistry.register(spec.name(), DefaultPayClient.create(config, clients, spec.name()),
                 new AliPayChannelVerifier(new PayVerifier(config.apps())));
+    }
+
+    private static void registerAlipay2(PayChannelConfigLoader.ChannelSpec spec, Properties properties) {
+        PayConfig config = parseAlipayConfig(properties, spec);
+        PayDeps.requireV2Kernel();
+        if (config.certMode()) {
+            PayDeps.requireBouncyCastle();
+        }
+        AliPayV2Clients clients = new AliPayV2Clients(config);
+        clients.preload();
+        PayChannelRegistry.register(spec.name(), DefaultPayClient.createV2(config, clients, spec.name()),
+                new AliPayV2Verifier(config.apps()));
+    }
+
+    private static void registerChannel(PayChannelConfigLoader.ChannelSpec spec, Properties properties) {
+        ChannelConfig config = ChannelConfigLoader.load(properties, spec.name(), spec.type(), spec.merchantId());
+        PayChannelRegistry.register(spec.name(), ChannelAdapters.createClient(config),
+                ChannelAdapters.createVerifier(config));
+    }
+
+    private static PayConfig parseAlipayConfig(Properties properties, PayChannelConfigLoader.ChannelSpec spec) {
+        return PayConfig.parse(PayChannelConfigLoader.legacyAlipayProperties(properties, spec));
     }
 }

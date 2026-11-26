@@ -164,6 +164,16 @@ public final class PayErrors {
     }
 
     /**
+     * 非支付宝通道的内核调用失败：消息不再带「支付宝」前缀，错误码提取口径不变。
+     */
+    public static PayException channelKernelFailure(String action, Throwable cause) {
+        String code = errorCodeOf(cause);
+        Log.get(PayErrors.class).warn("支付接口调用失败：action=" + action + "，code=" + code);
+        return new PayException("支付接口调用失败：" + action + "，code=" + code + "，message="
+                + kernelMessageOf(cause), code, cause);
+    }
+
+    /**
      * 回调验签失败。
      *
      * @param appId  应用编号

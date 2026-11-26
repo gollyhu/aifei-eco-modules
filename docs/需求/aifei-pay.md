@@ -4,9 +4,11 @@
 > **关联**：`docs/计划/aifei-eco-modules 模块规划与排期.md`（§2.3 能力缺口、§3.2 第二档定位、§4.3 `aifei-weixin → aifei-pay` 契约级关联、§5.2 工期）；同构范本 `docs/需求/aifei-http.md`、`docs/需求/aifei-tools.md`、`docs/需求/aifei-audit.md`。
 > **坐标与基线**：`io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.pay`；Java 8（class major 52）；`cn.aifei:aifei-all` 为 `provided`。
 > **事实来源与调研日期**：IJPay 事实于 2026-11-26 经官方仓库 / 官方文档 / 官方 Gitee Pages 调研，逐条标注来源 URL 与验证状态（见 §2）；规划基线口径截至 2026-11-20。
-> **文档版本**：**V2.0**（2026-11-26。V1.1 → V2.0 为模块定位由「支付宝单通道门面」纠偏为「IJPay 多渠道聚合 SDK」，逐条留痕见文末「修订记录」）
+> **文档版本**：**V2.1**（2026-11-26。V1.1 → V2.0 为模块定位由「支付宝单通道门面」纠偏为「IJPay 多渠道聚合 SDK」；V2.0 → V2.1 为支付宝版本矩阵补正，逐条留痕见文末「修订记录」）
 >
 > **【需求变更声明 · V2.0 · 先读】** V1.1 将本模块定档为「支付宝统一接入门面」，并明确不做 IJPay 其余渠道、不做 provider / 多支付网关抽象。用户于 **2026-11-26** 复核后裁决原需求口径有误，要求模块结构对齐 `aifei-sms`：**一套接口聚合 IJPay 提供的所有支付方式**。四项裁决已固定：① 范围 = IJPay 提供的所有支付方式；② 本模块**保留微信支付**，由用户自行选择本模块或 `aifei-weixin`，两者并存且互不依赖；③ **不保留** `AliPay*` 兼容层，直接破坏性重构；④ 回调模型采用 `PayNotifyUtil.verify` 与 `spi.PayNotifyListener` + `PayHandler` **共存**，两者共用同一验签核心。V2.0 是定位与结构变更，不是 V1.1 的细化；§3.2 / §5 / §6 / §7.4 / §9 / §10 已同步重写，V1.1 的依赖事实与字节码判定口径继续有效。
+>
+> **【需求变更声明 · V2.1 · 支付宝版本矩阵】** V2.0 将支付宝基线限定为 `IJPay-AliPay-V3`，用户于 **2026-11-26** 复核后要求改为「其它支付宝版本也需要支持」。V2.1 起以显式类型区分支付宝内核版本：**`type=alipay3` 表示 `IJPay-AliPay-V3`，`type=alipay2` 表示 `IJPay-AliPay` V2**；不再使用无版本含义的 `alipay` 作为支付宝通道类型。V2.1 是版本矩阵补正，不改变 V2.0 已裁决的公共面、回调双模型与微信归属。
 
 ## 〇、交付物性质声明（门禁口径依赖此节）
 
@@ -50,7 +52,7 @@
 | --- | --- | --- | --- | --- |
 | F-01 | 项目定位 | Java 聚合支付 SDK，口号「IJPay 让支付触手可及」；不依赖任何第三方 MVC 框架，仅作工具嵌入任意系统 | `https://gitee.com/javen205/IJPay` | **已验证** |
 | F-02 | 授权协议 | Apache License 2.0，`Copyright (c) 2017 IJPay Authors` | `https://gitee.com/javen205/IJPay`（README License 段） | **已验证** |
-| F-03 | 模块划分 | `IJPay-Core`（公共基础：加解密/签名/证书/HTTP/二维码/IP）、`IJPay-WxPay`（微信支付）、`IJPay-AliPay`（支付宝 V2，基于 alipay-sdk-java 4.x，不依赖 Core）、`IJPay-AliPay-V3`（支付宝 V3，不依赖 Core）、`IJPay-QQ` / `IJPay-JDPay` / `IJPay-UnionPay` / `IJPay-PayPal` / `IJPay-Stripe` / `IJPay-FuiYou` / `IJPay-XPay`、`IJPay-All`（聚合包，不含 Stripe/AliPay-V3/Servlet 适配）；另有 `IJPay-Servlet-Javax` / `IJPay-Servlet-Jakarta` 适配模块。**本期基线已裁决采用 `IJPay-AliPay-V3`（2026-11-26 用户裁决，详见 D-01 / §7.1），不再使用 V2；V3 不依赖 Core、基于 alipay-sdk-java-v3** | `https://gitee.com/javen205/IJPay`、`https://javen205.gitee.io/ijpay/guide/maven.html` | **已验证** |
+| F-03 | 模块划分 | `IJPay-Core`（公共基础：加解密/签名/证书/HTTP/二维码/IP）、`IJPay-WxPay`（微信支付）、`IJPay-AliPay`（支付宝 V2，基于 alipay-sdk-java 4.x，不依赖 Core）、`IJPay-AliPay-V3`（支付宝 V3，不依赖 Core）、`IJPay-QQ` / `IJPay-JDPay` / `IJPay-UnionPay` / `IJPay-PayPal` / `IJPay-Stripe` / `IJPay-FuiYou` / `IJPay-XPay`、`IJPay-All`（聚合包，不含 Stripe/AliPay-V3/Servlet 适配）；另有 `IJPay-Servlet-Javax` / `IJPay-Servlet-Jakarta` 适配模块。**V2.1 起 `IJPay-AliPay` V2 与 `IJPay-AliPay-V3` 均纳入支持矩阵：通道类型分别为 `alipay2` / `alipay3`；两者均不依赖 Core，V2 基于 alipay-sdk-java 4.x，V3 基于 alipay-sdk-java-v3（2026-11-26 用户裁决，详见 D-01 / §7.1）** | `https://gitee.com/javen205/IJPay`、`https://javen205.gitee.io/ijpay/guide/maven.html` | **已验证** |
 | F-04 | 微信模块命名 | 微信支付模块名为 `IJPay-WxPay`，**不是** `ijpay-wechat` | `https://javen205.gitee.io/ijpay/guide/maven.html` | **已验证** |
 | F-05 | Maven 坐标 | `groupId=com.github.javen205`；支付宝 V2=`IJPay-AliPay`，V3=`IJPay-AliPay-V3`；另有 `IJPay-Core` / `IJPay-WxPay` / `IJPay-All` 等；**版本采用 `3.0.0`（2026-11-26 用户裁决，详见 D-01 / §7.1）** | `https://javen205.gitee.io/ijpay/guide/maven.html` | **已验证** |
 | F-06 | 支付宝能力 | 覆盖下单（`alipay.trade.precreate` / `app.pay` / `wap.pay` / `page.pay` / `create` / `pay`）、查单（`alipay.trade.query`）、退款（`alipay.trade.refund` / `fastpay.refund.query` / `page.refund`）、关单/撤销/结算；封装为 `AliPayApi` 静态方法 + 官方 Model | `https://ijpay.dreamlu.net/ijpay/guide/alipay` | **已验证** |
@@ -58,7 +60,7 @@
 | F-08 | 回调验签 | 支付宝同步 `return_url` / 异步 `notify_url` 均需验签；第三方资料显示用 `AliPayApi.toMap(request)` + 官方 `AlipaySignature.rsaCheckV1` 验签 | 官方文档 `https://ijpay.dreamlu.net/ijpay/guide/alipay`（**未展开**验签代码）；第三方 `https://blog.gitcode.com/14fbe08e2836545ab244ae505a5adfe1.html` | **部分验证**（需在设计期以 IJPay 源码 / 支付宝 SDK JavaDoc 逐字核对具体方法与证书模式验签差异） |
 | F-09 | Java 8 基线 | IJPay 3.x 运行时基线 Java 8+、全部发布模块 class 主版本 52；JDK 9+ 用 `--release 8`，JDK 8 用 `source/target 1.8`；不使用 Java 9+ 语法/API；所有直接与传递依赖基础字节码 ≤ 52。`IJPay-AliPay` / `IJPay-AliPay-V3` 均 Java 8+、不需 Servlet | `https://javen205.gitee.io/ijpay/guide/jdk/support-matrix.html` | **已验证** |
 | F-10 | 为保 Java 8 的依赖锁定 | guava 停 `33.6.0-jre`（33.7.0 起字节码 53）、dom4j 停 `2.1.5`（2.2.0 起字节码 55）、okhttp 停 `4.12.0`（5.x 改 KMP 拆分且与支付宝 SDK 4.x 有运行时风险）、jakarta.servlet-api 停 `5.0.0`（6.x 字节码 55）。**口径限定（2026-11-26 设计关实测补正）**：上述锁定值写在 IJPay **父 pom 的 `dependencyManagement`**，按 Maven 规则**不向消费者传播**；V3 路线实际解析为 `okhttp 4.9.3` / `kotlin-stdlib 1.4.10` / `guava 28.1-jre`（见 F-11 与 `design.md` §2.1.2） | `https://javen205.gitee.io/ijpay/guide/jdk/support-matrix.html` | **已验证**（父 pom 锁定值已验证；「不向消费者传播」于 2026-11-26 实测补正） |
-| F-11 | 支付宝模块传递依赖 | `IJPay-AliPay`（V2，本期不纳入，§6.4）：基于 alipay-sdk-java 4.x，排除 okhttp 3.12.13 → 统一 okhttp 4.12.0 + kotlin-stdlib，用 fastjson 2.0.66。`IJPay-AliPay-V3`（**本期基线**，实测依赖树 32 个 JAR 见 `design.md` §2.2）：`alipay-sdk-java-v3:3.1.89.ALL`，实际解析 `okhttp 4.9.3`（含 `okio 2.8.0`）/ `kotlin-stdlib 1.4.10` / `guava 28.1-jre`；**V3 路线无 fastjson**，改用 `gson 2.9.0` + `gson-fire 1.8.5`；额外传递 `hutool-crypto` / `hutool-http` / `hutool-json` / `hutool-core` 四件 `5.8.48` 与 `commons-logging:1.1.1`（仅被 `AlipayLogger` 使用）。`dom4j:dom4j`（旧坐标）与 `org.bouncycastle:bcprov-jdk15on` **已由上游 IJPay pom 排除，本模块无需重复排除**；实际生效 `org.dom4j:dom4j:2.1.5` / `org.bouncycastle:bcprov-jdk18on:1.86`（**勿再显式引入 bcprov-jdk15on，避免同名类冲突**） | `https://javen205.gitee.io/ijpay/guide/maven.html`、`design.md` §2.1 / §2.2（2026-11-26 实测） | **已验证**（精确版本与排除生效状态已由设计关 2026-11-26 实测闭环） |
+| F-11 | 支付宝模块传递依赖 | `IJPay-AliPay`（V2，`type=alipay2`，纳入支持矩阵）：基于 alipay-sdk-java 4.x，排除 okhttp 3.12.13 → 统一 okhttp 4.12.0 + kotlin-stdlib，用 fastjson 2.0.66。`IJPay-AliPay-V3`（`type=alipay3`，已落地通道，实测依赖树 32 个 JAR 见 `design.md` §2.2）：`alipay-sdk-java-v3:3.1.89.ALL`，实际解析 `okhttp 4.9.3`（含 `okio 2.8.0`）/ `kotlin-stdlib 1.4.10` / `guava 28.1-jre`；**V3 路线无 fastjson**，改用 `gson 2.9.0` + `gson-fire 1.8.5`；额外传递 `hutool-crypto` / `hutool-http` / `hutool-json` / `hutool-core` 四件 `5.8.48` 与 `commons-logging:1.1.1`（仅被 `AlipayLogger` 使用）。`dom4j:dom4j`（旧坐标）与 `org.bouncycastle:bcprov-jdk15on` **已由上游 IJPay pom 排除，本模块无需重复排除**；实际生效 `org.dom4j:dom4j:2.1.5` / `org.bouncycastle:bcprov-jdk18on:1.86`（**勿再显式引入 bcprov-jdk15on，避免同名类冲突**） | `https://javen205.gitee.io/ijpay/guide/maven.html`、`design.md` §2.1 / §2.2（2026-11-26 实测） | **已验证**（精确版本与排除生效状态已由设计关 2026-11-26 实测闭环） |
 | F-12 | 精确构件版本 | `alipay-sdk-java-v3` 精确版本 = **`3.1.89.ALL`**（由 `IJPay-AliPay-V3:3.0.0` 的 pom 属性 `alipay.version` 硬写，非 `latest-version` 占位）；IJPay 对外构件版本 `3.0.0`（2026-11-26 用户裁决，D-01） | `https://repo1.maven.org/maven2/com/github/javen205/IJPay-AliPay-V3/3.0.0/IJPay-AliPay-V3-3.0.0.pom`（逐字取证见 `design.md` §2.1.1） | **已验证**（2026-11-26 设计关实测闭环，见 `design.md` §2.1.1 / §2.2） |
 | F-13 | 扩展点 / SPI | 官方 README 未见明确 SPI / 插件机制说明；形态为「静态工具类 + 配置 Kit + 包装官方 SDK」；未封装接口通过 `AliPayApiConfigKit.getAliPayApiConfig().getAliPayClient()` 取底层 `DefaultAlipayClient` 自行 `execute` | `https://gitee.com/javen205/IJPay`、`https://ijpay.dreamlu.net/ijpay/guide/alipay` | **部分验证**（未见 ≠ 不存在；能否继承/重写具体类须读源码确认，已保留为设计期核对项，见 §11.2） |
 
@@ -74,7 +76,7 @@
 
 - **一套聚合接口**：`PayClient` 绑定某一支付通道，提供下单 / 查单 / 退款 / 通道标识；`PayKit` 提供 `defaultClient()` / `use(name)` / `channels()`；`PayPlugin` 完成多通道装配。
 - **IJPay 全支付方式覆盖目标**：公共面、配置、注册表、门禁与测试覆盖 IJPay 提供的所有支付方式；支付宝与微信支付本期完整迁移，其余渠道（QQ / 京东 / 银联 / PayPal / Stripe / 富友 / XPay 等）按适配器逐项补齐。
-- **支付宝能力迁移**：下单（扫码 / H5 / PC）、查单、退款、回调验签（普通公钥 / 公钥证书 / 同步 GET / 异步 POST）全部迁入 `alipay` 通道适配器。
+- **支付宝能力迁移**：下单（扫码 / H5 / PC）、查单、退款、回调验签（普通公钥 / 公钥证书 / 同步 GET / 异步 POST）迁入支付宝版本适配器；**`type=alipay3` 表示 `IJPay-AliPay-V3`，`type=alipay2` 表示 `IJPay-AliPay` V2**，二者共用公共 API，但配置域与验签核心按版本隔离。
 - **微信支付能力**：以 `wxpay` 通道纳入本模块，由 `IJPay-WxPay` 内核支撑；用户自行选择本模块或 `aifei-weixin`，两者并存、互不依赖。
 - **回调双模型**：`PayNotifyUtil.verify` / `verifyAndParse` 为无状态验签入口；`PayHandler` + `spi.PayNotifyListener` 为可选入站闭环；两者共用同一验签核心，不出现两套验签实现。
 - **依赖与隔离**：IJPay 各渠道构件及其 SDK 传递依赖为 `optional`；公共签名零第三方 / 零框架类型；缺失依赖给可读异常，配置非法启动即失败。
@@ -108,7 +110,7 @@
 
 | # | 维度 | 原规划（截至 2026-11-20） | 本次要求 / 变更 | 影响 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| D-01 | 依赖策略 | 「纯 JDK 签名，零第三方」（§3.2） | 「基于 IJPay 扩展」→ 依赖 IJPay 各通道构件；支付宝基线仍为 **IJPay-AliPay-V3**（V2 暂不纳入，§6.4） | 根本性变更；scope 与隔离口径见 §7.2 | **已裁决（2026-11-26 用户裁决）** |
+| D-01 | 依赖策略 | 「纯 JDK 签名，零第三方」（§3.2） | 「基于 IJPay 扩展」→ 依赖 IJPay 各通道构件；支付宝 V2 / V3 均纳入支持矩阵，分别为 **IJPay-AliPay（`alipay2`）** 与 **IJPay-AliPay-V3（`alipay3`）** | 根本性变更；scope 与隔离口径见 §7.2 | **已裁决（2026-11-26 用户裁决）** |
 | D-02 | 公共面预估 | `AliPayClient` / `AliPayKit` / `AliPayNotifyUtil` / `AliPayException`（§3.2） | V1.1 曾定档「根包 4 类 + `model` 4 值对象」；**V2.0 由 D-10 取代**：删除全部 `AliPay*`，改为 `PayClient` 等公共面并新增 `spi` | 公共面重做，见 D-10 / §7.3 | **已被 D-10 取代（2026-11-26 用户裁决）** |
 | D-03 | 依赖 scope | 零第三方（无此议题） | IJPay 各通道构件与渠道 SDK **`optional`**；`aifei-all` `provided`；缺失时可读异常 | 参照 `aifei-excel` / `aifei-tools` 的 optional 内核先例 | **已裁决（2026-11-26 用户裁决，详见 §7.2）** |
 | D-04 | 能力范围 | 「支付宝支付：下单/查单/退款/回调验签」（§3.2） | 扩展为 IJPay 全支付方式的统一聚合；支付宝与微信本期完整迁移，其余渠道按适配器逐项补齐 | §3.1 / §3.2-8 / §6.1 新增 R-13~R-15 | **已裁决（2026-11-26 用户裁决）** |
@@ -144,6 +146,7 @@
 | `R-13` | **多通道聚合** | 通道由 `pay.<name>.type` 声明，`PayClients` 维护通道注册表；默认通道由 `pay.default-channel` 指定；未知通道 / 未装配 / 已停止均抛 `PayException`；新增通道不改公共面。 |
 | `R-14` | **微信支付通道** | 本模块以 `wxpay` 通道纳入 IJPay-WxPay；用户自行选择本模块或 `aifei-weixin`；两者可并存但互不 import、互不共享配置与回调链路。 |
 | `R-15` | **回调闭环与 SPI** | `spi.PayNotifyListener` + `aifei.PayHandler` 为可选入站闭环：按通道读报文 → 调同一验签核心 → 解析为 `PayNotify` → 同步分发监听器 → 按通道写响应；验签失败不分发；模块不做幂等与状态机。 |
+| `R-16` | **支付宝版本矩阵** | 支付宝按内核版本提供显式通道类型：`type=alipay3` 对应 `IJPay-AliPay-V3`，`type=alipay2` 对应 `IJPay-AliPay` V2；两版本共用公共 API，配置域、验签核心、依赖构件与错误码按版本隔离；禁止用无版本含义的 `alipay` 作为支付宝通道类型。 |
 
 ### 6.2 配置能力诉求（键名与默认值由 `design.md` 定稿）
 
@@ -152,7 +155,7 @@
 | 能力 | 约束 | 建议默认 |
 | --- | --- | --- |
 | 通道标识 `<name>` | 必填，作为 `pay.<name>.*` 的前缀与 `PayKit.use(name)` 的键 | 无 |
-| 通道类型 `pay.<name>.type` | 必填，取 IJPay 渠道白名单（`alipay` / `wxpay` / `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 等） | 无 |
+| 通道类型 `pay.<name>.type` | 必填，取 IJPay 渠道白名单（`alipay2` / `alipay3` / `wxpay` / `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 等；`alipay3` 对应 IJPay-AliPay-V3） | 无 |
 | 默认通道 `pay.default-channel` | 多通道必填，单通道可缺省取唯一通道 | 无 |
 | 商户 / 应用标识 | 通道内标识（支付宝 appId、微信 mchId 等），按通道必填规则校验 | 无 |
 | 通道凭据 | 私钥、公钥、证书、API 密钥等，按通道必填规则校验；**支持多组并存**以轮换 | 无 |
@@ -172,14 +175,14 @@
 
 - 转账 / 红包 / 花呗分期 / 结算等非收款主链路接口。
 - 主动补单轮询、通知送达补偿。
-- `IJPay-AliPay` V2 路线：本期支付宝以 `IJPay-AliPay-V3` 为基线；V2 仅在用户另行裁决后纳入。
+- IJPay 后续新增的支付宝版本：V2 / V3 已在支持矩阵（`alipay2` / `alipay3`）；未来新版本按同一版本化类型命名规则追加。
 - IJPay 全渠道一次性实装：按 §3.2-8 的逐项补齐口径执行。
 
 ## 七、IJPay 扩展方案的需求侧约束
 
 ### 7.1 IJPay 是依赖内核，不是复制代码（硬约束）
 
-- 本模块通过 **Maven 依赖**引入 IJPay 各支付通道构件（支付宝基线 `com.github.javen205:IJPay-AliPay-V3:3.0.0`；微信 `IJPay-WxPay`；其余渠道按白名单逐项引入），调用其公开 API 完成签名 / 报文 / 传输；**禁止**把 IJPay 源码复制、fork、改写后放入本仓库。
+- 本模块通过 **Maven 依赖**引入 IJPay 各支付通道构件（支付宝 V3 `com.github.javen205:IJPay-AliPay-V3:3.0.0` → `alipay3`，支付宝 V2 `com.github.javen205:IJPay-AliPay:3.0.0` → `alipay2`；微信 `IJPay-WxPay`；其余渠道按白名单逐项引入），调用其公开 API 完成签名 / 报文 / 传输；**禁止**把 IJPay 源码复制、fork、改写后放入本仓库。
 - IJPay 为 Apache-2.0（F-02）：`README.md` 与 `docs/design.md` 须声明依赖来源、版本与许可，保留其署名；不修改其版权信息。
 - 抽象方向：本模块是 **IJPay 之上的 aifei 聚合适配层**（配置装配 + 通道注册表 + 公共值对象隔离 + 回调入口适配 + 错误收敛），不是 IJPay 的替代品，也不重复实现其已有能力。
 - **扩展形态：采用包装（组合），非继承**（**2026-11-26 用户裁决**）。各渠道 adapter 只组合 IJPay / 渠道 SDK，不继承其类型。
@@ -203,7 +206,7 @@
 
 | 维度 | `aifei-weixin`（既有） | `aifei-pay`（本模块） |
 | --- | --- | --- |
-| 渠道 | 微信支付 V3（`cn.aifei.weixin.pay`） | IJPay 全支付通道，含 `wxpay` 与 `alipay` 等 |
+| 渠道 | 微信支付 V3（`cn.aifei.weixin.pay`） | IJPay 全支付通道，含 `wxpay` 与 `alipay2` / `alipay3` 等 |
 | 实现形态 | 纯 JDK 实现（签名 / 加解密 / HTTP 自研） | 依赖 IJPay 内核与渠道 SDK（不开 second implementation） |
 | 动作语义 | `PayApi`：`jsapi` / `query` / `close` / `refund` | `PayClient`：下单 / 查单 / 退款 / 通道标识；动作语义同构但类型独立 |
 | 回调模型 | `PayNotifyUtil`：`verify` / `decryptResource` / `verifyAndDecrypt` | `PayNotifyUtil.verify` / `verifyAndParse` 与 `PayHandler` + `PayNotifyListener` 共存 |
@@ -291,11 +294,12 @@ IJPay 自带微信支付能力（`IJPay-WxPay`），与本仓库 `aifei-weixin` 
 | `AC-20` | §3.2 零 DB / 渠道白名单 | Given 源码扫描，Then 无 `import java.sql.`；`com.ijpay.*` 仅出现在 `internal` 适配层；未在 `PayTypes` 白名单登记的渠道包零命中 | 门禁 `G-03` + `dependency:tree` |
 | `AC-21` | §7.1 依赖内核 | Given 依赖树与源码，Then IJPay 以 Maven 构件引入、无源码复制 / fork；README / design 含 Apache-2.0 署名 | 人工审查 + 门禁 |
 | `AC-22` | 构建 | Given 模块目录，When `mvn clean verify`，Then 0 failure / 0 error | 构建 |
-| `AC-23` | R-13 多通道聚合 | Given 配置 `alipay` 与 `wxpay` 两个通道，When `PayKit.use("alipay")` / `use("wxpay")` / `defaultClient()`，Then 返回对应且互不相同的实例；未知通道抛 `PayException` | 单测 + 装配测试 |
+| `AC-23` | R-13 多通道聚合 | Given 配置 `alipay3` 与 `wxpay` 两个通道，When `PayKit.use("alipay3")` / `use("wxpay")` / `defaultClient()`，Then 返回对应且互不相同的实例；未知通道抛 `PayException` | 单测 + 装配测试 |
 | `AC-24` | R-15 双模型共用核心 | Given 同一合法回调向量，When 分别经 `PayNotifyUtil.verifyAndParse` 与 `PayHandler` 处理，Then 验签结果一致且源码仅有一个验签核心实现点 | 单测 + 源码扫描 |
 | `AC-25` | R-15 Handler 闭环 | Given 合法报文与已注册 `PayNotifyListener`，When 请求进入 `PayHandler`，Then 监听器收到一次 `PayNotify` 且响应体为渠道成功应答；Given 篡改报文，Then 监听器零调用且响应为渠道失败应答 | Handler 单测（伪 `PayIo`） |
 | `AC-26` | R-14 微信通道 | Given 配置 `wxpay` 通道，When 装配与调用，Then 使用 `IJPay-WxPay` 适配器；模块源码零 `cn.aifei.weixin` import；与 `aifei-weixin` 可并存 | 门禁 `G-03` + 单测 |
 | `AC-27` | R-13 白名单 | Given `pay.<name>.type` 为未登记值，When `start()`，Then 启动失败并列出合法类型；已登记但未实装的渠道明确提示「结构支持、适配器未落地」 | 单测 |
+| `AC-28` | R-16 支付宝版本矩阵 | Given 支付宝通道分别配置 `alipay3` 与 `alipay2`，When 装配与调用下单 / 查单 / 退款 / 验签，Then 分别路由到对应版本的 IJPay 构件与独立验签核心；`alipay` 作为 type 启动时报非法类型 | 单测 + 源码扫描 + `dependency:tree` |
 
 **AC 与门禁映射**：`AC-02`（部分）/ `AC-03` / `AC-04` / `AC-20` / `AC-26` 由架构门禁 `ArchitectureBoundaryTest` 承载；`AC-19` 由 `dependency:tree` 与根例外登记核对承载；其余由单测 / 集成用例承载。用例清单写入 `docs/testing.md`，交付门禁按「AC 编号 ↔ 用例 ↔ 结果」三列映射。
 
@@ -367,7 +371,7 @@ IJPay 自带微信支付能力（`IJPay-WxPay`），与本仓库 `aifei-weixin` 
 | K-2 | **公共面被第三方类型污染** | IJPay / 支付宝 SDK / `JSONObject` 类型若进入公共签名，违反「零第三方类型」门禁 | §7.3 隔离约束 + AC-04 + `G-02`；**已裁决（2026-11-26）：公共返回用自有值对象**，风险已闭环至设计期定档 |
 | K-3 | **依赖 scope 与传递** | 若内核须随 SDK 传递，`optional` 会让消费方被迫重复声明；`compile` 又须登记例外 | **已裁决（2026-11-26）：依赖 `optional`**；例外须先在根 `AGENTS.md` 登记（D-03） |
 | K-4 | **IJPay 版本 / 能力变动** | IJPay 活跃迭代（F-05 版本从 2.9.x 到 3.0.0），API 可能对内实现变动 | 锁定版本 + 公共面隔离（§7.3），使升级不波及契约 |
-| K-5 | **回调验签细节未逐字验证** | 证书模式验签、同步/异步差异在官方文档页未展开（F-08 部分验证）；V3 路线验签方法差异为 2026-11-26 裁决后新增核对项 | 设计期读 IJPay-AliPay-V3 源码 / alipay-sdk-java-v3 JavaDoc + 固定向量用例（AC-10~12）闭环 |
+| K-5 | **回调验签细节未逐字验证** | 证书模式验签、同步/异步差异在官方文档页未展开（F-08 部分验证）；V2 / V3 两路验签方法差异为 2026-11-26 裁决后新增核对项 | 设计期读 IJPay-AliPay-V3 源码 / alipay-sdk-java-v3 JavaDoc + 固定向量用例（AC-10~12）闭环 |
 | K-6 | **与微信支付重复建设** | IJPay 自带微信能力，本模块 `wxpay` 与 `aifei-weixin` 能力重叠 | 用户裁决：两者并存、二选一，模块间零 import（§7.4 / §7.4.1 / D-08）；门禁 `G-03` 断言零 `cn.aifei.weixin` import，IJPay 类型仅在适配层 |
 | K-7 | **证书 / 私钥泄露** | 凭据配置若被打入日志 / 异常即安全问题 | §6.2 安全约束 + AC-05「消息不含私钥明文」 |
 | K-8 | **工期变量** | 依赖 IJPay 后工期可能变化（D-06） | 需求侧不承诺工期，交交付负责人重估 |
@@ -392,16 +396,17 @@ IJPay 自带微信支付能力（`IJPay-WxPay`），与本仓库 `aifei-weixin` 
 
 | # | 检查项 | 结论 |
 | --- | --- | --- |
-| 1 | 目标可一句话说清 | **通过**：`aifei-pay` 基于 IJPay 提供一套 `PayClient` 聚合全支付通道，换通道只改配置；支付宝与微信本期完整迁移，其余渠道按适配器逐项补齐。 |
-| 2 | 每条 P0 都有可测 AC | **通过**：`R-01`~`R-15` 共 15 条 P0 映射到 §9 共 **27** 条 AC（`AC-01`~`AC-27`），涵盖多通道注册、微信通道、回调双模型与共用验签核心。 |
+| 1 | 目标可一句话说清 | **通过**：`aifei-pay` 基于 IJPay 提供一套 `PayClient` 聚合全支付通道，换通道只改配置；支付宝 V2 / V3 以 `alipay2` / `alipay3` 显式区分并纳入版本矩阵，微信以 `wxpay` 纳入，其余渠道按适配器逐项补齐。 |
+| 2 | 每条 P0 都有可测 AC | **通过**：`R-01`~`R-16` 共 16 条 P0 映射到 §9 共 **28** 条 AC（`AC-01`~`AC-28`），涵盖多通道注册、支付宝版本矩阵、微信通道、回调双模型与共用验签核心。 |
 | 3 | 本期不做清单明确 | **通过**：§3.2 共 8 条非目标，明确零 DB、零 UI、不复制 IJPay、不实装 Servlet 适配、全渠道不一次性实装等边界。 |
 | 4 | 假设与待裁决显式标注 | **通过**：V2.0 四项裁决固定于开篇与 §5 D-09~D-12；§11 仅保留 2 条假设与 8 项设计期待核对项（含微信依赖、渠道白名单、统一回调入参）。 |
-| 5 | 需求变更显式记录 | **通过**：开篇【需求变更声明 · V2.0】+ §5 差异表（D-01~D-12）显式记录从「支付宝单通道」到「IJPay 多渠道聚合」的定位变更、微信归属、无兼容层与回调双模型裁决。**V2.0 修订逐条留痕见「修订记录」**。 |
+| 5 | 需求变更显式记录 | **通过**：开篇【需求变更声明 · V2.0 / V2.1】+ §5 差异表（D-01~D-12）显式记录从「支付宝单通道」到「IJPay 多渠道聚合」的定位变更、微信归属、无兼容层、回调双模型与支付宝版本矩阵裁决。**V2.0 / V2.1 修订逐条留痕见「修订记录」**。 |
 
 ## 修订记录
 
 | 版本 | 日期 | 修订项 | 变动内容（原文口径 → 本版口径） | 依据 | 影响面 |
 | --- | --- | --- | --- | --- | --- |
+| **V2.1** | 2026-11-26 | 支付宝版本矩阵补正 | V2.0「支付宝基线仅 `IJPay-AliPay-V3`，V2 暂不纳入」→ V2.1「V2 / V3 均纳入支持矩阵：`type=alipay2` 对应 `IJPay-AliPay`，`type=alipay3` 对应 `IJPay-AliPay-V3`；不再使用无版本含义的 `alipay`」 | 用户 2026-11-26 复核裁决 | 开篇 V2.1 声明；§2.1 F-03 / F-11；§3.1；§5 D-01；§6.1 R-16；§6.2；§6.4；§7.1 / §7.4；§9 AC-23 / AC-28；§12 自检；修订记录 |
 | **V2.0** | 2026-11-26 | 模块定位与结构纠偏（用户四项裁决） | V1.1「支付宝单通道门面、不做其它渠道、不做多网关抽象、不引 IJPay-WxPay、仅 `AliPayNotifyUtil` 验签」→ V2.0「基于 IJPay 的多支付通道聚合 SDK，结构对齐 `aifei-sms`；全渠道聚合目标、本模块保留 `wxpay` 由用户二选一、不保留 `AliPay*` 兼容层、`PayNotifyUtil.verify` 与 `PayHandler`+`PayNotifyListener` 共存且共用验签核心」 | 用户 2026-11-26 复核裁决 | 开篇变更声明；§1/§2.2/§3/§4/§5 D-04~D-12/§6 R-01~R-15/§7/§8.1/§9 AC-01~AC-27/§10/§11/§12 K-6/§13/§14 全量同步 |
 | **V1.1** | 2026-11-26 | ① AC-02 字节码判定口径精化（原为交付阻塞项） | 原文「IJPay-AliPay-V3 及全部传递依赖无字节码 > 52 者」按字面**永不可达且无修复路径**（`javax.ws.rs-api:2.1.1` 根级 `module-info.class` major 53 不可排除；`bcprov-jdk18on:1.86` 的 `META-INF/versions/11/**` 有 112 个 major 55 的 class，属 BC 官方 Multi-Release 发布形态）→ 改为「依赖 jar 中**对 Java 8 可加载的**全部 `.class` major ≤ 52；`module-info.class` 与 `META-INF/versions/**` 不纳入判定，理由：Java 8 不解析 JPMS 描述符、不识别 Multi-Release 目录，运行期不可达」；主 JAR 断言不放宽（仍全部 == 52） | `aifei-pay/docs/design.md` §2.3（`javap` 逐 JAR 实测，精化口径下 0 例外） | §9 AC-02（仅改判定条件，验证方式沿用 `javap` 批量断言 + `dependency:tree` + 门禁）；连带 §7.2、§10.1、§11.1 A-1、§11.2 AC-02 行、§12 K-1 口径同步 |
 | **V1.1** | 2026-11-26 | ② AC-15 可机械验证边界收口 | 原文「沙箱凭据不得误调生产网关」未界定可验证范围 → 补「可机械验证的边界」：模块只能校验 ① `env` 必填；② `gateway-url` 的 host 与 `env` 一致（沙箱/生产两个官方网关）；③ 不同 appId 的网关互不串扰；**「凭据本身归属哪个环境」明确排除在可验证范围外**，由配置评审与凭据来源管理兜底、README 显式声明 | `aifei-pay/docs/design.md` §14.1 A-3 / §14.3 R-1 | §9 AC-15（仅追加边界说明，原 GWT 判定与验证方式不变） |

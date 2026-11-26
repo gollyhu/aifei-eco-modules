@@ -30,7 +30,7 @@ import org.junit.Test;
  */
 public class PayHandlerTest {
 
-    private static final String ALIPAY = "alipay";
+    private static final String ALIPAY = "alipay3";
     private static final String WXPAY = "wxpay";
 
     private final List<PayNotify> received = new ArrayList<PayNotify>();

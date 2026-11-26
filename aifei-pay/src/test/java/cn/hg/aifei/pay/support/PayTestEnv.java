@@ -22,7 +22,7 @@ import java.util.Properties;
  */
 public final class PayTestEnv {
 
-    private static final String CHANNEL = "alipay";
+    private static final String CHANNEL = "alipay3";
 
     /**
      * 哑客户端：验签路径不应触碰交易动作。

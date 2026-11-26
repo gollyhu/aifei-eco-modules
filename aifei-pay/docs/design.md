@@ -15,6 +15,8 @@
 ## V2. 多渠道聚合设计定稿（覆盖前文冲突口径）
 
 > **生效声明**：本节是 2026-11-26 用户四项裁决后的**设计事实来源**。下文 V1.x 章节中凡涉及「支付宝单通道」「`AliPay*` 公共类型」「`pay.apps.<appId>.*` 顶层配置」「禁其它渠道」「仅验签工具无 Handler」的表述均已被本节覆盖；实现、门禁与测试以本节为准。
+>
+> **支付宝版本矩阵（PRD V2.1）**：`type=alipay3` 对接 `IJPay-AliPay-V3` + `alipay-sdk-java-v3`，`type=alipay2` 对接 `IJPay-AliPay` + `alipay-sdk-java` 4.x；两版本共用公共 API 与通道配置键，内核、验签核心、依赖探测与客户端缓存按版本隔离。无版本含义的 `alipay` 不是合法 type。实现落点：`internal/AliPayV2Clients` / `AliPayV2PayKernel` / `AliPayV2Verifier` 与 `internal/PayDeps#requireV2Kernel()`。
 
 ### V2.1 定位与公共面
 
@@ -90,13 +92,20 @@ pay.wxpay-main.cert-serial-no = 5Fxxxx
 
 ### V2.5 渠道白名单与落地状态
 
-| `type` | 内核构件 | 本期状态 |
+| `type` | 内核构件 | 落地状态 |
 | --- | --- | --- |
-| `alipay` | `IJPay-AliPay-V3:3.0.0` | 完整迁移 |
-| `wxpay` | `IJPay-WxPay:3.0.0` | 完整迁移；与 `aifei-weixin` 并存、用户二选一 |
-| `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` | 对应 IJPay 3.0.0 构件 | 结构支持、适配器逐项补齐；未落地时明确提示 |
+| `alipay3` | `IJPay-AliPay-V3:3.0.0` + `alipay-sdk-java-v3` | 已落地：下单 / 查单 / 退款 / 验签完整可用 |
+| `alipay2` | `IJPay-AliPay:3.0.0` + `alipay-sdk-java` 4.x | 已落地：下单 / 查单 / 退款 / 验签完整可用 |
+| `wxpay` | `IJPay-WxPay:3.0.0` | 白名单登记，交易适配器待补齐；与 `aifei-weixin` 并存、用户二选一 |
+| `qq` | `IJPay-QQ:3.0.0` | **已落地**：下单 / 查单 / 退款 / MD5 验签完整可用 |
+| `jdpay` | `IJPay-JDPay:3.0.0` | **已落地**：加密 XML 下单 / 查单 / 退款 / RSA 验签完整可用 |
+| `unionpay` | `IJPay-UnionPay:3.0.0` | **已落地**：显式网关 + MD5 下单 / 查单 / 退款 / 验签完整可用 |
+| `paypal` | `IJPay-PayPal:3.0.0` | **已落地**：Orders V2 下单 / 查单 / 退款 / 证书 Webhook 验签 |
+| `stripe` | `IJPay-Stripe:3.0.0` + `stripe-java:34.1.0` | **已落地**：PaymentIntent / Refund / constructEvent 验签 |
+| `fuiou` | `IJPay-FuiYou:3.0.0` | **已落地**：显式签名报文 + 下单 / 查单 / 退款 / 验签 |
+| `xpay` | `IJPay-XPay:3.0.0` | **已落地**：PayApi.exePost + 下单 / 查单 / 退款 / 验签 |
 
-`IJPay-AliPay` V2 暂不纳入。`PayTypes` 是类型白名单、必填键与适配器工厂的唯一定义点；未知 `type` 启动即失败。
+`IJPay-AliPay` V2 已纳入，通道类型为 `alipay2`；`alipay` 不是合法 `type`。`PayTypes` 是类型白名单与必填键的唯一定义点；未知 `type` 启动即失败。`wxpay` 是唯一「已登记未落地」通道：可装配，但交易动作报「支付通道适配器未落地」。七渠道的必填键按各内核实际所需定义（见 `docs/channels.md` §3.3），不再统一只写 `default-merchant-id`。
 
 ### V2.6 包结构与唯一定义点
 
@@ -109,14 +118,21 @@ cn.hg.aifei.pay
 └── internal
     ├── PayConfig / PayTypes / PayClients / PayErrors / PayMask / PayDeps / PayAmounts / PayResults / PayForms
     ├── PayVerifier / DefaultPayClient
-    └── ijpay.alipay.* / ijpay.wxpay.*       渠道适配器，IJPay 类型只在此出现
+    ├── ijpay.alipay.* / ijpay.wxpay.*       支付宝 / 微信渠道适配器（微信本期不实现）
+    └── channels/                           七渠道适配器：ChannelConfig / ChannelKernel /
+                                            ChannelPayClient / ChannelVerifier / ChannelAdapters
+                                            + Qq / Jd / UnionPay / PayPal / Stripe / FuiYou / XPay Kernel
 ```
+
+第三方类型（`com.ijpay.*` / `com.stripe.*` / `cn.hutool.*`）只允许出现在 `internal`，公共面零第三方类型。
+七渠道一律通过显式配置 API 构造客户端 / 请求，禁止 `*ApiConfigKit` / 全局 `ThreadLocal` / `CFG_MAP` 等进程级可变状态。
 
 唯一定义点：配置与校验 `PayConfig`；类型白名单与必填键 `PayTypes`；通道注册表 `PayClients`；异常消息 `PayErrors`；脱敏 `PayMask`；依赖探测 `PayDeps`；验签核心 `PayVerifier`；值对象转换 `PayResults`；回调解析 `PayForms`；装配 `PayPlugin`；回调闭环 `PayHandler`。
 
 ### V2.7 依赖与门禁
 
-- `aifei-all` 为 `provided`；所有 IJPay 构件与渠道 SDK 为 `optional`；新增通道必须先通过 `PayDepsBytecodeTest` 的 Java 8 字节码断言。
+- `aifei-all` 为 `provided`；所有 IJPay 构件与渠道 SDK（含 `stripe-java`）为 `optional`，版本属性集中（`ijpay.version=3.0.0`、`stripe.version=34.1.0`）；新增通道必须先通过 `PayDepsBytecodeTest` 的 Java 8 字节码断言（七渠道 JAR 已纳入 `EXPECTED_JARS`）。
+- V2.5 落地新增 8 个 optional 直接依赖（七个 IJPay 渠道构件 + `stripe-java`），既有 `alipay2` / `alipay3` 的 exclusions 一项未减。
 - G-01 公共面按 V2.1 精确断言且无 `AliPay*`；G-02 公共签名零第三方 / 零框架；G-03 无 `java.sql.`、`com.ijpay.*` 仅在 `internal`、白名单外渠道零命中、零 `cn.aifei.weixin`；G-04 `cn.aifei.*` 仅在 `aifei`；G-05 class major 52；G-06 依赖 optional。
 - 新增 AC-23~AC-27：多通道注册、双模型共用核心、Handler 闭环、微信通道、渠道白名单。
 

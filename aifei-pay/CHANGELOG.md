@@ -5,6 +5,21 @@
 
 ---
 
+## [1.0.0-SNAPSHOT] - 2026-11-26（V2.5 七渠道落地）
+
+- 新增 `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 七个真实支付渠道适配器：下单 / 查单 / 退款 / 回调验签完整可用，不再以「适配器未落地」占位。仅 `wxpay` 保留待落地（与 `aifei-weixin` 二选一）。
+- 渠道一律通过显式配置 API 构造客户端 / 请求：不使用各渠道 `*ApiConfigKit`、全局 `ThreadLocal` 或进程级缓存；PayPal 用显式 `PayPalApiConfig`，Stripe 用显式 `StripeApiConfig` 取得客户端后走官方 service 与 `constructEvent`。
+- `PayTypes` 按渠道补充实际必填键（如 `app-id` / `partner-key` / `des-key` / `api-key` / `webhook-secret` 等），不再统一只写 `default-merchant-id`。
+- 依赖新增 8 个 `optional` 构件（七个 IJPay 渠道 + `stripe-java:34.1.0`），版本属性集中；既有 `alipay2` / `alipay3` 的 exclusions 一项未减。架构门禁与依赖字节码断言同步覆盖七渠道，越界引用仍被拦截。
+- 本地校验：`mvn -o clean verify` → `Tests run: 174, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`。
+
+## [1.0.0-SNAPSHOT] - 2026-11-26（V2.1 支付宝版本矩阵）
+
+- 支付宝改为显式版本类型：`type=alipay3` 对接 `IJPay-AliPay-V3`，`type=alipay2` 对接 `IJPay-AliPay` V2；无版本含义的 `alipay` 成为非法类型。
+- 新增支付宝 V2 交易适配器与验签器，复用同一套 `PayClient` 公共 API 和通道配置键；V2 / V3 的依赖探测、客户端缓存与验签核心按版本隔离。
+- 依赖新增 optional 的 `IJPay-AliPay` 与 `alipay-sdk-java`，并锁定 `fastjson` / `okhttp` 版本以维持 Java 8 字节码门禁。
+- 本地校验：`mvn clean verify` → `Tests run: 166, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`。
+
 ## [1.0.0-SNAPSHOT] - 2026-11-26（V2.0 结构重构）
 
 **破坏性变更**：模块由「支付宝单通道门面」重构为「基于 IJPay 的多支付通道聚合 SDK」。

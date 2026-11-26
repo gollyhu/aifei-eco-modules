@@ -29,7 +29,7 @@ import org.junit.Test;
 public class PayKitTest {
 
     private static final String NOT_INSTALLED = "支付客户端未装配或已停止";
-    private static final String CHANNEL = "alipay";
+    private static final String CHANNEL = "alipay3";
 
     private final PayClient client = new UnsupportedPayClient();
 

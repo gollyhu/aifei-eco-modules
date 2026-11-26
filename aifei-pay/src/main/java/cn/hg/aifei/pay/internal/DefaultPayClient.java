@@ -63,11 +63,13 @@ public final class DefaultPayClient implements PayClient {
 
     private final String channelName;
 
+    private final boolean v2;
+
     /**
-     * 测试夹具快捷构造：使用默认支付宝通道标识。
+     * 测试夹具快捷构造：使用默认支付宝 V3 通道标识。
      */
     DefaultPayClient(PayConfig config, PayKernel kernel) {
-        this(config, kernel, "alipay");
+        this(config, kernel, "alipay3", false);
     }
 
     /**
@@ -78,6 +80,18 @@ public final class DefaultPayClient implements PayClient {
      * @param channelName 通道标识
      */
     DefaultPayClient(PayConfig config, PayKernel kernel, String channelName) {
+        this(config, kernel, channelName, false);
+    }
+
+    /**
+     * 供 V2 / V3 适配器选择对应依赖探测。
+     *
+     * @param config      配置域
+     * @param kernel      内核边界
+     * @param channelName 通道标识
+     * @param v2          {@code true} 表示支付宝 V2
+     */
+    DefaultPayClient(PayConfig config, PayKernel kernel, String channelName, boolean v2) {
         if (config == null) {
             throw new IllegalArgumentException("config 不能为 null");
         }
@@ -90,6 +104,7 @@ public final class DefaultPayClient implements PayClient {
         this.config = config;
         this.kernel = kernel;
         this.channelName = channelName;
+        this.v2 = v2;
     }
 
     /**
@@ -104,7 +119,30 @@ public final class DefaultPayClient implements PayClient {
         if (clients == null) {
             throw new IllegalArgumentException("clients 不能为 null");
         }
-        return new DefaultPayClient(config, new IjpayPayKernel(clients), channelName);
+        return new DefaultPayClient(config, new IjpayPayKernel(clients), channelName, false);
+    }
+
+    /**
+     * 支付宝 V2 生产工厂。
+     *
+     * @param config      配置域
+     * @param clients     V2 客户端缓存
+     * @param channelName 通道标识
+     * @return 交易客户端
+     */
+    public static DefaultPayClient createV2(PayConfig config, AliPayV2Clients clients, String channelName) {
+        if (clients == null) {
+            throw new IllegalArgumentException("clients 不能为 null");
+        }
+        return new DefaultPayClient(config, new AliPayV2PayKernel(clients), channelName, true);
+    }
+
+    private void requireConfiguredKernel() {
+        if (v2) {
+            PayDeps.requireV2Kernel();
+        } else {
+            PayDeps.requireV3Kernel();
+        }
     }
 
     @Override
@@ -134,7 +172,7 @@ public final class DefaultPayClient implements PayClient {
      */
     public PayOrderResult precreate(String appId, String outTradeNo, long amountFen, String subject,
                                     String notifyUrl) {
-        PayDeps.requireKernel();
+        requireConfiguredKernel();
         requireText(outTradeNo, "outTradeNo", MAX_TRADE_NO_LENGTH);
         PayAmounts.requirePositive(amountFen, "amountFen");
         requireText(subject, "subject", MAX_SUBJECT_LENGTH);
@@ -181,7 +219,7 @@ public final class DefaultPayClient implements PayClient {
      */
     @Override
     public PayQueryResult query(String appId, String outTradeNo) {
-        PayDeps.requireKernel();
+        requireConfiguredKernel();
         requireText(outTradeNo, "outTradeNo", MAX_TRADE_NO_LENGTH);
         PayAppConfig app = config.resolve(appId);
 
@@ -203,7 +241,7 @@ public final class DefaultPayClient implements PayClient {
     @Override
     public PayRefundResult refund(String appId, String outTradeNo, String outRequestNo, long refundFen,
                                   String refundReason) {
-        PayDeps.requireKernel();
+        requireConfiguredKernel();
         requireText(outTradeNo, "outTradeNo", MAX_TRADE_NO_LENGTH);
         requireText(outRequestNo, "outRequestNo", MAX_TRADE_NO_LENGTH);
         PayAmounts.requirePositive(refundFen, "refundFen");
@@ -248,7 +286,7 @@ public final class DefaultPayClient implements PayClient {
     private PayOrderResult pagePay(String appId, String outTradeNo, long amountFen, String subject, String returnUrl,
                                    String notifyUrl, PayOrderResult.Channel channel, String method,
                                    String productCode, String action) {
-        PayDeps.requireKernel();
+        requireConfiguredKernel();
         requireText(outTradeNo, "outTradeNo", MAX_TRADE_NO_LENGTH);
         PayAmounts.requirePositive(amountFen, "amountFen");
         requireText(subject, "subject", MAX_SUBJECT_LENGTH);

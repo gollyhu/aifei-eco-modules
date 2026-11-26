@@ -64,8 +64,21 @@ public class PayDepsBytecodeTest {
     private static final String[] EXPECTED_JARS = {
             "IJPay-AliPay-V3-3.0.0.jar",
             "alipay-sdk-java-v3-3.1.89.ALL.jar",
+            "IJPay-AliPay-3.0.0.jar",
+            "alipay-sdk-java-4.40.1067.ALL.jar",
+            "fastjson-2.0.66.jar",
+            "okhttp-4.12.0.jar",
             "dom4j-2.1.5.jar",
-            "bcprov-jdk18on-1.86.jar"
+            "bcprov-jdk18on-1.86.jar",
+            "IJPay-QQ-3.0.0.jar",
+            "IJPay-JDPay-3.0.0.jar",
+            "IJPay-UnionPay-3.0.0.jar",
+            "IJPay-PayPal-3.0.0.jar",
+            "IJPay-Stripe-3.0.0.jar",
+            "stripe-java-34.1.0.jar",
+            "IJPay-FuiYou-3.0.0.jar",
+            "IJPay-XPay-3.0.0.jar",
+            "IJPay-Core-3.0.0.jar"
     };
 
     /**
@@ -83,7 +96,7 @@ public class PayDepsBytecodeTest {
     /**
      * 依赖 JAR 数量的下限：定稿依赖树为 32 个依赖 JAR，再加测试期 JUnit 与 Hamcrest。
      */
-    private static final int MINIMUM_DEPENDENCY_JARS = 32;
+    private static final int MINIMUM_DEPENDENCY_JARS = 40;
 
     /**
      * 断言依赖 classpath 上的全部可加载 class 均在 Java 8 基线内。

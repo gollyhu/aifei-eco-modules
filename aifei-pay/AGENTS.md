@@ -12,7 +12,7 @@
 
 ## 交付性质
 
-`aifei-pay` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / 路由 / HIO / 表结构 / `Db+Row` / `Generator` / UI 页面。坐标 `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`（`packaging=jar`），公共 API + `model` 值对象 + `spi` + `internal` 实现 + `aifei.PayPlugin` / `PayHandler` 同处一个 JAR。V2.0 起模块定位为 IJPay 多渠道聚合，公共面不再出现 `AliPay*` 类型。
+`aifei-pay` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / 路由 / HIO / 表结构 / `Db+Row` / `Generator` / UI 页面。坐标 `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`（`packaging=jar`），公共 API + `model` 值对象 + `spi` + `internal` 实现 + `aifei.PayPlugin` / `PayHandler` 同处一个 JAR。V2.0 起模块定位为 IJPay 多渠道聚合，公共面不再出现 `AliPay*` 类型；V2.1 起支付宝按版本隔离：`alipay2` = `IJPay-AliPay` V2，`alipay3` = `IJPay-AliPay-V3`，`alipay` 为非法类型。
 
 **不适用范围（不得据此模块约束要求）**：表结构 / `Db+Row` / `Generator`（零 DB）；`@Path` Service 与 HIO（模块无入站 HTTP 面）；页面 / 原型基线（无 UI，且**已裁决不配 demo 工程**）。
 
@@ -40,15 +40,21 @@
 | 构件 | scope | 说明 |
 | --- | --- | --- |
 | `cn.aifei:aifei-all` | `provided` | 消费方自带，不向下游传递 |
-| `com.github.javen205:IJPay-AliPay-V3` | `optional` | 支付宝 V3 内核 |
-| `com.github.javen205:IJPay-WxPay` | `optional` | 微信支付内核（按适配器落地进度引入） |
+| `com.github.javen205:IJPay-AliPay-V3` | `optional` | 支付宝 V3 内核（`alipay3`） |
+| `com.github.javen205:IJPay-AliPay` | `optional` | 支付宝 V2 内核（`alipay2`） |
 | `com.alipay.sdk:alipay-sdk-java-v3` | `optional` | 显式声明以**锁定版本** `3.1.89.ALL` |
+| `com.alipay.sdk:alipay-sdk-java` | `optional` | 显式声明以**锁定版本** `4.40.1067.ALL` |
+| `com.alibaba:fastjson` | `optional` | 支付宝 V2 运行时依赖，锁定 `2.0.66` |
+| `com.squareup.okhttp3:okhttp` | `optional` | 支付宝 V2 运行时依赖，锁定 `4.12.0` |
 | `org.dom4j:dom4j` | `optional` | 锁定 `2.1.5`（2.2.0 起字节码 55） |
 | `org.bouncycastle:bcprov-jdk18on` | `optional` | 锁定 `1.86`；证书模式运行期必需 |
+| `com.github.javen205:IJPay-QQ` / `IJPay-JDPay` / `IJPay-UnionPay` / `IJPay-PayPal` / `IJPay-Stripe` / `IJPay-FuiYou` / `IJPay-XPay` | `optional` | 七渠道，版本统一 `3.0.0`，按 `pay.<name>.type` 选择 |
+| `com.stripe:stripe-java` | `optional` | 锁定 `34.1.0`（实测全量 class major ≤ 52），Stripe 渠道显式客户端 |
 | `junit:junit` | `test` | — |
 
-- **不得新增任何其它直接依赖**（含测试期 mock 框架）。需要替身时用 `internal` 的包级可见接口手工桩（`PayKernel` + `internal/PayKernelStub` 是先例）。**包级可见接口只能被同包类型实现**，故桩必须放在 `internal/` 而非 `support/`。
-- **不得移除 `alipay-sdk-java-v3` 上的三个 exclusion**（`dom4j:dom4j` / `bcprov-jdk15on` / `jackson-databind-nullable`）。其中 `jackson-databind-nullable` 的排除基于「该 SDK 版本被引用 0 次」的实测结论（`docs/design.md` §2.3）；**升级 SDK 版本时必须重跑该验证**。
+- **除上表外不得新增直接依赖**（含测试期 mock 框架）。需要替身时用 `internal` 的包级可见接口手工桩（`PayKernel` + `internal/PayKernelStub` 是先例）。**包级可见接口只能被同包类型实现**，故桩必须放在 `internal/` 而非 `support/`。
+- 七渠道实现位于 `internal/channels/`：`ChannelConfig` / `ChannelKernel` / `ChannelPayClient` / `ChannelVerifier` / `ChannelAdapters` + 七个 `XxxKernel`。第三方类型只允许出现在 `internal`（含 `channels` 子包），公共面零第三方类型。
+- **不得移除两代支付宝 SDK 上的 exclusion**：V3 的 `dom4j:dom4j` / `bcprov-jdk15on` / `jackson-databind-nullable`，V2 的 `dom4j:dom4j` / `bcprov-jdk15on` / `fastjson` / `okhttp` / `okio`。`jackson-databind-nullable` 的排除基于「该 SDK 版本被引用 0 次」的实测结论（`docs/design.md` §2.3）；**升级 SDK 版本时必须重跑该验证**。
 - **不得再显式引入 `bcprov-jdk15on`**（会与 `bcprov-jdk18on` 同名类冲突）。
 
 ### 公共面收敛（不得放宽）
@@ -70,12 +76,12 @@
 | **G-01** | `g01PublicSurfaceExact` | 根包直接子文件集合**精确等于** 4 个公共类型；`model/` 直接子文件集合精确等于 4 个值对象；4+4 个类型均 `public`；`PayOrderResult$Channel` / `PayOrderResult$PayloadType` / `PayNotify$NotifyType` 为 public 嵌套枚举 |
 | **G-02** | `g02NoThirdPartyInPublicSurface` | 根包与 `model/` 包不得 import / 继承 `com.ijpay.*` / `com.alipay.*` / `com.alibaba.fastjson*` / `cn.aifei.*` |
 | **G-03** | `g03NoSqlAndNoOtherChannels` | 全模块无 `import java.sql.`；无 `com.ijpay.wxpay` / `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 前缀；无 `IJPay-WxPay` / `IJPay-Servlet-` 代码引用 |
-| **G-04** | `g04LayerBoundary` | `cn.aifei.*` 只允许在 `aifei/`；例外登记表**精确等于** `{internal/PayErrors.java -> cn.aifei.log., internal/PayVerifier.java -> cn.aifei.log.}`；`com.ijpay.*` 只允许在 `internal/IjpayPayKernel.java` 与 `internal/PayClients.java`；`com.alipay.*` 只允许在上述两文件 + `internal/PayVerifyKey.java` + `internal/PayVerifier.java` |
+| **G-04** | `g04LayerBoundary` | `cn.aifei.*` 只允许在 `aifei/`；例外登记表**精确等于** `{internal/PayErrors.java -> cn.aifei.log., internal/PayVerifier.java -> cn.aifei.log.}`；`com.ijpay.*` 只允许在 `IjpayPayKernel` / `PayClients` / `AliPayV2Clients` / `AliPayV2PayKernel` 及 `internal/channels/` 的 `ChannelResponses` 与七个 `XxxKernel`；`com.stripe.*` 仅 `StripeKernel`；`cn.hutool.*` 仅 `ChannelResponses` / `FuiYouKernel`；`com.alipay.*` 只允许在支付宝适配器文件 |
 | **G-05** | `g05Java8AndBytecode` | `target/classes` 全部 class major == 52；源码无 `List.of(` / `Map.of(` / `Set.of(` / `record ` / `var ` / `"""` / `sealed ` / 模式匹配；源码无 `extends com.ijpay.` / `extends com.alipay.` |
-| **G-06** | `g06DependencyDiscipline` | pom 直接依赖集合精确等于 6 项（scope 亦精确）；无日志门面/绑定直接依赖；三个 exclusion 精确存在 |
+| **G-06** | `g06DependencyDiscipline` | pom 直接依赖集合精确等于 10 项（scope 亦精确）；无日志门面/绑定直接依赖；V2/V3 SDK exclusion 精确存在 |
 | 附加 ① | `a01NoContainerArtifacts` | 无容器化构建/编排产物；`src/main/java` 无 `public static void main(String[]` |
 | 附加 ② | `a02NoForbiddenDocWord` | `README.md` / `AGENTS.md` / `docs/**/*.md` 不含项目禁用词根（`work` + `buddy` 连写，大小写不敏感） |
-| 附加 ③ | `a03NoGlobalMutableState` | 无 `Configuration.setDefaultApiClient` / `Configuration.getDefaultApiClient` / `AliPayApiConfigKit` / `Security.addProvider` / `System.setProperty` / `System.getProperties().put` |
+| 附加 ③ | `a03NoGlobalMutableState` | 无 `Configuration.setDefaultApiClient` / `Configuration.getDefaultApiClient` / 任意 `*ApiConfigKit` / `AccessTokenKit.get` / `Security.addProvider` / `System.setProperty` / `System.getProperties().put` |
 | 附加 ④ | `a04OfflineOnly` | `src/test/java` 零 `http://` / `https://` 字面量；`src/main/java` 的 `https://` 只允许在 `PayKit.java` 的两个网关常量 |
 
 门禁**不得为兼容错误用法而放宽或绕过**；扫描依赖相对路径 `src/main/java`，**必须在 `aifei-pay/` 根目录执行**（`surefire` 的 `workingDirectory` 已固定为 `${project.basedir}`）。
@@ -98,7 +104,7 @@
 | 内核调用（IJPay / SDK 交易 API 出现点） | `internal.IjpayPayKernel` |
 | 内核响应 → 公共值对象转换 | `internal.PayResults` |
 | urlencoded 解析与 `Map` 防御性拷贝 | `internal.PayForms` |
-| 验签（`AlipaySignature` 出现点） | `internal.PayVerifier` |
+| 验签（`AlipaySignature` 出现点） | `internal.PayVerifier`（V3）、`internal.AliPayV2Verifier`（V2） |
 | `cn.aifei.log.Log` 记录点（仅此两处） | `internal.PayErrors`（内核异常收敛前 warn 一次）、`internal.PayVerifier`（验签失败 warn 一次） |
 | 装配顺序与容器注册 | `aifei.PayPlugin` |
 

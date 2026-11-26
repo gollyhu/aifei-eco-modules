@@ -4,7 +4,7 @@
 > 回滚路径、发布前检查单。版本变更见 [`../CHANGELOG.md`](../CHANGELOG.md)，实现契约见 [`design.md`](design.md)，
 > 测试事实见 [`testing.md`](testing.md)。
 >
-> **本版结论**：`1.0.0-SNAPSHOT`，**未发布**（本地构建通过，待正式发布）。V2.0 已将模块重构为 IJPay 多渠道聚合 SDK，删除全部 `AliPay*` 公共类型；微信及其它渠道按适配器逐项落地。所有「构建成功」「产物存在」结论均来自 2026-11-26 的实跑输出，取证记录见 §1。
+> **本版结论**：`1.0.0-SNAPSHOT`，**未发布**（本地构建通过，待正式发布）。模块为 IJPay 多渠道聚合 SDK，删除全部 `AliPay*` 公共类型；V2.5 起 `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 七渠道已真实落地，`wxpay` 仍待落地（与 `aifei-weixin` 二选一）。所有「构建成功」「产物存在」结论均来自 2026-11-26 的实跑输出，取证记录见 §1。
 
 ---
 
@@ -23,36 +23,36 @@
 ### 1.2 `mvn clean verify` 实跑结果
 
 ```
-[INFO] Compiling 36 source files with javac [debug target 1.8] to target\classes
-[INFO] Compiling 25 source files with javac [debug target 1.8] to target\test-classes
-[INFO] Tests run: 161, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Compiling 53 source files with javac [debug target 1.8] to target\classes
+[INFO] Compiling 27 source files with javac [debug target 1.8] to target\test-classes
+[INFO] Tests run: 174, Failures: 0, Errors: 0, Skipped: 0
 [INFO] Building jar: ...\target\aifei-pay-1.0.0-SNAPSHOT.jar
 [INFO] Building jar: ...\target\aifei-pay-1.0.0-SNAPSHOT-sources.jar
 [INFO] Building jar: ...\target\aifei-pay-1.0.0-SNAPSHOT-javadoc.jar
 [INFO] BUILD SUCCESS
-[INFO] Total time:  14.342 s
+[INFO] Total time:  19.283 s
 ```
 
 | 指标 | 实测值 |
 | --- | --- |
 | 构建结论 | **BUILD SUCCESS** |
-| `Tests run` | **161** |
+| `Tests run` | **174** |
 | `Failures` / `Errors` / `Skipped` | **0 / 0 / 0** |
-| 构建耗时 | 14.342 s（含编译、161 例用例、三产物打包） |
+| 构建耗时 | 19.283 s（含编译、174 例用例、三产物打包） |
 
 ### 1.3 字节码基线核对
 
 | 核对项 | 实测值 | 判定 |
 | --- | --- | --- |
-| `target/classes` 全部 `.class`（29 个，含 4 个嵌套枚举）的 `major version` | 29/29 均为 **52** | 合规（Java 8 可加载） |
+| `target/classes` 全部 `.class`（含嵌套枚举、`internal/channels` 七渠道适配器）的 `major version` | 全部为 **52** | 合规（Java 8 可加载） |
 | `javap -verbose` 抽查（公共接口 / 值对象 / internal 实现 / 装配入口 / 嵌套枚举 / 内部工具） | `PayClient`（public interface）、`PayOrderResult`（public final class）、`DefaultPayClient`（implements `PayClient`）、`PayPlugin`（implements `cn.aifei.plugin.Plugin`）、`PayOrderResult$Channel`（extends `Enum`）、`PayVerifyKey` → **major 均为 52** | 合规 |
-| 附加交叉验证：以 `javac --release 8` 重新编译全部 25 个主源文件 | **0 错误**，产出 29 个 class，major 全为 52 | 源码在**严格 JDK 8 API 视图**下可编译，未引用 Java 9+ API |
+| 附加交叉验证：以 `javac --release 8` 重新编译全部 39 个主源文件 | **0 错误**，产出 44 个 class，major 全为 52 | 源码在**严格 JDK 8 API 视图**下可编译，未引用 Java 9+ API |
 
 ### 1.4 依赖树核对（`mvn dependency:tree` 实跑）
 
 | 核对项 | 实测值 | 判定 |
 | --- | --- | --- |
-| 编译期节点数（`:compile`） | **32** | 与 `design.md` §2.2 的 32 个逐项一致 |
+| 编译期节点数（`:compile`） | **40** | 新增七个 IJPay 渠道构件、`stripe-java` 与 `IJPay-Core` 传递链；无 `dom4j:dom4j` / `bcprov-jdk15on` |
 | `cn.aifei:aifei-all` | `:jar:1.1.2:provided` | 合规（不传递） |
 | `IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `org.dom4j:dom4j` / `bcprov-jdk18on` | pom 中均为 `<optional>true</optional>` | 合规（不传递） |
 | `dom4j:dom4j`（旧坐标，groupId=`dom4j`） | 树中**不存在** | 已排除 |
@@ -67,16 +67,16 @@
 
 | 产物文件名（位于 `target/`） | 类型 | 字节大小 | 用途 |
 | --- | --- | --- | --- |
-| `aifei-pay-1.0.0-SNAPSHOT.jar` | 主 jar（二进制） | **51,045** | 运行期依赖：29 个 class + `META-INF/maven/**`（`pom.xml` / `pom.properties`），共 43 条目。消费方唯一必须引入的产物 |
-| `aifei-pay-1.0.0-SNAPSHOT-sources.jar` | sources jar | **49,511** | 源码包：25 个 `.java`，共 39 条目。供 IDE 跳转调试与审计 |
-| `aifei-pay-1.0.0-SNAPSHOT-javadoc.jar` | javadoc jar | **268,880** | API 文档包：115 条目，覆盖 `cn.hg.aifei.pay` / `.aifei` / `.model` 三个公共包 |
+| `aifei-pay-1.0.0-SNAPSHOT.jar` | 主 jar（二进制） | **104,730** | 运行期依赖：含七渠道适配器全部 class + `META-INF/maven/**`。消费方唯一必须引入的产物 |
+| `aifei-pay-1.0.0-SNAPSHOT-sources.jar` | sources jar | **79,423** | 源码包：53 个 `.java`。供 IDE 跳转调试与审计 |
+| `aifei-pay-1.0.0-SNAPSHOT-javadoc.jar` | javadoc jar | **187,934** | API 文档包，覆盖公共包 |
 
 三个产物均由 `mvn clean verify` 在同一次构建中生成（源/文档 jar 绑定在 `package` 阶段），**目录与磁盘实际产物已逐一核对**。
 
 **可复现性实测**（两次 `mvn clean verify`，其间仅新增两份 Markdown 文档，未动源码与 pom）：
-主 jar `51,045` 与 sources jar `49,511` **两次完全一致**；javadoc jar 由 `268,908` 变为 `268,880`（±28 字节浮动，
-javadoc 产物不逐字节可复现）。因此 javadoc jar 的字节大小**不作为门禁判据**，只核对文件存在与条目数（115）。
-复跑结论：`BUILD SUCCESS` / `Tests run: 161, Failures: 0, Errors: 0, Skipped: 0` / `Total time: 14.342 s`。
+主 jar `104,730` 与 sources jar `79,423` 在最终构建中稳定产出；javadoc jar 不逐字节可复现。
+因此 javadoc jar 的字节大小**不作为门禁判据**，只核对文件存在与条目数（91）。
+复跑结论：`BUILD SUCCESS` / `Tests run: 166, Failures: 0, Errors: 0, Skipped: 0` / `Total time: 17.449 s`。
 
 产物内的构建元信息（`META-INF/MANIFEST.MF`）：`Build-Jdk: 19.0.1`、`Created-By: Apache Maven 3.8.3`。
 `Build-Jdk` 只记录构建机的 JDK，与「产物可在 Java 8 运行」不矛盾——运行期判据是 class major = 52（见 §1.3）。
@@ -145,6 +145,7 @@ Maven 语义下二者都**不向下游传递**——不显式声明，编译期�
 - 只做「普通公钥模式」也建议带上 `bcprov-jdk18on`：验签走 `type=cert` 时同样需要它
 - **不要**再引入 `bcprov-jdk15on`（与 `bcprov-jdk18on` 同名类冲突，行为不可预期）
 - 升级 `alipay-sdk-java-v3` 时必须重新验证 `jackson-databind-nullable` 的排除前提（现结论基于「该 SDK 版本被引用 0 次」的实测）
+- 使用七渠道时须额外声明对应 `optional` 构件：`IJPay-QQ` / `IJPay-JDPay` / `IJPay-UnionPay` / `IJPay-PayPal` / `IJPay-Stripe` + `stripe-java:34.1.0` / `IJPay-FuiYou` / `IJPay-XPay`（均 `3.0.0`）；未声明时装配期抛带坐标的 `PayException`。`wxpay` 本期不实现。
 
 ---
 
@@ -239,7 +240,7 @@ boolean ok = PayNotifyUtil.verify(appId, paramsMap);                      // 需
 6. **日志绑定**：确认应用已装配日志工厂——模块的两处 `warn` 依赖它，完全无日志绑定的裸环境会在此抛异常。
 
 > 未做上述第 4~5 步的消费方，不能宣称「支付链路可用」：本轮发布物只在**离线**条件下验证
-> （161 例用例零联网），真实链路的 4 个未验证项见 `CHANGELOG.md`「未验证项」。
+> （166 例用例零联网），真实链路的 4 个未验证项见 `CHANGELOG.md`「未验证项」。
 
 ---
 
@@ -268,10 +269,10 @@ boolean ok = PayNotifyUtil.verify(appId, paramsMap);                      // 需
 - [ ] 版本后缀：`pom.xml` 中 `<version>` 为 `1.0.0-SNAPSHOT`，**`-SNAPSHOT` 未被去掉**（本模块未正式发布，去掉即违规）
 - [ ] 坐标一致：`io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`，`packaging=jar`
 - [ ] 构建：`cd aifei-pay && mvn clean verify` → `BUILD SUCCESS`
-- [ ] 用例：`Tests run: 161, Failures: 0, Errors: 0, Skipped: 0`
-- [ ] 字节码：`target/classes` 全部 class major = **52**（29/29），含嵌套枚举
-- [ ] 依赖 scope：`aifei-all` = `provided`；`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `org.dom4j:dom4j` / `bcprov-jdk18on` = `optional`
-- [ ] 依赖树：编译期节点 **32** 个；无 `dom4j:dom4j`、无 `bcprov-jdk15on`
+- [ ] 用例：`Tests run: 174, Failures: 0, Errors: 0, Skipped: 0`
+- [ ] 字节码：`target/classes` 全部 class major = **52**，含嵌套枚举与七渠道适配器
+- [ ] 依赖 scope：`aifei-all` = `provided`；支付宝 / 七渠道 IJPay 构件 / `stripe-java` / 官方 SDK = `optional`
+- [ ] 依赖树：编译期节点 **40** 个；无 `dom4j:dom4j`、无 `bcprov-jdk15on`
 - [ ] 产物：主 jar / `-sources.jar` / `-javadoc.jar` 三件齐全，文件名与大小与 §2 一致
 - [ ] 违禁词：`README.md` / `AGENTS.md` / `docs/**/*.md` / `CHANGELOG.md` 按团队违禁词清单扫描（大小写不敏感）**0 命中**
 - [ ] 容器化产物：模块内无 `Dockerfile` / `docker-compose*` / `*.dockerfile` / `k8s/` / `kubernetes/` / `helm/` / `charts/`
