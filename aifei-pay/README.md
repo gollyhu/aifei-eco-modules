@@ -56,8 +56,8 @@ PayNotifyUtil.verifyAndParse("alipay-main", null, PayNotifyRequest.of(params));
 
 ## 2. 支付宝通道接入细节（V2.0 通道化配置见 §1.1）
 
-以下依赖与凭据说明对 `type=alipay3` / `type=alipay2` 的通道仍然有效；交易动作示例中的 `precreate` / `wapPay` / `pagePay`
-已由 `createOrder(..., payType, ...)` 取代，仅保留作支付宝内核语义参考。
+以下依赖与凭据说明对 `type=alipay3` / `type=alipay2` 的通道仍然有效；交易动作统一为
+`createOrder(..., payType, ...)`，`payType` 取 `QRCODE` / `WAP` / `PAGE` 对应扫码 / H5 / PC。
 
 ### 2.1 声明依赖
 
@@ -149,30 +149,34 @@ public class AppConfig implements AifeiConfig {
 
 ```properties
 # 全局
-pay.default-app-id = 2021000000000001
+pay.default-channel = alipay-main
 pay.connect-timeout = 5000
 pay.read-timeout = 15000
 pay.page-http-method = POST
 pay.return-url = https://example.com/pay/return
 pay.notify-url = https://example.com/pay/notify
 
-# 应用 1：证书模式，两组验签凭据（轮换期新旧并存）
-pay.apps.2021000000000001.env = production
-pay.apps.2021000000000001.sign-mode = cert
-pay.apps.2021000000000001.private-key = @file:/etc/alipay/app-private-key.pem
-pay.apps.2021000000000001.app-cert = @file:/etc/alipay/app-cert.crt
-pay.apps.2021000000000001.root-cert = @file:/etc/alipay/alipay-root.crt
-pay.apps.2021000000000001.verify.0.type = cert
-pay.apps.2021000000000001.verify.0.value = @file:/etc/alipay/alipay-public-cert-2026.crt
-pay.apps.2021000000000001.verify.1.type = cert
-pay.apps.2021000000000001.verify.1.value = @file:/etc/alipay/alipay-public-cert-2025.crt
+# 通道 1：支付宝 V3 证书模式，两组验签凭据（轮换期新旧并存）
+pay.alipay-main.type = alipay3
+pay.alipay-main.default-merchant-id = 2021000000000001
+pay.alipay-main.env = production
+pay.alipay-main.sign-mode = cert
+pay.alipay-main.private-key = @file:/etc/pay/alipay-app-private.pem
+pay.alipay-main.app-cert = @file:/etc/pay/alipay-app-cert.crt
+pay.alipay-main.root-cert = @file:/etc/pay/alipay-root.crt
+pay.alipay-main.verify.0.type = cert
+pay.alipay-main.verify.0.value = @file:/etc/pay/alipay-public-cert-2026.crt
+pay.alipay-main.verify.1.type = cert
+pay.alipay-main.verify.1.value = @file:/etc/pay/alipay-public-cert-2025.crt
 
-# 应用 2：普通公钥模式，沙箱
-pay.apps.2021000000000002.env = sandbox
-pay.apps.2021000000000002.sign-mode = key
-pay.apps.2021000000000002.private-key = @file:/etc/alipay/sandbox-private-key.pem
-pay.apps.2021000000000002.verify.0.type = key
-pay.apps.2021000000000002.verify.0.value = @file:/etc/alipay/sandbox-alipay-public-key.pem
+# 通道 2：支付宝 V2 公钥模式，沙箱
+pay.alipay-sandbox.type = alipay2
+pay.alipay-sandbox.default-merchant-id = 2021000000000002
+pay.alipay-sandbox.env = sandbox
+pay.alipay-sandbox.sign-mode = key
+pay.alipay-sandbox.private-key = @file:/etc/pay/alipay-sandbox-private.pem
+pay.alipay-sandbox.verify.0.type = key
+pay.alipay-sandbox.verify.0.value = @file:/etc/pay/alipay-sandbox-public.pem
 ```
 
 凭据取值支持两种形态：以 `@file:` 开头的文件引用（按 UTF-8 读取）与内联 PEM 文本（可含 `-----BEGIN/END-----`）。
@@ -216,29 +220,30 @@ pay.apps.2021000000000002.verify.0.value = @file:/etc/alipay/sandbox-alipay-publ
 `root-cert` 必填；`verify.<n>` 序号必须从 0 起连续；`type` 与 `value` 必须成对；`cert-sn` 必须与证书一致；
 凭据文件必须可读且非空。
 
-## 4. 五个交易动作
+## 4. 交易动作（三类下单 + 查单 + 退款）
 
 ```java
 @Inject
 private PayClient pay;
 
 // 1) 扫码预下单：载荷类型恒为 QRCODE
-PayOrderResult qr = pay.precreate(appId, "ORDER-20260101-0001", 1L, "会员年费", null);
+PayOrderResult qr = pay.createOrder(null, "ORDER-20260101-0001", 1L, "会员年费",
+        "QRCODE", null, null, null);
 qr.payloadType();   // PayOrderResult.PayloadType.QRCODE
 qr.payload();       // 二维码内容串，交给二维码渲染
 
 // 2) H5 支付：载荷类型由 pay.page-http-method 决定（默认 POST → FORM）
-PayOrderResult wap = pay.wapPay(appId, "ORDER-20260101-0002", 9900L, "会员年费",
-        "https://example.com/pay/return", null);
+PayOrderResult wap = pay.createOrder(null, "ORDER-20260101-0002", 9900L, "会员年费",
+        "WAP", "https://example.com/pay/return", null, null);
 wap.payloadType();  // FORM（自提交表单 HTML）或 URL（跳转地址）
 
 // 3) PC 支付：与 H5 同构，渠道不同
-PayOrderResult page = pay.pagePay(appId, "ORDER-20260101-0003", 19900L, "企业版年费",
-        "https://example.com/pay/return", null);
+PayOrderResult page = pay.createOrder(null, "ORDER-20260101-0003", 19900L, "企业版年费",
+        "PAGE", "https://example.com/pay/return", null, null);
 
 // 4) 查单：不存在交易会抛 PayException 且 code() = ACQ.TRADE_NOT_EXIST
 try {
-    PayQueryResult query = pay.query(appId, "ORDER-20260101-0001");
+    PayQueryResult query = pay.query(null, "ORDER-20260101-0001");
     query.tradeStatus();    // 如 TRADE_SUCCESS
     query.totalAmount();    // 元字符串，如 "0.01"
 } catch (PayException e) {
@@ -248,7 +253,7 @@ try {
 }
 
 // 5) 退款：outRequestNo 是幂等键，原样透传给支付宝
-PayRefundResult refund = pay.refund(appId, "ORDER-20260101-0001", "REFUND-0001", 1L, "用户取消");
+PayRefundResult refund = pay.refund(null, "ORDER-20260101-0001", "REFUND-0001", 1L, "用户取消");
 refund.outRequestNo();  // 回显 "REFUND-0001"
 ```
 
@@ -258,8 +263,9 @@ refund.outRequestNo();  // 回显 "REFUND-0001"
 PayClient pay = PayKit.defaultClient();   // 与 @Inject 注入的是同一个对象
 ```
 
-多应用：`appId` 是每个交易方法的**第一参数**，传 `null` / 空白回退 `pay.default-app-id`，未配置的 appId 抛
-`PayException`。每个 appId 使用各自独立的客户端实例，互不串扰；模块不使用线程绑定，也不使用静态多应用注册表。
+多商户 / 多通道：`merchantId` 是每个交易方法的**第一参数**，传 `null` / 空白回退该通道的
+`pay.<name>.default-merchant-id`；通道未配置抛 `PayException`。通道实例由 `PayKit.use(name)` 取用、
+互不串扰；模块不使用线程绑定，也不使用静态多应用注册表。
 
 ## 5. 回调验签
 

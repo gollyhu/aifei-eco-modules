@@ -68,7 +68,7 @@ public class PayException extends RuntimeException {
 ```properties
 pay.default-channel = alipay-main
 
-pay.alipay-main.type = alipay
+pay.alipay-main.type = alipay3
 pay.alipay-main.default-merchant-id = 2021000000000001
 pay.alipay-main.env = production
 pay.alipay-main.private-key = @file:/etc/pay/alipay-app.pem
@@ -1548,7 +1548,7 @@ sequenceDiagram
 - **文件**（1 个测试类 + 2 个文档）：`PayKernelAttributionTest.java`、`README.md`、`docs/testing.md`
 - **做什么**：
   1. `PayKernelAttributionTest`（AC-21）：断言源码无语义等价的**上游类整段复制**痕迹（对 `internal` 层做特征扫描 + 白名单核对），与 `a02NoForbiddenDocWord` 门禁互补——门禁管文档禁用词，本类管「依赖内核不复制」。
-  2. `README.md`：坐标与依赖声明（含「必须自带 `IJPay-AliPay-V3` + `alipay-sdk-java-v3` + `bcprov-jdk18on`」的完整片段）、装配示例、五个交易动作示例、回调验签示例、配置键全表、**边界声明**（不做幂等 / 不做状态机 / 不做补单 / 证书模式下 bcprov 必需 / `sign_type` 仅 RSA2 / `charset` 仅 UTF-8 / `code()` 是业务码非 HTTP 状态码 / `stop()` 后已注入字段仍持旧实例）、**依赖来源与 Apache-2.0 署名**（§1.5）。
+  2. `README.md`：坐标与依赖声明（含「必须自带 `IJPay-AliPay-V3` + `alipay-sdk-java-v3` + `bcprov-jdk18on`」的完整片段）、装配示例、交易动作示例、回调验签示例、配置键全表、**边界声明**（不做幂等 / 不做状态机 / 不做补单 / 证书模式下 bcprov 必需 / `sign_type` 仅 RSA2 / `charset` 仅 UTF-8 / `code()` 是业务码非 HTTP 状态码 / `stop()` 后已注入字段仍持旧实例）、**依赖来源与 Apache-2.0 署名**（§1.5）。
   3. `docs/testing.md`：用例清单 + 「AC 编号 ↔ 用例 ↔ 结果」三列映射 + **夹具策略声明**（§3：运行期生成、仓内零凭据）。
 - **验收判据**：
   - AC-21（`README` 含来源与许可声明；源码无 IJPay 类整段复制痕迹）由 `PayKernelAttributionTest` + 人工审查 + `a02` 门禁共同覆盖；
@@ -1634,7 +1634,7 @@ graph LR
 | `AC-13` | R-06 证书轮换 | `internal/PayAppConfig#verifyKeys`（有序列表）+ `internal/PayVerifier`（任一通过即通过） | `PayVerifyKeyTest`、`PayVerifyCertTest` | 新旧并存均通过；仅配新凭据时旧签名失败 |
 | `AC-14` | R-07 幂等边界 | `spi.PayNotify`（`outTradeNo()` / `outRequestNo()`）+ `PayForms#copy` | `PayIdempotencyTest` | N 次结果一致；入参 `Map` 未被修改；源码扫描无 `Cache`/去重容器 |
 | `AC-15` | R-08 环境切换 | `internal/PayConfig`（`env` + `gateway-url` host 一致校验）+ `internal/PayClients`（`setBasePath`） | `PayEnvTest`、`PayConfigTest` | 沙箱/生产分别指向对应网关（伪内核断言 `PayAppConfig.gatewayUrl`）；`gateway-url` host 与 `env` 不一致 → 启动失败；**限制声明见 §13 R-1** |
-| `AC-16` | R-09 多商户 / 多通道 | `PayConfig`（`Map<appId, PayAppConfig>`）+ `PayChannelRegistry`（多通道）+ 各方法 `merchantId` 首参 | `PayMultiAppTest` | 两 appId 各自使用对应配置且互不串扰；未配置 appId 抛 `PayException` |
+| `AC-16` | R-09 多商户 / 多通道 | `PayConfig`（`Map<appId, PayAppConfig>`）+ `PayChannelRegistry`（多通道）+ 各方法 `merchantId` 首参 | `PayMultiAppTest` | 两通道各自使用对应配置与 `merchantId`、互不串扰；未配置通道默认商户时抛 `PayException` |
 | `AC-17` | R-10 依赖缺失 | `internal/PayDeps`（唯一 `Class.forName` 点） | `PayDepsTest` | 隔离类加载器模拟缺失 → `PayException`，消息含缺失坐标；无裸 `NoClassDefFoundError` |
 | `AC-18` | R-12 异常收敛 | `internal/PayErrors`（唯一构造点）+ `DefaultPayClient` 的 `catch` 收口 | `PayErrorsTest` | 调用方只收到 `PayException`；`code()` 与 `cause` 可见；无 `com.alipay.v3.ApiException` 出现在 `catch` 之外 |
 | `AC-19` | §7.2 依赖 scope | `pom.xml`（§8.1） | `G-06` | 直接依赖集合精确等于 18 项；IJPay/SDK/dom4j/bcprov 全为 `optional`；`aifei-all` 为 `provided`；无需 `compile` 例外 |
@@ -1683,14 +1683,14 @@ graph LR
 ### 13.3 包间依赖方向（单向，禁止反向）
 
 ```
-aifei/AliPayPlugin  ──> internal/*  ──> model/*  ──> （JDK 仅）
+aifei/PayPlugin  ──> internal/*  ──> model/*  ──> （JDK 仅）
         │                   │
         └──────────────> 根包 4 类型（PayClient / PayKit / PayNotifyUtil / PayException）
 ```
 
-- `internal` 可依赖根包与 `model`；根包与 `model` **不得**依赖 `internal`（`PayKit` / `PayNotifyUtil` 唯一例外：它们委托 `internal.PayHolder` / `internal.PayVerifier`——这是「门面委托实现」的必需方向，`G-04` 不把它算作违反，但**不得**出现 `internal` 类型出现在公共签名中）。
+- `internal` 可依赖根包与 `model`；根包与 `model` **不得**依赖 `internal`（`PayKit` / `PayNotifyUtil` 唯一例外：它们委托 `internal.PayChannelRegistry`——这是「门面委托实现」的必需方向，`G-04` 不把它算作违反，但**不得**出现 `internal` 类型出现在公共签名中）。
 - `model` 只依赖 JDK；不得依赖根包（避免循环）。
-- `aifei/AliPayPlugin` 只依赖 `internal` 与根包。
+- `aifei/PayPlugin` 只依赖 `internal` 与根包。
 
 ### 13.4 术语与文案一致性
 
@@ -1703,8 +1703,8 @@ aifei/AliPayPlugin  ──> internal/*  ──> model/*  ──> （JDK 仅）
 | --- | --- | --- |
 | 渠道 | 微信支付 V3（`cn.aifei.weixin.pay`） | 支付宝（IJPay-AliPay-V3 内核） |
 | 实现形态 | 纯 JDK 自研（签名 / 加解密 / mTLS / HTTP 全自实现） | 依赖 IJPay 内核（不重复实现） |
-| 动作语义 | `PayApi`：`jsapi` / `queryByOutTradeNo` / `close` / `refund`；`PayNotifyUtil`：`verify` / `decryptResource` / `verifyAndDecrypt` | 对齐：`precreate`/`wapPay`/`pagePay`/`query`/`refund`；`PayNotifyUtil.verify`（布尔）/ `verifyAndParse`（抛异常） |
-| 调用形态 | 静态方法 + `PayMerchant` 值对象入参 | `@Inject PayClient` 接口 + `appId` 首参（`PayKit` 供静态上下文） |
+| 动作语义 | `PayApi`：`jsapi` / `queryByOutTradeNo` / `close` / `refund`；`PayNotifyUtil`：`verify` / `decryptResource` / `verifyAndDecrypt` | 对齐：`createOrder` / `query` / `refund` / `channelName`；`PayNotifyUtil.verify`（布尔）/ `verifyAndParse`（抛异常） |
+| 调用形态 | 静态方法 + `PayMerchant` 值对象入参 | `@Inject PayClient` 接口 + `merchantId` 首参（`PayKit.defaultClient()` / `use()` 供静态上下文） |
 | 金额单位 | `int totalFen`（分） | `long amountFen` / `long refundFen`（分）；出参原样透出内核的元字符串 |
 | 公共返回类型 | `com.alibaba.fastjson2.JSONObject`（**既有事实**） | **自有值对象**（`model.PayXxxResult`），**不引入 `JSONObject`**（PRD D-02 已裁决） |
 | 回调幂等 | 模块**不做**，业务按 `out_trade_no` + 状态前置校验 | 同左（R-07）：透出 `outTradeNo` / `outRequestNo` |
@@ -1761,6 +1761,6 @@ aifei/AliPayPlugin  ──> internal/*  ──> model/*  ──> （JDK 仅）
 | 1 | PRD 未定档「查单不存在」的口径 | 本设计定档为「抛 `PayException` + `code()=ACQ.TRADE_NOT_EXIST`」（§12 AC-08 行），满足 AC-08「口径唯一」 |
 | 2 | PRD 未定档「H5/PC 返回 URL 还是表单」 | 本设计定档为可配置 `pay.page-http-method`（默认 `POST` → `FORM`），值对象带 `payloadType` 明示（§6.5.1） |
 | 3 | PRD 未定档「金额表示」 | 本设计定档为「入参分、出参元字符串」（决策 D-03） |
-| 4 | PRD 未定档「多应用形态」 | 本设计定档为「显式 `appId` 首参 + `pay.default-app-id` 回退」（决策 D-04/D-05） |
+| 4 | PRD 未定档「多应用形态」 | 本设计定档为「显式 `merchantId` 首参 + 通道 `pay.<name>.default-merchant-id` 回退」（决策 D-04/D-05） |
 | 5 | PRD §10.2 提到「唯一定义点」，但未列清单 | 本设计给出 15 条唯一定义点清单（§13.1） |
 | 6 | PRD 未说明 `stop()` 后已注入字段的行为 | 本设计沿用 `aifei-http` 口径：容器无注销 API，已注入字段仍持旧实例属已知边界，README 声明 |

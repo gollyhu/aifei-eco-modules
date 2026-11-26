@@ -60,7 +60,7 @@
 ### 公共面收敛（不得放宽）
 
 - 根包 `cn.hg.aifei.pay` **精确 4 个公共类型**：`PayClient` / `PayKit` / `PayNotifyUtil` / `PayException`。
-- `cn.hg.aifei.pay.model` **精确 4 个公共类型**：`PayOrderResult` / `PayQueryResult` / `PayRefundResult` / `PayNotify`（嵌套枚举不单独计数）。
+- `cn.hg.aifei.pay.model` **精确 4 个公共类型**：`PayOrderResult` / `PayQueryResult` / `PayRefundResult` / `PayNotifyRequest`（嵌套枚举不单独计数）。验签结果 `PayNotify` 在 `spi` 包。
 - 上述两个包**零第三方类型、零框架类型**：不出现 `com.ijpay.*` / `com.alipay.*` / `com.alibaba.fastjson*` / `cn.aifei.*`。
 - 公共签名只用 `String` / `long` / `boolean` / `Map<String,String>` / `Throwable` / 本模块类型；**不出现** `JSONObject`、内核 `Response`/`Model` 类型、`java.util.function.*`。
 - 公共面**不得出现 `internal` 包行话**（内核边界、持有器、唯一解析点等）；`internal` / `aifei` 均属**非承诺 API**，消费方不得引用。
@@ -111,7 +111,7 @@
 ## 行为契约要点速查
 
 - **金额单位非对称**：**入参** `long ...Fen`（分，必须 `> 0`）；**出参** 内核原样透出的元字符串（如 `"0.01"`）。换算唯一点 `PayAmounts.fenToYuan`，**禁 `double` / `float`**。
-- **多应用**：`appId` 为每个交易方法的**第一参数**；`null` / 空白回退 `pay.default-app-id`；未配置的 appId 抛 `PayException`。**不用 `ThreadLocal`**、不用 `AliPayApiConfigKit`。
+- **多商户 / 多通道**：`merchantId` 为每个交易方法的**第一参数**；`null` / 空白回退该通道 `pay.<name>.default-merchant-id`；通道未配置抛 `PayException`。**不用 `ThreadLocal`**、不用 `AliPayApiConfigKit`。
 - **H5 / PC 下单必须走 `new GenericExecuteApi(apiClient).pageExecute(...)`**，**不得**用 `AliPayApi.tradeWapPay` / `tradePagePay` 静态方法——后者共用进程级 `Configuration.getDefaultApiClient()`，多应用会互相覆盖。
 - **载荷类型**：`pay.page-http-method=POST`（默认）→ `payloadType=FORM`（自提交表单 HTML）；`GET` → `payloadType=URL`（跳转 URL）。扫码恒为 `payloadType=QRCODE`。
 - **验签是纯函数**：`PayNotifyUtil` 不改入参 `Map`（内置 `AlipaySignature.getSignCheckContentV1` 会原地 `remove("sign")` / `remove("sign_type")`，必须先 `PayForms.copy`）；不写缓存；同一入参 N 次结果恒等。

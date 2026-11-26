@@ -172,27 +172,27 @@ public class AppConfig implements AifeiConfig {
 
 | 键 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `pay.default-app-id` | 否 | 无 | `appId` 参数为 `null`/空白时的回退值；不配则必须每次显式传 appId |
+| `pay.<name>.default-merchant-id` | 否 | 无 | 通道级键：`merchantId` 为 `null`/空白时的回退值（见 `docs/channels.md` §2） |
 | `pay.connect-timeout` | 否 | `5000` | 连接超时（毫秒） |
 | `pay.read-timeout` | 否 | `15000` | 读取超时（毫秒） |
 | `pay.page-http-method` | 否 | `POST` | `POST` → 载荷为表单 HTML；`GET` → 载荷为跳转 URL |
 | `pay.notify-url` / `pay.return-url` | 否 | 无 | 全局默认异步 / 同步回调地址 |
 
-**单应用键**（`<appId>` 为支付宝应用编号，`<n>` 为从 0 起的凭据序号）：
+**支付宝通道键**（用户侧写作 `pay.<name>.*`；`<n>` 为从 0 起的凭据序号）：
 
 | 键 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `pay.apps.<appId>.env` | **是** | — | `sandbox` / `production`，决定默认网关并校验网关一致性 |
-| `pay.apps.<appId>.gateway-url` | 否 | 环境对应官方网关 | 显式配置时 scheme 必须 `https`，host 必须等于环境对应官方网关 host |
-| `pay.apps.<appId>.sign-mode` | 否 | `cert` | `cert` / `key` |
-| `pay.apps.<appId>.private-key` | **是** | — | 应用私钥（RSA PKCS#8，允许裸 Base64） |
-| `pay.apps.<appId>.app-cert` | `cert` 模式必填 | — | 应用公钥证书 |
-| `pay.apps.<appId>.root-cert` | `cert` 模式必填 | — | 支付宝根证书 |
-| `pay.apps.<appId>.verify.<n>.type` | **是**（至少 `n=0`） | — | `cert` / `key` |
-| `pay.apps.<appId>.verify.<n>.value` | **是** | — | `cert` → 支付宝公钥证书；`key` → 支付宝公钥 |
-| `pay.apps.<appId>.verify.<n>.cert-sn` | 否 | 自动计算 | 显式配置时必须与证书实际序列号一致，否则启动失败 |
-| `pay.apps.<appId>.charset` | 否 | `UTF-8` | 仅支持 UTF-8 |
-| `pay.apps.<appId>.sign-type` | 否 | `RSA2` | 仅支持 RSA2 |
+| `pay.<name>.env` | **是** | — | `sandbox` / `production`，决定默认网关并校验网关一致性 |
+| `pay.<name>.gateway-url` | 否 | 环境对应官方网关 | 显式配置时 scheme 必须 `https`，host 必须等于环境对应官方网关 host |
+| `pay.<name>.sign-mode` | 否 | `cert` | `cert` / `key` |
+| `pay.<name>.private-key` | **是** | — | 应用私钥（RSA PKCS#8，允许裸 Base64） |
+| `pay.<name>.app-cert` | `cert` 模式必填 | — | 应用公钥证书 |
+| `pay.<name>.root-cert` | `cert` 模式必填 | — | 支付宝根证书 |
+| `pay.<name>.verify.<n>.type` | **是**（至少 `n=0`） | — | `cert` / `key` |
+| `pay.<name>.verify.<n>.value` | **是** | — | `cert` → 支付宝公钥证书；`key` → 支付宝公钥 |
+| `pay.<name>.verify.<n>.cert-sn` | 否 | 自动计算 | 显式配置时必须与证书实际序列号一致，否则启动失败 |
+| `pay.<name>.charset` | 否 | `UTF-8` | 仅支持 UTF-8 |
+| `pay.<name>.sign-type` | 否 | `RSA2` | 仅支持 RSA2 |
 
 凭据取值两种形态：`@file:/path/to/x.pem`（UTF-8 读取）或内联 PEM 文本；**不支持 classpath 引用**。
 最小可用配置是「**一个 appId** + `env` + `private-key` + `verify.0.type` + `verify.0.value`」（`sign-mode=key` 时）。
@@ -203,18 +203,18 @@ public class AppConfig implements AifeiConfig {
 @Inject
 private PayClient pay;                 // 单例，与 PayKit.defaultClient() 是同一对象
 
-PayOrderResult qr = pay.precreate(appId, "ORDER-1", 1L, "会员年费", null);   // 扫码，payloadType=QRCODE
-PayQueryResult  q  = pay.query(appId, "ORDER-1");
-PayRefundResult r = pay.refund(appId, "ORDER-1", "REFUND-1", 1L, "用户取消");
+PayOrderResult qr = pay.createOrder(null, "ORDER-1", 1L, "会员年费", "QRCODE", null, null, null);   // 扫码
+PayQueryResult  q  = pay.query(null, "ORDER-1");
+PayRefundResult r = pay.refund(null, "ORDER-1", "REFUND-1", 1L, "用户取消");
 ```
 
 ### 步骤 4：回调验签
 
 ```java
 // 异步通知（form body 字符串）与同步跳转（query string）走同一条路径
-PayNotify notify = PayNotifyUtil.verifyAndParse(appId, formBody);   // 失败抛 PayException
+PayNotify notify = PayNotifyUtil.verifyAndParse(null, formBody);   // 失败抛 PayException
 // 业务处理成功后回 "success"
-boolean ok = PayNotifyUtil.verify(appId, paramsMap);                      // 需要布尔语义时
+boolean ok = PayNotifyUtil.verify(null, paramsMap);                      // 需要布尔语义时
 ```
 
 **模块不做去重、不做状态机**：业务必须自行按 `outTradeNo` / `outRequestNo` + `tradeStatus` 做前置校验。
@@ -232,7 +232,7 @@ boolean ok = PayNotifyUtil.verify(appId, paramsMap);                      // 需
    （模块只在内核失败与验签失败两处告警，装配成功**没有专属日志行**，因此不要靠日志文本判断。）
 3. **装配失败可读性**：故意写错一个必需键（如删掉 `env`）重启，应得到含键名、凭据被掩码为 `***（长度 n）` 的
    `PayException`，且 `PayKit.defaultClient()` 仍为空（证明不留半装配态）。验完恢复配置。
-4. **单笔沙箱下单**：用沙箱 appId（`env=sandbox`）调 `precreate`，应得到非空 `payload()` 且
+4. **单笔沙箱下单**：用沙箱通道（`env=sandbox`）调 `createOrder` 并传 `payType=QRCODE`，应得到非空 `payload()` 且
    `payloadType() == QRCODE`；随后调 `query` 查同一 `outTradeNo`，应返回该笔交易（未支付时为等待付款状态）。
 5. **回调链路**：把沙箱的一笔真实 notify 报文喂给 `PayNotifyUtil.verifyAndParse`，应验签通过并解析出
    `outTradeNo` / `tradeStatus` / `totalAmount`；再把报文中任一字段改动一个字符，应验签失败。
@@ -256,7 +256,7 @@ boolean ok = PayNotifyUtil.verify(appId, paramsMap);                      // 需
 
 **回滚时必须注意的配置项残留**（移除代码后这些键会变成无主配置，虽不报错但会误导后人）：
 
-- `pay.*` 全部键（全局 + `pay.apps.<appId>.*`，尤其 `private-key` / `app-cert` / `root-cert` / `verify.<n>.*`）
+- `pay.*` 全部键（全局 + `pay.<name>.*`，尤其 `private-key` / `app-cert` / `root-cert` / `verify.<n>.*`）
   —— 建议随代码回滚一并删除，避免凭据文件路径与「看似已启用」的配置长期滞留
 - 外部凭据文件（`/etc/alipay/*.pem|crt`）与密钥托管条目：回滚后应评估是否需要继续保留访问权限
 - 若应用其它模块也从 `aifei-all` / `bcprov-jdk18on` 取值，**不要**顺手删这两个依赖——它们不是支付专属
