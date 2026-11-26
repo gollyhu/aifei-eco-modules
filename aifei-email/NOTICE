@@ -1,0 +1,45 @@
+aifei-email
+Copyright 2014-2026 糊搞 (3722711@qq.com)
+https://gitee.com/gollyhu
+
+本产品（aifei-email）以 Apache License 2.0 发布，全文见同目录 LICENSE。
+
+本产品在运行期按需依赖下列第三方组件。它们均为 optional / provided（不随本产品向下游传递），
+由消费方在自己的构建中显式声明；是否引入、引入哪个版本由消费方决定。
+
+1) org.dromara.sms4j:sms4j-Email-core:3.3.6
+   - 用途：本模块的唯一实现内核（SMTP 统一封装 + 多配置池 + HTML 模板变量替换 + 附件发送）。
+   - 依赖范围：optional（消费方必须显式引入，缺失时装配入口启动即失败并给出可读提示）。
+   - 许可证：Apache License 2.0。
+   - 版权归属：dromara 社区（https://sms4j.com/doc3/plugin/mail.html）。
+   - 传递依赖（均随其 optional 引入，由消费方决定是否使用）：
+     * org.dromara.sms4j:sms4j-Email-api:3.3.6（Apache-2.0）
+     * org.dromara.sms4j:sms4j-Email-comm:3.3.6（Apache-2.0）
+     * cn.hutool:hutool-cron / hutool-core / hutool-setting / hutool-log / hutool-http:5.8.28（Mulan PSL v2）
+     * org.slf4j:slf4j-api:1.7.36（MIT，仅日志门面 API，无绑定实现）
+
+2) com.sun.mail:javax.mail:1.6.2
+   - 用途：sms4j-Email-core 的传递依赖，SMTP 协议实现（JavaMail）。
+   - 依赖范围：optional 的传递依赖（本产品不直接声明；缺失时本模块的发送能力不可用）。
+   - 许可证：CDDL 1.1（COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.1）
+     + GPL 2.0 with Classpath Exception。
+     - CDDL 1.1 全文：https://oss.oracle.com/licenses/CDDL+GPL-1.1
+     - GPL 2.0 全文：https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+   - 法务结论：已确认 CPE（Classpath Exception）豁免可接受，不构成对本产品 Apache-2.0 分发的阻塞。
+   - 传递依赖：javax.activation:activation:1.1（CDDL 1.0 / GPL 2.0 with CPE）。
+
+3) com.sun.activation:javax.activation:1.2.0
+   - 用途：sms4j-Email-core 的传递依赖，MIME 类型与字节流激活支持。
+   - 依赖范围：optional 的传递依赖。
+   - 许可证：CDDL 1.1 + GPL 2.0 with Classpath Exception。
+
+4) cn.aifei:aifei-all:1.1.2
+   - 用途：aifei 生态底座（插件接口 Plugin、配置源 Prop、注入工具 AopKit），仅在接入层引用。
+   - 依赖范围：provided（消费方自带，不传递）。
+   - 许可证：见 aifei 官方渠道（https://aifei.cn）随包声明。
+
+本产品不含上述任何组件的源码，也不修改其源码；仅在适配层（cn.hg.aifei.email.internal.smtp）
+调用其公开 API。使用本产品即表示同时遵守上述第三方许可证。
+
+本产品**不**声明任何日志绑定实现（不引入 slf4j-simple / logback / log4j），也不引入
+sms4j-spring-boot-starter / sms4j-solon-plugin 等任何 starter 或 solon 插件。

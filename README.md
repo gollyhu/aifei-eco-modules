@@ -37,8 +37,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-sms](aifei-sms/README.md) | `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` | 短信通道统一门面：基于 sms4j 二次封装，模板化发送 + 回执接收 + HMAC-SHA1 验签，换厂商只改配置，唯一内核 optional |
 | [aifei-sms-demo](aifei-sms-demo/README.md) | （示例工程，不发布） | aifei-sms 的完整接入示例：发送 / 多通道 / 配置错误态 / 依赖缺失态 / 回执接收 / 空态六场景单页演示（端口 18180，零外网） |
 | [aifei-pay](aifei-pay/README.md) | `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT` | 支付宝支付统一门面：IJPay V3 内核 `optional`，扫码 / H5 / PC 下单 + 查单 / 退款 + 回调验签，多应用隔离 |
-
-> `aifei-email` 目前仅有需求与设计文档（`docs/需求/aifei-email.md`、`aifei-email/docs/design.md`），尚未实现，不在上表内。
+| [aifei-email](aifei-email/README.md) | `io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT` | 出站邮件统一门面：基于 sms4j-Email-core 二次封装，纯文本 / HTML / 模板 / 附件字节，多 SMTP 配置池切换，唯一内核 optional |
+| [aifei-email-demo](aifei-email-demo/README.md) | （示例工程，不发布） | aifei-email 的完整接入示例：发送 / 多通道切换 / 配置错误态 / 依赖缺失态 / HTML 模板渲染 / 空态六场景单页演示（端口 18190，mock 发送，零外网） |
 
 ### aifei-cache
 
@@ -222,6 +222,17 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 支付宝内核四项构件（`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `bcprov-jdk18on` / `dom4j`）均为 `optional`，消费方须显式声明并锁定版本
 - 详细用法见 [aifei-pay/README.md](aifei-pay/README.md)，设计文档见 [docs/design.md](aifei-pay/docs/design.md)
 
+### aifei-email
+
+出站邮件统一门面：基于 sms4j-Email-core 二次封装，换 SMTP 服务器只改 `email.*` 配置、业务代码零改动。
+
+- 根包精确 5 个类型：`MailClient` / `MailKit` / `MailMessage` / `MailResult` / `MailException`；`spi` 包 1 个通道扩展点 `MailProvider`，公共签名零第三方 / 零框架类型
+- 纯文本 + HTML 内容 + HTML 模板（classpath `template/` + `#{变量名}`）+ 多收件人 / 抄送密送 + 附件**字节**（适配层转临时文件，发送后清理），只做同步发送
+- 多 SMTP 配置池：`email.<name>.*` 声明通道，`email.default-channel` 定默认，`MailKit.use(name)` 取命名通道；`stop()` → `start()` 改配置后注入的客户端自动指向新实例
+- 唯一内核 `sms4j-Email-core:3.3.6` 为 **`optional`**（缺失时 `EmailPlugin.start()` 启动即失败并给可读 `MailException`）；零存储、零线程池、零日志绑定、禁 starter
+- 内核传递依赖 `com.sun.mail:javax.mail:1.6.2` 许可证为 CDDL 1.1 + GPL 2.0 with CPE（法务已确认可接受），声明见 [aifei-email/NOTICE](aifei-email/NOTICE)
+- 详细用法见 [aifei-email/README.md](aifei-email/README.md)，设计文档见 [docs/design.md](aifei-email/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建，仓库根无聚合 pom。
@@ -247,13 +258,14 @@ cd aifei-i18n      && mvn clean verify      # 门禁验收命令
 cd aifei-tools     && mvn clean verify      # 门禁验收命令
 cd aifei-sms       && mvn clean install
 cd aifei-pay       && mvn clean install
+cd aifei-email     && mvn clean install
 ```
 
-**发布能力**：当前 `aifei-cache`、`aifei-oss`、`aifei-tools`、`aifei-pay` 四个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 14 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。具备发布配置 ≠ 已正式发布：当前仅 `aifei-cache` 已正式发布（基线，版本 `1.1.0`），其余模块均保持 `SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
+**发布能力**：当前 `aifei-cache`、`aifei-oss`、`aifei-tools`、`aifei-pay` 四个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 15 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。具备发布配置 ≠ 已正式发布：当前仅 `aifei-cache` 已正式发布（基线，版本 `1.1.0`），其余模块均保持 `SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
 
 ## 运行示例
 
-仓库含 12 个可运行 demo（均为**示例工程，不发布**），统一在各 demo 目录下用脚本启停：脚本先 `mvn compile dependency:build-classpath` 生成 classpath，再以 `java -cp ... cn.hg.aifei.<模块>.demo.DemoApp` 启动。运行前须先安装被演示的库模块（见上节"构建"，各 demo README 的"前置"小节亦有说明）。
+仓库含 13 个可运行 demo（均为**示例工程，不发布**），统一在各 demo 目录下用脚本启停：脚本先 `mvn compile dependency:build-classpath` 生成 classpath，再以 `java -cp ... cn.hg.aifei.<模块>.demo.DemoApp` 启动。运行前须先安装被演示的库模块（见上节"构建"，各 demo README 的"前置"小节亦有说明）。
 
 | demo 目录 | 启动 / 停止脚本 | 端口 | 验证地址 | 外部依赖 |
 | --- | --- | --- | --- | --- |
@@ -269,6 +281,7 @@ cd aifei-pay       && mvn clean install
 | `aifei-audit-demo` | `start-demo.bat` / `stop-demo.bat` | 18160 | `http://localhost:18160/` | 无 |
 | `aifei-i18n-demo` | `start-demo.bat` / `stop-demo.bat` | 18170 | `http://localhost:18170/` | 无 |
 | `aifei-sms-demo` | `start-demo.bat` / `stop-demo.bat` | 18180 | `http://localhost:18180/sms/demo/page` | 无（mock 发送，零外网） |
+| `aifei-email-demo` | `start-demo.bat` / `stop-demo.bat` | 18190 | `http://localhost:18190/email/demo/page` | 无（mock 发送，零外网） |
 
 **正式部署**：库模块以 Maven 依赖方式集成进消费方应用，由消费方自行打包启动；本仓库不提供 `aifei-*.sh` / `aifei-*.bat` 的 `start` / `stop` / `restart` 部署脚本，示例工程也不作为部署形态。
 
@@ -294,6 +307,7 @@ cd aifei-pay       && mvn clean install
 - `aifei-tools`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.1.0`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机与 mask 脱敏零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
 - `aifei-sms`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `SmsPlugin.start()` 抛可读 `SmsException`）；零日志绑定、零存储、同步发送
 - `aifei-pay`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；`IJPay-AliPay-V3:3.0.0` / `alipay-sdk-java-v3:3.1.89.ALL` / `bcprov-jdk18on:1.86` / `dom4j:2.1.5` 均为 **`optional`**，消费方须显式声明，且不要引入 `bcprov-jdk15on`、`dom4j` 不得升到字节码 55 的版本；零存储、不做幂等
+- `aifei-email`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `EmailPlugin.start()` 抛可读 `MailException`，非 `compile` 例外）；其传递依赖 `com.sun.mail:javax.mail:1.6.2` 许可证为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**（另有 `javax.activation`），法务已确认 CPE 豁免可接受，声明见 `aifei-email/LICENSE` / `aifei-email/NOTICE`；零日志绑定、零存储、同步发送、禁 starter
 
 **装配类写法约定**：下文及所有 demo 中，应用装配类统一声明为 `implements AifeiConfig<In, Out>`（`In` / `Out` 为应用自身的输入 / 输出类型，可替换为具体类型如 `AifeiConfig<OrderRequest, Result>`）；不使用裸类型 `implements AifeiConfig`（会产生编译警告），也不使用 `extends AppConfig`。各模块在 `config(Plugins)` / `config(Settings)` 中按自身需要装配插件或接入构件。
 

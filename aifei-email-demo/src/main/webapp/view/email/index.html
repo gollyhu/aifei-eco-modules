@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-email demo</title>
+    <link rel="stylesheet" href="/assets/css/email-demo.css">
+</head>
+<body>
+<div class="wrap">
+    <h1>aifei-email · 出站邮件通道演示</h1>
+    <p class="sub">基于 sms4j-Email-core 3.3.6 · mock 发送零外网 · 端口 18190</p>
+
+    <div class="grid">
+        <section class="card wide">
+            <h2>1 · 发送邮件</h2>
+            <div class="row">
+                <label>通道 <select id="channel"></select></label>
+                <label>收件人（逗号分隔） <input id="to" value="buyer@example.com"></label>
+            </div>
+            <div class="row">
+                <label>主题 <input id="subject" value="您的订单已发货"></label>
+                <label>正文类型
+                    <select id="bodyType">
+                        <option value="text">纯文本</option>
+                        <option value="html">HTML 内容</option>
+                        <option value="template">HTML 模板</option>
+                    </select>
+                </label>
+            </div>
+            <label>正文 / HTML 内容 <textarea id="content" rows="3">&lt;h3&gt;您的订单已发货&lt;/h3&gt;&lt;p&gt;预计 2 日内送达&lt;/p&gt;</textarea></label>
+            <div class="row">
+                <label>模板名（正文类型为 HTML 模板时使用） <input id="sendTemplateName" value="notice.html"></label>
+                <label>模板变量 JSON <input id="sendVariables" value='{"name":"Aifei","code":"9527"}'></label>
+            </div>
+            <div class="row">
+                <label>附件名（可选） <input id="attachmentName" value="order.txt"></label>
+                <label>附件内容（按 UTF-8 转字节，可选） <input id="attachmentContent" value="order-no: 20261126-0001"></label>
+            </div>
+            <button id="sendBtn">发送（mock）</button>
+            <pre id="sendResult" class="out empty">尚未发送</pre>
+        </section>
+
+        <section class="card">
+            <h2>2 · 多通道切换</h2>
+            <p>下拉切换通道，发送代码不变，结果的通道标识不同。</p>
+            <button id="refreshChannels">刷新通道</button>
+            <pre id="channelInfo" class="out empty">加载中…</pre>
+        </section>
+
+        <section class="card">
+            <h2>3 · 配置错误态</h2>
+            <p>只做配置校验（不触发装配），消息由库内统一构造。</p>
+            <button id="configErrorBtn">触发必填项缺失</button>
+            <pre id="configError" class="out empty">—</pre>
+        </section>
+
+        <section class="card">
+            <h2>4 · 依赖缺失态</h2>
+            <p>隔离类加载器触发依赖探测失败，消息含坐标与引入提示。</p>
+            <button id="depMissingBtn">模拟未引入 sms4j-Email-core</button>
+            <pre id="depMissing" class="out empty">—</pre>
+        </section>
+
+        <section class="card wide">
+            <h2>5 · HTML 模板渲染</h2>
+            <p>模板位于 classpath <code>template/</code>，占位符为 <code>#&#123;变量名&#125;</code>；预览由 demo 展示层同名替换生成，发送仍走真实链路。</p>
+            <div class="row">
+                <label>模板名 <input id="templateName" value="notice.html"></label>
+                <label>变量 JSON <input id="templateVariables" value='{"name":"Aifei","code":"9527"}'></label>
+                <label>收件人 <input id="templateTo" value="buyer@example.com"></label>
+            </div>
+            <button id="templateBtn">渲染预览并发送</button>
+            <pre id="templateResult" class="out empty">—</pre>
+            <div id="templatePreview" class="preview empty">渲染预览将显示在这里</div>
+        </section>
+
+        <section class="card">
+            <h2>6 · 空态 / 依赖状态</h2>
+            <button id="resetBtn">清空展示（回到空态）</button>
+            <pre id="state" class="out empty">加载中…</pre>
+        </section>
+    </div>
+</div>
+<script src="/assets/js/email-demo.js"></script>
+</body>
+</html>

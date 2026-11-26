@@ -1,0 +1,25 @@
+# ===== aifei-email-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18190 传入。
+# 以下凭据均为演示占位值；真实发送能力由 mock 内核客户端提供，全程零外网、零真实邮件。
+
+# 两个通道：通知邮箱（默认）与营销邮箱
+email.default-channel = qq
+
+email.qq.smtp-server = smtp.qq.test
+email.qq.port = 465
+email.qq.from-address = notice@example.com
+email.qq.username = notice@example.com
+email.qq.password = demo-notice-password
+email.qq.nick-name = 订单中心
+
+email.corp.smtp-server = smtp.corp.test
+email.corp.port = 587
+email.corp.from-address = market@example.com
+email.corp.username = market@example.com
+email.corp.password = demo-market-password
+email.corp.nick-name = 品牌活动
+email.corp.is-ssl = false
+email.corp.max-retries = 3
+
+# Enjoy 视图热加载（非库模块配置键）
+enjoyDevMode = true

@@ -63,6 +63,8 @@
   - `aifei-job` 的 `org.slf4j:slf4j-api` 为 `compile`——Quartz 内部日志门面，排掉会导致类加载失败，故显式直接声明（不靠 Quartz 传递，避免 Quartz 变动后门面消失）；本模块自身零 `org.slf4j.*` 引用（门禁断言）；理由同上。
   - `aifei-sentinel` 的 `com.alibaba.csp:sentinel-core` / `sentinel-parameter-flow-control` / `sentinel-datasource-extension` 为 `compile`（随 SDK 传递）——三者是 Sentinel 治理能力的实现内核（埋点、热点参数限流、规则文件热读），标 `optional` 只会迫使消费方重复声明；`sentinel-transport-simple-http` 仍为 `provided + optional`；理由见 `aifei-sentinel/docs/design.md` §3.3。
   **新增例外一律须先在此登记**，不得由模块文档单方面声明。
+- **已登记的第三方许可证留痕**（下列依赖仍为 `optional` / `provided`，**不属**上面的 `compile` 例外；compile 例外清单不变，登记目的是合规追溯与版本变更时同步声明）：
+  - `aifei-email` 的唯一实现内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6`（Apache-2.0）为 **`optional`**（不向下游传递）；其传递依赖 `com.sun.mail:javax.mail:1.6.2`（JavaMail）与 `javax.activation` / `com.sun.activation:javax.activation` 的许可证为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**，**法务已确认 CPE（Classpath Exception）豁免可接受**。声明落地在 `aifei-email/LICENSE` / `aifei-email/NOTICE` / `aifei-email/README.md` 三处；登记依据见 `aifei-email/docs/design.md` §2.2 / §13 事项 2。升级内核版本或新增传递依赖时须同步更新这三处声明。
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
 - **已登记的公共面框架类型例外**（须先在此登记，模块文档不得单方面声明）：
   - `aifei-trace` 的 `TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `cn.aifei.log.LogFactory`——日志门面接口即框架公共契约，包装实现收进 `internal` 会使使用方 `settings.setLogFactory(new TraceLogFactory(...))` 这一核心用法失效；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链；理由见 `aifei-trace/docs/design.md` §2 决策 2 / 3。

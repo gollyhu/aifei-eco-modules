@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.gollyhu</groupId>
+    <artifactId>aifei-email-demo</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>aifei-email-demo</name>
+    <description>示例工程（不发布）：验证 aifei-email 的发送、多通道切换、配置/依赖错误态、HTML 模板渲染与空态，端口 18190，全程离线 mock</description>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <aifei.version>1.1.2</aifei.version>
+        <aifei-email.version>1.0.0-SNAPSHOT</aifei-email.version>
+        <sms4j.version>3.3.6</sms4j.version>
+        <undertow.version>2.2.39.Final</undertow.version>
+    </properties>
+
+    <dependencies>
+        <!-- demo 是应用工程：框架内核以 compile 自带（库模块 aifei-all 为 provided） -->
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-all</artifactId>
+            <version>${aifei.version}</version>
+        </dependency>
+
+        <!-- 被演示的库本体：需先在 aifei-email/ 执行 mvn -q -DskipTests clean install -->
+        <dependency>
+            <groupId>io.github.gollyhu</groupId>
+            <artifactId>aifei-email</artifactId>
+            <version>${aifei-email.version}</version>
+        </dependency>
+
+        <!-- 库模块以 optional 声明唯一内核；demo 以 compile 自带，验证 optional 口径 -->
+        <dependency>
+            <groupId>org.dromara.sms4j</groupId>
+            <artifactId>sms4j-Email-core</artifactId>
+            <version>${sms4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.undertow</groupId>
+            <artifactId>undertow-core</artifactId>
+            <version>${undertow.version}</version>
+        </dependency>
+        <!-- 零日志绑定：demo 自带 ConsoleLogFactory（System.out） -->
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
