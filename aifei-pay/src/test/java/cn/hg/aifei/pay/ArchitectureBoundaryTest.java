@@ -40,12 +40,12 @@ import org.w3c.dom.NodeList;
  * 架构门禁（设计 §10）：以源码文本扫描 + 产物字节码断言保证包边界、公共面大小、Java 8 基线与离线纪律。
  *
  * <pre>
- * G-01 g01PublicSurfaceExact             根包 4 类型 + model 包 4 类型集合精确相等且 public
+ * G-01 g01PublicSurfaceExact             根包 4 + model 4 + spi 2 类型集合精确相等且 public
  * G-02 g02NoThirdPartyInPublicSurface    公共面零第三方 / 框架 import 与继承
- * G-03 g03NoSqlAndNoOtherChannels        零 JDBC、零其它支付渠道
+ * G-03 g03NoSqlAndNoOtherChannels        零 JDBC、零 aifei-weixin 依赖
  * G-04 g04LayerBoundary                  第三方类型只在登记的 internal 文件出现
  * G-05 g05Java8AndBytecode               产物 class major == 52，源码无 Java 9+ 语法与集合工厂
- * G-06 g06DependencyDiscipline           直接依赖 6 项、无日志门面、三个 exclusion 精确存在
+ * G-06 g06DependencyDiscipline           直接依赖 18 项、无日志门面、六个 exclusion 精确存在
  * a01  a01NoContainerArtifacts           零容器化产物、主源码无入口方法
  * a02  a02NoForbiddenDocWord             文档不含被禁词根
  * a03  a03NoGlobalMutableState           无进程级可变全局状态
@@ -654,7 +654,7 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
-     * G-06：直接依赖集合精确 10 项、无日志门面依赖、V2/V3 SDK 的 exclusion 精确存在。
+     * G-06：直接依赖集合精确 18 项、无日志门面依赖、V2/V3 SDK 与各渠道 SDK 的 exclusion 精确存在。
      *
      * @throws Exception 解析 pom 失败
      */

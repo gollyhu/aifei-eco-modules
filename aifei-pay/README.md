@@ -272,7 +272,7 @@ public String handleNotify(String appId, String formBody) {
     String outTradeNo = notify.outTradeNo();      // 交易幂等键
     String tradeStatus = notify.tradeStatus();    // 如 TRADE_SUCCESS
     String totalAmount = notify.totalAmount();    // 元字符串
-    boolean refundNotify = notify.type() == PayNotify.NotifyType.REFUND;
+    boolean refundNotify = notify.type() == PayNotify.Type.REFUND;
     return "success";                             // 业务处理成功后回 "success"
 }
 

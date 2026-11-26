@@ -73,12 +73,12 @@
 
 | # | 测试方法 | 断言 |
 | --- | --- | --- |
-| **G-01** | `g01PublicSurfaceExact` | 根包直接子文件集合**精确等于** 4 个公共类型；`model/` 直接子文件集合精确等于 4 个值对象；4+4 个类型均 `public`；`PayOrderResult$Channel` / `PayOrderResult$PayloadType` / `PayNotify$NotifyType` 为 public 嵌套枚举 |
+| **G-01** | `g01PublicSurfaceExact` | 根包直接子文件集合**精确等于** 4 个公共类型；`model/` 4 个值对象、`spi/` 2 个类型均精确相等；4+4+2 个类型均 `public`；`PayOrderResult$Channel` / `PayOrderResult$PayloadType` / `PayNotify$Type` 为 public 嵌套枚举 |
 | **G-02** | `g02NoThirdPartyInPublicSurface` | 根包与 `model/` 包不得 import / 继承 `com.ijpay.*` / `com.alipay.*` / `com.alibaba.fastjson*` / `cn.aifei.*` |
-| **G-03** | `g03NoSqlAndNoOtherChannels` | 全模块无 `import java.sql.`；无 `com.ijpay.wxpay` / `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 前缀；无 `IJPay-WxPay` / `IJPay-Servlet-` 代码引用 |
+| **G-03** | `g03NoSqlAndNoOtherChannels` | 全模块无 `import java.sql.`、无 `cn.aifei.weixin` 代码引用、无 `IJPay-Servlet-` 构件引用；七渠道（QQ / 京东 / 银联 / PayPal / Stripe / 富友 / XPay）引用已允许，由 G-04 白名单约束 |
 | **G-04** | `g04LayerBoundary` | `cn.aifei.*` 只允许在 `aifei/`；例外登记表**精确等于** `{internal/PayErrors.java -> cn.aifei.log., internal/PayVerifier.java -> cn.aifei.log.}`；`com.ijpay.*` 只允许在 `IjpayPayKernel` / `PayClients` / `AliPayV2Clients` / `AliPayV2PayKernel` 及 `internal/channels/` 的 `ChannelResponses` 与七个 `XxxKernel`；`com.stripe.*` 仅 `StripeKernel`；`cn.hutool.*` 仅 `ChannelResponses` / `FuiYouKernel`；`com.alipay.*` 只允许在支付宝适配器文件 |
 | **G-05** | `g05Java8AndBytecode` | `target/classes` 全部 class major == 52；源码无 `List.of(` / `Map.of(` / `Set.of(` / `record ` / `var ` / `"""` / `sealed ` / 模式匹配；源码无 `extends com.ijpay.` / `extends com.alipay.` |
-| **G-06** | `g06DependencyDiscipline` | pom 直接依赖集合精确等于 10 项（scope 亦精确）；无日志门面/绑定直接依赖；V2/V3 SDK exclusion 精确存在 |
+| **G-06** | `g06DependencyDiscipline` | pom 直接依赖集合精确等于 18 项（scope 亦精确）；无日志门面/绑定直接依赖；V2/V3 SDK 与各渠道 SDK 的六个 exclusion 精确存在 |
 | 附加 ① | `a01NoContainerArtifacts` | 无容器化构建/编排产物；`src/main/java` 无 `public static void main(String[]` |
 | 附加 ② | `a02NoForbiddenDocWord` | `README.md` / `AGENTS.md` / `docs/**/*.md` 不含项目禁用词根（`work` + `buddy` 连写，大小写不敏感） |
 | 附加 ③ | `a03NoGlobalMutableState` | 无 `Configuration.setDefaultApiClient` / `Configuration.getDefaultApiClient` / 任意 `*ApiConfigKit` / `AccessTokenKit.get` / `Security.addProvider` / `System.setProperty` / `System.getProperties().put` |
@@ -123,7 +123,7 @@
 - **查单不存在**：抛 `PayException` 且 `code() = ACQ.TRADE_NOT_EXIST`（口径唯一，不返回「空结果」形态）。
 - **退款幂等**：`outRequestNo` 原样透传给 `setOutRequestNo`，模块**不去重**；`PayRefundResult.outRequestNo()` 回显传入值。
 - **装配幂等**：重复 `start()` / `stop()` 无副作用；配置非法时**不留半装配态**（`PayHolder` 保持未装配）；`stop()` 后已注入字段仍持旧实例属已知边界（框架无注销 API），须在 README 声明。
-- **`PayKit.client()` 与 `@Inject PayClient` 返回同一对象**。
+- **`PayKit.defaultClient()` 与 `@Inject PayClient` 返回同一对象**。
 
 ## 注释规范
 

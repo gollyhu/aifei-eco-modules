@@ -87,7 +87,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- 支付宝 V3 内核：optional 阻断传递，消费方按需自带；缺失时调用期抛可读 AliPayException -->
+        <!-- 支付宝 V3 内核：optional 阻断传递，消费方按需自带；缺失时调用期抛可读 PayException -->
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-AliPay-V3</artifactId>

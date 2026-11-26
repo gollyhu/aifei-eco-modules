@@ -201,7 +201,7 @@ public class AppConfig implements AifeiConfig {
 
 ```java
 @Inject
-private PayClient pay;                 // 单例，与 PayKit.client() 是同一对象
+private PayClient pay;                 // 单例，与 PayKit.defaultClient() 是同一对象
 
 PayOrderResult qr = pay.precreate(appId, "ORDER-1", 1L, "会员年费", null);   // 扫码，payloadType=QRCODE
 PayQueryResult  q  = pay.query(appId, "ORDER-1");
@@ -228,10 +228,10 @@ boolean ok = PayNotifyUtil.verify(appId, paramsMap);                      // 需
 1. **依赖解析**：`mvn dependency:tree` 在消费方工程内应能看到 `aifei-pay`、`IJPay-AliPay-V3:3.0.0`、
    `alipay-sdk-java-v3:3.1.89.ALL`、`bcprov-jdk18on:1.86`、`org.dom4j:dom4j:2.1.5`，
    且**看不到** `dom4j:dom4j` 与 `bcprov-jdk15on`。
-2. **装配成功（机械判据）**：应用启动不抛 `PayException`；调用 `PayKit.client()` 返回**非 null**。
+2. **装配成功（机械判据）**：应用启动不抛 `PayException`；调用 `PayKit.defaultClient()` 返回**非 null**。
    （模块只在内核失败与验签失败两处告警，装配成功**没有专属日志行**，因此不要靠日志文本判断。）
 3. **装配失败可读性**：故意写错一个必需键（如删掉 `env`）重启，应得到含键名、凭据被掩码为 `***（长度 n）` 的
-   `PayException`，且 `PayKit.client()` 仍为空（证明不留半装配态）。验完恢复配置。
+   `PayException`，且 `PayKit.defaultClient()` 仍为空（证明不留半装配态）。验完恢复配置。
 4. **单笔沙箱下单**：用沙箱 appId（`env=sandbox`）调 `precreate`，应得到非空 `payload()` 且
    `payloadType() == QRCODE`；随后调 `query` 查同一 `outTradeNo`，应返回该笔交易（未支付时为等待付款状态）。
 5. **回调链路**：把沙箱的一笔真实 notify 报文喂给 `PayNotifyUtil.verifyAndParse`，应验签通过并解析出
