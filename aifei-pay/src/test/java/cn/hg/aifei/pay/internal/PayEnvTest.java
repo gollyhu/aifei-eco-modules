@@ -11,8 +11,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.pay.AliPayException;
-import cn.hg.aifei.pay.AliPayKit;
+import cn.hg.aifei.pay.PayException;
+import cn.hg.aifei.pay.PayKit;
 import cn.hg.aifei.pay.support.PayTestCrypto;
 import cn.hg.aifei.pay.support.PayTestProps;
 import java.util.Properties;
@@ -39,7 +39,7 @@ public class PayEnvTest {
     public void shouldUseSandboxGatewayWhenEnvIsSandbox() {
         PayAppConfig app = PayConfig.parse(PayTestProps.keyMode(APP)).apps().get(APP);
 
-        assertEquals("沙箱环境应使用沙箱网关", AliPayKit.GATEWAY_SANDBOX, app.gatewayUrl());
+        assertEquals("沙箱环境应使用沙箱网关", PayKit.GATEWAY_SANDBOX, app.gatewayUrl());
     }
 
     /**
@@ -52,7 +52,7 @@ public class PayEnvTest {
 
         PayAppConfig app = PayConfig.parse(properties).apps().get(APP);
 
-        assertEquals("生产环境应使用生产网关", AliPayKit.GATEWAY_PRODUCTION, app.gatewayUrl());
+        assertEquals("生产环境应使用生产网关", PayKit.GATEWAY_PRODUCTION, app.gatewayUrl());
     }
 
     /**
@@ -62,11 +62,11 @@ public class PayEnvTest {
     public void shouldKeepExplicitOfficialGatewayForProduction() {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "env"), "production",
-                PayTestProps.key(APP, "gateway-url"), AliPayKit.GATEWAY_PRODUCTION);
+                PayTestProps.key(APP, "gateway-url"), PayKit.GATEWAY_PRODUCTION);
 
         PayAppConfig app = PayConfig.parse(properties).apps().get(APP);
 
-        assertEquals(AliPayKit.GATEWAY_PRODUCTION, app.gatewayUrl());
+        assertEquals(PayKit.GATEWAY_PRODUCTION, app.gatewayUrl());
     }
 
     /**
@@ -78,7 +78,7 @@ public class PayEnvTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "gateway-url"), arbitrary);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应指出不一致：" + e.getMessage(), e.getMessage().contains("网关与环境不一致"));
         assertTrue("消息应含实际 host：" + e.getMessage(), e.getMessage().contains("pay.example.com"));
@@ -91,12 +91,12 @@ public class PayEnvTest {
     public void shouldRoutePrecreateToConfiguredGateway() {
         PayConfig config = PayConfig.parse(PayTestProps.keyMode(APP));
         PayKernelStub stub = new PayKernelStub();
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
         client.precreate(APP, "T2026010100001", 1L, "测试订单", PayTestProps.NOTIFY_URL);
 
         assertEquals("扫码下单应把沙箱网关交给内核",
-                AliPayKit.GATEWAY_SANDBOX, stub.lastCall().app().gatewayUrl());
+                PayKit.GATEWAY_SANDBOX, stub.lastCall().app().gatewayUrl());
     }
 
     /**
@@ -108,12 +108,12 @@ public class PayEnvTest {
                 PayTestProps.key(APP, "env"), "production"));
         PayConfig config = PayConfig.parse(properties);
         PayKernelStub stub = new PayKernelStub();
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
         client.pagePay(APP, "T2026010100001", 100L, "测试订单", null, null);
 
         assertEquals("页面下单应把生产网关交给内核",
-                AliPayKit.GATEWAY_PRODUCTION, stub.lastCall().app().gatewayUrl());
+                PayKit.GATEWAY_PRODUCTION, stub.lastCall().app().gatewayUrl());
     }
 
     /**
@@ -132,13 +132,13 @@ public class PayEnvTest {
 
         PayConfig config = PayConfig.parse(properties);
         PayKernelStub stub = new PayKernelStub();
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
         client.precreate(APP, "T2026010100001", 1L, "测试订单", PayTestProps.NOTIFY_URL);
-        assertEquals("主应用应走沙箱网关", AliPayKit.GATEWAY_SANDBOX, stub.lastCall().app().gatewayUrl());
+        assertEquals("主应用应走沙箱网关", PayKit.GATEWAY_SANDBOX, stub.lastCall().app().gatewayUrl());
 
         client.precreate(PayTestProps.APP_SUB, "T2026010100002", 1L, "测试订单", PayTestProps.NOTIFY_URL);
-        assertEquals("副应用应走生产网关", AliPayKit.GATEWAY_PRODUCTION, stub.lastCall().app().gatewayUrl());
+        assertEquals("副应用应走生产网关", PayKit.GATEWAY_PRODUCTION, stub.lastCall().app().gatewayUrl());
         assertEquals("两次调用的应用配置不应相同", PayTestProps.APP_SUB, stub.lastCall().app().appId());
     }
 
@@ -177,7 +177,7 @@ public class PayEnvTest {
         PayAppConfig app = PayConfig.parse(properties).apps().get(APP);
 
         assertEquals("环境标签应归一化为小写", "sandbox", app.env());
-        assertEquals(AliPayKit.GATEWAY_SANDBOX, app.gatewayUrl());
+        assertEquals(PayKit.GATEWAY_SANDBOX, app.gatewayUrl());
     }
 
     /**

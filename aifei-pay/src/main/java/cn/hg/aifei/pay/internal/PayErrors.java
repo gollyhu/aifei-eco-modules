@@ -7,13 +7,13 @@
 package cn.hg.aifei.pay.internal;
 
 import cn.aifei.log.Log;
-import cn.hg.aifei.pay.AliPayException;
+import cn.hg.aifei.pay.PayException;
 import java.lang.reflect.Method;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 异常构造与消息格式的唯一入口：全模块对外抛出的 {@link AliPayException} 都必须经本类创建。
+ * 异常构造与消息格式的唯一入口：全模块对外抛出的 {@link PayException} 都必须经本类创建。
  *
  * <p>消息模板见设计 §6.6；拼接配置值只允许经 {@link PayMask}。内核异常在收敛前 warn 一次，
  * 日志内容只含接口语义与错误码，不含报文与凭据。</p>
@@ -23,7 +23,7 @@ public final class PayErrors {
     /**
      * 未装配 / 已停止的固定消息（设计 §6.2）。
      */
-    public static final String NOT_INSTALLED = "支付宝客户端未装配或已停止";
+    public static final String NOT_INSTALLED = "支付客户端未装配或已停止";
 
     /**
      * 从内核报文文本中抽取错误码，如 {@code {"code":"ACQ.TRADE_NOT_EXIST"}}。
@@ -62,8 +62,8 @@ public final class PayErrors {
      * @param key 缺失的键名
      * @return 统一异常
      */
-    public static AliPayException missingConfig(String key) {
-        return new AliPayException("支付宝配置缺失：" + key);
+    public static PayException missingConfig(String key) {
+        return new PayException("支付宝配置缺失：" + key);
     }
 
     /**
@@ -74,8 +74,8 @@ public final class PayErrors {
      * @param reason 失败原因
      * @return 统一异常
      */
-    public static AliPayException invalidConfig(String key, String value, String reason) {
-        return new AliPayException("支付宝配置非法：" + key + "=" + PayMask.mask(key, value) + "，" + reason);
+    public static PayException invalidConfig(String key, String value, String reason) {
+        return new PayException("支付宝配置非法：" + key + "=" + PayMask.mask(key, value) + "，" + reason);
     }
 
     /**
@@ -85,7 +85,7 @@ public final class PayErrors {
      * @param key    回调地址键名
      * @return 统一异常
      */
-    public static AliPayException missingCallback(String action, String key) {
+    public static PayException missingCallback(String action, String key) {
         return invalidConfig(key, "", action + " 缺少回调地址，请显式传入或配置 " + key);
     }
 
@@ -97,8 +97,8 @@ public final class PayErrors {
      * @param actualHost   配置的网关 host
      * @return 统一异常
      */
-    public static AliPayException gatewayEnvMismatch(String env, String expectedHost, String actualHost) {
-        return new AliPayException("支付宝网关与环境不一致：env=" + env + "，gateway-url 的 host 必须为 "
+    public static PayException gatewayEnvMismatch(String env, String expectedHost, String actualHost) {
+        return new PayException("支付宝网关与环境不一致：env=" + env + "，gateway-url 的 host 必须为 "
                 + expectedHost + "，实际为 " + actualHost);
     }
 
@@ -108,8 +108,8 @@ public final class PayErrors {
      * @param appId 应用编号
      * @return 统一异常
      */
-    public static AliPayException unknownApp(String appId) {
-        return new AliPayException("支付宝应用未配置：appId=" + appId);
+    public static PayException unknownApp(String appId) {
+        return new PayException("支付宝应用未配置：appId=" + appId);
     }
 
     /**
@@ -117,8 +117,8 @@ public final class PayErrors {
      *
      * @return 统一异常，消息固定为 {@link #NOT_INSTALLED}
      */
-    public static AliPayException notInstalled() {
-        return new AliPayException(NOT_INSTALLED);
+    public static PayException notInstalled() {
+        return new PayException(NOT_INSTALLED);
     }
 
     /**
@@ -130,9 +130,9 @@ public final class PayErrors {
      * @param cause      原始异常，可为 {@code null}
      * @return 统一异常，{@code code()} 为 {@code null}
      */
-    public static AliPayException missingDependency(String groupId, String artifactId, String version,
+    public static PayException missingDependency(String groupId, String artifactId, String version,
                                                     Throwable cause) {
-        return new AliPayException("缺少支付宝依赖：" + artifactId + "，请在使用方声明 optional 依赖 "
+        return new PayException("缺少支付宝依赖：" + artifactId + "，请在使用方声明 optional 依赖 "
                 + groupId + ":" + artifactId + ":" + version, cause);
     }
 
@@ -145,10 +145,10 @@ public final class PayErrors {
      * @param cause         原始异常，仅作 {@code cause}，不进入消息
      * @return 统一异常
      */
-    public static AliPayException kernelFailure(String action, String code, String kernelMessage,
+    public static PayException kernelFailure(String action, String code, String kernelMessage,
                                                 Throwable cause) {
         Log.get(PayErrors.class).warn("支付宝接口调用失败：action=" + action + "，code=" + code);
-        return new AliPayException("支付宝接口调用失败：" + action + "，code=" + code + "，message="
+        return new PayException("支付宝接口调用失败：" + action + "，code=" + code + "，message="
                 + kernelMessage, code, cause);
     }
 
@@ -159,7 +159,7 @@ public final class PayErrors {
      * @param cause  内核抛出的原始异常
      * @return 统一异常
      */
-    public static AliPayException kernelFailure(String action, Throwable cause) {
+    public static PayException kernelFailure(String action, Throwable cause) {
         return kernelFailure(action, errorCodeOf(cause), kernelMessageOf(cause), cause);
     }
 
@@ -170,8 +170,8 @@ public final class PayErrors {
      * @param reason 失败原因（不得含报文内容与凭据）
      * @return 统一异常
      */
-    public static AliPayException verifyFailed(String appId, String reason) {
-        return new AliPayException("支付宝回调验签失败：appId=" + appId + "，原因=" + reason);
+    public static PayException verifyFailed(String appId, String reason) {
+        return new PayException("支付宝回调验签失败：appId=" + appId + "，原因=" + reason);
     }
 
     /**

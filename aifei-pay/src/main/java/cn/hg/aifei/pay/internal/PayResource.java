@@ -36,7 +36,7 @@ public final class PayResource {
      * @param key      配置键名，用于异常消息
      * @param rawValue 原始配置值：以 {@code @file:} 开头按文件读取，否则视为内联文本
      * @return 去掉首尾空白的凭据文本
-     * @throws cn.hg.aifei.pay.AliPayException 值缺失、文件不可读或内容为空
+     * @throws cn.hg.aifei.pay.PayException 值缺失、文件不可读或内容为空
      */
     public static String read(String key, String rawValue) {
         if (rawValue == null || rawValue.trim().isEmpty()) {

@@ -1,7 +1,6 @@
 # aifei-pay
 
-支付宝支付的 aifei 统一接入门面：以 IJPay 支付宝 V3 内核为依赖底座，把「配置装配 → 下单 / 查单 / 退款 → 回调验签」
-收口为稳定的公共契约，与 `aifei-weixin` 支付侧的动作语义对齐。
+基于 IJPay 的多支付通道聚合 SDK：以一套 `PayClient` 聚合 IJPay 提供的支付方式，换通道只改配置、不改业务代码。
 
 - 坐标：`io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`（`packaging=jar`）
 - 包名：`cn.hg.aifei.pay`
@@ -10,25 +9,54 @@
 本模块是**库模块（SDK）**，不是应用工程：没有 `AppConfig` / `Launcher` / `service/` 包 / 路由 / HIO / 表结构 /
 `Db+Row` / UI 页面。交易数据落在消费方业务库，不属于本模块交付物。
 
-## 1. 公共 API 一览
+## 1. 公共 API 一览（V2.0）
 
 | 类型 | 角色 |
 | --- | --- |
-| `AliPayClient` | 交易动作接口：`precreate`（扫码）/ `wapPay`（H5）/ `pagePay`（PC）/ `query` / `refund` |
-| `AliPayKit` | 静态门面：`client()` + 两个网关常量；**有状态**，依赖装配完成 |
-| `AliPayNotifyUtil` | 回调验签工具：`verify`（布尔语义）/ `verifyAndParse`（失败抛异常）；**无状态** |
-| `AliPayException` | 唯一外泄的业务失败类型（`extends RuntimeException`），`code()` 透出内核错误码 |
+| `PayClient` | 通道客户端：`createOrder` / `query` / `refund` / `channelName`，每个实例绑定一个通道 |
+| `PayKit` | 有状态门面：`defaultClient()` / `use(name)` / `channels()` |
+| `PayNotifyUtil` | 无状态验签：`verify(...)` / `verifyAndParse(...)`；可独立使用 |
+| `PayException` | 唯一外泄的业务失败类型（`extends RuntimeException`），`code()` 透出错误码 |
 | `model.PayOrderResult` | 下单结果（含 `Channel` / `PayloadType`） |
 | `model.PayQueryResult` | 查单结果 |
 | `model.PayRefundResult` | 退款结果（`outRequestNo()` 为幂等键回显） |
-| `model.PayNotifyResult` | 验签结果 + 交易 / 退款幂等键（含 `NotifyType`） |
+| `model.PayNotifyRequest` | 多渠道回调入参（参数 / header / body） |
+| `spi.PayNotify` | 验签通过后的统一回调事件，含交易 / 退款幂等键 |
+| `spi.PayNotifyListener` | 回调监听器：只接收验签通过的事件 |
+| `aifei.PayHandler` | 可选入站闭环：读报文 → 验签 → 分发 → 按渠道写响应 |
 
-根包精确 4 个公共类型、`model` 包精确 4 个值对象，由架构门禁强制，不可增删。
+根包精确 4 个公共类型、`model` 精确 4 个值对象、`spi` 精确 2 个类型，由架构门禁强制。
 
 **金额单位是非对称的**：入参统一用 `long ...Fen`（分，必须 > 0）；出参是内核原样透出的元字符串（如 `"0.01"`）。
 换算只用 `BigDecimal`，模块内不出现 `double` / `float`。
 
-## 2. 接入步骤
+### 1.1 最小接入
+
+```properties
+pay.default-channel = alipay-main
+pay.alipay-main.type = alipay
+pay.alipay-main.default-merchant-id = 2021000000000001
+pay.alipay-main.env = production
+pay.alipay-main.private-key = @file:/etc/pay/alipay-app.pem
+pay.alipay-main.verify.0.type = cert
+pay.alipay-main.verify.0.value = @file:/etc/pay/alipay-cert.crt
+```
+
+```java
+PayClient client = PayKit.defaultClient();
+PayOrderResult order = client.createOrder(null, "T2026010100001", 1L, "测试商品", "QRCODE",
+        null, null, null);
+
+PayNotifyUtil.verifyAndParse("alipay-main", null, PayNotifyRequest.of(params));
+```
+
+`wxpay` 通道由 `IJPay-WxPay` 支撑；用户可自行选择本模块或 `aifei-weixin`，两者并存且互不依赖。
+未落地适配器的渠道会明确抛 `PayException("支付通道适配器未落地：...")`，不会冒充可用能力。
+
+## 2. 支付宝通道接入细节（V2.0 通道化配置见 §1.1）
+
+以下依赖与凭据说明对 `type=alipay` 的通道仍然有效；交易动作示例中的 `precreate` / `wapPay` / `pagePay`
+已由 `createOrder(..., payType, ...)` 取代，仅保留作支付宝内核语义参考。
 
 ### 2.1 声明依赖
 
@@ -92,28 +120,28 @@
 2. `dom4j` 必须锁 `2.1.5`（2.2.0 起字节码为 55，超出 Java 8 基线）。
 3. 上述三个 exclusion 不要移除；其中 `jackson-databind-nullable` 的排除基于「该 SDK 版本被引用 0 次」的实测结论，
    **升级 `alipay-sdk-java-v3` 时必须重新验证**。
-4. 缺失内核依赖时，模块会在装配期或调用入口抛 `AliPayException`，消息含缺失坐标与补齐提示，
+4. 缺失内核依赖时，模块会在装配期或调用入口抛 `PayException`，消息含缺失坐标与补齐提示，
    不会让 `NoClassDefFoundError` 冒到业务代码。
 
 ### 2.2 装配
 
-模块提供 `aifei.AliPayPlugin implements cn.aifei.plugin.Plugin`，加入插件链即可：
+模块提供 `aifei.PayPlugin implements cn.aifei.plugin.Plugin`，加入插件链即可：
 
 ```java
 public class AppConfig implements AifeiConfig {
     @Override
     public void configPlugin(Plugins plugins) {
         Prop prop = new Prop("alipay.properties");   // 或复用应用的配置源
-        plugins.add(new AliPayPlugin(prop));
+        plugins.add(new PayPlugin(prop));
     }
 }
 ```
 
 装配顺序（`start()`）：解析 `pay.*` → 探测内核依赖 →（证书模式）探测 BouncyCastle → 为每个 appId 预建客户端 →
-注册 `@Inject AliPayClient` 单例 → 写入门面实例。
+注册 `@Inject PayClient` 单例 → 写入门面实例。
 
 - 重复 `start()` / `stop()` 无副作用。
-- 配置非法时 `start()` 抛 `AliPayException`，且**不留半装配态**（门面保持未装配）。
+- 配置非法时 `start()` 抛 `PayException`，且**不留半装配态**（门面保持未装配）。
 - 停止只清门面：容器没有注销 API，**已注入的字段仍持旧实例**属已知边界，请在应用生命周期内避免反复装配。
 
 ### 2.3 配置样例（`Properties`）
@@ -178,7 +206,7 @@ pay.apps.2021000000000002.verify.0.value = @file:/etc/alipay/sandbox-alipay-publ
 | `pay.apps.<appId>.verify.<n>.value` | **是** | 无 | PEM 或 `@file:` | `cert` → 支付宝公钥证书；`key` → 支付宝公钥 |
 | `pay.apps.<appId>.verify.<n>.cert-sn` | 否 | 自动计算 | 32 位小写 hex | 显式配置时必须与证书实际序列号一致 |
 
-启动期校验（违反即 `AliPayException`，消息含键名，凭据类值一律显示为 `***（长度 n）`）：
+启动期校验（违反即 `PayException`，消息含键名，凭据类值一律显示为 `***（长度 n）`）：
 至少一个应用；`env` 必填且合法；`gateway-url` 的 scheme 与 host 必须与环境一致；`cert` 模式下 `app-cert` /
 `root-cert` 必填；`verify.<n>` 序号必须从 0 起连续；`type` 与 `value` 必须成对；`cert-sn` 必须与证书一致；
 凭据文件必须可读且非空。
@@ -187,7 +215,7 @@ pay.apps.2021000000000002.verify.0.value = @file:/etc/alipay/sandbox-alipay-publ
 
 ```java
 @Inject
-private AliPayClient pay;
+private PayClient pay;
 
 // 1) 扫码预下单：载荷类型恒为 QRCODE
 PayOrderResult qr = pay.precreate(appId, "ORDER-20260101-0001", 1L, "会员年费", null);
@@ -203,12 +231,12 @@ wap.payloadType();  // FORM（自提交表单 HTML）或 URL（跳转地址）
 PayOrderResult page = pay.pagePay(appId, "ORDER-20260101-0003", 19900L, "企业版年费",
         "https://example.com/pay/return", null);
 
-// 4) 查单：不存在交易会抛 AliPayException 且 code() = ACQ.TRADE_NOT_EXIST
+// 4) 查单：不存在交易会抛 PayException 且 code() = ACQ.TRADE_NOT_EXIST
 try {
     PayQueryResult query = pay.query(appId, "ORDER-20260101-0001");
     query.tradeStatus();    // 如 TRADE_SUCCESS
     query.totalAmount();    // 元字符串，如 "0.01"
-} catch (AliPayException e) {
+} catch (PayException e) {
     if ("ACQ.TRADE_NOT_EXIST".equals(e.code())) {
         // 业务口径唯一：交易不存在
     }
@@ -222,11 +250,11 @@ refund.outRequestNo();  // 回显 "REFUND-0001"
 静态上下文（工具类、脚本）用门面取同一实例：
 
 ```java
-AliPayClient pay = AliPayKit.client();   // 与 @Inject 注入的是同一个对象
+PayClient pay = PayKit.defaultClient();   // 与 @Inject 注入的是同一个对象
 ```
 
 多应用：`appId` 是每个交易方法的**第一参数**，传 `null` / 空白回退 `pay.default-app-id`，未配置的 appId 抛
-`AliPayException`。每个 appId 使用各自独立的客户端实例，互不串扰；模块不使用线程绑定，也不使用静态多应用注册表。
+`PayException`。每个 appId 使用各自独立的客户端实例，互不串扰；模块不使用线程绑定，也不使用静态多应用注册表。
 
 ## 5. 回调验签
 
@@ -235,25 +263,25 @@ AliPayClient pay = AliPayKit.client();   // 与 @Inject 注入的是同一个对
 ```java
 // 异步通知：Spring MVC 风格拿 form body 字符串，或自行构造成 Map
 public String handleNotify(String appId, String formBody) {
-    PayNotifyResult notify = AliPayNotifyUtil.verifyAndParse(appId, formBody);  // 失败抛 AliPayException
+    PayNotify notify = PayNotifyUtil.verifyAndParse(appId, formBody);  // 失败抛 PayException
     String outTradeNo = notify.outTradeNo();      // 交易幂等键
     String tradeStatus = notify.tradeStatus();    // 如 TRADE_SUCCESS
     String totalAmount = notify.totalAmount();    // 元字符串
-    boolean refundNotify = notify.type() == PayNotifyResult.NotifyType.REFUND;
+    boolean refundNotify = notify.type() == PayNotify.NotifyType.REFUND;
     return "success";                             // 业务处理成功后回 "success"
 }
 
 // 需要布尔语义时
-boolean ok = AliPayNotifyUtil.verify(appId, paramsMap);
+boolean ok = PayNotifyUtil.verify(appId, paramsMap);
 
 // 同步跳转：把 query string 原样传入
-PayNotifyResult sync = AliPayNotifyUtil.verifyAndParse(appId, request.getQueryString());
+PayNotify sync = PayNotifyUtil.verifyAndParse(appId, request.getQueryString());
 ```
 
 契约要点：
 
 1. **纯函数**：不改入参 `Map`（内部先做防御性拷贝）、不写缓存，同一入参重复调用结果恒等。
-2. 验签失败：`verify` 返回 `false`；`verifyAndParse` 抛 `AliPayException`（消息含 `verify failed` 语义与 appId，
+2. 验签失败：`verify` 返回 `false`；`verifyAndParse` 抛 `PayException`（消息含 `verify failed` 语义与 appId，
    **不含报文内容与凭据**）。
 3. 缺失 `sign` 视为失败；`sign_type` 仅支持 `RSA2`，其它值一律失败（不静默放过）。
 4. 凭据轮换：同一 appId 下可配置多组 `verify.<n>`，**任一**通过即通过；证书模式且报文带 `alipay_cert_sn` 时优先
@@ -264,7 +292,7 @@ PayNotifyResult sync = AliPayNotifyUtil.verifyAndParse(appId, request.getQuerySt
 
 - 证书模式下单需要应用私钥、应用公钥证书、支付宝根证书；三者都以**内容**注入 SDK，无需落盘。
 - 证书解析强依赖 BouncyCastle：`sign-mode=cert` 或验签凭据 `type=cert` 时，装配期即探测 `bcprov-jdk18on`，
-  缺失会抛可读的 `AliPayException`（而不是 `NoClassDefFoundError`）。
+  缺失会抛可读的 `PayException`（而不是 `NoClassDefFoundError`）。
 - 证书序列号由模块用证书**内容**计算（`AntCertificationUtil.getCertSN(content)`）；`verify.<n>.cert-sn`
   若显式配置，必须与计算值一致，否则启动失败（防止配错证书）。
 - 证书轮换：把新证书配置成 `verify.0`、旧证书保留为 `verify.1`，两者并存期间都能验签；确认无旧报文后再删除旧项。
@@ -281,13 +309,13 @@ PayNotifyResult sync = AliPayNotifyUtil.verifyAndParse(appId, request.getQuerySt
 | **`charset` 仅 UTF-8** | 内核限制；值为空的字段不参与签名串 |
 | **证书模式缺 BouncyCastle 即失败** | 装配期探测并给可读异常 |
 | **凭据与环境无法机械绑定** | 模块只能校验 `gateway-url` 的 host 与 `env` 一致；「这把私钥属于沙箱还是生产」需靠配置评审与凭据来源管理兜底 |
-| **`stop()` 后已注入字段仍持旧实例** | 框架无注销 API；`AliPayKit.client()` 会立即失败，但已注入的字段不会自动置空 |
+| **`stop()` 后已注入字段仍持旧实例** | 框架无注销 API；`PayKit.defaultClient()` 会立即失败，但已注入的字段不会自动置空 |
 | **不做收银台页面 / Servlet 适配** | 模块只产出支付参数与跳转载荷，回调报文以 `String` / `Map` 入参 |
 | **不做其它渠道** | 微信支付见 `aifei-weixin`；QQ / 京东 / 银联 / PayPal / Stripe 等不在范围内 |
 | **同步跳转报文也可能为空** | 用户中途放弃支付时不会带回参数，业务需容错 |
 
 异常分类边界：调用方参数写错（空白单号、`amountFen <= 0`、超长）抛 `IllegalArgumentException`；
-配置非法 / 未装配 / 依赖缺失 / 内核失败 / 验签失败抛 `AliPayException`，`cause` 保留但不进入消息文本。
+配置非法 / 未装配 / 依赖缺失 / 内核失败 / 验签失败抛 `PayException`，`cause` 保留但不进入消息文本。
 
 ## 8. 依赖来源与许可声明
 
@@ -309,7 +337,7 @@ cd aifei-pay
 mvn clean verify                                  # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest          # 架构门禁（10 例）
 mvn test -Dtest=PayDepsBytecodeTest               # 依赖字节码断言
-javap -verbose target/classes/cn/hg/aifei/pay/AliPayClient.class | grep major   # 断言 52
+javap -verbose target/classes/cn/hg/aifei/pay/PayClient.class | grep major   # 断言 52
 ```
 
 门禁依赖模块根的相对路径 `src/main/java`，因此**必须在 `aifei-pay/` 目录内执行**。

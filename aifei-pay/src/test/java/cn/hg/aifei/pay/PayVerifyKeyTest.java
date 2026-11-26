@@ -13,7 +13,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import cn.aifei.log.LogFactory;
-import cn.hg.aifei.pay.model.PayNotifyResult;
+import cn.hg.aifei.pay.spi.PayNotify;
 import cn.hg.aifei.pay.support.NoOpLogFactory;
 import cn.hg.aifei.pay.support.PayTestCrypto;
 import cn.hg.aifei.pay.support.PayTestEnv;
@@ -29,7 +29,7 @@ import org.junit.Test;
  * 普通公钥方式的回调验签（AC-10）与凭据轮换（AC-13）。
  *
  * <p><b>固定向量</b>：报文由 {@link PayTestCrypto} 用测试私钥做 {@code SHA256withRSA} 签名得到，
- * 验签侧使用模块的 {@code AliPayNotifyUtil}。签名侧是独立实现（不复用被测代码），因此断言有效。</p>
+ * 验签侧使用模块的 {@code PayNotifyUtil}。签名侧是独立实现（不复用被测代码），因此断言有效。</p>
  */
 public class PayVerifyKeyTest {
 
@@ -73,10 +73,10 @@ public class PayVerifyKeyTest {
         PayTestEnv.install(PayTestProps.keyMode(APP));
         Map<String, String> params = signedNotify(PayTestCrypto.KEY_PAIR_OLD);
 
-        assertTrue("合法签名应通过", AliPayNotifyUtil.verify(APP, params));
+        assertTrue("合法签名应通过", PayNotifyUtil.verify(APP, params));
 
-        PayNotifyResult result = AliPayNotifyUtil.verifyAndParse(APP, params);
-        assertEquals("应为交易类通知", PayNotifyResult.NotifyType.TRADE, result.type());
+        PayNotify result = PayNotifyUtil.verifyAndParse(APP, params);
+        assertEquals("应为交易类通知", PayNotify.Type.TRADE, result.type());
         assertEquals("应透出交易幂等键", OUT_TRADE_NO, result.outTradeNo());
         assertEquals("应透出交易号", "2026010122001445101000000001", result.tradeNo());
         assertEquals("应透出交易状态", "TRADE_SUCCESS", result.tradeStatus());
@@ -93,12 +93,12 @@ public class PayVerifyKeyTest {
         Map<String, String> params = signedNotify(PayTestCrypto.KEY_PAIR_OLD);
         params.put("total_amount", "9999.00");
 
-        assertFalse("篡改金额必须验签失败", AliPayNotifyUtil.verify(APP, params));
+        assertFalse("篡改金额必须验签失败", PayNotifyUtil.verify(APP, params));
 
         try {
-            AliPayNotifyUtil.verifyAndParse(APP, params);
-            fail("验签失败必须抛 AliPayException");
-        } catch (AliPayException e) {
+            PayNotifyUtil.verifyAndParse(APP, params);
+            fail("验签失败必须抛 PayException");
+        } catch (PayException e) {
             assertTrue("消息应含 appId：" + e.getMessage(), e.getMessage().contains(APP));
             assertTrue("消息应指出验签失败：" + e.getMessage(), e.getMessage().contains("验签失败"));
             assertFalse("消息不得含报文内容：" + e.getMessage(), e.getMessage().contains("9999.00"));
@@ -114,7 +114,7 @@ public class PayVerifyKeyTest {
         Map<String, String> params = tradeNotify();
         params.put("sign_type", "RSA2");
 
-        assertFalse("缺签名必须失败", AliPayNotifyUtil.verify(APP, params));
+        assertFalse("缺签名必须失败", PayNotifyUtil.verify(APP, params));
     }
 
     /**
@@ -127,46 +127,46 @@ public class PayVerifyKeyTest {
         params.put("sign", PayTestCrypto.sign(params, PayTestCrypto.KEY_PAIR_OLD));
         params.put("sign_type", "RSA");
 
-        assertFalse("RSA（SHA1）不受支持，必须失败", AliPayNotifyUtil.verify(APP, params));
+        assertFalse("RSA（SHA1）不受支持，必须失败", PayNotifyUtil.verify(APP, params));
     }
 
     /**
-     * AC-16 支撑：未配置的 appId 验签 → 抛 {@link AliPayException}（消息含该 appId）。
+     * AC-16 支撑：未配置的 appId 验签 → 抛 {@link PayException}（消息含该 appId）。
      */
     @Test
     public void shouldThrowWhenAppIdUnknown() {
         PayTestEnv.install(PayTestProps.keyMode(APP));
         Map<String, String> params = signedNotify(PayTestCrypto.KEY_PAIR_OLD);
 
-        AliPayException e = assertThrows(AliPayException.class,
-                () -> AliPayNotifyUtil.verify("2021999999999999", params));
+        PayException e = assertThrows(PayException.class,
+                () -> PayNotifyUtil.verify("2021999999999999", params));
 
         assertTrue("消息应含 appId：" + e.getMessage(), e.getMessage().contains("2021999999999999"));
     }
 
     /**
-     * 报文参数为 {@code null} 属调用方写错 → 抛 {@link AliPayException}。
+     * 报文参数为 {@code null} 属调用方写错 → 抛 {@link PayException}。
      */
     @Test
     public void shouldThrowWhenParamsNull() {
         PayTestEnv.install(PayTestProps.keyMode(APP));
 
-        AliPayException e = assertThrows(AliPayException.class,
-                () -> AliPayNotifyUtil.verify(APP, (Map<String, String>) null));
+        PayException e = assertThrows(PayException.class,
+                () -> PayNotifyUtil.verify(APP, (Map<String, String>) null));
 
         assertTrue("消息应为验签失败：" + e.getMessage(), e.getMessage().contains("验签失败"));
     }
 
     /**
-     * 未装配（或已停止）→ 抛固定消息的 {@link AliPayException}。
+     * 未装配（或已停止）→ 抛固定消息的 {@link PayException}。
      */
     @Test
     public void shouldThrowWhenNotInstalled() {
         Map<String, String> params = signedNotify(PayTestCrypto.KEY_PAIR_OLD);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> AliPayNotifyUtil.verify(APP, params));
+        PayException e = assertThrows(PayException.class, () -> PayNotifyUtil.verify(APP, params));
 
-        assertEquals("支付宝客户端未装配或已停止", e.getMessage());
+        assertEquals("支付客户端未装配或已停止", e.getMessage());
     }
 
     /**
@@ -176,8 +176,8 @@ public class PayVerifyKeyTest {
     public void shouldVerifyWithEitherOldOrNewKeyWhenBothConfigured() {
         PayTestEnv.install(rotationProps());
 
-        assertTrue("旧凭据签名应通过", AliPayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_OLD)));
-        assertTrue("新凭据签名应通过", AliPayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_NEW)));
+        assertTrue("旧凭据签名应通过", PayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_OLD)));
+        assertTrue("新凭据签名应通过", PayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_NEW)));
     }
 
     /**
@@ -189,9 +189,9 @@ public class PayVerifyKeyTest {
                 PayTestProps.key(APP, "verify.0.value"), PayTestCrypto.PUBLIC_KEY_NEW));
 
         assertFalse("旧凭据已移除，旧签名必须失败",
-                AliPayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_OLD)));
+                PayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_OLD)));
         assertTrue("新凭据签名应通过",
-                AliPayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_NEW)));
+                PayNotifyUtil.verify(APP, signedNotify(PayTestCrypto.KEY_PAIR_NEW)));
     }
 
     /**

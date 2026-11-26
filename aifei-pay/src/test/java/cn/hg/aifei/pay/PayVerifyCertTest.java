@@ -13,7 +13,7 @@ import static org.junit.Assert.fail;
 
 import cn.hg.aifei.pay.internal.PayAppConfig;
 import cn.hg.aifei.pay.internal.PayConfig;
-import cn.hg.aifei.pay.model.PayNotifyResult;
+import cn.hg.aifei.pay.spi.PayNotify;
 import cn.hg.aifei.pay.support.NoOpLogFactory;
 import cn.hg.aifei.pay.support.PayTestCrypto;
 import cn.hg.aifei.pay.support.PayTestEnv;
@@ -82,10 +82,10 @@ public class PayVerifyCertTest {
         params.put(PARAM_CERT_SN, certSn);
         PayTestCrypto.signNotify(params, PayTestCrypto.KEY_PAIR_OLD);
 
-        assertTrue("证书序列号匹配且签名正确时应通过", AliPayNotifyUtil.verify(APP, params));
+        assertTrue("证书序列号匹配且签名正确时应通过", PayNotifyUtil.verify(APP, params));
 
-        PayNotifyResult result = AliPayNotifyUtil.verifyAndParse(APP, params);
-        assertEquals(PayNotifyResult.NotifyType.TRADE, result.type());
+        PayNotify result = PayNotifyUtil.verifyAndParse(APP, params);
+        assertEquals(PayNotify.Type.TRADE, result.type());
         assertEquals("out_trade_no 应透出为幂等键", "T2026010100001", result.outTradeNo());
     }
 
@@ -100,7 +100,7 @@ public class PayVerifyCertTest {
         params.put(PARAM_CERT_SN, PayTestCrypto.UNKNOWN_CERT_SN);
         PayTestCrypto.signNotify(params, PayTestCrypto.KEY_PAIR_OLD);
 
-        assertFalse("序列号无匹配凭据时必须失败", AliPayNotifyUtil.verify(APP, params));
+        assertFalse("序列号无匹配凭据时必须失败", PayNotifyUtil.verify(APP, params));
     }
 
     /**
@@ -115,7 +115,7 @@ public class PayVerifyCertTest {
         params.put(PARAM_CERT_SN, certSn);
         PayTestCrypto.signNotify(params, PayTestCrypto.KEY_PAIR_NEW);
 
-        assertFalse("签名与证书不匹配时必须失败", AliPayNotifyUtil.verify(APP, params));
+        assertFalse("签名与证书不匹配时必须失败", PayNotifyUtil.verify(APP, params));
     }
 
     /**
@@ -128,7 +128,7 @@ public class PayVerifyCertTest {
         Map<String, String> params = tradeNotify();
         PayTestCrypto.signNotify(params, PayTestCrypto.KEY_PAIR_OLD);
 
-        assertTrue("单证书配置不应强制要求报文携带序列号", AliPayNotifyUtil.verify(APP, params));
+        assertTrue("单证书配置不应强制要求报文携带序列号", PayNotifyUtil.verify(APP, params));
     }
 
     /**
@@ -141,7 +141,7 @@ public class PayVerifyCertTest {
         Map<String, String> params = tradeNotify();
         PayTestCrypto.signNotify(params, PayTestCrypto.KEY_PAIR_OLD);
 
-        assertFalse("多证书且无序列号时不应猜测凭据", AliPayNotifyUtil.verify(APP, params));
+        assertFalse("多证书且无序列号时不应猜测凭据", PayNotifyUtil.verify(APP, params));
     }
 
     /**
@@ -163,8 +163,8 @@ public class PayVerifyCertTest {
         byNew.put(PARAM_CERT_SN, newCertSn);
         PayTestCrypto.signNotify(byNew, PayTestCrypto.KEY_PAIR_NEW);
 
-        assertTrue("轮换期旧凭据应仍可通过", AliPayNotifyUtil.verify(APP, byOld));
-        assertTrue("轮换期新凭据应可通过", AliPayNotifyUtil.verify(APP, byNew));
+        assertTrue("轮换期旧凭据应仍可通过", PayNotifyUtil.verify(APP, byOld));
+        assertTrue("轮换期新凭据应可通过", PayNotifyUtil.verify(APP, byNew));
     }
 
     /**
@@ -181,11 +181,11 @@ public class PayVerifyCertTest {
         params.put(PARAM_CERT_SN, oldCertSn);
         PayTestCrypto.signNotify(params, PayTestCrypto.KEY_PAIR_OLD);
 
-        assertFalse("旧凭据移除后旧签名必须失败", AliPayNotifyUtil.verify(APP, params));
+        assertFalse("旧凭据移除后旧签名必须失败", PayNotifyUtil.verify(APP, params));
     }
 
     /**
-     * AC-11：证书模式下的验签失败经由 {@code verifyAndParse} 抛 {@link AliPayException}，且消息不含报文内容。
+     * AC-11：证书模式下的验签失败经由 {@code verifyAndParse} 抛 {@link PayException}，且消息不含报文内容。
      */
     @Test
     public void shouldThrowWithoutLeakingMessageContentWhenCertSignatureInvalid() {
@@ -196,9 +196,9 @@ public class PayVerifyCertTest {
         params.put("subject", "被篡改的标题");
 
         try {
-            AliPayNotifyUtil.verifyAndParse(APP, params);
-            fail("验签失败必须抛 AliPayException");
-        } catch (AliPayException e) {
+            PayNotifyUtil.verifyAndParse(APP, params);
+            fail("验签失败必须抛 PayException");
+        } catch (PayException e) {
             assertTrue("消息应含 appId：" + e.getMessage(), e.getMessage().contains(APP));
             assertFalse("消息不得含报文内容：" + e.getMessage(), e.getMessage().contains("被篡改的标题"));
         }

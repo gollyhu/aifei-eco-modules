@@ -12,6 +12,128 @@
 
 ---
 
+## V2. 多渠道聚合设计定稿（覆盖前文冲突口径）
+
+> **生效声明**：本节是 2026-11-26 用户四项裁决后的**设计事实来源**。下文 V1.x 章节中凡涉及「支付宝单通道」「`AliPay*` 公共类型」「`pay.apps.<appId>.*` 顶层配置」「禁其它渠道」「仅验签工具无 Handler」的表述均已被本节覆盖；实现、门禁与测试以本节为准。
+
+### V2.1 定位与公共面
+
+模块定位改为「基于 IJPay 的多支付通道聚合 SDK」，结构对齐 `aifei-sms`：一套 `PayClient` 聚合多通道，`PayKit` 提供默认与命名通道。根包公共类型冻结为 4 个，删除全部 `AliPay*` 兼容层：
+
+| 包 | 精确公共类型 | 职责 |
+| --- | --- | --- |
+| `cn.hg.aifei.pay` | `PayClient` / `PayKit` / `PayNotifyUtil` / `PayException` | 交易动作、有状态门面、无状态验签、统一异常 |
+| `cn.hg.aifei.pay.model` | `PayOrderResult` / `PayQueryResult` / `PayRefundResult` / `PayNotifyRequest` | 自有值对象，零第三方 / 零框架类型 |
+| `cn.hg.aifei.pay.spi` | `PayNotify` / `PayNotifyListener` | 验签通过后的回调事件与监听器 |
+| `cn.hg.aifei.pay.aifei` | `PayPlugin` / `PayHandler` / `PayIo` | 非承诺接入层：装配、入站闭环、传输桥接 |
+
+### V2.2 公共 API 逐字签名
+
+```java
+public interface PayClient {
+    PayOrderResult createOrder(String merchantId, String outTradeNo, long amountFen,
+                               String subject, String payType, String returnUrl,
+                               String notifyUrl, Map<String, String> options);
+    PayQueryResult query(String merchantId, String outTradeNo);
+    PayRefundResult refund(String merchantId, String outTradeNo, String outRequestNo,
+                           long refundFen, String refundReason);
+    String channelName();
+}
+
+public final class PayKit {
+    public static PayClient defaultClient();
+    public static PayClient use(String channelName);
+    public static Set<String> channels();
+}
+
+public final class PayNotifyUtil {
+    public static boolean verify(String channelName, String merchantId, PayNotifyRequest request);
+    public static PayNotify verifyAndParse(String channelName, String merchantId, PayNotifyRequest request);
+}
+
+public class PayException extends RuntimeException {
+    public PayException(String message);
+    public PayException(String message, Throwable cause);
+    public PayException(String message, String code, Throwable cause);
+    public String code();
+}
+```
+
+`PayClient` 实例绑定一个通道；`merchantId` 为通道内商户 / 应用标识，`null` / 空白回退该通道默认值；`payType` 为通道内下单产品（支付宝 `QRCODE` / `WAP` / `PAGE`，微信 `JSAPI` / `NATIVE` 等）；`options` 为通道扩展参数，可为 `null`。调用方参数错误抛 `IllegalArgumentException`；配置、依赖、内核、验签失败统一抛 `PayException`。
+
+### V2.3 配置模型
+
+```properties
+pay.default-channel = alipay-main
+
+pay.alipay-main.type = alipay
+pay.alipay-main.default-merchant-id = 2021000000000001
+pay.alipay-main.env = production
+pay.alipay-main.private-key = @file:/etc/pay/alipay-app.pem
+pay.alipay-main.verify.0.type = cert
+pay.alipay-main.verify.0.value = @file:/etc/pay/alipay-cert.crt
+
+pay.wxpay-main.type = wxpay
+pay.wxpay-main.default-merchant-id = 1900000001
+pay.wxpay-main.api-v3-key = @file:/etc/pay/wxpay-api-v3.key
+pay.wxpay-main.cert-serial-no = 5Fxxxx
+```
+
+通道清单由 `pay.<name>.type` 推导；`pay.default-channel` 指定默认通道，单通道可缺省。`type` 白名单见 V2.5。配置解析唯一定义点为 `internal.PayConfig`，凭据读取仍为 `internal.PayResource`（`@file:` / 内联 PEM，不支持 classpath）。
+
+### V2.4 回调双模型（共存、共用验签核心）
+
+- `PayNotifyUtil.verify` / `verifyAndParse`：无状态、纯函数、不读 HTTP、不写响应、不调监听器；返回布尔或 `PayNotify`，失败抛 `PayException`。
+- `PayHandler` + `PayNotifyListener`：可选入站闭环，路径 `/pay/notify/{channel}`；`PayIo` 抽象参数 / header / body 读取与响应写回。流程固定为：读请求 → 构造 `PayNotifyRequest` → 调 `PayNotifyUtil.verifyAndParse` → 同步分发监听器 → 按渠道写成功 / 失败应答。
+- 两者**必须**调用同一 `internal.PayVerifier` 核心；源码门禁断言验签实现唯一。
+- 模块不做幂等、不做状态机、不落库；`PayNotify` 透出 `outTradeNo` / `outRequestNo` 等幂等键。
+
+### V2.5 渠道白名单与落地状态
+
+| `type` | 内核构件 | 本期状态 |
+| --- | --- | --- |
+| `alipay` | `IJPay-AliPay-V3:3.0.0` | 完整迁移 |
+| `wxpay` | `IJPay-WxPay:3.0.0` | 完整迁移；与 `aifei-weixin` 并存、用户二选一 |
+| `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` | 对应 IJPay 3.0.0 构件 | 结构支持、适配器逐项补齐；未落地时明确提示 |
+
+`IJPay-AliPay` V2 暂不纳入。`PayTypes` 是类型白名单、必填键与适配器工厂的唯一定义点；未知 `type` 启动即失败。
+
+### V2.6 包结构与唯一定义点
+
+```text
+cn.hg.aifei.pay
+├── PayClient / PayKit / PayNotifyUtil / PayException
+├── model: PayOrderResult / PayQueryResult / PayRefundResult / PayNotifyRequest
+├── spi: PayNotify / PayNotifyListener
+├── aifei: PayPlugin / PayHandler / PayIo
+└── internal
+    ├── PayConfig / PayTypes / PayClients / PayErrors / PayMask / PayDeps / PayAmounts / PayResults / PayForms
+    ├── PayVerifier / DefaultPayClient
+    └── ijpay.alipay.* / ijpay.wxpay.*       渠道适配器，IJPay 类型只在此出现
+```
+
+唯一定义点：配置与校验 `PayConfig`；类型白名单与必填键 `PayTypes`；通道注册表 `PayClients`；异常消息 `PayErrors`；脱敏 `PayMask`；依赖探测 `PayDeps`；验签核心 `PayVerifier`；值对象转换 `PayResults`；回调解析 `PayForms`；装配 `PayPlugin`；回调闭环 `PayHandler`。
+
+### V2.7 依赖与门禁
+
+- `aifei-all` 为 `provided`；所有 IJPay 构件与渠道 SDK 为 `optional`；新增通道必须先通过 `PayDepsBytecodeTest` 的 Java 8 字节码断言。
+- G-01 公共面按 V2.1 精确断言且无 `AliPay*`；G-02 公共签名零第三方 / 零框架；G-03 无 `java.sql.`、`com.ijpay.*` 仅在 `internal`、白名单外渠道零命中、零 `cn.aifei.weixin`；G-04 `cn.aifei.*` 仅在 `aifei`；G-05 class major 52；G-06 依赖 optional。
+- 新增 AC-23~AC-27：多通道注册、双模型共用核心、Handler 闭环、微信通道、渠道白名单。
+
+### V2.8 迁移与任务顺序
+
+1. V2-T01：需求 PRD V2.0 与本设计 V2 节（已完成）。
+2. V2-T02：pom 增加 `IJPay-WxPay` optional，保留支付宝依赖锁定。
+3. V2-T03：新增公共类型、删除 `AliPay*`、`model` / `spi` 落地。
+4. V2-T04：配置模型与 `PayTypes` / `PayClients` 注册表。
+5. V2-T05：支付宝实现迁入 `internal/ijpay/alipay`。
+6. V2-T06：微信实现 `internal/ijpay/wxpay`。
+7. V2-T07：`PayVerifier` + `PayNotifyUtil` + `PayHandler` / `PayIo` / `PayNotifyListener`。
+8. V2-T08：门禁与测试全量改造，`mvn clean verify` 0/0。
+9. V2-T09：`README` / `AGENTS` / `testing` / `CHANGELOG` / `release` / 根 `CODEBUDDY.md` 同步。
+
+---
+
 ## 1. 模块定位与边界
 
 ### 1.1 定位

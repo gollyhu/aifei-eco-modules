@@ -12,8 +12,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.pay.AliPayException;
-import cn.hg.aifei.pay.AliPayKit;
+import cn.hg.aifei.pay.PayException;
+import cn.hg.aifei.pay.PayKit;
 import cn.hg.aifei.pay.support.PayTestCrypto;
 import cn.hg.aifei.pay.support.PayTestProps;
 import com.alipay.v3.ApiClient;
@@ -68,7 +68,7 @@ public class PayMultiAppTest {
      */
     @Test
     public void shouldResolveEachApplicationIndependently() {
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
         client.precreate(APP_A, "T-A-0001", 1L, "订单A", PayTestProps.NOTIFY_URL);
         PayKernelStub.Call callA = stub.lastCall();
@@ -76,9 +76,9 @@ public class PayMultiAppTest {
         PayKernelStub.Call callB = stub.lastCall();
 
         assertEquals("A 的应用编号", APP_A, callA.app().appId());
-        assertEquals("A 走沙箱网关", AliPayKit.GATEWAY_SANDBOX, callA.app().gatewayUrl());
+        assertEquals("A 走沙箱网关", PayKit.GATEWAY_SANDBOX, callA.app().gatewayUrl());
         assertEquals("B 的应用编号", APP_B, callB.app().appId());
-        assertEquals("B 走生产网关", AliPayKit.GATEWAY_PRODUCTION, callB.app().gatewayUrl());
+        assertEquals("B 走生产网关", PayKit.GATEWAY_PRODUCTION, callB.app().gatewayUrl());
         assertNotSame("两次调用应拿到不同的应用配置快照", callA.app(), callB.app());
     }
 
@@ -87,7 +87,7 @@ public class PayMultiAppTest {
      */
     @Test
     public void shouldFallbackToDefaultAppIdWhenAppIdBlank() {
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
         client.query(null, "T-A-0001");
         assertEquals("null 应回退默认应用", APP_A, stub.lastCall().app().appId());
@@ -104,7 +104,7 @@ public class PayMultiAppTest {
      */
     @Test
     public void shouldPreferExplicitAppIdOverDefault() {
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
         client.query(APP_B, "T-B-0001");
 
@@ -112,13 +112,13 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：未配置的 appId → 抛 {@link AliPayException}，消息含该 appId。
+     * AC-16：未配置的 appId → 抛 {@link PayException}，消息含该 appId。
      */
     @Test
     public void shouldThrowWhenAppIdNotConfigured() {
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
-        AliPayException e = assertThrows(AliPayException.class,
+        PayException e = assertThrows(PayException.class,
                 () -> client.query("2021999999999999", "T-0001"));
 
         assertTrue("消息应含 appId：" + e.getMessage(), e.getMessage().contains("2021999999999999"));
@@ -126,13 +126,13 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：既未传 appId 又未配置默认应用 → 抛 {@link AliPayException}，消息含默认应用键名。
+     * AC-16：既未传 appId 又未配置默认应用 → 抛 {@link PayException}，消息含默认应用键名。
      */
     @Test
     public void shouldThrowWhenNoDefaultAppIdAndAppIdBlank() {
-        DefaultAliPayClient client = new DefaultAliPayClient(PayConfig.parse(PayTestProps.keyMode(APP_A)), stub);
+        DefaultPayClient client = new DefaultPayClient(PayConfig.parse(PayTestProps.keyMode(APP_A)), stub);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> client.query(null, "T-0001"));
+        PayException e = assertThrows(PayException.class, () -> client.query(null, "T-0001"));
 
         assertTrue("消息应含默认应用键名：" + e.getMessage(),
                 e.getMessage().contains(PayConfig.KEY_DEFAULT_APP_ID));
@@ -143,7 +143,7 @@ public class PayMultiAppTest {
      */
     @Test
     public void shouldNotLeakApplicationAcrossSequentialCalls() {
-        DefaultAliPayClient client = new DefaultAliPayClient(config, stub);
+        DefaultPayClient client = new DefaultPayClient(config, stub);
 
         client.query(APP_A, "T-A-0001");
         client.query(APP_B, "T-B-0001");
@@ -171,8 +171,8 @@ public class PayMultiAppTest {
 
         assertNotSame("不同应用必须使用不同客户端实例", clientA, clientB);
         assertSame("同一应用应复用缓存实例", clientA, clients.apiClient(APP_A));
-        assertEquals("A 的网关", AliPayKit.GATEWAY_SANDBOX, clientA.getBasePath());
-        assertEquals("B 的网关", AliPayKit.GATEWAY_PRODUCTION, clientB.getBasePath());
+        assertEquals("A 的网关", PayKit.GATEWAY_SANDBOX, clientA.getBasePath());
+        assertEquals("B 的网关", PayKit.GATEWAY_PRODUCTION, clientB.getBasePath());
         assertEquals("A 的连接超时", 5000, clientA.getConnectTimeout());
         assertEquals("A 的读取超时", 15000, clientA.getReadTimeout());
     }

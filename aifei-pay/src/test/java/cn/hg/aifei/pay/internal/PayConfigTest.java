@@ -12,8 +12,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.pay.AliPayException;
-import cn.hg.aifei.pay.AliPayKit;
+import cn.hg.aifei.pay.PayException;
+import cn.hg.aifei.pay.PayKit;
 import cn.hg.aifei.pay.support.PayTestCrypto;
 import cn.hg.aifei.pay.support.PayTestProps;
 import java.io.IOException;
@@ -28,7 +28,7 @@ import org.junit.Test;
 /**
  * 配置解析与校验（AC-05 / AC-15）：设计 §7.2 的九条启动期校验逐条落用例，外加全局键的取值与默认值。
  *
- * <p>判定口径：任一校验失败即抛 {@link AliPayException}，消息含**键名**且凭据值被脱敏为 {@code ***}；
+ * <p>判定口径：任一校验失败即抛 {@link PayException}，消息含**键名**且凭据值被脱敏为 {@code ***}；
  * 失败不留半装配态（由 {@code PayPluginTest} 从装配侧再断言一次）。</p>
  */
 public class PayConfigTest {
@@ -66,7 +66,7 @@ public class PayConfigTest {
      */
     @Test
     public void shouldFailWhenNoApplicationConfigured() {
-        AliPayException e = assertThrows(AliPayException.class,
+        PayException e = assertThrows(PayException.class,
                 () -> PayConfig.parse(PayTestProps.fresh()));
 
         assertTrue("消息应含键名 pay.apps.：" + e.getMessage(), e.getMessage().contains("pay.apps."));
@@ -80,7 +80,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.fresh(),
                 "pay.apps..env", "sandbox");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应指出应用编号不能为空：" + e.getMessage(), e.getMessage().contains("应用编号"));
     }
@@ -92,7 +92,7 @@ public class PayConfigTest {
     public void shouldFailWhenApplicationKeyHasNoSubKey() {
         Properties properties = PayTestProps.with(PayTestProps.fresh(), "pay.apps." + APP, "sandbox");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应提示缺少子键：" + e.getMessage(), e.getMessage().contains("子键"));
     }
@@ -105,7 +105,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.without(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "env"));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "env")));
@@ -119,7 +119,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "env"), "staging");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "env")));
@@ -133,9 +133,9 @@ public class PayConfigTest {
     @Test
     public void shouldFailWhenGatewayHostMismatchesEnv() {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
-                PayTestProps.key(APP, "gateway-url"), AliPayKit.GATEWAY_PRODUCTION);
+                PayTestProps.key(APP, "gateway-url"), PayKit.GATEWAY_PRODUCTION);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应指出网关与环境不一致：" + e.getMessage(), e.getMessage().contains("网关与环境不一致"));
         assertTrue("消息应含 env：" + e.getMessage(), e.getMessage().contains("env=sandbox"));
@@ -152,7 +152,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "gateway-url"), insecure);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "gateway-url")));
@@ -164,7 +164,7 @@ public class PayConfigTest {
      */
     @Test
     public void shouldAcceptOfficialGatewayIgnoringHostCase() {
-        String upperCase = AliPayKit.GATEWAY_SANDBOX.toUpperCase(Locale.ROOT);
+        String upperCase = PayKit.GATEWAY_SANDBOX.toUpperCase(Locale.ROOT);
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "gateway-url"), upperCase);
 
@@ -181,7 +181,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.without(PayTestProps.certMode(APP),
                 PayTestProps.key(APP, "app-cert"));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含 app-cert 键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "app-cert")));
@@ -195,7 +195,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.without(PayTestProps.certMode(APP),
                 PayTestProps.key(APP, "root-cert"));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含 root-cert 键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "root-cert")));
@@ -222,7 +222,7 @@ public class PayConfigTest {
                 PayTestProps.key(APP, "verify.2.type"), "key",
                 PayTestProps.key(APP, "verify.2.value"), PayTestCrypto.PUBLIC_KEY_NEW);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应指出缺少序号 1：" + e.getMessage(), e.getMessage().contains("缺少序号 1"));
     }
@@ -235,7 +235,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.without(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "verify.0.value"));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含 value 键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "verify.0.value")));
@@ -249,7 +249,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.without(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "verify.0.type"));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含 type 键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "verify.0.type")));
@@ -263,7 +263,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "verify.0.type"), "public-key");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含 type 键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "verify.0.type")));
@@ -278,7 +278,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.certMode(APP),
                 PayTestProps.key(APP, "verify.0.cert-sn"), "not-a-cert-sn");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含 cert-sn 键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "verify.0.cert-sn")));
@@ -293,7 +293,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.certMode(APP),
                 PayTestProps.key(APP, "verify.0.cert-sn"), PayTestCrypto.UNKNOWN_CERT_SN);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应指出与证书不一致：" + e.getMessage(), e.getMessage().contains("不一致"));
     }
@@ -323,7 +323,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "private-key"), location);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "private-key")));
@@ -342,7 +342,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "private-key"), "@file:" + tempFile.toString().replace('\\', '/'));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应指出内容为空：" + e.getMessage(), e.getMessage().contains("内容为空"));
     }
@@ -355,7 +355,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 "pay.connect-timeout", "0");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(), e.getMessage().contains("pay.connect-timeout"));
     }
@@ -368,7 +368,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 "pay.read-timeout", "15s");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(), e.getMessage().contains("pay.read-timeout"));
     }
@@ -381,7 +381,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 "pay.page-http-method", "PUT");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(), e.getMessage().contains("pay.page-http-method"));
     }
@@ -394,7 +394,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "charset"), "GBK");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "charset")));
@@ -408,7 +408,7 @@ public class PayConfigTest {
         Properties properties = PayTestProps.with(PayTestProps.keyMode(APP),
                 PayTestProps.key(APP, "sign-type"), "RSA");
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "sign-type")));
@@ -428,7 +428,7 @@ public class PayConfigTest {
         assertEquals("默认字符集", "UTF-8", app.charset());
         assertEquals("默认签名类型", "RSA2", app.signType());
         assertEquals("默认环境为沙箱", "sandbox", app.env());
-        assertEquals("沙箱默认网关", AliPayKit.GATEWAY_SANDBOX, app.gatewayUrl());
+        assertEquals("沙箱默认网关", PayKit.GATEWAY_SANDBOX, app.gatewayUrl());
         assertNull("未配置默认应用时为空", config.defaultAppId());
     }
 
@@ -454,7 +454,7 @@ public class PayConfigTest {
                 PayTestProps.key(APP, "private-key"), SECRET_PLACEHOLDER);
         PayTestProps.without(properties, PayTestProps.key(APP, "app-cert"));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> PayConfig.parse(properties));
+        PayException e = assertThrows(PayException.class, () -> PayConfig.parse(properties));
 
         assertTrue("消息应含键名：" + e.getMessage(),
                 e.getMessage().contains(PayTestProps.key(APP, "app-cert")));
@@ -485,7 +485,7 @@ public class PayConfigTest {
         PayConfig config = PayConfig.parse(properties);
 
         assertEquals("应解析出两个应用", 2, config.apps().size());
-        assertEquals(AliPayKit.GATEWAY_SANDBOX, config.apps().get(APP).gatewayUrl());
-        assertEquals(AliPayKit.GATEWAY_PRODUCTION, config.apps().get(PayTestProps.APP_SUB).gatewayUrl());
+        assertEquals(PayKit.GATEWAY_SANDBOX, config.apps().get(APP).gatewayUrl());
+        assertEquals(PayKit.GATEWAY_PRODUCTION, config.apps().get(PayTestProps.APP_SUB).gatewayUrl());
     }
 }

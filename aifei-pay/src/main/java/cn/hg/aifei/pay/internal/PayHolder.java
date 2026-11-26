@@ -6,7 +6,7 @@
 
 package cn.hg.aifei.pay.internal;
 
-import cn.hg.aifei.pay.AliPayClient;
+import cn.hg.aifei.pay.PayClient;
 
 /**
  * 运行期实例持有：装配期写入、停止期清除，公共门面据此取当前可用的客户端与验签器。
@@ -24,7 +24,7 @@ public final class PayHolder {
     /**
      * 当前已装配的客户端，未装配时为 {@code null}。
      */
-    private static AliPayClient client;
+    private static PayClient client;
 
     /**
      * 当前已装配的验签器，未装配时为 {@code null}。
@@ -40,19 +40,19 @@ public final class PayHolder {
     /**
      * 写入当前实例，覆盖既有值。
      *
-     * @param aliPayClient 已装配的客户端
+     * @param PayClient 已装配的客户端
      * @param payVerifier  已装配的验签器
      * @throws IllegalArgumentException 任一参数为 {@code null}
      */
-    public static void install(AliPayClient aliPayClient, PayVerifier payVerifier) {
-        if (aliPayClient == null) {
+    public static void install(PayClient PayClient, PayVerifier payVerifier) {
+        if (PayClient == null) {
             throw new IllegalArgumentException("client 不能为 null");
         }
         if (payVerifier == null) {
             throw new IllegalArgumentException("verifier 不能为 null");
         }
         synchronized (LOCK) {
-            client = aliPayClient;
+            client = PayClient;
             verifier = payVerifier;
         }
     }
@@ -60,10 +60,10 @@ public final class PayHolder {
     /**
      * 取当前客户端。
      *
-     * @return 已装配的客户端，与 {@code @Inject AliPayClient} 注入的是同一个对象
-     * @throws cn.hg.aifei.pay.AliPayException 未装配或已停止
+     * @return 已装配的客户端，与 {@code @Inject PayClient} 注入的是同一个对象
+     * @throws cn.hg.aifei.pay.PayException 未装配或已停止
      */
-    public static AliPayClient client() {
+    public static PayClient client() {
         synchronized (LOCK) {
             if (client == null) {
                 throw PayErrors.notInstalled();
@@ -76,7 +76,7 @@ public final class PayHolder {
      * 取当前验签器。
      *
      * @return 已装配的验签器
-     * @throws cn.hg.aifei.pay.AliPayException 未装配或已停止
+     * @throws cn.hg.aifei.pay.PayException 未装配或已停止
      */
     public static PayVerifier verifier() {
         synchronized (LOCK) {

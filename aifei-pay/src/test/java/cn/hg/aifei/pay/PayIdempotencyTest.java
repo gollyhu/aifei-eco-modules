@@ -12,7 +12,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import cn.aifei.log.LogFactory;
-import cn.hg.aifei.pay.model.PayNotifyResult;
+import cn.hg.aifei.pay.spi.PayNotify;
 import cn.hg.aifei.pay.support.NoOpLogFactory;
 import cn.hg.aifei.pay.support.PayTestCrypto;
 import cn.hg.aifei.pay.support.PayTestEnv;
@@ -45,7 +45,7 @@ public class PayIdempotencyTest {
     private static final String[] VERIFY_PATH_FILES = {
             "src/main/java/cn/hg/aifei/pay/internal/PayVerifier.java",
             "src/main/java/cn/hg/aifei/pay/internal/PayForms.java",
-            "src/main/java/cn/hg/aifei/pay/AliPayNotifyUtil.java"
+            "src/main/java/cn/hg/aifei/pay/PayNotifyUtil.java"
     };
 
     /**
@@ -102,8 +102,8 @@ public class PayIdempotencyTest {
         Map<String, String> params = signedNotify(PayTestCrypto.KEY_PAIR_OLD);
 
         for (int i = 0; i < REPEAT; i++) {
-            assertTrue("第 " + (i + 1) + " 次验签应仍为通过", AliPayNotifyUtil.verify(APP, params));
-            PayNotifyResult result = AliPayNotifyUtil.verifyAndParse(APP, params);
+            assertTrue("第 " + (i + 1) + " 次验签应仍为通过", PayNotifyUtil.verify(APP, params));
+            PayNotify result = PayNotifyUtil.verifyAndParse(APP, params);
             assertEquals("第 " + (i + 1) + " 次解析的幂等键应一致", "T2026010100001", result.outTradeNo());
         }
     }
@@ -117,8 +117,8 @@ public class PayIdempotencyTest {
         Map<String, String> params = signedNotify(PayTestCrypto.KEY_PAIR_OLD);
         Map<String, String> snapshot = new LinkedHashMap<>(params);
 
-        assertTrue(AliPayNotifyUtil.verify(APP, params));
-        AliPayNotifyUtil.verifyAndParse(APP, params);
+        assertTrue(PayNotifyUtil.verify(APP, params));
+        PayNotifyUtil.verifyAndParse(APP, params);
 
         assertEquals("入参规模不应变化", snapshot.size(), params.size());
         assertEquals("sign 不应被移除", snapshot.get("sign"), params.get("sign"));
@@ -132,15 +132,15 @@ public class PayIdempotencyTest {
     @Test
     public void shouldExposeTradeAndRefundIdempotencyKeys() {
         Map<String, String> trade = signedNotify(PayTestCrypto.KEY_PAIR_OLD);
-        PayNotifyResult tradeResult = AliPayNotifyUtil.verifyAndParse(APP, trade);
-        assertEquals("交易类通知", PayNotifyResult.NotifyType.TRADE, tradeResult.type());
+        PayNotify tradeResult = PayNotifyUtil.verifyAndParse(APP, trade);
+        assertEquals("交易类通知", PayNotify.Type.TRADE, tradeResult.type());
         assertEquals("交易幂等键", "T2026010100001", tradeResult.outTradeNo());
         assertEquals("无退款单号时为空串", "", tradeResult.outRequestNo());
 
         Map<String, String> refund = refundNotify();
         PayTestCrypto.signNotify(refund, PayTestCrypto.KEY_PAIR_OLD);
-        PayNotifyResult refundResult = AliPayNotifyUtil.verifyAndParse(APP, refund);
-        assertEquals("退款类通知", PayNotifyResult.NotifyType.REFUND, refundResult.type());
+        PayNotify refundResult = PayNotifyUtil.verifyAndParse(APP, refund);
+        assertEquals("退款类通知", PayNotify.Type.REFUND, refundResult.type());
         assertEquals("退款幂等键", "R2026010100001", refundResult.outRequestNo());
         assertEquals("退款金额", "0.01", refundResult.refundFee());
     }
@@ -150,7 +150,7 @@ public class PayIdempotencyTest {
      */
     @Test
     public void shouldReturnUnmodifiableParamsCopy() {
-        PayNotifyResult result = AliPayNotifyUtil.verifyAndParse(APP, signedNotify(PayTestCrypto.KEY_PAIR_OLD));
+        PayNotify result = PayNotifyUtil.verifyAndParse(APP, signedNotify(PayTestCrypto.KEY_PAIR_OLD));
 
         assertThrows(UnsupportedOperationException.class, () -> result.params().put("trade_status", "TRADE_CLOSED"));
     }

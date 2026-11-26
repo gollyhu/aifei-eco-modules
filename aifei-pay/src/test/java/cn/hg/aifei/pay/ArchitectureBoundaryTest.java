@@ -99,6 +99,11 @@ public class ArchitectureBoundaryTest {
     private static final String MODEL_DIR = ROOT_DIR + "model/";
 
     /**
+     * SPI 包目录（带尾斜杠）。
+     */
+    private static final String SPI_DIR = ROOT_DIR + "spi/";
+
+    /**
      * 实现层包目录（带尾斜杠）。
      */
     private static final String INTERNAL_DIR = ROOT_DIR + "internal/";
@@ -112,10 +117,10 @@ public class ArchitectureBoundaryTest {
      * 根包公共类型的期望文件名集合。
      */
     private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Arrays.asList(
-            "AliPayClient.java",
-            "AliPayKit.java",
-            "AliPayNotifyUtil.java",
-            "AliPayException.java"
+            "PayClient.java",
+            "PayKit.java",
+            "PayNotifyUtil.java",
+            "PayException.java"
     ));
 
     /**
@@ -124,18 +129,26 @@ public class ArchitectureBoundaryTest {
     private static final Set<String> EXPECTED_MODEL_TYPES = new LinkedHashSet<>(Arrays.asList(
             "PayOrderResult.java",
             "PayQueryResult.java",
-            "PayNotifyResult.java",
+            "PayNotifyRequest.java",
             "PayRefundResult.java"
+    ));
+
+    /**
+     * SPI 包的期望文件名集合。
+     */
+    private static final Set<String> EXPECTED_SPI_TYPES = new LinkedHashSet<>(Arrays.asList(
+            "PayNotify.java",
+            "PayNotifyListener.java"
     ));
 
     /**
      * 根包公共类型全限定名。
      */
     private static final String[] ROOT_FQNS = {
-            "cn.hg.aifei.pay.AliPayClient",
-            "cn.hg.aifei.pay.AliPayKit",
-            "cn.hg.aifei.pay.AliPayNotifyUtil",
-            "cn.hg.aifei.pay.AliPayException"
+            "cn.hg.aifei.pay.PayClient",
+            "cn.hg.aifei.pay.PayKit",
+            "cn.hg.aifei.pay.PayNotifyUtil",
+            "cn.hg.aifei.pay.PayException"
     };
 
     /**
@@ -144,8 +157,16 @@ public class ArchitectureBoundaryTest {
     private static final String[] MODEL_FQNS = {
             "cn.hg.aifei.pay.model.PayOrderResult",
             "cn.hg.aifei.pay.model.PayQueryResult",
-            "cn.hg.aifei.pay.model.PayNotifyResult",
+            "cn.hg.aifei.pay.model.PayNotifyRequest",
             "cn.hg.aifei.pay.model.PayRefundResult"
+    };
+
+    /**
+     * SPI 全限定名。
+     */
+    private static final String[] SPI_FQNS = {
+            "cn.hg.aifei.pay.spi.PayNotify",
+            "cn.hg.aifei.pay.spi.PayNotifyListener"
     };
 
     /**
@@ -154,7 +175,7 @@ public class ArchitectureBoundaryTest {
     private static final String[] NESTED_ENUMS = {
             "cn.hg.aifei.pay.model.PayOrderResult$Channel",
             "cn.hg.aifei.pay.model.PayOrderResult$PayloadType",
-            "cn.hg.aifei.pay.model.PayNotifyResult$NotifyType"
+            "cn.hg.aifei.pay.spi.PayNotify$Type"
     };
 
     /**
@@ -178,24 +199,16 @@ public class ArchitectureBoundaryTest {
     };
 
     /**
-     * 其它支付渠道的包前缀：本模块只做支付宝。
+     * 禁止的跨模块渠道前缀：本模块与 aifei-weixin 零 import 依赖。
      */
     private static final String[] OTHER_CHANNEL_PREFIXES = {
-            "com.ijpay.wxpay",
-            "com.ijpay.qq",
-            "com.ijpay.jdpay",
-            "com.ijpay.unionpay",
-            "com.ijpay.paypal",
-            "com.ijpay.stripe",
-            "com.ijpay.fuiou",
-            "com.ijpay.xpay"
+            "cn.aifei.weixin"
     };
 
     /**
-     * 其它渠道的构件名片段。
+     * 禁止的渠道构件名片段。
      */
     private static final String[] OTHER_CHANNEL_ARTIFACTS = {
-            "IJPay-WxPay",
             "IJPay-Servlet-"
     };
 
@@ -341,7 +354,7 @@ public class ArchitectureBoundaryTest {
     /**
      * 唯一允许出现网关字面量的主源码文件。
      */
-    private static final String GATEWAY_CONSTANTS_FILE = ROOT_DIR + "AliPayKit.java";
+    private static final String GATEWAY_CONSTANTS_FILE = ROOT_DIR + "PayKit.java";
 
     /**
      * 协议标记（拼接构造：本文件位于测试源码，不得出现完整协议字面量）。
@@ -393,11 +406,18 @@ public class ArchitectureBoundaryTest {
         assertEquals("model 包公共类型应精确为 4 个，实际为 " + modelTypes, 4, modelTypes.size());
         assertEquals("model 包文件名集合应精确匹配，实际为 " + modelTypes, EXPECTED_MODEL_TYPES, modelTypes);
 
+        Set<String> spiTypes = directJavaFileNames(SOURCE_ROOT.resolve(SPI_DIR));
+        assertEquals("spi 包公共类型应精确为 2 个，实际为 " + spiTypes, 2, spiTypes.size());
+        assertEquals("spi 包文件名集合应精确匹配，实际为 " + spiTypes, EXPECTED_SPI_TYPES, spiTypes);
+
         for (String fqn : ROOT_FQNS) {
             assertTrue("根包公共类型必须为 public：" + fqn, Modifier.isPublic(load(fqn).getModifiers()));
         }
         for (String fqn : MODEL_FQNS) {
             assertTrue("值对象必须为 public：" + fqn, Modifier.isPublic(load(fqn).getModifiers()));
+        }
+        for (String fqn : SPI_FQNS) {
+            assertTrue("SPI 类型必须为 public：" + fqn, Modifier.isPublic(load(fqn).getModifiers()));
         }
         for (String fqn : NESTED_ENUMS) {
             Class<?> type = load(fqn);
@@ -437,7 +457,7 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
-     * G-03：全模块零 JDBC、零其它支付渠道。
+     * G-03：全模块零 JDBC、零 aifei-weixin 代码依赖。
      *
      * @throws IOException 读取源码失败
      */
@@ -463,7 +483,7 @@ public class ArchitectureBoundaryTest {
                 }
             }
         }
-        assertTrue("本模块零 DB、只做支付宝渠道，违规：" + offenders, offenders.isEmpty());
+        assertTrue("本模块零 DB、零 aifei-weixin 依赖，违规：" + offenders, offenders.isEmpty());
     }
 
     /**
@@ -786,6 +806,10 @@ public class ArchitectureBoundaryTest {
         int modelIndex = path.lastIndexOf(MODEL_DIR);
         if (modelIndex >= 0) {
             return !path.substring(modelIndex + MODEL_DIR.length()).contains("/");
+        }
+        int spiIndex = path.lastIndexOf(SPI_DIR);
+        if (spiIndex >= 0) {
+            return !path.substring(spiIndex + SPI_DIR.length()).contains("/");
         }
         int rootIndex = path.lastIndexOf(ROOT_DIR);
         if (rootIndex < 0) {

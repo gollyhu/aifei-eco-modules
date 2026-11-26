@@ -10,7 +10,7 @@ package cn.hg.aifei.pay.internal;
  * 可选依赖探测：全模块唯一的 {@code Class.forName} 调用点。
  *
  * <p>内核依赖全部声明为 {@code optional}，缺失时必须在装配期或调用入口转成可读的
- * {@link cn.hg.aifei.pay.AliPayException}，不得让 {@code NoClassDefFoundError} 冒到调用方。</p>
+ * {@link cn.hg.aifei.pay.PayException}，不得让 {@code NoClassDefFoundError} 冒到调用方。</p>
  */
 public final class PayDeps {
 

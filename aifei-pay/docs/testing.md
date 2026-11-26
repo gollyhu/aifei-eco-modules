@@ -2,7 +2,7 @@
 
 > **文件定位**：本文是 `aifei-pay` 的**测试事实来源**——用例清单、「AC 编号 ↔ 用例 ↔ 实跑结果」三列映射、
 > 未覆盖项与原因、失败反证记录、缺陷路由结论、未验证项收口情况。契约见 `docs/design.md`，
-> 需求事实来源见 `docs/需求/aifei-pay.md`（AC-01~AC-22，V1.1 口径）。
+> 需求事实来源见 `docs/需求/aifei-pay.md`（AC-01~AC-27，V2.0 口径）。
 >
 > **验证纪律**：本文所有「通过」结论均来自**实际执行输出**（命令与原始数字见 §2），不含凭代码阅读的推断。
 >
@@ -15,8 +15,8 @@
 
 | 项 | 结果 |
 | --- | --- |
-| 用例总数 | **153** |
-| 通过 | **153** |
+| 用例总数 | **161** |
+| 通过 | **161** |
 | 失败 / 错误 / 跳过 | **0 / 0 / 0** |
 | 构建 | `mvn clean verify` **BUILD SUCCESS**（AC-22） |
 | 源码缺陷（回流开发工程师） | **0 条** |
@@ -51,7 +51,7 @@ mvn test -Dtest=PayVerifyCertTest
 | `cn.hg.aifei.pay.internal.PayDepsTest` | 6 | 通过 |
 | `cn.hg.aifei.pay.internal.PayErrorsTest` | 16 | 通过 |
 | `cn.hg.aifei.pay.PayPluginTest` | 6 | 通过 |
-| `cn.hg.aifei.pay.AliPayKitTest` | 4 | 通过 |
+| `cn.hg.aifei.pay.PayKitTest` | 4 | 通过 |
 | `cn.hg.aifei.pay.internal.PayOrderTest` | 13 | 通过 |
 | `cn.hg.aifei.pay.internal.PayQueryTest` | 6 | 通过 |
 | `cn.hg.aifei.pay.internal.PayRefundTest` | 6 | 通过 |
@@ -61,9 +61,9 @@ mvn test -Dtest=PayVerifyCertTest
 | `cn.hg.aifei.pay.PayVerifyFormTest` | 7 | 通过 |
 | `cn.hg.aifei.pay.PayIdempotencyTest` | 5 | 通过 |
 | `cn.hg.aifei.pay.PayKernelAttributionTest` | 4 | 通过 |
-| **合计** | **153** | **Failures 0 / Errors 0 / Skipped 0** |
+| **合计** | **161** | **Failures 0 / Errors 0 / Skipped 0** |
 
-原始汇总行：`[INFO] Tests run: 153, Failures: 0, Errors: 0, Skipped: 0` / `[INFO] BUILD SUCCESS`。
+原始汇总行：`[INFO] Tests run: 161, Failures: 0, Errors: 0, Skipped: 0` / `[INFO] BUILD SUCCESS`。
 
 ### 2.3 测试辅助件（非用例）
 
@@ -96,7 +96,7 @@ mvn test -Dtest=PayVerifyCertTest
 
 | AC | 对应用例 | 结果 |
 | --- | --- | --- |
-| `AC-01` 装配 | `cn.hg.aifei.pay.PayPluginTest#shouldRegisterClientSingleton`<br>`cn.hg.aifei.pay.PayPluginTest#shouldFailFastOnInvalidConfigAndLeaveNoHalfState`<br>`cn.hg.aifei.pay.PayPluginTest#shouldBeIdempotent`<br>`cn.hg.aifei.pay.PayPluginTest#shouldReuseClientAcrossRestart`<br>`cn.hg.aifei.pay.PayPluginTest#shouldRejectNullProp`<br>`cn.hg.aifei.pay.PayPluginTest#shouldStartWithCertificateMode`<br>`cn.hg.aifei.pay.AliPayKitTest#shouldThrowWhenNotInstalled`<br>`cn.hg.aifei.pay.AliPayKitTest#shouldReturnInstalledClient`<br>`cn.hg.aifei.pay.AliPayKitTest#shouldFailAfterStop`<br>`cn.hg.aifei.pay.PayVerifyKeyTest#shouldThrowWhenNotInstalled` | 通过 |
+| `AC-01` 装配 | `cn.hg.aifei.pay.PayPluginTest#shouldRegisterClientSingleton`<br>`cn.hg.aifei.pay.PayPluginTest#shouldFailFastOnInvalidConfigAndLeaveNoHalfState`<br>`cn.hg.aifei.pay.PayPluginTest#shouldBeIdempotent`<br>`cn.hg.aifei.pay.PayPluginTest#shouldReuseClientAcrossRestart`<br>`cn.hg.aifei.pay.PayPluginTest#shouldRejectNullProp`<br>`cn.hg.aifei.pay.PayPluginTest#shouldStartWithCertificateMode`<br>`cn.hg.aifei.pay.PayKitTest#shouldThrowWhenNotInstalled`<br>`cn.hg.aifei.pay.PayKitTest#shouldReturnInstalledClient`<br>`cn.hg.aifei.pay.PayKitTest#shouldFailAfterStop`<br>`cn.hg.aifei.pay.PayVerifyKeyTest#shouldThrowWhenNotInstalled` | 通过 |
 | `AC-02` Java 8 字节码 | 门禁侧（代码关产出，本轮回归）：`cn.hg.aifei.pay.ArchitectureBoundaryTest#g05Java8AndBytecode`<br>`cn.hg.aifei.pay.internal.PayDepsBytecodeTest#dependencyClassesWithinJava8Baseline`<br>`cn.hg.aifei.pay.internal.PayDepsBytecodeTest#dependencyCoordinatesAreLocked` | 通过 |
 | `AC-03` 公共面数量 | `cn.hg.aifei.pay.ArchitectureBoundaryTest#g01PublicSurfaceExact` | 通过 |
 | `AC-04` 零第三方类型 | `cn.hg.aifei.pay.ArchitectureBoundaryTest#g02NoThirdPartyInPublicSurface`<br>`cn.hg.aifei.pay.ArchitectureBoundaryTest#g04LayerBoundary` | 通过 |
@@ -110,14 +110,14 @@ mvn test -Dtest=PayVerifyCertTest
 | `AC-12` 同步 / 异步报文 | `cn.hg.aifei.pay.PayVerifyFormTest#shouldVerifySyncReturnQueryString`<br>`cn.hg.aifei.pay.PayVerifyFormTest#shouldVerifyAsyncNotifyFormBody`<br>`cn.hg.aifei.pay.PayVerifyFormTest#shouldParseBothFormsToSameResult`<br>`cn.hg.aifei.pay.PayVerifyFormTest#shouldDecodeUrlEncodedValuesBeforeVerifying`<br>`cn.hg.aifei.pay.PayVerifyFormTest#shouldRejectTamperedFormBody`<br>`cn.hg.aifei.pay.PayVerifyFormTest#shouldRejectMalformedFormBody`<br>`cn.hg.aifei.pay.PayVerifyFormTest#shouldThrowWhenFormBodyNull` | 通过 |
 | `AC-13` 凭据轮换 | `cn.hg.aifei.pay.PayVerifyKeyTest#shouldVerifyWithEitherOldOrNewKeyWhenBothConfigured`<br>`cn.hg.aifei.pay.PayVerifyKeyTest#shouldRejectOldKeySignatureWhenOnlyNewKeyConfigured`<br>`cn.hg.aifei.pay.PayVerifyCertTest#shouldVerifyBothOldAndNewCertsDuringRotation`<br>`cn.hg.aifei.pay.PayVerifyCertTest#shouldRejectOldCertSignatureWhenOnlyNewCertConfigured`<br>`cn.hg.aifei.pay.PayVerifyCertTest#shouldRejectWhenMultipleCertsAndMessageHasNoCertSn` | 通过 |
 | `AC-14` 幂等边界 | `cn.hg.aifei.pay.PayIdempotencyTest#shouldReturnStableResultAcrossRepeatedCalls`<br>`cn.hg.aifei.pay.PayIdempotencyTest#shouldNotMutateInputMap`<br>`cn.hg.aifei.pay.PayIdempotencyTest#shouldExposeTradeAndRefundIdempotencyKeys`<br>`cn.hg.aifei.pay.PayIdempotencyTest#shouldReturnUnmodifiableParamsCopy`<br>`cn.hg.aifei.pay.PayIdempotencyTest#shouldHoldNoDedupStateInVerifyPath` | 通过 |
-| `AC-15` 环境切换 | `cn.hg.aifei.pay.internal.PayEnvTest#shouldUseSandboxGatewayWhenEnvIsSandbox`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldUseProductionGatewayWhenEnvIsProduction`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldKeepExplicitOfficialGatewayForProduction`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldFailWhenGatewayHostIsNotOfficial`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldRoutePrecreateToConfiguredGateway`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldRoutePagePayToProductionGateway`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldNotShareGatewayBetweenApps`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldAcceptSameCredentialForBothEnvironments`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldNormalizeEnvCaseInsensitively`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldHaveDistinctHostsForSandboxAndProduction`<br>`cn.hg.aifei.pay.internal.PayConfigTest#shouldFailWhenGatewayHostMismatchesEnv`<br>`cn.hg.aifei.pay.internal.PayConfigTest#shouldFailWhenGatewaySchemeIsNotHttps`<br>`cn.hg.aifei.pay.internal.PayConfigTest#shouldAcceptOfficialGatewayIgnoringHostCase`<br>`cn.hg.aifei.pay.AliPayKitTest#shouldExposeOfficialGateways`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldBuildIsolatedSdkClientPerApplication` | 通过 |
+| `AC-15` 环境切换 | `cn.hg.aifei.pay.internal.PayEnvTest#shouldUseSandboxGatewayWhenEnvIsSandbox`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldUseProductionGatewayWhenEnvIsProduction`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldKeepExplicitOfficialGatewayForProduction`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldFailWhenGatewayHostIsNotOfficial`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldRoutePrecreateToConfiguredGateway`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldRoutePagePayToProductionGateway`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldNotShareGatewayBetweenApps`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldAcceptSameCredentialForBothEnvironments`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldNormalizeEnvCaseInsensitively`<br>`cn.hg.aifei.pay.internal.PayEnvTest#shouldHaveDistinctHostsForSandboxAndProduction`<br>`cn.hg.aifei.pay.internal.PayConfigTest#shouldFailWhenGatewayHostMismatchesEnv`<br>`cn.hg.aifei.pay.internal.PayConfigTest#shouldFailWhenGatewaySchemeIsNotHttps`<br>`cn.hg.aifei.pay.internal.PayConfigTest#shouldAcceptOfficialGatewayIgnoringHostCase`<br>`cn.hg.aifei.pay.PayKitTest#shouldExposeOfficialGateways`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldBuildIsolatedSdkClientPerApplication` | 通过 |
 | `AC-16` 多应用 | `cn.hg.aifei.pay.internal.PayMultiAppTest#shouldResolveEachApplicationIndependently`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldFallbackToDefaultAppIdWhenAppIdBlank`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldPreferExplicitAppIdOverDefault`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldThrowWhenAppIdNotConfigured`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldThrowWhenNoDefaultAppIdAndAppIdBlank`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldNotLeakApplicationAcrossSequentialCalls`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldBuildIsolatedSdkClientPerApplication`<br>`cn.hg.aifei.pay.internal.PayMultiAppTest#shouldBuildIsolatedPageApiPerApplication`<br>`cn.hg.aifei.pay.internal.PayConfigTest#shouldParseMultipleApplicationsIndependently`<br>`cn.hg.aifei.pay.PayVerifyKeyTest#shouldThrowWhenAppIdUnknown` | 通过 |
 | `AC-17` 依赖缺失可读异常 | `cn.hg.aifei.pay.internal.PayDepsTest#shouldPassWhenDependenciesArePresent`<br>`cn.hg.aifei.pay.internal.PayDepsTest#shouldReportMissingIjpayWithCoordinates`<br>`cn.hg.aifei.pay.internal.PayDepsTest#shouldReportMissingSdkWithCoordinates`<br>`cn.hg.aifei.pay.internal.PayDepsTest#shouldReportMissingBouncyCastle`<br>`cn.hg.aifei.pay.internal.PayDepsTest#shouldSurfaceMissingDependencyFromTradeCall`<br>`cn.hg.aifei.pay.internal.PayDepsTest#shouldSurfaceMissingDependencyFromVerifyCall` | 通过 |
 | `AC-18` 异常收敛 | `cn.hg.aifei.pay.internal.PayErrorsTest#shouldExposeCodeAndCauseFromKernelFailure`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldExtractCodeFromResponseBody`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldExtractCodeFromExceptionMessage`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldLeaveCodeNullWhenNothingToExtract`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldTruncateOverlongKernelMessage`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldHideOriginalExceptionTypeInMessage`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldComposeDocumentedMessageTemplates`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldComposeMissingDependencyMessageWithoutStackTrace`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldBeRobustWhenExtractingCodeFromNull`<br>`cn.hg.aifei.pay.internal.PayErrorsTest#shouldIgnoreNonStringCodeAndFallBackToResponseBody`<br>`cn.hg.aifei.pay.internal.PayQueryTest#shouldWrapCheckedKernelException`<br>`cn.hg.aifei.pay.internal.PayQueryTest#shouldThrowWithTradeNotExistCodeWhenOrderMissing` | 通过 |
 | `AC-19` 依赖 scope | `cn.hg.aifei.pay.ArchitectureBoundaryTest#g06DependencyDiscipline`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldDependOnIjpayAsMavenArtifact` | 通过 |
 | `AC-20` 零 DB / 不引其它渠道 | `cn.hg.aifei.pay.ArchitectureBoundaryTest#g03NoSqlAndNoOtherChannels` | 通过 |
 | `AC-21` 依赖内核不复制 | `cn.hg.aifei.pay.PayKernelAttributionTest#shouldNotContainKernelPackageSource`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldNotRedefineKernelTypes`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldDependOnIjpayAsMavenArtifact`<br>`cn.hg.aifei.pay.PayKernelAttributionTest#shouldDeclareUpstreamOriginAndLicense`<br>`cn.hg.aifei.pay.ArchitectureBoundaryTest#a02NoForbiddenDocWord` | 通过 |
-| `AC-22` 构建 | `mvn clean verify`（构建级判定，无对应用例类） | 通过（153/0/0/0，BUILD SUCCESS） |
+| `AC-22` 构建 | `mvn clean verify`（构建级判定，无对应用例类） | 通过（161/0/0/0，BUILD SUCCESS） |
 
 ### 4.1 顺带覆盖的模块附加约束（非 AC，但同批用例守护）
 
@@ -137,7 +137,7 @@ mvn test -Dtest=PayVerifyCertTest
 | `AC-02` | **部分**（依赖侧由代码关用例承载） | 本轮未新增字节码用例，仅回归 `PayDepsBytecodeTest`（2 例）。主 JAR 侧由 `g05Java8AndBytecode` 断言。依赖树实际条目数与 `mvn dependency:tree` 的逐行比对属发布关核对范围。 |
 | `AC-03` / `AC-04` / `AC-19` / `AC-20` | **门禁承载**（本轮只回归） | 由 `ArchitectureBoundaryTest` 的 `G-01` / `G-02` / `G-04` / `G-06` / `G-03` 断言，未放宽、未改写。 |
 | `AC-06` | 通过（伪内核） | AC 原文的「沙箱集成（可选）」分支**未执行**——需要真实沙箱 appId 与商户密钥，本轮无凭据。 |
-| `AC-08` | 通过（模块口径唯一） | 已断言「不存在订单 → 抛 `AliPayException` 且 `code()=ACQ.TRADE_NOT_EXIST`」；**内核是否真的稳定返回该错误码**属未验证项 V-2（需沙箱）。 |
+| `AC-08` | 通过（模块口径唯一） | 已断言「不存在订单 → 抛 `PayException` 且 `code()=ACQ.TRADE_NOT_EXIST`」；**内核是否真的稳定返回该错误码**属未验证项 V-2（需沙箱）。 |
 | `AC-15` | 通过（可机械验证边界内） | 仅覆盖 `env` 必填、网关 host 与 `env` 一致、不同 appId 网关互不串扰。**「凭据归属环境」明确不可机械验证**——`PayEnvTest#shouldAcceptSameCredentialForBothEnvironments` 用「同一套凭据可同时配置到沙箱与生产应用」把该边界固定成事实，防止后人误以为模块能拦截。 |
 | `AC-10`~`AC-12` | 通过（固定向量） | 使用自签证书与测试密钥构造向量，**不是**支付宝真实报文样本（真实样本字段名属未验证项 V-1）。 |
 | `AC-22` | 通过（构建级） | 由 `mvn clean verify` 判定，本轮实跑通过；正式发布需在发布关重跑。 |
@@ -149,7 +149,7 @@ mvn test -Dtest=PayVerifyCertTest
 | 编号 | 设计列出的未验证项 | 本轮结论 | 依据 / 后续 |
 | --- | --- | --- | --- |
 | `V-1` | 回调报文中证书序列号字段名是否为 `alipay_cert_sn` | **仍不能核**（需沙箱真实报文） | 本轮按设计假设固化行为：报文带 `alipay_cert_sn` 时只尝试序列号相等者（`PayVerifyCertTest#shouldVerifyNotifyWhenCertSnMatchesConfiguredCert`）。字段名真实性**留待实机抓取 notify 报文**。 |
-| `V-2` | 不存在订单时内核是否稳定返回 `ACQ.TRADE_NOT_EXIST` 且非 2xx | **仍不能核**（需沙箱调用一次） | 已核模块侧：只要内核给出该错误码，`code()` 即透出且抛 `AliPayException`（`PayQueryTest#shouldThrowWithTradeNotExistCodeWhenOrderMissing`）。 |
+| `V-2` | 不存在订单时内核是否稳定返回 `ACQ.TRADE_NOT_EXIST` 且非 2xx | **仍不能核**（需沙箱调用一次） | 已核模块侧：只要内核给出该错误码，`code()` 即透出且抛 `PayException`（`PayQueryTest#shouldThrowWithTradeNotExistCodeWhenOrderMissing`）。 |
 | `V-3` | `setConnectTimeout` / `setReadTimeout` 是否被请求路径实际消费 | **部分核**（赋值已核，消费未核） | 已断言配置值确实写入 SDK 客户端（`PayMultiAppTest#shouldBuildIsolatedSdkClientPerApplication` 读取 `getConnectTimeout()` / `getReadTimeout()`）。「被 execute 路径消费」需真实（或回环）请求，本轮受零联网纪律约束不做，留待实机。 |
 | `V-4` | `pay.page-http-method=GET` 时内核返回可跳转 URL | **部分核**（模块侧已核） | 已断言 GET 会传给内核，返回字符串被标记为 `payloadType=URL`（`PayOrderTest#shouldReturnUrlPayloadWhenPageHttpMethodIsGet`）。内核真实返回形态需沙箱。 |
 | `V-5` | `*Content` 形态与 `*Path` 形态在 `ApiClient` 内是否等价 | **本轮闭环（代码级 + 装配实测）** | 依据本模块已核对的 SDK 源码：`ApiClient#setAlipayConfig` 对两类形态是「内容优先、路径读成内容」的单一路径（`getXxxContent()` 为空时才 `readCertContent(getXxxPath())`），因此**证书模式下单可完全不落盘**；并由 `PayPluginTest#shouldStartWithCertificateMode` 用纯内容形态装配成功固化。 |
@@ -196,7 +196,7 @@ mvn test -Dtest=PayVerifyCertTest
 | --- | --- | --- | --- |
 | 1 | §5.3 第 11 行把伪内核列在 `src/test/java/cn/hg/aifei/pay/support/PayKernelStub.java` | 放在 `src/test/java/cn/hg/aifei/pay/internal/PayKernelStub.java` | `internal.PayKernel` 是**包级可见**接口（`javap` 断言非 public），`support` 包无法实现它。设计清单的位置不可编译，必须就近放在 `internal`。 |
 | 2 | §5.3 第 20 行要求 `src/test/resources/pay/fixture/` 存放密钥与证书夹具 | **不入库**：由 `support.PayTestCrypto` 在运行期生成 | 夹具来源与有效期可审计、仓库零凭据；生成只用 classpath 上已有的 `bcprov-jdk18on`，未新增依赖。用途限定声明见本文 §3。 |
-| 3 | §5.3 合计「19 个 Java 测试文件」 | 实际 `src/test/java` 共 23 个 `.java` | 多出 4 个：3 个测试支撑件（`PayTestProps` / `PayTestCrypto` / `PayTestEnv`）+ 1 个用例类（`PayKernelAttributionTest`，承载 AC-21 的机械可验证部分）。夹具类从「1 个 support 伪内核」变为「1 个 internal 伪内核 + 3 个 support 支撑件」，用例总数 153。 |
+| 3 | §5.3 合计「19 个 Java 测试文件」 | 实际 `src/test/java` 共 25 个 `.java` | 多出 6 个：3 个测试支撑件（`PayTestProps` / `PayTestCrypto` / `PayTestEnv`）+ 1 个用例类（`PayKernelAttributionTest`，承载 AC-21 的机械可验证部分）+ 2 个 V2.0 用例类（`PayChannelRegistryTest` / `PayHandlerTest`）。夹具类从「1 个 support 伪内核」变为「1 个 internal 伪内核 + 3 个 support 支撑件」，用例总数 161。 |
 
 ---
 

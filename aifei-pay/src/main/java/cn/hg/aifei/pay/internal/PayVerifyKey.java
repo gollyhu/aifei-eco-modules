@@ -84,7 +84,7 @@ public final class PayVerifyKey {
      * @param rawValue    凭据原始配置值（内联 PEM 或 {@code @file:} 路径）
      * @param certSnText  显式配置的证书序列号，可为 {@code null}
      * @return 验签凭据
-     * @throws cn.hg.aifei.pay.AliPayException 类型非法、凭据读取失败、序列号非法或与证书不一致、缺 BouncyCastle
+     * @throws cn.hg.aifei.pay.PayException 类型非法、凭据读取失败、序列号非法或与证书不一致、缺 BouncyCastle
      */
     public static PayVerifyKey of(String baseKey, String typeText, String rawValue, String certSnText) {
         Type type = typeOf(baseKey, typeText);

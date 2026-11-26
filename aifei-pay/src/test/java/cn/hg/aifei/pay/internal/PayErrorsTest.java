@@ -12,7 +12,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.pay.AliPayException;
+import cn.hg.aifei.pay.PayException;
 import cn.hg.aifei.pay.support.NoOpLogFactory;
 import cn.aifei.log.LogFactory;
 import org.junit.After;
@@ -20,7 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 异常收敛（AC-18）与敏感值脱敏（AC-05）：调用方只收到 {@link AliPayException}，
+ * 异常收敛（AC-18）与敏感值脱敏（AC-05）：调用方只收到 {@link PayException}，
  * {@code code()} 与 {@code cause} 可见但原始异常类型不进入消息；凭据值在消息中一律 {@code ***}。
  */
 public class PayErrorsTest {
@@ -64,7 +64,7 @@ public class PayErrorsTest {
         PayKernelStub.KernelFault fault = new PayKernelStub.KernelFault("业务处理失败", CODE_NOT_EXIST,
                 "{\"code\":\"" + CODE_NOT_EXIST + "\",\"msg\":\"交易不存在\"}");
 
-        AliPayException e = PayErrors.kernelFailure("查单", fault);
+        PayException e = PayErrors.kernelFailure("查单", fault);
 
         assertEquals("错误码应透出", CODE_NOT_EXIST, e.code());
         assertSame("cause 应为内核原始异常", fault, e.getCause());
@@ -81,7 +81,7 @@ public class PayErrorsTest {
         PayKernelStub.KernelFault fault = new PayKernelStub.KernelFault("接口返回错误", null,
                 "{\"code\":\"" + CODE_SYSTEM_ERROR + "\",\"msg\":\"系统繁忙\"}");
 
-        AliPayException e = PayErrors.kernelFailure("扫码预下单", fault);
+        PayException e = PayErrors.kernelFailure("扫码预下单", fault);
 
         assertEquals("应从响应体抽取错误码", CODE_SYSTEM_ERROR, e.code());
         assertTrue("消息应含内核描述：" + e.getMessage(), e.getMessage().contains("系统繁忙"));
@@ -95,7 +95,7 @@ public class PayErrorsTest {
         IllegalStateException fault = new IllegalStateException(
                 "com.alipay.v3.ApiException: {\"code\":\"" + CODE_SYSTEM_ERROR + "\",\"msg\":\"系统繁忙\"}");
 
-        AliPayException e = PayErrors.kernelFailure("退款", fault);
+        PayException e = PayErrors.kernelFailure("退款", fault);
 
         assertEquals("应从异常消息抽取错误码", CODE_SYSTEM_ERROR, e.code());
     }
@@ -105,7 +105,7 @@ public class PayErrorsTest {
      */
     @Test
     public void shouldLeaveCodeNullWhenNothingToExtract() {
-        AliPayException e = PayErrors.kernelFailure("退款", new IllegalStateException("连接被重置"));
+        PayException e = PayErrors.kernelFailure("退款", new IllegalStateException("连接被重置"));
 
         assertEquals("不应编造错误码", null, e.code());
         assertTrue("消息应含内核消息：" + e.getMessage(), e.getMessage().contains("连接被重置"));
@@ -120,22 +120,22 @@ public class PayErrorsTest {
         for (int i = 0; i < 600; i++) {
             longText.append('x');
         }
-        AliPayException e = PayErrors.kernelFailure("查单", new IllegalStateException(longText.toString()));
+        PayException e = PayErrors.kernelFailure("查单", new IllegalStateException(longText.toString()));
 
         assertTrue("消息应被截断：" + e.getMessage().length(), e.getMessage().length() < 600);
         assertTrue("截断后应有省略标记：" + e.getMessage(), e.getMessage().endsWith("..."));
     }
 
     /**
-     * AC-18：任何原始异常都被收敛为 {@link AliPayException}，且消息不含原始异常类名。
+     * AC-18：任何原始异常都被收敛为 {@link PayException}，且消息不含原始异常类名。
      */
     @Test
     public void shouldHideOriginalExceptionTypeInMessage() {
         RuntimeException original = new IllegalStateException("签名失败");
 
-        AliPayException e = PayErrors.kernelFailure("扫码预下单", original);
+        PayException e = PayErrors.kernelFailure("扫码预下单", original);
 
-        assertTrue("应返回本模块异常类型", e instanceof AliPayException);
+        assertTrue("应返回本模块异常类型", e instanceof PayException);
         assertFalse("消息不得含原始类型名：" + e.getMessage(),
                 e.getMessage().contains("IllegalStateException"));
         assertSame("cause 仍应保留原始异常", original, e.getCause());
@@ -146,9 +146,9 @@ public class PayErrorsTest {
      */
     @Test
     public void shouldUseFixedMessageForNotInstalled() {
-        AliPayException e = PayErrors.notInstalled();
+        PayException e = PayErrors.notInstalled();
 
-        assertEquals("支付宝客户端未装配或已停止", e.getMessage());
+        assertEquals("支付客户端未装配或已停止", e.getMessage());
         assertEquals("未装配不是内核失败，不应带错误码", null, e.code());
     }
 
@@ -204,7 +204,7 @@ public class PayErrorsTest {
      */
     @Test
     public void shouldComposeInvalidConfigMessageWithMaskedValue() {
-        AliPayException e = PayErrors.invalidConfig("pay.apps.2021.private-key", "TOPSECRET", "格式非法");
+        PayException e = PayErrors.invalidConfig("pay.apps.2021.private-key", "TOPSECRET", "格式非法");
 
         assertTrue("消息应含键名：" + e.getMessage(), e.getMessage().contains("pay.apps.2021.private-key"));
         assertTrue("消息应含脱敏占位：" + e.getMessage(), e.getMessage().contains("***（长度 9）"));
@@ -230,7 +230,7 @@ public class PayErrorsTest {
      */
     @Test
     public void shouldComposeMissingDependencyMessageWithoutStackTrace() {
-        AliPayException e = PayErrors.missingDependency("com.github.javen205", "IJPay-AliPay-V3", "3.0.0",
+        PayException e = PayErrors.missingDependency("com.github.javen205", "IJPay-AliPay-V3", "3.0.0",
                 new ClassNotFoundException("com.ijpay.alipay.v3.AliPayTradeApi"));
 
         assertTrue("消息应含坐标：" + e.getMessage(), e.getMessage().contains("com.github.javen205"));
@@ -243,7 +243,7 @@ public class PayErrorsTest {
      */
     @Test
     public void shouldIgnoreNonStringCodeAndFallBackToResponseBody() {
-        AliPayException e = PayErrors.kernelFailure("查单", new HttpStatusFault());
+        PayException e = PayErrors.kernelFailure("查单", new HttpStatusFault());
 
         assertEquals("应跳过 int 形态的 HTTP 状态码，取业务错误码", CODE_NOT_EXIST, e.code());
         assertTrue("消息应含内核描述：" + e.getMessage(), e.getMessage().contains("交易不存在"));
@@ -257,7 +257,7 @@ public class PayErrorsTest {
         assertEquals("null 原因应返回 null", null, PayErrors.errorCodeOf(null));
         assertEquals("无错误码的异常应返回 null", null, PayErrors.errorCodeOf(new RuntimeException("x")));
 
-        AliPayException e = PayErrors.kernelFailure("退款", (Throwable) null);
+        PayException e = PayErrors.kernelFailure("退款", (Throwable) null);
 
         assertEquals("缺失 cause 时不应编造", null, e.getCause());
         assertTrue("缺失内核消息时应给占位文案：" + e.getMessage(), e.getMessage().contains("内核未提供消息"));

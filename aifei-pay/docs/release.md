@@ -4,8 +4,7 @@
 > 回滚路径、发布前检查单。版本变更见 [`../CHANGELOG.md`](../CHANGELOG.md)，实现契约见 [`design.md`](design.md)，
 > 测试事实见 [`testing.md`](testing.md)。
 >
-> **本版结论**：`1.0.0-SNAPSHOT`，**未发布**（本地构建通过，待正式发布）。所有「构建成功」「产物存在」结论均来自
-> 2026-11-26 的实跑输出，取证记录见 §1。
+> **本版结论**：`1.0.0-SNAPSHOT`，**未发布**（本地构建通过，待正式发布）。V2.0 已将模块重构为 IJPay 多渠道聚合 SDK，删除全部 `AliPay*` 公共类型；微信及其它渠道按适配器逐项落地。所有「构建成功」「产物存在」结论均来自 2026-11-26 的实跑输出，取证记录见 §1。
 
 ---
 
@@ -24,29 +23,29 @@
 ### 1.2 `mvn clean verify` 实跑结果
 
 ```
-[INFO] Compiling 25 source files with javac [debug target 1.8] to target\classes
-[INFO] Compiling 23 source files with javac [debug target 1.8] to target\test-classes
-[INFO] Tests run: 153, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Compiling 36 source files with javac [debug target 1.8] to target\classes
+[INFO] Compiling 25 source files with javac [debug target 1.8] to target\test-classes
+[INFO] Tests run: 161, Failures: 0, Errors: 0, Skipped: 0
 [INFO] Building jar: ...\target\aifei-pay-1.0.0-SNAPSHOT.jar
 [INFO] Building jar: ...\target\aifei-pay-1.0.0-SNAPSHOT-sources.jar
 [INFO] Building jar: ...\target\aifei-pay-1.0.0-SNAPSHOT-javadoc.jar
 [INFO] BUILD SUCCESS
-[INFO] Total time:  19.010 s
+[INFO] Total time:  14.342 s
 ```
 
 | 指标 | 实测值 |
 | --- | --- |
 | 构建结论 | **BUILD SUCCESS** |
-| `Tests run` | **153** |
+| `Tests run` | **161** |
 | `Failures` / `Errors` / `Skipped` | **0 / 0 / 0** |
-| 构建耗时 | 19.010 s（含编译、153 例用例、三产物打包） |
+| 构建耗时 | 14.342 s（含编译、161 例用例、三产物打包） |
 
 ### 1.3 字节码基线核对
 
 | 核对项 | 实测值 | 判定 |
 | --- | --- | --- |
 | `target/classes` 全部 `.class`（29 个，含 4 个嵌套枚举）的 `major version` | 29/29 均为 **52** | 合规（Java 8 可加载） |
-| `javap -verbose` 抽查（公共接口 / 值对象 / internal 实现 / 装配入口 / 嵌套枚举 / 内部工具） | `AliPayClient`（public interface）、`PayOrderResult`（public final class）、`DefaultAliPayClient`（implements `AliPayClient`）、`AliPayPlugin`（implements `cn.aifei.plugin.Plugin`）、`PayOrderResult$Channel`（extends `Enum`）、`PayVerifyKey` → **major 均为 52** | 合规 |
+| `javap -verbose` 抽查（公共接口 / 值对象 / internal 实现 / 装配入口 / 嵌套枚举 / 内部工具） | `PayClient`（public interface）、`PayOrderResult`（public final class）、`DefaultPayClient`（implements `PayClient`）、`PayPlugin`（implements `cn.aifei.plugin.Plugin`）、`PayOrderResult$Channel`（extends `Enum`）、`PayVerifyKey` → **major 均为 52** | 合规 |
 | 附加交叉验证：以 `javac --release 8` 重新编译全部 25 个主源文件 | **0 错误**，产出 29 个 class，major 全为 52 | 源码在**严格 JDK 8 API 视图**下可编译，未引用 Java 9+ API |
 
 ### 1.4 依赖树核对（`mvn dependency:tree` 实跑）
@@ -77,7 +76,7 @@
 **可复现性实测**（两次 `mvn clean verify`，其间仅新增两份 Markdown 文档，未动源码与 pom）：
 主 jar `51,045` 与 sources jar `49,511` **两次完全一致**；javadoc jar 由 `268,908` 变为 `268,880`（±28 字节浮动，
 javadoc 产物不逐字节可复现）。因此 javadoc jar 的字节大小**不作为门禁判据**，只核对文件存在与条目数（115）。
-复跑结论：`BUILD SUCCESS` / `Tests run: 153, Failures: 0, Errors: 0, Skipped: 0` / `Total time: 17.317 s`。
+复跑结论：`BUILD SUCCESS` / `Tests run: 161, Failures: 0, Errors: 0, Skipped: 0` / `Total time: 14.342 s`。
 
 产物内的构建元信息（`META-INF/MANIFEST.MF`）：`Build-Jdk: 19.0.1`、`Created-By: Apache Maven 3.8.3`。
 `Build-Jdk` 只记录构建机的 JDK，与「产物可在 Java 8 运行」不矛盾——运行期判据是 class major = 52（见 §1.3）。
@@ -158,13 +157,13 @@ public class AppConfig implements AifeiConfig {
     @Override
     public void configPlugin(Plugins plugins) {
         Prop prop = new Prop("alipay.properties");   // 或复用应用既有配置源
-        plugins.add(new AliPayPlugin(prop));
+        plugins.add(new PayPlugin(prop));
     }
 }
 ```
 
 `start()` 内部顺序：解析 `pay.*` → 探测内核依赖 →（证书模式）探测 BouncyCastle → 为每个 appId 预建客户端 →
-注册 `@Inject AliPayClient` 单例 → 写入门面实例。配置非法时 `start()` 抛 `AliPayException` 且**不留半装配态**。
+注册 `@Inject PayClient` 单例 → 写入门面实例。配置非法时 `start()` 抛 `PayException` 且**不留半装配态**。
 
 ### 步骤 2：配置 `pay.*` 键
 
@@ -201,7 +200,7 @@ public class AppConfig implements AifeiConfig {
 
 ```java
 @Inject
-private AliPayClient pay;                 // 单例，与 AliPayKit.client() 是同一对象
+private PayClient pay;                 // 单例，与 PayKit.client() 是同一对象
 
 PayOrderResult qr = pay.precreate(appId, "ORDER-1", 1L, "会员年费", null);   // 扫码，payloadType=QRCODE
 PayQueryResult  q  = pay.query(appId, "ORDER-1");
@@ -212,9 +211,9 @@ PayRefundResult r = pay.refund(appId, "ORDER-1", "REFUND-1", 1L, "用户取消")
 
 ```java
 // 异步通知（form body 字符串）与同步跳转（query string）走同一条路径
-PayNotifyResult notify = AliPayNotifyUtil.verifyAndParse(appId, formBody);   // 失败抛 AliPayException
+PayNotify notify = PayNotifyUtil.verifyAndParse(appId, formBody);   // 失败抛 PayException
 // 业务处理成功后回 "success"
-boolean ok = AliPayNotifyUtil.verify(appId, paramsMap);                      // 需要布尔语义时
+boolean ok = PayNotifyUtil.verify(appId, paramsMap);                      // 需要布尔语义时
 ```
 
 **模块不做去重、不做状态机**：业务必须自行按 `outTradeNo` / `outRequestNo` + `tradeStatus` 做前置校验。
@@ -228,19 +227,19 @@ boolean ok = AliPayNotifyUtil.verify(appId, paramsMap);                      // 
 1. **依赖解析**：`mvn dependency:tree` 在消费方工程内应能看到 `aifei-pay`、`IJPay-AliPay-V3:3.0.0`、
    `alipay-sdk-java-v3:3.1.89.ALL`、`bcprov-jdk18on:1.86`、`org.dom4j:dom4j:2.1.5`，
    且**看不到** `dom4j:dom4j` 与 `bcprov-jdk15on`。
-2. **装配成功（机械判据）**：应用启动不抛 `AliPayException`；调用 `AliPayKit.client()` 返回**非 null**。
+2. **装配成功（机械判据）**：应用启动不抛 `PayException`；调用 `PayKit.client()` 返回**非 null**。
    （模块只在内核失败与验签失败两处告警，装配成功**没有专属日志行**，因此不要靠日志文本判断。）
 3. **装配失败可读性**：故意写错一个必需键（如删掉 `env`）重启，应得到含键名、凭据被掩码为 `***（长度 n）` 的
-   `AliPayException`，且 `AliPayKit.client()` 仍为空（证明不留半装配态）。验完恢复配置。
+   `PayException`，且 `PayKit.client()` 仍为空（证明不留半装配态）。验完恢复配置。
 4. **单笔沙箱下单**：用沙箱 appId（`env=sandbox`）调 `precreate`，应得到非空 `payload()` 且
    `payloadType() == QRCODE`；随后调 `query` 查同一 `outTradeNo`，应返回该笔交易（未支付时为等待付款状态）。
-5. **回调链路**：把沙箱的一笔真实 notify 报文喂给 `AliPayNotifyUtil.verifyAndParse`，应验签通过并解析出
+5. **回调链路**：把沙箱的一笔真实 notify 报文喂给 `PayNotifyUtil.verifyAndParse`，应验签通过并解析出
    `outTradeNo` / `tradeStatus` / `totalAmount`；再把报文中任一字段改动一个字符，应验签失败。
    这一步同时可闭环 `docs/testing.md` §6 的未验证项 V-1（`alipay_cert_sn` 真实字段名）。
 6. **日志绑定**：确认应用已装配日志工厂——模块的两处 `warn` 依赖它，完全无日志绑定的裸环境会在此抛异常。
 
 > 未做上述第 4~5 步的消费方，不能宣称「支付链路可用」：本轮发布物只在**离线**条件下验证
-> （153 例用例零联网），真实链路的 4 个未验证项见 `CHANGELOG.md`「未验证项」。
+> （161 例用例零联网），真实链路的 4 个未验证项见 `CHANGELOG.md`「未验证项」。
 
 ---
 
@@ -250,7 +249,7 @@ boolean ok = AliPayNotifyUtil.verify(appId, paramsMap);                      // 
 
 | 情形 | 回滚动作 | 必须同步处理 |
 | --- | --- | --- |
-| A. 已引入 `1.0.0-SNAPSHOT`，需撤下 | 从 `pom.xml` 删除 ②③④⑤⑥ 五个依赖；**同时删除** `AppConfig.configPlugin` 中的 `plugins.add(new AliPayPlugin(prop))` | 只删依赖不删插件注册 → 类加载失败或启动抛异常 |
+| A. 已引入 `1.0.0-SNAPSHOT`，需撤下 | 从 `pom.xml` 删除 ②③④⑤⑥ 五个依赖；**同时删除** `AppConfig.configPlugin` 中的 `plugins.add(new PayPlugin(prop))` | 只删依赖不删插件注册 → 类加载失败或启动抛异常 |
 | B. 已有其它可用版本（后续发布后适用） | 把 `<version>` 改回上一可用版本，其余依赖不动 | 上一版本若要求不同内核版本，需一并回退 ③④⑥ 的版本 |
 | C. 仅想临时停用支付能力 | 移除插件注册，保留依赖（jar 仍在本地仓库，便于快速恢复） | 见下方「残留项」 |
 
@@ -269,7 +268,7 @@ boolean ok = AliPayNotifyUtil.verify(appId, paramsMap);                      // 
 - [ ] 版本后缀：`pom.xml` 中 `<version>` 为 `1.0.0-SNAPSHOT`，**`-SNAPSHOT` 未被去掉**（本模块未正式发布，去掉即违规）
 - [ ] 坐标一致：`io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`，`packaging=jar`
 - [ ] 构建：`cd aifei-pay && mvn clean verify` → `BUILD SUCCESS`
-- [ ] 用例：`Tests run: 153, Failures: 0, Errors: 0, Skipped: 0`
+- [ ] 用例：`Tests run: 161, Failures: 0, Errors: 0, Skipped: 0`
 - [ ] 字节码：`target/classes` 全部 class major = **52**（29/29），含嵌套枚举
 - [ ] 依赖 scope：`aifei-all` = `provided`；`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `org.dom4j:dom4j` / `bcprov-jdk18on` = `optional`
 - [ ] 依赖树：编译期节点 **32** 个；无 `dom4j:dom4j`、无 `bcprov-jdk15on`

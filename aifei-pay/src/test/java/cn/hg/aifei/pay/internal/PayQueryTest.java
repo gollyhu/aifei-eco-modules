@@ -12,7 +12,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.pay.AliPayException;
+import cn.hg.aifei.pay.PayException;
 import cn.hg.aifei.pay.model.PayQueryResult;
 import cn.hg.aifei.pay.support.NoOpLogFactory;
 import cn.hg.aifei.pay.support.PayTestProps;
@@ -24,7 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 查单动作（AC-08）：交易字段透出，以及「订单不存在」的唯一口径——抛 {@link AliPayException} 且
+ * 查单动作（AC-08）：交易字段透出，以及「订单不存在」的唯一口径——抛 {@link PayException} 且
  * {@code code() = ACQ.TRADE_NOT_EXIST}（不返回空结果形态）。
  */
 public class PayQueryTest {
@@ -57,7 +57,7 @@ public class PayQueryTest {
     /**
      * 被测客户端。
      */
-    private DefaultAliPayClient client;
+    private DefaultPayClient client;
 
     /**
      * 装配默认配置与伪内核。
@@ -66,7 +66,7 @@ public class PayQueryTest {
     public void setUp() {
         previousLogFactory = NoOpLogFactory.install();
         stub = new PayKernelStub();
-        client = new DefaultAliPayClient(PayConfig.parse(PayTestProps.keyMode(APP)), stub);
+        client = new DefaultPayClient(PayConfig.parse(PayTestProps.keyMode(APP)), stub);
     }
 
     /**
@@ -94,7 +94,7 @@ public class PayQueryTest {
     }
 
     /**
-     * AC-08：订单不存在 → 抛 {@link AliPayException}，{@code code()} 为内核错误码，且保留 cause。
+     * AC-08：订单不存在 → 抛 {@link PayException}，{@code code()} 为内核错误码，且保留 cause。
      */
     @Test
     public void shouldThrowWithTradeNotExistCodeWhenOrderMissing() {
@@ -103,7 +103,7 @@ public class PayQueryTest {
                 + "\",\"msg\":\"交易不存在\",\"sub_code\":\"ACQ.TRADE_NOT_EXIST\"}");
         stub.failingWith(fault);
 
-        AliPayException e = assertThrows(AliPayException.class, () -> client.query(APP, OUT_TRADE_NO));
+        PayException e = assertThrows(PayException.class, () -> client.query(APP, OUT_TRADE_NO));
 
         assertEquals("错误码应透出内核业务码", CODE_NOT_EXIST, e.code());
         assertSame("原始异常应作为 cause 保留", fault, e.getCause());
@@ -120,20 +120,20 @@ public class PayQueryTest {
     public void shouldLeaveCodeNullWhenKernelProvidesNoCode() {
         stub.failingWith(new IllegalStateException("网关连接中断"));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> client.query(APP, OUT_TRADE_NO));
+        PayException e = assertThrows(PayException.class, () -> client.query(APP, OUT_TRADE_NO));
 
         assertEquals("提取不到错误码时应为 null", null, e.code());
         assertTrue("消息应保留内核消息：" + e.getMessage(), e.getMessage().contains("网关连接中断"));
     }
 
     /**
-     * AC-08 / AC-18：内核抛受检异常时也被收敛为 {@link AliPayException}，不外泄原始类型。
+     * AC-08 / AC-18：内核抛受检异常时也被收敛为 {@link PayException}，不外泄原始类型。
      */
     @Test
     public void shouldWrapCheckedKernelException() {
         stub.failingWith(new PayKernelStub.KernelFault("签名失败", null, null));
 
-        AliPayException e = assertThrows(AliPayException.class, () -> client.query(APP, OUT_TRADE_NO));
+        PayException e = assertThrows(PayException.class, () -> client.query(APP, OUT_TRADE_NO));
 
         assertTrue("cause 应为内核原始异常", e.getCause() instanceof PayKernelStub.KernelFault);
     }

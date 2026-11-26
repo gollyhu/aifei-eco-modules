@@ -12,7 +12,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import cn.aifei.log.LogFactory;
-import cn.hg.aifei.pay.model.PayNotifyResult;
+import cn.hg.aifei.pay.spi.PayNotify;
 import cn.hg.aifei.pay.support.NoOpLogFactory;
 import cn.hg.aifei.pay.support.PayTestCrypto;
 import cn.hg.aifei.pay.support.PayTestEnv;
@@ -69,9 +69,9 @@ public class PayVerifyFormTest {
         Map<String, String> params = signedTradeNotify(PayTestCrypto.KEY_PAIR_OLD);
         String queryString = encode(params);
 
-        assertTrue("同步返回的 query string 应验签通过", AliPayNotifyUtil.verify(APP, queryString));
+        assertTrue("同步返回的 query string 应验签通过", PayNotifyUtil.verify(APP, queryString));
 
-        PayNotifyResult result = AliPayNotifyUtil.verifyAndParse(APP, queryString);
+        PayNotify result = PayNotifyUtil.verifyAndParse(APP, queryString);
         assertEquals("应解析出商户订单号", "T2026010100001", result.outTradeNo());
         assertEquals("应解析出交易状态", "TRADE_SUCCESS", result.tradeStatus());
     }
@@ -87,7 +87,7 @@ public class PayVerifyFormTest {
         params.put("sign_type", "RSA2");
 
         assertTrue("异步通知的 form body 应验签通过",
-                AliPayNotifyUtil.verify(APP, encode(params)));
+                PayNotifyUtil.verify(APP, encode(params)));
     }
 
     /**
@@ -100,8 +100,8 @@ public class PayVerifyFormTest {
         Map<String, String> params = signedTradeNotify(PayTestCrypto.KEY_PAIR_OLD);
         String encoded = encode(params);
 
-        PayNotifyResult fromBody = AliPayNotifyUtil.verifyAndParse(APP, encoded);
-        PayNotifyResult fromMap = AliPayNotifyUtil.verifyAndParse(APP, params);
+        PayNotify fromBody = PayNotifyUtil.verifyAndParse(APP, encoded);
+        PayNotify fromMap = PayNotifyUtil.verifyAndParse(APP, params);
 
         assertEquals(fromMap.outTradeNo(), fromBody.outTradeNo());
         assertEquals(fromMap.tradeNo(), fromBody.tradeNo());
@@ -122,9 +122,9 @@ public class PayVerifyFormTest {
         PayTestCrypto.signNotify(params, PayTestCrypto.KEY_PAIR_OLD);
         String encoded = encode(params);
 
-        assertTrue("转义后的报文应先解码再验签", AliPayNotifyUtil.verify(APP, encoded));
+        assertTrue("转义后的报文应先解码再验签", PayNotifyUtil.verify(APP, encoded));
 
-        PayNotifyResult result = AliPayNotifyUtil.verifyAndParse(APP, encoded);
+        PayNotify result = PayNotifyUtil.verifyAndParse(APP, encoded);
         assertEquals("解析结果应还原中文与空格", "测试订单 含空格&符号=等号", result.params().get("subject"));
     }
 
@@ -138,7 +138,7 @@ public class PayVerifyFormTest {
         Map<String, String> params = signedTradeNotify(PayTestCrypto.KEY_PAIR_OLD);
         String tampered = encode(params).replace("TRADE_SUCCESS", "TRADE_FINISHED");
 
-        assertFalse("被篡改的表单报文必须验签失败", AliPayNotifyUtil.verify(APP, tampered));
+        assertFalse("被篡改的表单报文必须验签失败", PayNotifyUtil.verify(APP, tampered));
     }
 
     /**
@@ -147,16 +147,16 @@ public class PayVerifyFormTest {
     @Test
     public void shouldRejectMalformedFormBody() {
         assertThrows(IllegalArgumentException.class,
-                () -> AliPayNotifyUtil.verify(APP, "out_trade_no=%zz&sign=abc"));
+                () -> PayNotifyUtil.verify(APP, "out_trade_no=%zz&sign=abc"));
     }
 
     /**
-     * AC-12：报文为 {@code null} → 抛 {@link AliPayException}（不误判为验签通过）。
+     * AC-12：报文为 {@code null} → 抛 {@link PayException}（不误判为验签通过）。
      */
     @Test
     public void shouldThrowWhenFormBodyNull() {
-        AliPayException e = assertThrows(AliPayException.class,
-                () -> AliPayNotifyUtil.verify(APP, (String) null));
+        PayException e = assertThrows(PayException.class,
+                () -> PayNotifyUtil.verify(APP, (String) null));
 
         assertTrue("消息应为验签失败：" + e.getMessage(), e.getMessage().contains("验签失败"));
     }

@@ -70,7 +70,7 @@ public final class PayVerifier {
      * @param appId  应用编号
      * @param params 报文参数（本方法不修改它）
      * @return 通过为 {@code true}；签名缺失、签名类型不受支持、凭据不匹配或校验不通过均为 {@code false}
-     * @throws cn.hg.aifei.pay.AliPayException 内核依赖缺失、appId 未配置、报文为 {@code null}
+     * @throws cn.hg.aifei.pay.PayException 内核依赖缺失、appId 未配置、报文为 {@code null}
      */
     public boolean verify(String appId, Map<String, String> params) {
         PayDeps.requireKernel();

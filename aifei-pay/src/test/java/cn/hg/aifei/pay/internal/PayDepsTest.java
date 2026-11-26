@@ -10,8 +10,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.pay.AliPayException;
-import cn.hg.aifei.pay.AliPayNotifyUtil;
+import cn.hg.aifei.pay.PayException;
+import cn.hg.aifei.pay.PayNotifyUtil;
 import cn.hg.aifei.pay.support.PayTestEnv;
 import cn.hg.aifei.pay.support.PayTestProps;
 import java.util.LinkedHashMap;
@@ -21,7 +21,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 可选依赖缺失的可读异常（AC-17）：任一内核依赖不在 classpath 时，首次调用抛 {@link AliPayException}
+ * 可选依赖缺失的可读异常（AC-17）：任一内核依赖不在 classpath 时，首次调用抛 {@link PayException}
  * 并给出缺失坐标，不裸抛 {@code NoClassDefFoundError} / {@code ClassNotFoundException}。
  *
  * <p><b>手法</b>：不改 pom、不启新进程，而是把线程上下文类加载器换成「对指定包前缀不可见」的加载器——
@@ -66,13 +66,13 @@ public class PayDepsTest {
     }
 
     /**
-     * AC-17：IJPay 不可见 → {@link AliPayException}，消息含缺失坐标，cause 为原始加载失败。
+     * AC-17：IJPay 不可见 → {@link PayException}，消息含缺失坐标，cause 为原始加载失败。
      */
     @Test
     public void shouldReportMissingIjpayWithCoordinates() {
         Thread.currentThread().setContextClassLoader(hiding("com.ijpay."));
 
-        AliPayException e = assertThrows(AliPayException.class, PayDeps::requireKernel);
+        PayException e = assertThrows(PayException.class, PayDeps::requireKernel);
 
         assertTrue("消息应含构件名：" + e.getMessage(), e.getMessage().contains("IJPay-AliPay-V3"));
         assertTrue("消息应含 groupId：" + e.getMessage(), e.getMessage().contains("com.github.javen205"));
@@ -88,7 +88,7 @@ public class PayDepsTest {
     public void shouldReportMissingSdkWithCoordinates() {
         Thread.currentThread().setContextClassLoader(hiding("com.alipay."));
 
-        AliPayException e = assertThrows(AliPayException.class, PayDeps::requireKernel);
+        PayException e = assertThrows(PayException.class, PayDeps::requireKernel);
 
         assertTrue("消息应含构件名：" + e.getMessage(), e.getMessage().contains("alipay-sdk-java-v3"));
         assertTrue("消息应含 groupId：" + e.getMessage(), e.getMessage().contains("com.alipay.sdk"));
@@ -101,7 +101,7 @@ public class PayDepsTest {
     public void shouldReportMissingBouncyCastle() {
         Thread.currentThread().setContextClassLoader(hiding("org.bouncycastle."));
 
-        AliPayException e = assertThrows(AliPayException.class, PayDeps::requireBouncyCastle);
+        PayException e = assertThrows(PayException.class, PayDeps::requireBouncyCastle);
 
         assertTrue("消息应含构件名：" + e.getMessage(), e.getMessage().contains("bcprov-jdk18on"));
         assertTrue("消息应含版本提示：" + e.getMessage(), e.getMessage().contains("1.86"));
@@ -112,11 +112,11 @@ public class PayDepsTest {
      */
     @Test
     public void shouldSurfaceMissingDependencyFromTradeCall() {
-        DefaultAliPayClient client = new DefaultAliPayClient(PayConfig.parse(PayTestProps.keyMode(APP)),
+        DefaultPayClient client = new DefaultPayClient(PayConfig.parse(PayTestProps.keyMode(APP)),
                 new PayKernelStub());
         Thread.currentThread().setContextClassLoader(hiding("com.ijpay."));
 
-        AliPayException e = assertThrows(AliPayException.class,
+        PayException e = assertThrows(PayException.class,
                 () -> client.precreate(APP, "T2026010100001", 1L, "测试订单", PayTestProps.NOTIFY_URL));
 
         assertTrue("消息应是依赖缺失提示：" + e.getMessage(), e.getMessage().contains("缺少支付宝依赖"));
@@ -133,8 +133,8 @@ public class PayDepsTest {
         params.put("sign", "any");
         Thread.currentThread().setContextClassLoader(hiding("com.alipay."));
 
-        AliPayException e = assertThrows(AliPayException.class,
-                () -> AliPayNotifyUtil.verify(APP, params));
+        PayException e = assertThrows(PayException.class,
+                () -> PayNotifyUtil.verify(APP, params));
 
         assertTrue("消息应是依赖缺失提示：" + e.getMessage(), e.getMessage().contains("缺少支付宝依赖"));
     }

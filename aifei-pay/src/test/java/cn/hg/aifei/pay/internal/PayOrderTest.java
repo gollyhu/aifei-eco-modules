@@ -10,7 +10,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import cn.hg.aifei.pay.AliPayException;
+import cn.hg.aifei.pay.PayException;
 import cn.hg.aifei.pay.model.PayOrderResult;
 import cn.hg.aifei.pay.support.NoOpLogFactory;
 import cn.hg.aifei.pay.support.PayTestProps;
@@ -52,7 +52,7 @@ public class PayOrderTest {
     /**
      * 被测客户端。
      */
-    private DefaultAliPayClient client;
+    private DefaultPayClient client;
 
     /**
      * 装配默认配置（普通公钥模式 + 全局回调地址）与伪内核。
@@ -61,7 +61,7 @@ public class PayOrderTest {
     public void setUp() {
         previousLogFactory = NoOpLogFactory.install();
         stub = new PayKernelStub();
-        client = new DefaultAliPayClient(PayConfig.parse(
+        client = new DefaultPayClient(PayConfig.parse(
                 PayTestProps.withCallbacks(PayTestProps.keyMode(APP))), stub);
     }
 
@@ -146,14 +146,14 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-06：{@code precreate} 缺少异步回调地址（入参与全局配置都没有）→ 抛 {@link AliPayException}。
+     * AC-06：{@code precreate} 缺少异步回调地址（入参与全局配置都没有）→ 抛 {@link PayException}。
      */
     @Test
     public void shouldFailWhenNotifyUrlMissingForPrecreate() {
-        DefaultAliPayClient noCallbackClient = new DefaultAliPayClient(
+        DefaultPayClient noCallbackClient = new DefaultPayClient(
                 PayConfig.parse(PayTestProps.keyMode(APP)), stub);
 
-        AliPayException e = assertThrows(AliPayException.class,
+        PayException e = assertThrows(PayException.class,
                 () -> noCallbackClient.precreate(APP, OUT_TRADE_NO, 1L, "测试订单", null));
 
         assertTrue("消息应含键名：" + e.getMessage(), e.getMessage().contains("pay.notify-url"));
@@ -179,7 +179,7 @@ public class PayOrderTest {
     public void shouldReturnUrlPayloadWhenPageHttpMethodIsGet() {
         Properties properties = PayTestProps.withCallbacks(PayTestProps.with(PayTestProps.keyMode(APP),
                 "pay.page-http-method", "GET"));
-        DefaultAliPayClient getClient = new DefaultAliPayClient(PayConfig.parse(properties), stub);
+        DefaultPayClient getClient = new DefaultPayClient(PayConfig.parse(properties), stub);
         stub.pagePayload("https" + "://" + "openapi.alipay.com/gateway.do?alipay_sdk=trade");
 
         PayOrderResult result = getClient.wapPay(APP, OUT_TRADE_NO, 1L, "测试订单", null, null);
@@ -230,15 +230,15 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：H5 缺少同步回调地址（入参与全局配置都没有）→ 抛 {@link AliPayException}。
+     * AC-07：H5 缺少同步回调地址（入参与全局配置都没有）→ 抛 {@link PayException}。
      */
     @Test
     public void shouldFailWhenReturnUrlMissingForWapPay() {
         Properties notifyOnly = PayTestProps.with(PayTestProps.keyMode(APP),
                 "pay.notify-url", PayTestProps.NOTIFY_URL);
-        DefaultAliPayClient noCallbackClient = new DefaultAliPayClient(PayConfig.parse(notifyOnly), stub);
+        DefaultPayClient noCallbackClient = new DefaultPayClient(PayConfig.parse(notifyOnly), stub);
 
-        AliPayException e = assertThrows(AliPayException.class,
+        PayException e = assertThrows(PayException.class,
                 () -> noCallbackClient.wapPay(APP, OUT_TRADE_NO, 1L, "测试订单", null, null));
 
         assertTrue("消息应含键名：" + e.getMessage(), e.getMessage().contains("pay.return-url"));

@@ -14,7 +14,7 @@ import java.util.Map;
  * <p><b>非承诺 API，也不是扩展点</b>：唯一的生产实现是 {@link IjpayPayKernel}，接口存在的目的是让单测
  * 能注入伪内核（模块零第三方 mock 依赖），因此本类型刻意不加 {@code public}——包外不可见。</p>
  *
- * <p>返回 {@code Object} 是刻意的：响应类型不外泄给 {@link DefaultAliPayClient}，转换由
+ * <p>返回 {@code Object} 是刻意的：响应类型不外泄给 {@link DefaultPayClient}，转换由
  * {@link PayResults} 承担（`docs/design.md` §11 T06、风险 R-5）。</p>
  */
 interface PayKernel {

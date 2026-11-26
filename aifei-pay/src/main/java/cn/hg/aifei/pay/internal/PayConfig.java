@@ -6,7 +6,7 @@
 
 package cn.hg.aifei.pay.internal;
 
-import cn.hg.aifei.pay.AliPayKit;
+import cn.hg.aifei.pay.PayKit;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -24,7 +24,7 @@ import java.util.TreeSet;
  * 配置域：{@code pay.*} 键名、默认值、解析、校验与脱敏的唯一实现。
  *
  * <p>解析是装配期的一次性动作，产物是 appId → 不可变 {@link PayAppConfig} 的映射；
- * 任一校验失败立即抛 {@link cn.hg.aifei.pay.AliPayException}，不保留半装配态。</p>
+ * 任一校验失败立即抛 {@link cn.hg.aifei.pay.PayException}，不保留半装配态。</p>
  */
 public final class PayConfig {
 
@@ -149,7 +149,7 @@ public final class PayConfig {
      * @param properties 配置源
      * @return 配置域
      * @throws IllegalArgumentException {@code properties} 为 {@code null}
-     * @throws cn.hg.aifei.pay.AliPayException 配置缺失或非法
+     * @throws cn.hg.aifei.pay.PayException 配置缺失或非法
      */
     public static PayConfig parse(Properties properties) {
         if (properties == null) {
@@ -207,7 +207,7 @@ public final class PayConfig {
      *
      * @param appId 应用编号
      * @return 应用配置
-     * @throws cn.hg.aifei.pay.AliPayException 未配置默认应用或 appId 不存在
+     * @throws cn.hg.aifei.pay.PayException 未配置默认应用或 appId 不存在
      */
     public PayAppConfig resolve(String appId) {
         String resolved = isBlank(appId) ? defaultAppId : appId.trim();
@@ -322,7 +322,7 @@ public final class PayConfig {
      * @return 网关地址
      */
     private static String gatewayUrl(Properties properties, String prefix, String env) {
-        String official = ENV_SANDBOX.equals(env) ? AliPayKit.GATEWAY_SANDBOX : AliPayKit.GATEWAY_PRODUCTION;
+        String official = ENV_SANDBOX.equals(env) ? PayKit.GATEWAY_SANDBOX : PayKit.GATEWAY_PRODUCTION;
         String key = prefix + SUFFIX_GATEWAY_URL;
         String configured = optional(properties, key);
         if (isBlank(configured)) {

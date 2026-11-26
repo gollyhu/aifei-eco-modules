@@ -5,7 +5,18 @@
 
 ---
 
-## [1.0.0-SNAPSHOT] - 2026-11-26
+## [1.0.0-SNAPSHOT] - 2026-11-26（V2.0 结构重构）
+
+**破坏性变更**：模块由「支付宝单通道门面」重构为「基于 IJPay 的多支付通道聚合 SDK」。
+
+- 公共面改为 `PayClient` / `PayKit` / `PayNotifyUtil` / `PayException`，新增 `model.PayNotifyRequest`、`spi.PayNotify` / `PayNotifyListener`、`aifei.PayHandler` / `PayIo`；全部 `AliPay*` 类型删除，不提供兼容层。
+- 交易动作收敛为 `createOrder(... payType ...)` / `query` / `refund` / `channelName`；支付宝 `QRCODE` / `WAP` / `PAGE` 由 `payType` 选择。
+- 配置改为 `pay.default-channel` + `pay.<name>.type` + `pay.<name>.*`；`PayTypes` 白名单覆盖 IJPay 全支付渠道，支付宝已完整迁移，微信及其它渠道按适配器逐项落地。
+- 回调采用 `PayNotifyUtil.verify` 与 `PayHandler` + `PayNotifyListener` 共存，两者共用同一验签核心；`PayHandler` 按通道写成功/失败应答。
+- 本模块保留 `wxpay` 通道，与 `aifei-weixin` 并存、用户二选一，模块间零 import 依赖。
+- 本地校验：`mvn clean verify` → `Tests run: 161, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`。
+
+## [1.0.0-SNAPSHOT] - 2026-11-26（V1.1 历史口径）
 
 **状态：未发布（本地构建通过，待正式发布）**
 
@@ -21,7 +32,7 @@
   - 手机网站支付（`wapPay`）：产出可自提交的表单 HTML 或跳转 URL
   - 电脑网站支付（`pagePay`）：与 H5 同构、渠道不同
   - 三种形态统一返回「载荷 + 载荷类型」两张牌，业务侧无需判断内核返回了什么
-- **交易查单**（`query`）：透出交易状态与实付金额；交易不存在时抛 `AliPayException` 且 `code()` 为 `ACQ.TRADE_NOT_EXIST`，业务可用一个错误码判定「订单不存在」
+- **交易查单**（`query`）：透出交易状态与实付金额；交易不存在时抛 `PayException` 且 `code()` 为 `ACQ.TRADE_NOT_EXIST`，业务可用一个错误码判定「订单不存在」
 - **退款**（`refund`）：`outRequestNo` 作为幂等键**原样透传**给支付宝并回显，重试退款不会产生新退款单（去重责任在业务侧，模块只保证幂等键不丢失、不改写）
 - **回调验签**，异步通知与同步跳转同一条路径：
   - 普通公钥模式与公钥证书模式**双支持**，同一 appId 可混用
@@ -29,9 +40,9 @@
   - 证书模式下报文带证书序列号时优先选用序列号匹配的凭据
   - 两种消费方式：布尔语义（`verify`）与「失败即抛异常」语义（`verifyAndParse`）；纯函数、不改入参、不写缓存
 - **多应用隔离**：`appId` 是每个交易方法的第一参数，每个应用独立客户端实例、独立凭据、独立网关，互不串扰；传 `null` / 空白自动回退 `pay.default-app-id`
-- **aifei 框架装配**：提供 `AliPayPlugin implements Plugin`，加入插件链即完成「解析配置 → 依赖探测 → 预建客户端 → 注册单例」；业务侧只需 `@Inject AliPayClient`，静态上下文用 `AliPayKit.client()` 取同一实例
+- **aifei 框架装配**：提供 `PayPlugin implements Plugin`，加入插件链即完成「解析配置 → 依赖探测 → 预建客户端 → 注册单例」；业务侧只需 `@Inject PayClient`，静态上下文用 `PayKit.client()` 取同一实例
 - **配置即校验**：启动期一次性校验配置合法性（必填项、凭据可读性、网关与环境一致性、凭据序号连续性、证书序列号一致性），非法即失败且不留半装配态；错误消息含键名，凭据一律掩码为 `***（长度 n）`，不会把私钥写进日志
-- **依赖缺失可读**：内核或 BouncyCastle 缺失时，装配期抛带补齐提示的 `AliPayException`，不让 `NoClassDefFoundError` 冒到业务代码
+- **依赖缺失可读**：内核或 BouncyCastle 缺失时，装配期抛带补齐提示的 `PayException`，不让 `NoClassDefFoundError` 冒到业务代码
 - **金额口径防错**：入参统一「分」（`long ...Fen`，必须 > 0），出参是内核原样透出的元字符串；换算只用 `BigDecimal`，模块内不出现 `double` / `float`
 
 ### 依赖与约束
@@ -50,13 +61,13 @@
 
 ### 已知限制
 
-- **`stop()` 后已注入字段仍持旧实例**：`AliPayKit.client()` 会立即失败，但框架没有注销 API，已注入的 `AliPayClient` 字段不会自动置空。请避免在应用生命周期内反复装配
+- **`stop()` 后已注入字段仍持旧实例**：`PayKit.client()` 会立即失败，但框架没有注销 API，已注入的 `PayClient` 字段不会自动置空。请避免在应用生命周期内反复装配
 - **凭据归属环境无法机械判定**：模块只能校验 `pay.apps.<appId>.env` 必填合法、以及 `gateway-url` 的 host 与环境对应官方网关一致；「这把私钥属于沙箱还是生产」无法由代码判定，需靠配置评审与凭据来源管理兜底（同一套凭据可被同时配置到沙箱与生产应用，模块不会拦截）
 - **证书模式强依赖 BouncyCastle**：缺少 `bcprov-jdk18on` 时证书模式一律失败（装配期即报错，不会延迟到首笔请求）
 - **不做幂等、不做状态机**：模块只透出 `out_trade_no` / `out_request_no` / `tradeStatus`，去重与状态流转由业务负责；模块不记录已处理通知
 - **不做收银台页面与 Servlet 适配**：只产出支付参数与跳转载荷，回调报文以 `String` / `Map` 入参
 - **同步跳转报文可能为空**：用户中途放弃支付时不会带回参数，业务需容错
-- **异常消息不含 cause 文本**：`AliPayException` 保留 `cause` 但不把其文本拼进消息，避免凭据或报文外泄
+- **异常消息不含 cause 文本**：`PayException` 保留 `cause` 但不把其文本拼进消息，避免凭据或报文外泄
 
 ### 未验证项
 

@@ -53,7 +53,7 @@ public class PayRefundTest {
     /**
      * 被测客户端。
      */
-    private DefaultAliPayClient client;
+    private DefaultPayClient client;
 
     /**
      * 装配默认配置与伪内核。
@@ -62,7 +62,7 @@ public class PayRefundTest {
     public void setUp() {
         previousLogFactory = NoOpLogFactory.install();
         stub = new PayKernelStub();
-        client = new DefaultAliPayClient(PayConfig.parse(PayTestProps.keyMode(APP)), stub);
+        client = new DefaultPayClient(PayConfig.parse(PayTestProps.keyMode(APP)), stub);
     }
 
     /**

@@ -15,7 +15,7 @@ package cn.hg.aifei.pay;
  * <p>{@link #code()} 透出内核错误码（如 {@code ACQ.TRADE_NOT_EXIST}），供业务按错误码分支；
  * 本模块自检类失败（配置非法、未装配、依赖缺失、验签失败）时该值为 {@code null}。</p>
  */
-public class AliPayException extends RuntimeException {
+public class PayException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 
@@ -29,7 +29,7 @@ public class AliPayException extends RuntimeException {
      *
      * @param message 脱敏后的可读消息
      */
-    public AliPayException(String message) {
+    public PayException(String message) {
         this(message, null, null);
     }
 
@@ -39,7 +39,7 @@ public class AliPayException extends RuntimeException {
      * @param message 脱敏后的可读消息
      * @param cause   原始异常，仅用于排查，不进入消息文本
      */
-    public AliPayException(String message, Throwable cause) {
+    public PayException(String message, Throwable cause) {
         this(message, null, cause);
     }
 
@@ -50,7 +50,7 @@ public class AliPayException extends RuntimeException {
      * @param code    内核错误码，可为 {@code null}
      * @param cause   原始异常，仅用于排查，不进入消息文本
      */
-    public AliPayException(String message, String code, Throwable cause) {
+    public PayException(String message, String code, Throwable cause) {
         super(message, cause);
         this.code = code;
     }

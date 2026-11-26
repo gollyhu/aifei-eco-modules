@@ -6,7 +6,6 @@
 
 package cn.hg.aifei.pay.internal;
 
-import cn.hg.aifei.pay.model.PayNotifyResult;
 import cn.hg.aifei.pay.model.PayOrderResult;
 import cn.hg.aifei.pay.model.PayQueryResult;
 import cn.hg.aifei.pay.model.PayRefundResult;
@@ -94,17 +93,6 @@ public final class PayResults {
                 text(response, "getRefundFee"),
                 text(response, "getFundChange"),
                 text(response, "getGmtRefundPay"));
-    }
-
-    /**
-     * 回调报文 → 回调验签结果。
-     *
-     * @param type   回调类型
-     * @param params 已验签通过的报文参数
-     * @return 回调验签结果
-     */
-    public static PayNotifyResult toNotifyResult(PayNotifyResult.NotifyType type, Map<String, String> params) {
-        return PayNotifyResult.of(type, params);
     }
 
     /**

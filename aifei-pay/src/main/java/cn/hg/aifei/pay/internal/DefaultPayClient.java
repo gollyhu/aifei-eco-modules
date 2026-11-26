@@ -6,7 +6,8 @@
 
 package cn.hg.aifei.pay.internal;
 
-import cn.hg.aifei.pay.AliPayClient;
+import cn.hg.aifei.pay.PayClient;
+import cn.hg.aifei.pay.PayException;
 import cn.hg.aifei.pay.model.PayOrderResult;
 import cn.hg.aifei.pay.model.PayQueryResult;
 import cn.hg.aifei.pay.model.PayRefundResult;
@@ -14,12 +15,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * {@link AliPayClient} 的唯一实现：参数校验 + 编排 + 异常收敛。
+ * {@link PayClient} 的唯一实现：参数校验 + 编排 + 异常收敛。
  *
  * <p>每个方法的骨架固定为：探测内核依赖 → 校验调用方参数 → 解析应用配置 → 回调地址回退 →
  * 组报文 → 调内核 → 转换值对象；内核异常一律经 {@link PayErrors} 收敛，原始类型只作 {@code cause}。</p>
  */
-public final class DefaultAliPayClient implements AliPayClient {
+public final class DefaultPayClient implements PayClient {
 
     /**
      * 页面下单接口方法名：手机网站支付。
@@ -60,41 +61,77 @@ public final class DefaultAliPayClient implements AliPayClient {
 
     private final PayKernel kernel;
 
+    private final String channelName;
+
+    /**
+     * 测试夹具快捷构造：使用默认支付宝通道标识。
+     */
+    DefaultPayClient(PayConfig config, PayKernel kernel) {
+        this(config, kernel, "alipay");
+    }
+
     /**
      * 供单测注入伪内核（{@link PayKernel} 是包级类型，故本构造器不加 {@code public}）。
      *
-     * @param config 配置域
-     * @param kernel 内核边界
+     * @param config      配置域
+     * @param kernel      内核边界
+     * @param channelName 通道标识
      */
-    DefaultAliPayClient(PayConfig config, PayKernel kernel) {
+    DefaultPayClient(PayConfig config, PayKernel kernel, String channelName) {
         if (config == null) {
             throw new IllegalArgumentException("config 不能为 null");
         }
         if (kernel == null) {
             throw new IllegalArgumentException("kernel 不能为 null");
         }
+        if (channelName == null || channelName.trim().isEmpty()) {
+            throw new IllegalArgumentException("channelName 不能为空");
+        }
         this.config = config;
         this.kernel = kernel;
+        this.channelName = channelName;
     }
 
     /**
      * 生产形态的工厂方法：用真实内核实现装配。
      *
-     * @param config  配置域
-     * @param clients 客户端构建与缓存
+     * @param config      配置域
+     * @param clients     客户端构建与缓存
+     * @param channelName 通道标识
      * @return 交易客户端
      */
-    public static DefaultAliPayClient create(PayConfig config, PayClients clients) {
+    public static DefaultPayClient create(PayConfig config, PayClients clients, String channelName) {
         if (clients == null) {
             throw new IllegalArgumentException("clients 不能为 null");
         }
-        return new DefaultAliPayClient(config, new IjpayPayKernel(clients));
+        return new DefaultPayClient(config, new IjpayPayKernel(clients), channelName);
+    }
+
+    @Override
+    public PayOrderResult createOrder(String merchantId, String outTradeNo, long amountFen, String subject,
+                                      String payType, String returnUrl, String notifyUrl,
+                                      Map<String, String> options) {
+        String type = payType == null || payType.trim().isEmpty() ? "QRCODE" : payType.trim().toUpperCase();
+        if ("QRCODE".equals(type)) {
+            return precreate(merchantId, outTradeNo, amountFen, subject, notifyUrl);
+        }
+        if ("WAP".equals(type)) {
+            return wapPay(merchantId, outTradeNo, amountFen, subject, returnUrl, notifyUrl);
+        }
+        if ("PAGE".equals(type)) {
+            return pagePay(merchantId, outTradeNo, amountFen, subject, returnUrl, notifyUrl);
+        }
+        throw new PayException("支付宝不支持的 payType：" + payType);
+    }
+
+    @Override
+    public String channelName() {
+        return channelName;
     }
 
     /**
-     * {@inheritDoc}
+     * 扫码预下单。
      */
-    @Override
     public PayOrderResult precreate(String appId, String outTradeNo, long amountFen, String subject,
                                     String notifyUrl) {
         PayDeps.requireKernel();
@@ -122,9 +159,8 @@ public final class DefaultAliPayClient implements AliPayClient {
     }
 
     /**
-     * {@inheritDoc}
+     * 手机网站支付。
      */
-    @Override
     public PayOrderResult wapPay(String appId, String outTradeNo, long amountFen, String subject,
                                  String returnUrl, String notifyUrl) {
         return pagePay(appId, outTradeNo, amountFen, subject, returnUrl, notifyUrl,
@@ -132,9 +168,8 @@ public final class DefaultAliPayClient implements AliPayClient {
     }
 
     /**
-     * {@inheritDoc}
+     * 电脑网站支付。
      */
-    @Override
     public PayOrderResult pagePay(String appId, String outTradeNo, long amountFen, String subject,
                                   String returnUrl, String notifyUrl) {
         return pagePay(appId, outTradeNo, amountFen, subject, returnUrl, notifyUrl,
