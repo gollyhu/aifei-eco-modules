@@ -134,7 +134,7 @@ aifei 生态已覆盖微信通道（`aifei-weixin`：公众号 / 小程序 / 微
 | 2 | **公共 API 实现无关** | 根包与 `spi` 包零第三方类型（`org.dromara.sms4j.*`）、零框架类型（`cn.aifei.*`）；公共签名只出现 JDK 类型 + 本模块类型 |
 | 3 | **`aifei-all` 为 `provided`** | 不传递，消费方必须自带（README 声明） |
 | 4 | **第三方依赖 optional（已定档）** | sms4j 为 `optional`（已定档，见 §三-3.3），阻断传递；缺失时首次调用抛可读 `SmsException`，不得裸抛 `NoClassDefFoundError` / `ClassNotFoundException` |
-| 5 | **根包公共类型数量精确** | 由架构门禁 `ArchitectureBoundaryTest` 断言（数量预估 4，实际由 `design.md` 定档后冻结） |
+| 5 | **根包公共类型数量精确** | 由架构门禁 `ArchitectureBoundaryTest` 断言（`design.md` 已定档冻结为精确 **5** 个：`SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException`；`spi` 包 **2** 个 `SmsReceiptListener` / `SmsReceipt`） |
 | 6 | **命名约定** | `SmsKit` 属 **Kit**（有状态门面：需要先装配 `SmsPlugin.start()` 才能干活），不得改名为 `SmsUtil`；`SmsClient` 是接口（名词性后缀，对齐 `HttpClient` / `OssClient`） |
 | 7 | **包名** | 根包 `cn.hg.aifei.sms`；aifei 接入层 `cn.hg.aifei.sms.aifei`（对齐其它模块）；适配层 `cn.hg.aifei.sms.internal`（或其子包，由 `design.md` 定） |
 | 8 | **零存储** | `src/main/java` 禁 `import java.sql.`；不依赖 `aifei-db`；不出现任何 SQL / 表名 / 数据源概念 |
@@ -199,18 +199,18 @@ aifei 生态已覆盖微信通道（`aifei-weixin`：公众号 / 小程序 / 微
 | 回执交付 | 验签通过后解析回执内容（发送状态、流水号、时间等），交给消费方实现的回执监听器（SPI，`SmsReceiptListener`，**已定档落 `cn.hg.aifei.sms.spi` 包**）；模块本身不落库、不做幂等去重（对齐 `aifei-weixin` SDK 不做去重的契约） |
 | 响应契约 | 回调处理完成后返回厂商要求的响应（部分厂商要求返回特定 JSON 或 `success` 字面量）；具体响应格式由 `design.md` 按通道定档 |
 
-### 5.5 公共面预估（**须过设计决策，由架构师在 `design.md` 定稿**）
+### 5.5 公共面定稿（`design.md` 已冻结，本表为门禁断言唯一名单）
 
-本表只是**能力分区与命名口径**，不是签名清单；类型个数为预估，逐字签名、方法形态、构造器、包内分布一律由 `aifei-sms/docs/design.md` 定稿，本文不代写。
+> 本节类型名单与数量已由 `aifei-sms/docs/design.md` §5.6 冻结（Q7 定稿）：根包**精确 5 类**、`spi` 包**精确 2 类**（`SmsReceiptListener` / `SmsReceipt`，D13 定稿）。`ArchitectureBoundaryTest.publicSurfaceExact` 按**文件名集合精确相等**断言，多一个或少一个即失败（AC-10）。逐字签名、构造器见 `design.md` §5，本文不代写。
 
-| 包 | 预估类型 | 性质 |
-| --- | --- | --- |
-| 根包 `cn.hg.aifei.sms`（约 4–5 类） | `SmsClient`（发送门面接口）/ `SmsKit`（静态门面）/ `SmsMessage`（发送消息值对象）/ `SmsException`（统一异常）/ `SmsResult`（发送结果值对象，预估） | 公共承诺 API |
-| `cn.hg.aifei.sms.spi`（约 1 类） | `SmsReceiptListener`（回执监听器，**已定档落此包**） | 公共承诺 API（消费方实现） |
-| `cn.hg.aifei.sms.aifei`（约 2 类，预估） | `SmsPlugin`（装配入口）/ `SmsHandler`（回执接收 Handler） | 接入构件，**非承诺 API**（与 `aifei-oss` 的 `OssPlugin` 同口径） |
-| `cn.hg.aifei.sms.internal`（预估） | sms4j 适配层：配置解析、通道工厂、`SmsBlend` 包装、依赖探测、异常构造 | 非承诺实现层，唯一允许引用 `org.dromara.sms4j.*` |
+| 包 | 定稿类型（冻结） | 数量 | 性质 |
+| --- | --- | --- | --- |
+| 根包 `cn.hg.aifei.sms` | `SmsClient`（发送门面接口）/ `SmsKit`（静态门面）/ `SmsMessage`（发送消息值对象）/ `SmsException`（统一异常）/ `SmsResult`（发送结果值对象，**已定稿独立成类**） | **精确 5** | 公共承诺 API |
+| `cn.hg.aifei.sms.spi` | `SmsReceiptListener`（回执监听器，已定档落此包）/ `SmsReceipt`（回执内容值对象，design.md 定稿） | **精确 2** | 公共承诺 API（消费方实现 / 读取回执） |
+| `cn.hg.aifei.sms.aifei` | `SmsPlugin`（装配入口）/ `SmsHandler`（回执接收 Handler） | 2 | 接入构件，**非承诺 API**（与 `aifei-oss` 的 `OssPlugin` 同口径），不计入根包数量 |
+| `cn.hg.aifei.sms.internal`（含 `internal.sms4j` 子包） | 配置解析、通道工厂、`SmsBlend` 包装、依赖探测、异常构造、回执验签、`SmsReceipt` 值对象 | 不计数 | 非承诺实现层，唯一允许引用 `org.dromara.sms4j.*` |
 
-**命名口径**：`SmsKit` 属 **Kit**（需先装配才能干活），不得改叫 `SmsUtil`；`SmsClient` 是接口（名词性后缀，对齐 `OssClient` / `HttpClient`）。
+**命名口径**：`SmsKit` 属 **Kit**（需先装配才能干活），不得改叫 `SmsUtil`；`SmsClient` 是接口（名词性后缀，对齐 `OssClient` / `HttpClient`）。**回写说明**：Q7 由原预估 4–5 类定稿为根包精确 5 类（`SmsResult` 独立成类），同步冻结 AC-10 门禁断言数量。
 
 ## 六、验收要点
 
@@ -227,7 +227,7 @@ aifei 生态已覆盖微信通道（`aifei-weixin`：公众号 / 小程序 / 微
 | `AC-07` | `R-05` | 厂商回调 POST 到 `SmsHandler` 注册的 URL → 验签通过后回执监听器收到解析后的回执内容（含发送状态、流水号）；验签失败 → 不交付回执、返回约定错误响应 | 单测（mock 厂商回调报文与签名） |
 | `AC-08` | `R-06` | 参数错误（手机号为空 / 模板 ID 为空等）→ `SmsException` 且消息可读；厂商返回错误 → `SmsException` 且消息含厂商错误码与描述、保留 cause；网络异常 → `SmsException` 且保留 cause | 单测 |
 | `AC-09` | 公共面 | 根包公共签名零第三方类型（`org.dromara.sms4j.*`）、零框架类型（`cn.aifei.*`）；`org.dromara.sms4j.*` import 只出现在 `internal` 适配层 | 门禁 `ArchitectureBoundaryTest` |
-| `AC-10` | 公共面 | 根包公共类型数量精确等于 `design.md` 定稿名单（预估 4–5，实际以 `design.md` 冻结为准）；多一个或少一个即失败 | 门禁 `ArchitectureBoundaryTest` + 反射 |
+| `AC-10` | 公共面 | 根包公共类型数量精确等于 `design.md` 定稿名单（**已冻结为精确 5**：`SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException`；`spi` 包精确 2：`SmsReceiptListener` / `SmsReceipt`）；多一个或少一个即失败 | 门禁 `ArchitectureBoundaryTest.publicSurfaceExact`（文件名集合精确相等）+ 反射 |
 | `AC-11` | 公共面 | `cn.aifei.*` 只允许出现在 `aifei` 接入包（或 `design.md` 白名单登记的 `internal` 日志记录点）；`java.sql.*` / `io.undertow.*` 全模块禁止（库模块本体） | 门禁 `ArchitectureBoundaryTest` |
 | `AC-12` | Java 8 | 主 JAR 内全部 class major == **52**；源码无 `var` / `record` / `switch` 表达式 / text block / `List.of(` / `Map.of(` | `javap -verbose` 批量断言 + 门禁正则 |
 | `AC-13` | 依赖 | `mvn dependency:tree` 除 `cn.aifei:aifei-all`（provided）外，sms4j 为 `optional`（已定档）、无其它第三方 compile / runtime 依赖、无日志绑定实现 | `dependency:tree` |
@@ -252,13 +252,13 @@ aifei 生态已覆盖微信通道（`aifei-weixin`：公众号 / 小程序 / 微
 
 ## 八、待确认问题
 
-> 本节共 **3** 项仍待确认（Q1 artifactId / Q3 装配方式 / Q7 根包数量），其余 7 项（Q2 / Q4 / Q5 / Q6 / Q8 / Q9 / Q10）已定档并固定到对应章节（§三 / §四 / §二 / §五 / §六 / §七 / §九）。保留项不重新编号，§十 / DoD 中 Q1 / Q3 引用不受影响。
+> 本节原 **3** 项待确认（Q1 artifactId / Q3 装配方式 / Q7 根包数量）现已全部结案：`Q1`/`Q3` 已由架构师前置实证（结论见 `aifei-sms/docs/design.md` §2），`Q7` 已由 `design.md` 定档冻结并回写本文；其余 7 项（Q2 / Q4 / Q5 / Q6 / Q8 / Q9 / Q10）已定档并固定到对应章节（§三 / §四 / §二 / §五 / §六 / §七 / §九）。保留项不重新编号，§十 / DoD 中 Q1 / Q3 引用不受影响。
 
 | # | 问题 | 倾向 / 默认假设 |
 | --- | --- | --- |
 | `Q1` | **sms4j 精确 Maven artifactId**：版本已定档 v3.3.6（固定到 §〇 / §二 / §九），精确 artifactId（`sms4j-core`？`sms4j`？`org.dromara:sms4j`？）仍需实证——sms4j 核心 jar 是否存在独立于 starter 的 core artifact？ | **仍待架构师实证**：须用 `mvn dependency:get` + `javap -v` 验证 class major 52 + `dependency:tree` 检查传递依赖（无 Spring / 无日志绑定实现、传递项是否 Java 8 兼容）。实证结论写入 `design.md` §选型实证记录（对齐 `aifei-oss` design.md §2 / `aifei-excel` design.md §2 范式） |
 | `Q3` | **sms4j 装配方式**：sms4j 核心是否提供编程式 API（类似 `aifei-oss` 的 `FileStorageServiceBuilder.create(properties).build()`）来构建 `SmsBlend`？还是必须经 yaml / starter 装配？ | **仍待架构师实证**（用户裁决：交架构师证实后给方案）：须验证 sms4j 核心在不引入 starter 的前提下能否编程式构建 `SmsBlend`（传入配置对象 / Prop）。若不能，需评估是否需在 `internal` 适配层自行解析 `sms.*` Prop 并手动构建 sms4j 配置对象。倾向：sms4j 核心提供 `SmsPlugin` / `SmsFactory` 编程式 API（基于 sms4j 文档「`SmsFactory.getSmsBlend(...)` 获取实例」），具体调用方式由架构师实证 |
-| `Q7` | **根包公共面精确数量**：预估 4–5 类（根包），`SmsResult` 是否独立成类？（回执监听器已定档落 `cn.hg.aifei.sms.spi` 包，固定到 §五 5.5） | **仍待 `design.md` 定档**：由架构师在 `design.md` 定稿后冻结，回写本文 §五预估表与 `AC-10` 门禁断言数量 |
+| `Q7` | **根包公共面精确数量**：预估 4–5 类（根包），`SmsResult` 是否独立成类？（回执监听器已定档落 `cn.hg.aifei.sms.spi` 包，固定到 §五 5.5） | **已由 `design.md` 定档冻结**：根包精确 **5** 类，`SmsResult` 独立成类；`spi` 包精确 **2** 类（`SmsReceiptListener` / `SmsReceipt`）；已回写本文 §四基线 5、§五 5.5 与 `AC-10` 门禁断言数量 |
 
 ## 九、参考资产
 
@@ -276,7 +276,7 @@ aifei 生态已覆盖微信通道（`aifei-weixin`：公众号 / 小程序 / 微
 
 ## 十、执行方式
 
-- 本文件是**任务输入**：§三 的 6 项前置决策（Q2 / Q4 / Q5 / Q6 已定档并入对应小节，Q7 部分定档部分待 `design.md`，Q3 仍待架构师实证）、§二 的不做清单、§四 的已定档基线不得推翻；**公共面逐字签名、包内分布、异常类型职责、配置键名、sms4j 精确 artifactId**（版本已定档 v3.3.6）由架构师在 `aifei-sms/docs/design.md` 定稿，定稿后本文验收要点的验证通道按定稿位置固化。
+- 本文件是**任务输入**：§三 的 6 项前置决策（Q2 / Q4 / Q5 / Q6 已定档并入对应小节，Q7 已由 `design.md` 定档冻结并回写，Q3 已由架构师实证）、§二 的不做清单、§四 的已定档基线不得推翻；**公共面逐字签名、包内分布、异常类型职责、配置键名、sms4j 精确 artifactId**（版本已定档 v3.3.6）由架构师在 `aifei-sms/docs/design.md` 定稿，定稿后本文验收要点的验证通道按定稿位置固化。
 - **前置实证先行**：`Q1`（sms4j 精确 artifactId，版本已定档 v3.3.6）、`Q3`（sms4j 核心编程式装配可行性）必须在模块实现前由架构师完成实证并给出结论；结论影响 §三前置决策与 §五公共面形态时先回写本文，再进入实现。mock / 测试能力已定档自行实现 `SmsBlend` mock 或在适配层设计可注入点（见 §六 AC-01 / §七）。
 - 本文不提供任务分解与实施顺序（属架构与排期职责）。工期口径引用规划：**2 周**（模块 + demo + 文档 + 门禁），排期 W3–W4（2026-12-07 ~ 12-18）。
 - 回写纪律：`design.md` 定稿后同步 `docs/testing.md`（用例清单与 AC 编号一一对应）、`README.md`（能力边界、消费方自带 `aifei-all`、sms4j optional 策略声明（已定档）、§三-3.4 同步发送声明（已定档不提供异步））。
@@ -290,4 +290,4 @@ aifei 生态已覆盖微信通道（`aifei-weixin`：公众号 / 小程序 / 微
 | 1 | 目标可一句话说清 | **通过**：`aifei-sms` 基于 sms4j 二次封装，以统一接口聚合多厂商短信发送（模板化发送 + 回执），换厂商只改配置不改代码——公共面隔离 sms4j 类型，模块自身零存储、零日志绑定。 |
 | 2 | 每条 P0 需求都有可测 AC | **通过**：`R-01`–`R-06` 共 6 条 P0 全部映射到第六节 `AC-01`–`AC-16`（共 16 条），每条给出可机械验证的判定条件与验证方式；`Q1`（artifactId）/ `Q3` 作为前置实证项单列，未混入 AC。 |
 | 3 | 本期不做清单明确 | **通过**：§二「不做」7 条 + §五末 P1 清单（异步 / 负载均衡 / 模板 CRUD / 频率限制 / 持久化 / 群发 / 国际短信），逐条写死；范围蔓延有明确拦截点。 |
-| 4 | 假设与待确认问题显式标注、无臆造业务规则 | **通过**：§八共 **3** 项仍待确认（Q1 artifactId / Q3 装配方式 / Q7 根包数量），其余 7 项（Q2 / Q4 / Q5 / Q6 / Q8 / Q9 / Q10）已定档并固定到对应章节；`Q1`（artifactId）/ `Q3`（编程式装配可行性）标注为**架构师实证项**，不在本文臆造 sms4j API 签名；§三 6 项关键技术张力逐条给倾向与否决影响；本文未引入用户未表达的业务规则，sms4j 版本已定档 v3.3.6，artifactId / API 签名标为「架构师实证项」。 |
+| 4 | 假设与待确认问题显式标注、无臆造业务规则 | **通过**：§八原 **3** 项待确认（Q1 artifactId / Q3 装配方式 / Q7 根包数量）现已全部结案——Q1/Q3 由架构师前置实证、Q7 由 `design.md` 定档冻结并回写本文（其余 7 项 Q2 / Q4 / Q5 / Q6 / Q8 / Q9 / Q10 已定档并固定到对应章节）；`Q1` / `Q3` 曾在本文标注为**架构师实证项**、不臆造 sms4j API 签名；§三 6 项关键技术张力逐条给倾向与否决影响；本文未引入用户未表达的业务规则，sms4j 版本已定档 v3.3.6。 |
