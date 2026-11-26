@@ -1,0 +1,17 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #f4f6f9; color: #1f2933; font: 14px/1.6 "Microsoft YaHei", Arial, sans-serif; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+.sub { color: #6b7280; margin: 0 0 20px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+.card.wide { grid-column: 1 / -1; }
+h2 { font-size: 16px; margin: 0 0 10px; color: #2563eb; }
+label { display: block; margin: 8px 0; }
+label > input, label > select { width: 100%; padding: 6px 8px; margin-top: 4px; border: 1px solid #d1d5db; border-radius: 4px; }
+button { padding: 7px 14px; margin-top: 8px; border: 0; border-radius: 4px; background: #2563eb; color: #fff; cursor: pointer; }
+button:hover { background: #1d4ed8; }
+.out { background: #0f172a; color: #e2e8f0; border-radius: 4px; padding: 10px; min-height: 34px; white-space: pre-wrap; word-break: break-all; }
+.out.empty { color: #94a3b8; }
+code { background: #eef2ff; padding: 1px 4px; border-radius: 3px; }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }

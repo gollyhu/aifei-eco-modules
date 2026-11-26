@@ -1,0 +1,23 @@
+# ===== aifei-sms-demo 配置 =====
+# HTTP 端口不在本文件：start-demo.bat 用 -Dundertow.port=18180 传入。
+# 以下凭据均为演示占位值；真实发送能力由 mock SmsBlend 提供，全程零外网、零真实短信。
+
+sms.aliyun.type = alibaba
+sms.aliyun.access-key = demo-access-key
+sms.aliyun.secret-key = demo-secret-key
+sms.aliyun.signature = 演示签名
+sms.aliyun.access-key-secret = demo-receipt-secret
+sms.aliyun.region-id = cn-hangzhou
+sms.aliyun.template-id = SMS_DEMO_001
+
+sms.backup.type = alibaba
+sms.backup.access-key = demo-access-key-2
+sms.backup.secret-key = demo-secret-key-2
+sms.backup.signature = 演示签名2
+sms.backup.access-key-secret = demo-receipt-secret-2
+sms.backup.template-id = SMS_DEMO_002
+
+sms.default-channel = aliyun
+
+# Enjoy 模板热加载（非库模块配置键）
+enjoyDevMode = true

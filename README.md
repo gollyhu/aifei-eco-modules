@@ -34,6 +34,8 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-audit](aifei-audit/README.md) | `io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT` | 注解式操作审计：`@Audit` 声明式采集 + `AuditKit` 手动埋点，事件交 `AuditSink` SPI，零存储 / 零线程池 / 零生态依赖 |
 | [aifei-audit-demo](aifei-audit-demo/README.md) | （示例工程，不发布） | aifei-audit 的完整接入示例：8 场景单页演示——注解与未标注对照 / 手动埋点 / 脱敏对照 / sink 切换 / 业务异常 / traceId 关联 / 空态 / 失败隔离（端口 18160，零外网） |
 | [aifei-tools](aifei-tools/README.md) | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：captcha 验证码 / ip 归属地 / qr 二维码 / mask 脱敏，子包隔离各自独立可用，零强制第三方（内核 optional） |
+| [aifei-sms](aifei-sms/README.md) | `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` | 短信通道统一门面：基于 sms4j 二次封装，模板化发送 + 回执接收 + HMAC-SHA1 验签，换厂商只改配置，唯一内核 optional |
+| [aifei-sms-demo](aifei-sms-demo/README.md) | （示例工程，不发布） | aifei-sms 的完整接入示例：发送 / 多通道 / 配置错误态 / 依赖缺失态 / 回执接收 / 空态六场景单页演示（端口 18180，零外网） |
 
 ### aifei-cache
 
@@ -242,6 +244,7 @@ cd aifei-tools     && mvn clean verify      # 门禁验收命令
 | `aifei-excel-demo` | `start-demo.bat` / `stop-demo.bat` | 18150 | `http://localhost:18150/` | 无 |
 | `aifei-audit-demo` | `start-demo.bat` / `stop-demo.bat` | 18160 | `http://localhost:18160/` | 无 |
 | `aifei-i18n-demo` | `start-demo.bat` / `stop-demo.bat` | 18170 | `http://localhost:18170/` | 无 |
+| `aifei-sms-demo` | `start-demo.bat` / `stop-demo.bat` | 18180 | `http://localhost:18180/sms/demo/page` | 无（mock 发送，零外网） |
 
 **正式部署**：库模块以 Maven 依赖方式集成进消费方应用，由消费方自行打包启动；本仓库不提供 `aifei-*.sh` / `aifei-*.bat` 的 `start` / `stop` / `restart` 部署脚本，示例工程也不作为部署形态。
 

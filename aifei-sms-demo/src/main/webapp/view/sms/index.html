@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>aifei-sms demo</title>
+    <link rel="stylesheet" href="/assets/css/sms-demo.css">
+</head>
+<body>
+<div class="wrap">
+    <h1>aifei-sms · 短信通道演示</h1>
+    <p class="sub">基于 sms4j 3.3.6，mock 发送零外网 · 端口 18180</p>
+
+    <div class="grid">
+        <section class="card">
+            <h2>1 · 模板化发送</h2>
+            <label>手机号 <input id="phone" value="13800138000"></label>
+            <label>通道 <select id="channel"></select></label>
+            <label>模板 ID <input id="templateId" value="SMS_DEMO_001"></label>
+            <label>变量 JSON <input id="variables" value='{"code":"123456"}'></label>
+            <button id="sendBtn">发送（mock）</button>
+            <pre id="sendResult" class="out">尚未发送</pre>
+        </section>
+
+        <section class="card">
+            <h2>2 · 多通道切换</h2>
+            <p>下拉切换通道，发送代码不变，结果落点不同。</p>
+            <button id="refreshChannels">刷新通道</button>
+            <pre id="channelInfo" class="out">加载中…</pre>
+        </section>
+
+        <section class="card">
+            <h2>3 · 配置错误态</h2>
+            <button id="configErrorBtn">触发必填项缺失</button>
+            <pre id="configError" class="out">—</pre>
+        </section>
+
+        <section class="card">
+            <h2>4 · 依赖缺失态</h2>
+            <button id="depMissingBtn">模拟未引入 sms4j</button>
+            <pre id="depMissing" class="out">—</pre>
+        </section>
+
+        <section class="card wide">
+            <h2>5 · 回执接收（真实 SmsHandler 验签）</h2>
+            <p>构造阿里云状态报告回调并附带签名 → 经 <code>/sms/callback/{channel}</code> 验签解析 → 监听器记录。</p>
+            <label>回执状态 <input id="receiptStatus" value="OK"></label>
+            <label>流水号 <input id="receiptId" value="900619"></label>
+            <label>签名校验 <select id="badSignature"><option value="false">正确签名</option><option value="true">错误签名</option></select></label>
+            <button id="callbackBtn">模拟厂商回调</button>
+            <pre id="callbackResult" class="out">—</pre>
+            <button id="refreshReceipts">刷新回执列表</button>
+            <pre id="receiptList" class="out empty">暂无回执记录</pre>
+        </section>
+
+        <section class="card">
+            <h2>6 · 空态 / 依赖状态</h2>
+            <button id="resetBtn">清空回执（回到空态）</button>
+            <pre id="state" class="out">加载中…</pre>
+        </section>
+    </div>
+</div>
+<script src="/assets/js/sms-demo.js"></script>
+</body>
+</html>
