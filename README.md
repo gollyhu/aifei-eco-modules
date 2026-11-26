@@ -36,6 +36,9 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-tools](aifei-tools/README.md) | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：captcha 验证码 / ip 归属地 / qr 二维码 / mask 脱敏，子包隔离各自独立可用，零强制第三方（内核 optional） |
 | [aifei-sms](aifei-sms/README.md) | `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` | 短信通道统一门面：基于 sms4j 二次封装，模板化发送 + 回执接收 + HMAC-SHA1 验签，换厂商只改配置，唯一内核 optional |
 | [aifei-sms-demo](aifei-sms-demo/README.md) | （示例工程，不发布） | aifei-sms 的完整接入示例：发送 / 多通道 / 配置错误态 / 依赖缺失态 / 回执接收 / 空态六场景单页演示（端口 18180，零外网） |
+| [aifei-pay](aifei-pay/README.md) | `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT` | 支付宝支付统一门面：IJPay V3 内核 `optional`，扫码 / H5 / PC 下单 + 查单 / 退款 + 回调验签，多应用隔离 |
+
+> `aifei-email` 目前仅有需求与设计文档（`docs/需求/aifei-email.md`、`aifei-email/docs/design.md`），尚未实现，不在上表内。
 
 ### aifei-cache
 
@@ -200,6 +203,25 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 零存储、零线程池、零生态依赖：`aifei-all:1.1.2` 为 `provided`，不引任何日志绑定，零 `java.sql`、零线程创建
 - 详细用法见 [aifei-audit/README.md](aifei-audit/README.md)，设计文档见 [docs/design.md](aifei-audit/docs/design.md)
 
+### aifei-sms
+
+短信通道统一门面：基于 sms4j-core 二次封装，换厂商只改 `sms.*` 配置。
+
+- 根包精确 5 个类型：`SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException`；`spi` 包 2 个回执类型，公共签名零第三方 / 零框架类型
+- 唯一实现内核 `sms4j-core:3.3.6` 为 `optional`（缺失时 `SmsPlugin.start()` 抛可读 `SmsException`）；只做同步发送，零存储、零线程池、零日志绑定
+- 首期落地阿里云（`alibaba`）；回执走 `SmsHandler`，阿里云 HMAC-SHA1 验签，Handler 须注册在渲染首页的 Handler 之前
+- 详细用法见 [aifei-sms/README.md](aifei-sms/README.md)，设计文档见 [docs/design.md](aifei-sms/docs/design.md)
+
+### aifei-pay
+
+支付宝支付统一门面：把配置装配、交易动作与回调验签收口为稳定公共契约，与 `aifei-weixin` 支付侧动作语义对齐。
+
+- 根包精确 4 个类型：`AliPayClient` / `AliPayKit` / `AliPayNotifyUtil` / `AliPayException`，`model` 包 4 个值对象；零存储、不做幂等与状态机
+- 五个交易动作：扫码预下单 / H5 / PC / 查单 / 退款；入参金额统一「分」（`long ...Fen`），出参为内核元字符串
+- 回调验签支持公钥与证书双模式、多凭据轮换；同一 appId 多应用隔离，`appId` 为交易方法首参
+- 支付宝内核四项构件（`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `bcprov-jdk18on` / `dom4j`）均为 `optional`，消费方须显式声明并锁定版本
+- 详细用法见 [aifei-pay/README.md](aifei-pay/README.md)，设计文档见 [docs/design.md](aifei-pay/docs/design.md)
+
 ## 构建
 
 所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建，仓库根无聚合 pom。
@@ -223,13 +245,15 @@ cd aifei-excel     && mvn clean install
 cd aifei-audit     && mvn clean install
 cd aifei-i18n      && mvn clean verify      # 门禁验收命令
 cd aifei-tools     && mvn clean verify      # 门禁验收命令
+cd aifei-sms       && mvn clean install
+cd aifei-pay       && mvn clean install
 ```
 
-**发布能力**：当前仅 `aifei-cache`、`aifei-oss`、`aifei-tools` 三个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 13 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。具备发布配置 ≠ 已正式发布：当前仅 `aifei-cache` 已正式发布（基线，版本 `1.1.0`），其余模块均保持 `SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
+**发布能力**：当前 `aifei-cache`、`aifei-oss`、`aifei-tools`、`aifei-pay` 四个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 14 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。具备发布配置 ≠ 已正式发布：当前仅 `aifei-cache` 已正式发布（基线，版本 `1.1.0`），其余模块均保持 `SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
 
 ## 运行示例
 
-仓库含 11 个可运行 demo（均为**示例工程，不发布**），统一在各 demo 目录下用脚本启停：脚本先 `mvn compile dependency:build-classpath` 生成 classpath，再以 `java -cp ... cn.hg.aifei.<模块>.demo.DemoApp` 启动。运行前须先安装被演示的库模块（见上节"构建"，各 demo README 的"前置"小节亦有说明）。
+仓库含 12 个可运行 demo（均为**示例工程，不发布**），统一在各 demo 目录下用脚本启停：脚本先 `mvn compile dependency:build-classpath` 生成 classpath，再以 `java -cp ... cn.hg.aifei.<模块>.demo.DemoApp` 启动。运行前须先安装被演示的库模块（见上节"构建"，各 demo README 的"前置"小节亦有说明）。
 
 | demo 目录 | 启动 / 停止脚本 | 端口 | 验证地址 | 外部依赖 |
 | --- | --- | --- | --- | --- |
@@ -268,6 +292,8 @@ cd aifei-tools     && mvn clean verify      # 门禁验收命令
 - `aifei-audit`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
 - `aifei-i18n`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` 为 `provided + optional`（**不向下游传递**，仅 `kv` 来源需要，用到时消费方须显式引入）；**零第三方 compile 依赖**（`junit` 仅 `test`），不引任何日志绑定；Java 8 / class major 52
 - `aifei-tools`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.1.0`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机与 mask 脱敏零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
+- `aifei-sms`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `SmsPlugin.start()` 抛可读 `SmsException`）；零日志绑定、零存储、同步发送
+- `aifei-pay`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；`IJPay-AliPay-V3:3.0.0` / `alipay-sdk-java-v3:3.1.89.ALL` / `bcprov-jdk18on:1.86` / `dom4j:2.1.5` 均为 **`optional`**，消费方须显式声明，且不要引入 `bcprov-jdk15on`、`dom4j` 不得升到字节码 55 的版本；零存储、不做幂等
 
 **装配类写法约定**：下文及所有 demo 中，应用装配类统一声明为 `implements AifeiConfig<In, Out>`（`In` / `Out` 为应用自身的输入 / 输出类型，可替换为具体类型如 `AifeiConfig<OrderRequest, Result>`）；不使用裸类型 `implements AifeiConfig`（会产生编译警告），也不使用 `extends AppConfig`。各模块在 `config(Plugins)` / `config(Settings)` 中按自身需要装配插件或接入构件。
 
