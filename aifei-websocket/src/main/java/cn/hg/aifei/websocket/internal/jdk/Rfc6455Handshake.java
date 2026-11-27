@@ -68,7 +68,7 @@ public final class Rfc6455Handshake {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private static final String MISSING_TOOLS =
-            "缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明";
+            "缺少可选依赖 io.github.gollyhu:aifei-tools；使用本能力时消费方须显式声明";
 
     /**
      * 禁止创建工具类实例。

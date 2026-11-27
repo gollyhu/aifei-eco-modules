@@ -45,7 +45,13 @@
 - 需求与现有设计冲突时，**先明确并更新设计决策，再改代码**。
 - **未经设计决策**，不得自行确定契约类行为：空值语义、过期语义、序列化格式、异常类型与消息、key 命名规则、资源名规则、模式分流条件、失败策略等。
 - 未经设计决策，不得新增或扩大公共 API 面。
-- **版本纪律**：全部模块在基线正式发布到仓库前一律保持 `x.y.z-SNAPSHOT`（唯一例外：已发布的基线 `aifei-cache` 保持 `1.1.0`）；适用范围、生效时机与解除条件见 `.codebuddy/rules/engineering-standards.md` §2「版本管理与发布（SNAPSHOT 纪律）」。
+- **版本纪律（SNAPSHOT 不升位）**：全部模块在基线正式发布到仓库前一律保持 `x.y.z-SNAPSHOT`（唯一例外：已发布的基线 `aifei-cache` 保持 `1.1.0`）。SNAPSHOT 未定版阶段不适用升位，以本节条款为准。以下五条为强制口径：
+  - ① `-SNAPSHOT` 表示未定版；SNAPSHOT 阶段功能新增 / 缺陷修复 / 重构 / 文档与门禁调整一律不提升版本号（含 minor / patch），保持原 `<version>`，不得把 `1.0.0-SNAPSHOT` 改成 `1.1.0-SNAPSHOT`。
+  - ② `CHANGELOG.md` 当前条目标题与正文坐标必须与 pom `<version>` 一致；SNAPSHOT 阶段变更写入同一条目，不新建更高版本条目。
+  - ③ 跨模块依赖 SNAPSHOT 模块时，依赖 `<version>` 必须与被引模块 pom 当前版本一致；SNAPSHOT 期间不因被依赖模块变更而升位。
+  - ④ 只有用户明确授权正式发布、去掉 SNAPSHOT 时，才按语义化版本递增并走发布关卡。
+  - ⑤ 与用户当次明确指示冲突时，以用户指示为准。
+  - 细则见 `.codebuddy/rules/engineering-standards.md` §7「版本纪律（SNAPSHOT 不升位）」（该文件当前被 gitignore，仅作本地 Supplement）。
 
 ## 硬性约束
 

@@ -24,7 +24,7 @@ import java.util.Map;
 public class XmlUtil {
 
     private static final String MISSING_TOOLS =
-            "缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明";
+            "缺少可选依赖 io.github.gollyhu:aifei-tools；使用本能力时消费方须显式声明";
 
     /**
      * 解析微信 XML 报文，返回根节点下「直接子节点名 → 文本」的有序映射。

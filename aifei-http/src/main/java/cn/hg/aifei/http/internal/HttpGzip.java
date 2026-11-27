@@ -22,7 +22,7 @@ public final class HttpGzip {
     private static final int BUFFER_SIZE = 8192;
 
     private static final String MISSING_TOOLS =
-            "缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明";
+            "缺少可选依赖 io.github.gollyhu:aifei-tools；使用本能力时消费方须显式声明";
 
     /**
      * 禁止创建工具类实例。

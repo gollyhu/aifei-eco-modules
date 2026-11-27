@@ -828,7 +828,7 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 
 ### 10.7 版本策略
 
-- **版本策略**：当前基线 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（五子包基线）。后续能力扩展走 minor 递增（`1.1.0`、`1.2.0`…）、缺陷修复走 patch、破坏性变更走 major（本模块公共面冻结，原则上不发生）。
+- **版本策略**：当前基线 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（五子包基线）。后续能力扩展走 minor 递增（`1.1.0`、`1.2.0`…）、缺陷修复走 patch、破坏性变更走 major（本模块公共面冻结，原则上不发生）。**SNAPSHOT 未定版阶段不适用升位，以根 `AGENTS.md`「版本纪律（SNAPSHOT 不升位）」为准（`.codebuddy/rules/engineering-standards.md` §7 为本地细则）**：功能新增 / 缺陷修复 / 重构 / 文档与门禁调整一律保持 `1.0.0-SNAPSHOT` 不变。
 - **CHANGELOG**：本模块当前无 CHANGELOG；约定**首次新增工具时建立** `aifei-tools/CHANGELOG.md`（沿用仓库文档语言与行尾规范），记录版本号、日期、新增工具与公共面、门禁例数变化、依赖变化；此后每次发布同步追加。
 - 版本与 CHANGELOG 由发布工程师落地，设计关只定口径；坐标版本变更同步 `pom.xml` 与 README/文档索引等引用处。
 
@@ -1127,26 +1127,26 @@ internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一�
 | `AliyunReceiptVerifier.verify(...)` | 参数 / 密钥 / 签名缺失 → `false`；`GeneralSecurityException` → `false`；验签用常量时间比较 | `CryptoException`（key/data null、算法不可用）；`constantTimeEquals` 自身 null → `false` 不抛 | 将 `hmacSha1` 与 `constantTimeEquals` 一并置于既有 `try` 块内，捕获 `CryptoException` → `return false`（对齐改前 `GeneralSecurityException → false` 口径）；canonical 串构造与缺失判断不改动 |
 | `HttpGzip.decode(raw)` | null / 空 → 原样返回；解压失败 → `HttpException("gzip 解压失败", IOException)` | `CodecException`：`codec: gunzip failed, cause: {msg}` | 捕获 `CodecException` → `new HttpException("gzip 解压失败", ce.getCause() != null ? ce.getCause() : ce)`；null / 空可前置判断或由 tools 原样返回，结果一致 |
 
-**可选依赖缺失的新失败路径（Q1 配套）**：私有助手统一捕获 `NoClassDefFoundError`（消费方未显式声明 aifei-tools 导致 tools 类不可加载）→ 转换为**来源模块自身异常族**的可读错误，消息固定含 `缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明`，保留原 cause。各模块落点：weixin → `IllegalStateException`；websocket → `IOException`（与 `acceptFor` 签名一致）；sms → `return false`（与既有「异常即验签失败」一致）；http → `HttpException`。该映射只覆盖「依赖缺失」这一新路径，**不改写上表任何既有正常路径的异常类型与消息**；实现不得因此给 aifei-tools 增加兼容方法。
+**可选依赖缺失的新失败路径（Q1 配套）**：私有助手统一捕获 `NoClassDefFoundError`（消费方未显式声明 aifei-tools 导致 tools 类不可加载）→ 转换为**来源模块自身异常族**的可读错误，消息固定含 `缺少可选依赖 io.github.gollyhu:aifei-tools；使用本能力时消费方须显式声明`，保留原 cause。各模块落点：weixin → `IllegalStateException`；websocket → `IOException`（与 `acceptFor` 签名一致）；sms → `return false`（与既有「异常即验签失败」一致）；http → `HttpException`。该映射只覆盖「依赖缺失」这一新路径，**不改写上表任何既有正常路径的异常类型与消息**；实现不得因此给 aifei-tools 增加兼容方法。
 
 ### 12.4 optional 依赖与消费方声明（Q1 定档）
 
-1. **G2-a 依赖声明**：四个来源模块 pom 各**仅新增一条**依赖：`io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`，`<optional>true</optional>`（无 `scope`，即模块自身 compile 期可见）。沿用仓库 `aifei-lock → aifei-cache` 等既有可选同仓模块先例。`mvn dependency:tree` 中该依赖标 `optional`、**不向下游传递**；来源模块自身编译正常。
+1. **G2-a 依赖声明**：四个来源模块 pom 各**仅新增一条**依赖：`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`，`<optional>true</optional>`（无 `scope`，即模块自身 compile 期可见）。沿用仓库 `aifei-lock → aifei-cache` 等既有可选同仓模块先例。`mvn dependency:tree` 中该依赖标 `optional`、**不向下游传递**；来源模块自身编译正常。
 2. **G2-b 零新增**：除上述一条依赖外，四个来源模块零新增依赖；`aifei-tools` 自身依赖清单（§6.1：`aifei-all` provided + `ip2region` / `aifei-cache` / `zxing` optional + `junit` test）逐字不变；不新增配置键、Plugin、SPI、日志绑定、第三方库。
-3. **G2-c 消费方契约**：未显式声明 aifei-tools 的下游**构建不因 optional 不传递而失败**；其未触及受影响能力的运行路径不失败。消费方**使用任一受影响能力时必须显式声明** `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`；缺失时按 §12.3 末段给可读错误（不裸抛 `NoClassDefFoundError`），或按仓库既有 optional 契约处理。**不得改为强依赖，不得复制 tools 源码到来源模块。**
+3. **G2-c 消费方契约**：未显式声明 aifei-tools 的下游**构建不因 optional 不传递而失败**；其未触及受影响能力的运行路径不失败。消费方**使用任一受影响能力时必须显式声明** `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`；缺失时按 §12.3 末段给可读错误（不裸抛 `NoClassDefFoundError`），或按仓库既有 optional 契约处理。**不得改为强依赖，不得复制 tools 源码到来源模块。**
 4. **门禁适配例外（唯一）**：`aifei-http` 门禁① `noThirdPartyReference` 的 import 白名单为 `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.http.`，不含 `cn.hg.aifei.tools.`。为保证「既有门禁逐字不改、不放宽、来源模块既有测试不删改」，`HttpGzip.decode` 对 tools 采用**全限定名调用且不写 import**；该写法不触碰任何断言文本、不触碰公共面、不引入第三方类型（aifei-tools 为同仓一手模块，非第三方）。其它三个来源模块的门禁均不禁止 `cn.hg.aifei.tools.*`，按常规 `import` 书写即可。
 
 ### 12.5 版本统一口径（Q2 定档）
 
-统一为 **`io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`**，保持 `-SNAPSHOT`，**不执行 deploy / 正式发布**。为使 G4-a「`pom.xml` 与 `CHANGELOG.md` 表示同一版本」成立且 G4-b 保持 `-SNAPSHOT`，CHANGELOG 最新条目标题由 `## [1.1.0] - 2026-11-27` 同步为 `## [1.1.0-SNAPSHOT] - 2026-11-27`（不新增条目、不升为正式版本号）；该最新条目正文中的 aifei-tools 坐标示例统一写为 `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`。`[1.0.0]` 历史段落（含 `:43` 的坐标示例 `1.0.0-SNAPSHOT`）属历史记录，**不改**。
+按用户裁决（2026-11-27），`-SNAPSHOT` 表示未定版，**SNAPSHOT 阶段不升位**：aifei-tools 当前版本维持 **`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`**，保持 `-SNAPSHOT`，**不执行 deploy / 正式发布**；上一轮「新增能力走 minor 升位」的决定作废。为使 G4-a「`pom.xml` 与 `CHANGELOG.md` 表示同一版本」成立且 G4-b 保持 `-SNAPSHOT`，CHANGELOG 最新条目标题为 `## [1.0.0-SNAPSHOT] - 2026-11-27`（不新增条目、不升位）；该最新条目正文中的 aifei-tools 坐标示例统一写为 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`。`[1.0.0] - 2026-11-24` 历史段（含其中的坐标示例 `1.0.0-SNAPSHOT`）属历史记录，**不改**。SNAPSHOT 期间的功能新增、缺陷修复、重构、文档与门禁调整一律写入同一版本条目，不新建更高版本条目；以根 `AGENTS.md`「版本纪律（SNAPSHOT 不升位）」为准（`.codebuddy/rules/engineering-standards.md` §7 为本地细则）。
 
 | 文件 | 位置 | 动作 |
 | --- | --- | --- |
-| `aifei-tools/pom.xml` | `:9` `<version>` | `1.0.0-SNAPSHOT` → `1.1.0-SNAPSHOT`；其它属性 / 依赖 / 插件（含 javadoc `excludePackageNames`）不动 |
-| `aifei-tools/README.md` | `:7` 坐标说明、`:21` Maven 坐标示例 | 两处 `1.0.0-SNAPSHOT` → `1.1.0-SNAPSHOT`；`aifei-cache:1.1.0` 等其它坐标不动 |
-| 仓库根 `README.md` | `:36` 模块表 `aifei-tools` 坐标列 | `1.0.0-SNAPSHOT` → `1.1.0-SNAPSHOT`；该行「9 子包」描述不动 |
-| 四个来源模块 `pom.xml` | 新增的 aifei-tools 依赖 `<version>` | 一律写 `1.1.0-SNAPSHOT`；模块自身 `<version>1.0.0-SNAPSHOT</version>` 不动 |
-| `aifei-tools/CHANGELOG.md` | 最新条目标题 `## [1.1.0] - 2026-11-27`；该条目正文坐标示例 | 标题改为 `## [1.1.0-SNAPSHOT] - 2026-11-27`；正文坐标示例改为 `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`；不新增条目、不升正式版本号；`[1.0.0]` 历史段（含 `:43`）不动 |
+| `aifei-tools/pom.xml` | `:9` `<version>` | 保持 `1.0.0-SNAPSHOT` 不变（SNAPSHOT 未定版，不升位）；其它属性 / 依赖 / 插件（含 javadoc `excludePackageNames`）不动 |
+| `aifei-tools/README.md` | `:7` 坐标说明、`:21` Maven 坐标示例 | 两处保持 `1.0.0-SNAPSHOT`；`aifei-cache:1.1.0` 等其它坐标不动 |
+| 仓库根 `README.md` | `:36` 模块表 `aifei-tools` 坐标列 | 保持 `1.0.0-SNAPSHOT`；该行「9 子包」描述不动 |
+| 四个来源模块 `pom.xml` | 新增的 aifei-tools 依赖 `<version>` | 一律保持 `1.0.0-SNAPSHOT`（与被引模块 pom 当前版本一致）；模块自身 `<version>1.0.0-SNAPSHOT</version>` 不动 |
+| `aifei-tools/CHANGELOG.md` | 最新条目标题 `## [1.0.0-SNAPSHOT] - 2026-11-27`；该条目正文坐标示例 | 标题保持 `[1.0.0-SNAPSHOT] - 2026-11-27`，正文坐标示例写为 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`；不新建条目、不升版本；`[1.0.0] - 2026-11-24` 历史段不动 |
 | 四个来源模块 `CHANGELOG.md` | — | **本轮不更新**（Q4，见 §12.10） |
 
 ### 12.6 咨询结论一：`kdf` 不并入 `cn.hg.aifei.tools.crypto`
@@ -1191,7 +1191,7 @@ internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一�
 | 任务 | 内容（文件） | 依赖 | 验收要点 |
 | --- | --- | --- | --- |
 | **T32 架构设计（贾苟思，已完成）** | `aifei-tools/docs/design.md`（本章 §12） | — | 源模块改造点 / 异常映射 / optional 契约 / 版本口径 / 两项咨询结论 / 任务列表全部落盘；不写产品代码 |
-| **T33 版本统一 + 四模块依赖声明** | `aifei-tools/pom.xml`（`:9` 版本）· `aifei-tools/README.md`（`:7`、`:21` 坐标）· 仓库根 `README.md`（`:36` 坐标列）· `aifei-weixin/pom.xml` · `aifei-websocket/pom.xml` · `aifei-sms/pom.xml` · `aifei-http/pom.xml`（各新增 1 条 optional aifei-tools:1.1.0-SNAPSHOT） | T32 | §12.4 / §12.5 逐字一致；两处版本统一且保持 SNAPSHOT；CHANGELOG 最新条目标题按 §12.5 改为 `[1.1.0-SNAPSHOT]`、正文坐标同步；历史段不动；四模块零其它新增依赖；不执行 deploy |
+| **T33 版本统一 + 四模块依赖声明** | `aifei-tools/pom.xml`（`:9` 版本）· `aifei-tools/README.md`（`:7`、`:21` 坐标）· 仓库根 `README.md`（`:36` 坐标列）· `aifei-weixin/pom.xml` · `aifei-websocket/pom.xml` · `aifei-sms/pom.xml` · `aifei-http/pom.xml`（各新增 1 条 optional aifei-tools:1.0.0-SNAPSHOT） | T32 | §12.4 / §12.5 逐字一致；全部保持 `1.0.0-SNAPSHOT`（SNAPSHOT 阶段不升位）；CHANGELOG 最新条目标题按 §12.5 为 `[1.0.0-SNAPSHOT] - 2026-11-27`、正文坐标同步；`[1.0.0] - 2026-11-24` 历史段不动；四模块零其它新增依赖；不执行 deploy |
 | **T34 weixin 委托改造** | `aifei-weixin/src/main/java/cn/aifei/weixin/core/encrypt/Sha1Util.java` · `.../encrypt/RandomUtil.java` · `.../core/util/XmlUtil.java` · `.../core/util/XmlBuilder.java` | T33 | §12.2 前四行 + §12.3；sortedSign / randomStr() 默认16 / XML 根节点与字段名 / Builder 标签与 CDATA 拆分逐字保留；版权头逐字保留；`KernelBindingTest` 4 例全绿 |
 | **T35 websocket 委托改造** | `aifei-websocket/src/main/java/cn/hg/aifei/websocket/internal/jdk/Rfc6455Handshake.java` | T33 | §12.2 第五行 + §12.3；GUID / 头名 / VERSION / newKey / 请求响应读写不动；`throws IOException` 与 RFC 向量断言全绿；门禁 5 例全绿 |
 | **T36 sms 委托改造** | `aifei-sms/src/main/java/cn/hg/aifei/sms/internal/sms4j/AliyunReceiptVerifier.java` | T33 | §12.2 第六行 + §12.3；signature 键名 / ALGORITHM 字面量 / canonical 串 / 缺失返回 false 不动；门禁 14 例全绿 |

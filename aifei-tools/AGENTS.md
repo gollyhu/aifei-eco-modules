@@ -12,7 +12,7 @@
 
 ## 交付性质（库模块，非业务应用）
 
-`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，九个工具按子包隔离、各自独立可用、无跨工具抽象。
+`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，九个工具按子包隔离、各自独立可用、无跨工具抽象。
 
 **不适用章节（不得据此模块约束要求）**：
 
@@ -231,4 +231,4 @@ javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findst
 
 - **依赖**：新内核一律 `optional` 阻断传递、缺失首次调用抛可读模块异常；`aifei-all` 仍 provided；零日志绑定。
 - **不做跨工具抽象**：不引入统一 `Tool` 接口、公共基类或 `common/` 层，工具之间零依赖、零互相引用。
-- **版本**：能力扩展走 minor 递增（`1.0.0` → `1.1.0` …）；首次新增工具时建立 `CHANGELOG.md` 并逐次记录。
+- **版本**：SNAPSHOT 阶段不升位，按根 `AGENTS.md`「版本纪律（SNAPSHOT 不升位）」执行；正式发布去掉 SNAPSHOT 后才按语义化版本递增（`1.0.0` → `1.1.0` …）。变更写入当前版本条目，不新建更高版本条目。
