@@ -39,7 +39,7 @@
 
 | 构件 | scope | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all` | `provided` | 消费方自带，不向下游传递 |
+| `cn.aifei:aifei` | `provided` | 消费方自带，不向下游传递 |
 | `com.github.javen205:IJPay-AliPay-V3` | `optional` | 支付宝 V3 内核（`alipay3`） |
 | `com.github.javen205:IJPay-AliPay` | `optional` | 支付宝 V2 内核（`alipay2`） |
 | `com.alipay.sdk:alipay-sdk-java-v3` | `optional` | 显式声明以**锁定版本** `3.1.89.ALL` |

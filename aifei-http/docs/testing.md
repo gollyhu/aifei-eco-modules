@@ -13,7 +13,7 @@ mvn clean verify                                    # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest            # 仅跑架构门禁（15 例）
 mvn test -Dtest=HttpConfigTest                      # 单类
 mvn test -Dtest=HttpConfigTest#shouldUseDefaultsWhenAbsent   # 单方法
-mvn dependency:tree                                 # 断言：aifei-all(provided) + junit(test)
+mvn dependency:tree                                 # 断言：aifei(provided) + junit(test)
 ```
 
 **零外部依赖**：全部用例离线可跑。真实传输用例只访问 `com.sun.net.httpserver.HttpServer` 绑定的 `127.0.0.1` 随机端口；编排用例注入伪传输实现，不产生任何网络调用。
@@ -137,7 +137,7 @@ mvn dependency:tree                                 # 断言：aifei-all(provide
 | --- | --- | --- |
 | `mvn -B clean verify` | `Tests run: 117, Failures: 0, Errors: 0, Skipped: 0`，`BUILD SUCCESS`（3.273 s） | PASS |
 | `cd ../aifei-http-demo && mvn -B clean verify` | `BUILD SUCCESS`（2.331 s；demo 无测试用例） | PASS |
-| `mvn dependency:tree` | `cn.aifei:aifei-all:jar:1.1.2:provided` + `junit:junit:jar:4.13.2:test`（另含传递 `fastjson2:provided`、`hamcrest-core:test`）；**零 compile / optional 第三方** | PASS |
+| `mvn dependency:tree` | `cn.aifei:aifei:jar:1.1.2:provided` + `junit:junit:jar:4.13.2:test`（另含传递 `fastjson2:provided`、`hamcrest-core:test`）；**零 compile / optional 第三方** | PASS |
 | 主 JAR class major（解 zip 逐条目读字节偏移 6–7） | 21 个 class **全部 major 52**，直方图仅 `52 => 21` | PASS |
 | JAR 内 `META-INF/services` | 条目数 **0** | PASS |
 

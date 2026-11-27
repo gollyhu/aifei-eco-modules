@@ -172,7 +172,8 @@ public class ShutdownTest {
 
         scheduler.stop();
 
-        assertTrue("停机超时应中断在途任务（任务须自行响应中断）", body.interrupted());
+        assertTrue("停机超时应中断在途任务（任务须自行响应中断）",
+                body.awaitInterrupted(TestJobs.TIMEOUT_MILLIS));
         assertTrue("续排被拒不得外抛，实际收到：" + uncaught, uncaught.isEmpty());
         assertEquals("任务体不得因停机异常而误记 FAILED 之外的多余终态", 0,
                 probe.count(task.name(), JobEvent.Phase.FAILED));

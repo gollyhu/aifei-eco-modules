@@ -43,7 +43,7 @@
 ## 1. 实现方案
 
 ### 1.1 模块划分（库模块／无 Plugin 门面型）
-`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（五子包基线，详见 §10.7），包名 `cn.hg.aifei.tools`，Java 8（class major 52），无根聚合 pom、独立构建。定位「极简工具集」：**根包零公共类型**，工具按子包隔离、各自独立可用、无跨工具抽象。工具清单（当前 5 个）：
+`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（五子包基线，详见 §10.7），包名 `cn.hg.aifei.tools`，Java 8（class major 52），由仓库根 pom 聚合，并通过 import 根 BOM 统一依赖版本；模块仍可独立构建。定位「极简工具集」：**根包零公共类型**，工具按子包隔离、各自独立可用、无跨工具抽象。工具清单（当前 5 个）：
 
 | 子包 | 公共类型 | internal（非承诺） |
 | --- | --- | --- |
@@ -62,7 +62,7 @@
 ### 1.2 技术选型
 - 语言/构建：Java 8 + Maven（`source/target=1.8`、UTF-8、surefire `workingDirectory=${project.basedir}`）。
 - ip 内核：`org.lionsoul:ip2region:3.3.7`（optional，实证见 §0）。
-- captcha：纯 JDK `Graphics2D` + `ImageIO` 生成 PNG；`SecureRandom` 生成 token；默认进程内 LRU，集群存储走 optional `aifei-cache:1.1.0`。
+- captcha：纯 JDK `Graphics2D` + `ImageIO` 生成 PNG；`SecureRandom` 生成 token；默认进程内 LRU，集群存储走 optional `aifei-cache:1.2.0-SNAPSHOT`。
 - qr：`com.google.zxing:core:3.5.3`（optional，实证见 §0.3），不引 javase；`BitMatrix`→PNG 自写。mask：纯 JDK + `ConcurrentHashMap`（零第三方）。
 - 图形/随机数零第三方；各内核依赖缺失均抛可读模块异常，不裸抛 `NoClassDefFoundError`。
 
@@ -77,7 +77,7 @@
 
 ```
 aifei-tools/
-├── pom.xml                                   [T01] Java8；aifei-all provided；ip2region/aifei-cache/zxing optional（属性 ip2region.version/zxing.version）；junit test；零日志绑定
+├── pom.xml                                   [T01] Java8；aifei provided；ip2region/aifei-cache/zxing optional（属性 ip2region.version/zxing.version）；junit test；零日志绑定
 ├── docs/
 │   ├── design.md                             [T01] ★本文（本轮产出，主理人汇编落盘）
 │   ├── testing.md                            [T11] 测试策略与用例（素材见 §7）
@@ -518,9 +518,9 @@ sequenceDiagram
 ### 6.1 依赖清单（精确到 artifact/version/scope）
 | 依赖 | scope | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **provided** | 生态统一底座；本模块源码零引用，消费方自带、不传递 |
+| `cn.aifei:aifei:1.1.2` | **provided** | 生态统一底座；本模块源码零引用，消费方自带、不传递 |
 | `org.lionsoul:ip2region:3.3.7` | **optional** | ip 内核，经 `ipdb/internal` 引用；阻断传递；缺失→`IpException` |
-| `io.github.gollyhu:aifei-cache:1.1.0` | **optional** | captcha 集群存储，经 `captcha/internal` 反射探测；阻断传递；缺失→`CaptchaException` |
+| `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | **optional** | captcha 集群存储，经 `captcha/internal` 反射探测；阻断传递；缺失→`CaptchaException` |
 | `com.google.zxing:core:3.5.3` | **optional** | qr 内核，经 `qr/internal` 引用；零传递依赖（实证 §0.3）；阻断传递；缺失→`QrException`；**不引 javase** |
 | `junit:junit:4.13.2` | **test** | 单测 + 门禁 |
 
@@ -585,7 +585,7 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 | 场景 | 行为/消息 |
 | --- | --- |
 | ttl/capacity/maxFailures ≤ 0 | `captcha: {name} must be positive, but was: {n}` |
-| 启用集群存储但无 aifei-cache | `captcha: io.github.gollyhu:aifei-cache:1.1.0 is required for cluster store` |
+| 启用集群存储但无 aifei-cache | `captcha: io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT is required for cluster store` |
 | token 无效/已消费/过期/错误次数超限 | `verify` 返回 `false`（不抛异常） |
 | 系统级错误（存储不可用等） | 抛 `CaptchaException` 并保留 cause |
 
@@ -649,7 +649,7 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
      | --- | --- | --- |
      | `org.lionsoul:ip2region:3.3.7` | `Apache-2.0 OR MIT` | ✅ 列入（含双许可选择说明） |
      | `com.google.zxing:core:3.5.3` | `Apache-2.0` | ✅ 列入 |
-     | `io.github.gollyhu:aifei-cache:1.1.0` | `Apache-2.0` | ❌ 不列入：本生态自家模块（同 `cn.aifei` 体系），非第三方 |
+     | `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | `Apache-2.0` | ❌ 不列入：本生态自家模块（同 `cn.aifei` 体系），非第三方 |
      | `junit:junit:4.13.2` | 不适用（不列入） | ❌ 不列入：仅 `test` scope，不随发布产物分发 |
    - **README 引用要求（发布工程师落地，本文只定要求）**：README §6「注意事项与技术难点」的**双许可署名条目**改为「口径摘要 + 指向 `THIRD_PARTY_NOTICES.md`」；README §7「参考 → 文档索引」新增一行指向 `THIRD_PARTY_NOTICES.md`。两处均由发布工程师在产出署名声明文件时同步落地，不在设计关改 README。
 5. **3.3.8 弃用是「当前时点」结论**（Java 11 基线）：登记为非阻塞假设；若将来放宽 Java 基线须重走设计决策。
@@ -809,7 +809,7 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 
 - 新能力内核一律 **`optional`**（阻断传递），版本用独立 pom 属性管理（对齐 `<ip2region.version>` / `<zxing.version>`）；第三方署名同步 `THIRD_PARTY_NOTICES.md`（对齐 §8-A4）。
 - 内核缺失时**首次调用**抛该工具的可读模块异常（如 `<Tool>Exception`），不得裸抛 `NoClassDefFoundError` / `LinkageError`；探测逻辑集中在该工具 internal 的 `<Tool>Deps`，对齐 §6.1 与 `aifei-excel` 的可选依赖先例。纯 JDK 工具不加任何新依赖。
-- `aifei-all` 仍 **provided**、源码零引用；**零日志绑定**（`slf4j` / `logback` / `log4j` 一律禁止，门禁⑦）；不得引入无关传递依赖（参照 ZXing 不引 javase 的实证，§0.3）。
+- **不声明任何 `cn.aifei` 依赖**（源码零引用）；**零日志绑定**（`slf4j` / `logback` / `log4j` 一律禁止，门禁⑦）；不得引入无关传递依赖（参照 ZXing 不引 javase 的实证，§0.3）。
 
 ### 10.5 文档与测试同步（四同步，缺一不可）
 
@@ -1009,7 +1009,7 @@ internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一�
 
 ### 11.5 依赖与线程安全口径
 
-- **零新增依赖**：pom 依赖清单（§6.1）不变，`aifei-all` 仍 provided，三个内核仍 optional，junit 仍 test；`THIRD_PARTY_NOTICES.md` 不新增条目（四新子包均为纯 JDK 工具）。
+- **零新增依赖**：pom 依赖清单（§6.1）不变，`aifei` 仍 provided，三个内核仍 optional，junit 仍 test；`THIRD_PARTY_NOTICES.md` 不新增条目（四新子包均为纯 JDK 工具）。
 - **JDK 包边界（门禁⑲扩充）**：`javax.crypto.` / `java.security.` 允许出现在 `kdf/internal`、`captcha/internal`（既有）、新增的 `crypto/internal`、`random/internal`；**其余位置一律禁止**。`javax.xml.parsers.` / `org.w3c.dom.` 仅允许 `xml/internal`；`java.util.zip.` 仅允许 `codec/internal`（二者当前无门禁约束，本轮**不新增** import 边界门禁以避免过度设计，由公共层零字面量门禁守护）。
 - **无状态**：四个 `XxxUtil` 全 static、无实例字段；`RandomEngine` 的 `SecureRandom` 是 JDK 保证线程安全的唯一共享状态；`XmlParser` 每次新建 `DocumentBuilder`。所有公共方法均可并发调用。
 - **公共签名类型白名单**：`String` / `byte[]` / `boolean` / `int` / `Map<String,String>` + 本模块类型；零第三方 / 零框架 / 零 JDK 加密类型。
@@ -1132,7 +1132,7 @@ internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一�
 ### 12.4 optional 依赖与消费方声明（Q1 定档）
 
 1. **G2-a 依赖声明**：四个来源模块 pom 各**仅新增一条**依赖：`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`，`<optional>true</optional>`（无 `scope`，即模块自身 compile 期可见）。沿用仓库 `aifei-lock → aifei-cache` 等既有可选同仓模块先例。`mvn dependency:tree` 中该依赖标 `optional`、**不向下游传递**；来源模块自身编译正常。
-2. **G2-b 零新增**：除上述一条依赖外，四个来源模块零新增依赖；`aifei-tools` 自身依赖清单（§6.1：`aifei-all` provided + `ip2region` / `aifei-cache` / `zxing` optional + `junit` test）逐字不变；不新增配置键、Plugin、SPI、日志绑定、第三方库。
+2. **G2-b 零新增**：除上述一条依赖外，四个来源模块零新增依赖；`aifei-tools` 自身依赖清单（§6.1：`aifei` provided + `ip2region` / `aifei-cache` / `zxing` optional + `junit` test）逐字不变；不新增配置键、Plugin、SPI、日志绑定、第三方库。
 3. **G2-c 消费方契约**：未显式声明 aifei-tools 的下游**构建不因 optional 不传递而失败**；其未触及受影响能力的运行路径不失败。消费方**使用任一受影响能力时必须显式声明** `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`；缺失时按 §12.3 末段给可读错误（不裸抛 `NoClassDefFoundError`），或按仓库既有 optional 契约处理。**不得改为强依赖，不得复制 tools 源码到来源模块。**
 4. **门禁适配例外（唯一）**：`aifei-http` 门禁① `noThirdPartyReference` 的 import 白名单为 `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.http.`，不含 `cn.hg.aifei.tools.`。为保证「既有门禁逐字不改、不放宽、来源模块既有测试不删改」，`HttpGzip.decode` 对 tools 采用**全限定名调用且不写 import**；该写法不触碰任何断言文本、不触碰公共面、不引入第三方类型（aifei-tools 为同仓一手模块，非第三方）。其它三个来源模块的门禁均不禁止 `cn.hg.aifei.tools.*`，按常规 `import` 书写即可。
 
@@ -1143,7 +1143,7 @@ internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一�
 | 文件 | 位置 | 动作 |
 | --- | --- | --- |
 | `aifei-tools/pom.xml` | `:9` `<version>` | 保持 `1.0.0-SNAPSHOT` 不变（SNAPSHOT 未定版，不升位）；其它属性 / 依赖 / 插件（含 javadoc `excludePackageNames`）不动 |
-| `aifei-tools/README.md` | `:7` 坐标说明、`:21` Maven 坐标示例 | 两处保持 `1.0.0-SNAPSHOT`；`aifei-cache:1.1.0` 等其它坐标不动 |
+| `aifei-tools/README.md` | `:7` 坐标说明、`:21` Maven 坐标示例 | 两处保持 `1.0.0-SNAPSHOT`；`aifei-cache:1.2.0-SNAPSHOT` 等其它坐标不动 |
 | 仓库根 `README.md` | `:36` 模块表 `aifei-tools` 坐标列 | 保持 `1.0.0-SNAPSHOT`；该行「9 子包」描述不动 |
 | 四个来源模块 `pom.xml` | 新增的 aifei-tools 依赖 `<version>` | 一律保持 `1.0.0-SNAPSHOT`（与被引模块 pom 当前版本一致）；模块自身 `<version>1.0.0-SNAPSHOT</version>` 不动 |
 | `aifei-tools/CHANGELOG.md` | 最新条目标题 `## [1.0.0-SNAPSHOT] - 2026-11-27`；该条目正文坐标示例 | 标题保持 `[1.0.0-SNAPSHOT] - 2026-11-27`，正文坐标示例写为 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`；不新建条目、不升版本；`[1.0.0] - 2026-11-24` 历史段不动 |
@@ -1202,6 +1202,6 @@ internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一�
 ### 12.10 待明确事项（P1，已登记，非本期承诺）
 
 1. **四个来源模块 CHANGELOG（Q4）**：本轮**不更新**；下一版本窗口按各模块规范补记「委托 aifei-tools 消除重复实现 + optional 依赖」条目。
-2. **来源模块文档口径漂移**：`aifei-weixin/AGENTS.md:25`「唯一编译依赖是 aifei-all」、`aifei-http/AGENTS.md:24`「pom 只允许 aifei-all + junit，不得新增 optional/compile 第三方依赖」、仓库根 `README.md:303`「aifei-http 无 optional」在 T33 后将与事实不符。建议后续窗口补一句「aifei-tools 为同仓一手可选模块，非第三方；消费方按需显式声明」，**不改任何门禁断言**，本轮不改动。
+2. **来源模块文档口径漂移**：`aifei-weixin/AGENTS.md:25`「唯一编译依赖是 aifei」、`aifei-http/AGENTS.md:24`「pom 只允许 aifei + junit，不得新增 optional/compile 第三方依赖」、仓库根 `README.md:303`「aifei-http 无 optional」在 T33 后将与事实不符。建议后续窗口补一句「aifei-tools 为同仓一手可选模块，非第三方；消费方按需显式声明」，**不改任何门禁断言**，本轮不改动。
 3. **消费方文档**：Q1 要求的「使用受影响能力须显式声明 aifei-tools」已落本章 §12.4 与 §12.3；来源模块 README 依赖段的对应提示列入下一版本窗口，本轮不新增文档改动。
 4. **未来 major 整合**：`kdf` 并入 `crypto` 只能作为破坏性 major 变更立项，届时须附迁移方案与下游公告；本轮不预留任何转发层。

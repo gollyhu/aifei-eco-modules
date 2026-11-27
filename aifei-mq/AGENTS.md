@@ -20,7 +20,7 @@
 - 代码、依赖与 API 必须兼容 **Java 8**：**语法**与 **API 双约束**。禁 `var` / `record` / `switch` 表达式 / text block（`"""`）/ `sealed` / pattern matching 等 Java 8 之后语法；禁 `List.of` / `Map.of` / `Set.of` 等 Java 9+ 集合工厂与其它 Java 8 之后 API。
 - 主 JAR 内全部 class 的 major version 必须为 **52**。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、配置键名与异常消息）；文件头版权块属归属信息，不得改写。
-- **`cn.aifei:aifei-all` 为 `provided`**：消费方自带，不向下游传递。
+- **`cn.aifei:aifei` 为 `provided`**：消费方自带，不向下游传递。
 - **第三方依赖分层**：6 个后端客户端一律 `optional`（本模块编译与测试期可见、**不向下游传递**），只能被实现包使用；契约层（根包 / `internal` / `aifei`）**零第三方类型**；**不引入任何日志绑定**（`slf4j-api` 只以门面身份随传递依赖出现）。除这 6 个客户端外**不新增任何直接依赖**。
   - 客户端与版本约束：`rocketmq-client:4.9.7`、`org.eclipse.paho.client.mqttv3:1.2.5`、`org.eclipse.paho.mqttv5.client:1.2.5`、`amqp-client:5.21.0`、`kafka-clients:3.9.1`（**必须停 3.x**，4.x 要求 Java 11+）、`jedis:8.0.1`（与 `aifei-cache` 对齐）。
 

@@ -14,7 +14,7 @@
 | 异常契约 | `ExceptionContractTest`（23 例） | §7.5 场景 1–16 逐字消息 + cause 链 + 分类判据 + 不泄漏第三方类名 |
 | 公共面契约 | `PublicApiContractTest`（12 例） | 根包 5 + spi 1、门面形态、反射零第三方/框架类型、不可变与字节克隆 |
 | 字节码 | `javap -verbose`（构建期人工抽查） | `MailClient` / `MailKit` / `EmailPlugin` / `MailDeps` 均 major 52 |
-| 依赖树 | `mvn dependency:tree`（构建期人工核对） | 仅 `aifei-all`(provided) / `sms4j-Email-core`(optional) / `junit`(test) |
+| 依赖树 | `mvn dependency:tree`（构建期人工核对） | 仅 `aifei`(provided) / `sms4j-Email-core`(optional) / `junit`(test) |
 
 **实测结果**（`aifei-email/` 内 `mvn clean verify`）：
 
@@ -188,7 +188,7 @@ BUILD SUCCESS
 
 ```text
 io.github.gollyhu:aifei-email:jar:1.0.0-SNAPSHOT
-+- cn.aifei:aifei-all:jar:1.1.2:provided
++- cn.aifei:aifei:jar:1.1.2:provided
 |  \- com.alibaba.fastjson2:fastjson2:jar:2.0.65:provided   <- 受限传递依赖（provided，不向下游传递）
 +- org.dromara.sms4j:sms4j-Email-core:jar:3.3.6:compile (optional)
 \- junit:junit:jar:4.13.2:test
@@ -197,14 +197,14 @@ io.github.gollyhu:aifei-email:jar:1.0.0-SNAPSHOT
 
 | 条目 | 范围 | 判定 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 允许清单（§2.3） |
-| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided`（由 `aifei-all` 传递） | **允许**：`provided` 不向下游传递，不构成第三方 compile / runtime 依赖；`aifei-sms` 已有同款登记先例 |
+| `cn.aifei:aifei:1.1.2` | `provided` | 允许清单（§2.3） |
+| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided`（由 `aifei` 传递） | **允许**：`provided` 不向下游传递，不构成第三方 compile / runtime 依赖；`aifei-sms` 已有同款登记先例 |
 | `org.dromara.sms4j:sms4j-Email-core:3.3.6` | `optional` | 允许清单（§2.3）；内核传递项同样 optional |
 | `junit:junit:4.13.2` | `test` | 允许清单（§10.2） |
 | `org.hamcrest:hamcrest-core:1.3` | `test`（由 junit 传递） | 允许清单（§10.2 已登记受限传递项） |
 
-> **AC-13 结论：PASS。** AC-13 口径是「除 `aifei-all` 外无其它第三方 **compile / runtime** 依赖」，`fastjson2` 为 `provided`，故不违反。
-> **设计文档补登遗留**：`design.md` §2.3 的依赖树未列 `fastjson2`（它经由 `aifei-all` 传递而非本模块直接声明）；此差异属设计文档补登项，**不影响 AC-13 判定**，已在本表留痕。
+> **AC-13 结论：PASS。** AC-13 口径是「除 `aifei` 外无其它第三方 **compile / runtime** 依赖」，`fastjson2` 为 `provided`，故不违反。
+> **设计文档补登遗留**：`design.md` §2.3 的依赖树未列 `fastjson2`（它经由 `aifei` 传递而非本模块直接声明）；此差异属设计文档补登项，**不影响 AC-13 判定**，已在本表留痕。
 
 ## 七、与设计文档的已知差异（实现层等价偏差）
 

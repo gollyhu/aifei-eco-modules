@@ -13,7 +13,7 @@
 | 项 | 要求 |
 | --- | --- |
 | JDK | 8+（源码按 Java 8 语法编写） |
-| Maven | 3.6+，本地仓库需已有 `cn.aifei:aifei-all:1.1.2` |
+| Maven | 3.6+，本地仓库需已有 `cn.aifei:aifei:1.1.2` |
 | 模块 | `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` 已 `mvn install` 到本地仓库 |
 
 ## 2. 启动 / 停止
@@ -130,7 +130,7 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 
 ```text
 aifei-job-demo/
-├── pom.xml                                  # aifei-all 1.1.2 + aifei-job 1.0.0 + undertow + log4j-core
+├── pom.xml                                  # aifei 1.1.2 + aifei-job 1.0.0 + undertow + log4j-core
 ├── start-demo.bat / stop-demo.bat           # 端口 18110
 ├── README.md
 └── src/main/

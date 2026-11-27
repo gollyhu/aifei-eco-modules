@@ -101,8 +101,8 @@ aifei-sa-token/src/main/java/cn/hg/aifei/satoken/
 
 | 依赖 | scope | 说明 |
 |---|---|---|
-| `cn.aifei:aifei-all` | `provided` | 内核 + `aifei-undertow`；消费方自带 |
-| `io.undertow:undertow-core` | `provided` | `aifei-all` 已排除其传递依赖，桥接层需要其类型，故显式声明 |
+| `cn.aifei:aifei` | `provided` | 内核 + `aifei-undertow`；消费方自带 |
+| `io.undertow:undertow-core` | `provided` | `aifei` 已排除其传递依赖，桥接层需要其类型，故显式声明 |
 | `cn.dev33:sa-token-core` | `compile` | Sa-Token 核心：认证、会话、注解策略 |
 | `io.github.gollyhu:aifei-cache` | `optional` | 仅 `dao` 包使用；不向下游传递，消费方按需自带 |
 | `junit:junit` | `test` | 单元测试 |

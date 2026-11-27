@@ -12,16 +12,56 @@
     <name>aifei-lock</name>
     <description>分布式锁的 aifei 接入 SDK：基于共享缓存的原子加锁、CAS 释放与 CAS 续期</description>
 
+    <url>https://github.com/gollyhu/aifei-lock</url>
+
+    <!-- 以下为发布到 Maven Central 的必需元数据，清单见 https://central.sonatype.org/publish/requirements/
+         licenses 元素与仓库根 LICENSE 的 Apache License 2.0 保持一致。 -->
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>gollyhu</name>
+        <url>https://github.com/gollyhu</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>gollyhu</id>
+            <name>糊搞</name>
+            <email>3722711@qq.com</email>
+            <url>https://github.com/gollyhu</url>
+            <roles>
+                <role>maintainer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/gollyhu/aifei-lock.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/gollyhu/aifei-lock.git</developerConnection>
+        <url>https://github.com/gollyhu/aifei-lock</url>
+    </scm>
+
+    <!-- 只声明 snapshot 仓库：release 由 central-publishing-maven-plugin 以 bundle 方式提交，不经 maven-deploy-plugin。 -->
+    <distributionManagement>
+        <snapshotRepository>
+            <id>central-portal-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
-        <aifei-cache.version>1.1.0</aifei-cache.version>
-        <junit.version>4.13.2</junit.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <central.publishing.server.id>aifei</central.publishing.server.id>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
+
         <!-- 仅集成测试：与 aifei-cache 保持同一版本 -->
-        <jedis.version>8.0.1</jedis.version>
-        <fury-core.version>0.10.3</fury-core.version>
         <!-- Redis 集成用例开关：默认关闭；开启后连不上必须失败 -->
         <redis.integration>false</redis.integration>
         <redis.uri>redis://127.0.0.1:6379/0</redis.uri>
@@ -29,12 +69,24 @@
         <lock.timing>false</lock.timing>
     </properties>
 
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- 内核：provided，消费方自带（日志门面 cn.aifei.log 随它提供） -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -45,14 +97,12 @@
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-cache</artifactId>
-            <version>${aifei-cache.version}</version>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -63,13 +113,11 @@
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
-            <version>${jedis.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.fury</groupId>
             <artifactId>fury-core</artifactId>
-            <version>${fury-core.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -132,4 +180,48 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- mvn -Pcentral-release clean deploy -->
+        <profile>
+            <id>central-release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven-gpg-plugin.version}</version>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-maven-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>${central.publishing.server.id}</publishingServerId>
+                            <deploymentName>${project.artifactId}-${project.version}</deploymentName>
+                            <autoPublish>false</autoPublish>
+                            <waitUntil>validated</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

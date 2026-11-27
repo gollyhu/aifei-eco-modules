@@ -2,7 +2,7 @@
 
 aifei-sentinel 是为 [aifei](https://aifei.cn) 提供的极简流量治理组件，把 Sentinel 的流控、熔断与系统保护能力接入 aifei。业务代码只注册拦截器、实现降级策略，不出现任何 Sentinel 类型。
 
-- `provided` 依赖仅 `aifei-all`，对 arch / undertow 零依赖。
+- `provided` 依赖仅 `aifei`，对 arch / undertow 零依赖。
 - 通过 `routes.scan(...)` 注册拦截器，在 `onStart()` 中加载规则。
 - 五种治理能力共用同一处埋点，差异只在规则类型。
 - 由是否配置 Dashboard 地址切换两种互斥运行模式，切换模式不需要修改业务代码。
@@ -22,7 +22,7 @@ aifei-sentinel 是为 [aifei](https://aifei.cn) 提供的极简流量治理组�
 </dependency>
 ```
 
-`aifei-all` 是 `provided` 依赖，由消费方应用提供；`sentinel-core`、`sentinel-parameter-flow-control` 与 `sentinel-datasource-extension` 随 SDK 传递。
+`aifei` 是 `provided` 依赖，由消费方应用提供；`sentinel-core`、`sentinel-parameter-flow-control` 与 `sentinel-datasource-extension` 随 SDK 传递。
 
 ### 第 2 步：注册拦截器
 

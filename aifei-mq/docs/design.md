@@ -43,7 +43,7 @@
 | 1 | **公共 API 零第三方类型**：根包 8 个公共类型**不含**任何第三方类型 |
 | 2 | **公共 API 零框架类型**：`cn.aifei.*` 只允许出现在 `cn.hg.aifei.mq.aifei` 接入包（即只允许 `MqPlugin` 一个类引用框架） |
 | 3 | 根包公共类型**逐个列出并说明职责**（§3），**精确 8 个**；新增公共类型必须先过设计决策 |
-| 4 | **第三方依赖分层隔离**：契约层（根包 / `internal` / `aifei`）**零第三方类型**；6 个客户端以 `optional` 声明、只被实现包使用且**不向下游传递**（见 §9）；框架内核 `cn.aifei:aifei-all:1.1.2` 为 `provided`，测试依赖 `junit` 为 `test` |
+| 4 | **第三方依赖分层隔离**：契约层（根包 / `internal` / `aifei`）**零第三方类型**；6 个客户端以 `optional` 声明、只被实现包使用且**不向下游传递**（见 §9）；框架内核 `cn.aifei:aifei:1.1.2` 为 `provided`，测试依赖 `junit` 为 `test` |
 | 5 | Java 8 语法与 API；主 JAR class major version = 52 |
 | 6 | 每类规则只有一个定义点（校验 / 配置域常量 / 编解码 / 注册表 / 总线投递 / 单例持有） |
 
@@ -52,7 +52,7 @@
 ### 1.5 设计原则
 
 1. **接口极简、实现无关**：业务只依赖根包 8 类型与 `ProducerKit` / `ConsumerKit`；实现经 `@Inject Producer` / `@Inject Consumer` 或 `ProducerKit` / `ConsumerKit` 取用；引本依赖即可用默认 `memory`，真实后端另引客户端（§1.3）。
-2. **零依赖优先**：契约层与 `memory` 后端均零第三方运行依赖；`aifei-all` 为 `provided`。
+2. **零依赖优先**：契约层与 `memory` 后端均零第三方运行依赖；`aifei` 为 `provided`。
 3. **行为契约可测**：投递语义、异常分类、关闭语义、配置键名全部定档到「可写断言」的程度（§5）。
 4. **保持极简**：不做未被需求驱动的抽象；provider 扩展点是需求内唯一允许的抽象。
 5. **基线一致**：无页面，故无 UI 基线；公共面与配置键名对齐需求文档第四节。
@@ -966,7 +966,7 @@ services 声明统一在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.in
 
 | 依赖 | 范围 | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核；仅 `aifei.MqPlugin` 使用，不向下游传递 |
+| `cn.aifei:aifei:1.1.2` | `provided` | 框架内核；仅 `aifei.MqPlugin` 使用，不向下游传递 |
 | `org.apache.rocketmq:rocketmq-client:4.9.7` | `optional` | `rocketmq` 后端客户端；不向下游传递 |
 | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `optional` | `mqtt` 后端客户端 |
 | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `optional` | `mqtt5` 后端客户端 |
@@ -984,7 +984,7 @@ services 声明统一在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.in
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.AopKit` / `cn.aifei.util.Prop`（**仅 `aifei` 接入包使用**） |
+| `cn.aifei:aifei:1.1.2` | `provided` | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.AopKit` / `cn.aifei.util.Prop`（**仅 `aifei` 接入包使用**） |
 | `org.apache.rocketmq:rocketmq-client:4.9.7` | `optional` | **RocketMQ** 客户端；仅 `rocketmq` 实现包使用 |
 | `org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5` | `optional` | **`mqtt`**（v3.1.1）客户端；仅 `mqtt` 实现包使用 |
 | `org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5` | `optional` | **`mqtt5`**（v5.0）客户端——与 v3 客户端**互不替代**（两个独立后端，§1.3） |
@@ -993,7 +993,7 @@ services 声明统一在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.in
 | `redis.clients:jedis:8.0.1` | `optional` | **`redisstream`** 客户端；**Jedis 直连、不经过 `aifei-cache`——已登记的 Redis 出口例外，见根 `AGENTS.md` 技术基线区**（与 `aifei-cache` 版本对齐；stream / consumer-group / `XREADGROUP` 语义超出 Cache / Counter 抽象；实验性、未真机验证） |
 | `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
-- **第三方依赖分层**：内存后端**零第三方运行依赖**；6 个客户端以 `optional` 统一声明在 `aifei-mq/pom.xml`、只被实现包使用。**契约层（根包 / `internal` / `aifei`）不得出现任何第三方类型**；`cn.aifei:aifei-all` 仅 `aifei` 接入包使用；**不引入日志绑定**（`slf4j-api` 只以门面身份随传递依赖出现）。
+- **第三方依赖分层**：内存后端**零第三方运行依赖**；6 个客户端以 `optional` 统一声明在 `aifei-mq/pom.xml`、只被实现包使用。**契约层（根包 / `internal` / `aifei`）不得出现任何第三方类型**；`cn.aifei:aifei` 仅 `aifei` 接入包使用；**不引入日志绑定**（`slf4j-api` 只以门面身份随传递依赖出现）。
 - **`rocketmq-client:4.9.7` 关键传递依赖**（无需额外显式声明）：`rocketmq-common` / `rocketmq-remoting` / `rocketmq-logging`（皆 4.9.7）、`com.alibaba:fastjson:1.2.69_noneautotype`、`io.netty:netty-all:4.1.65.Final`、`commons-validator:1.7`、`com.github.luben:zstd-jni:1.5.2-2`、`org.lz4:lz4-java:1.8.0`、`org.apache.commons:commons-lang3:3.4`；`io.opentracing:opentracing-api` 为 `provided`，不进入运行时传递链。
 - **Java 8 兼容性**：`rocketmq-client:4.9.7` 以 `source/target 1.6` 编译，class major version = **50**（≤ 52），与本模块 Java 8 基线兼容。
 - **本轮 5 个客户端的 Java 8 兼容性（已实测）**：`org.eclipse.paho.client.mqttv3:1.2.5` / `org.eclipse.paho.mqttv5.client:1.2.5` / `amqp-client:5.21.0` / `kafka-clients:3.9.1` / `jedis:8.0.1` 的**全部 class major version = 52**（主会话对本机仓库内的这些 jar **逐类实测**），故在 **Java 8 下加载无障碍**。**`kafka-clients` 锁定 3.x**——4.x 以 Java 11+ 编译，会直接破坏本模块的 Java 8 基线。

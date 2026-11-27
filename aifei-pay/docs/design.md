@@ -6,7 +6,7 @@
 >
 > **坐标**：`io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.pay`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）。
 >
-> **依赖策略**：`cn.aifei:aifei-all` 为 `provided`；`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `dom4j` / `bcprov-jdk18on` 为 `optional`（阻断传递，消费方按需自带）。这是对规划文档「零第三方」口径的**已裁决变更**（PRD D-01 / D-03）。
+> **依赖策略**：`cn.aifei:aifei` 为 `provided`；`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `dom4j` / `bcprov-jdk18on` 为 `optional`（阻断传递，消费方按需自带）。这是对规划文档「零第三方」口径的**已裁决变更**（PRD D-01 / D-03）。
 >
 > **文档状态**：1.0.0 **设计定稿**，待实现。§5 的公共类型签名与 §7 的配置键名是公共契约的唯一依据，变更前必须先改本文。
 
@@ -131,7 +131,7 @@ cn.hg.aifei.pay
 
 ### V2.7 依赖与门禁
 
-- `aifei-all` 为 `provided`；所有 IJPay 构件与渠道 SDK（含 `stripe-java`）为 `optional`，版本属性集中（`ijpay.version=3.0.0`、`stripe.version=34.1.0`）；新增通道必须先通过 `PayDepsBytecodeTest` 的 Java 8 字节码断言（七渠道 JAR 已纳入 `EXPECTED_JARS`）。
+- `aifei` 为 `provided`；所有 IJPay 构件与渠道 SDK（含 `stripe-java`）为 `optional`，版本属性集中（`ijpay.version=3.0.0`、`stripe.version=34.1.0`）；新增通道必须先通过 `PayDepsBytecodeTest` 的 Java 8 字节码断言（七渠道 JAR 已纳入 `EXPECTED_JARS`）。
 - V2.5 落地新增 8 个 optional 直接依赖（七个 IJPay 渠道构件 + `stripe-java`），既有 `alipay2` / `alipay3` 的 exclusions 一项未减。
 - G-01 公共面按 V2.1 精确断言且无 `AliPay*`；G-02 公共签名零第三方 / 零框架；G-03 无 `java.sql.`、`com.ijpay.*` 仅在 `internal`、白名单外渠道零命中、零 `cn.aifei.weixin`；G-04 `cn.aifei.*` 仅在 `aifei`；G-05 class major 52；G-06 依赖 optional。
 - 新增 AC-23~AC-27：多通道注册、双模型共用核心、Handler 闭环、微信通道、渠道白名单。
@@ -533,7 +533,7 @@ public static String getSignCheckContentV1(java.util.Map<java.lang.String,java.l
 | **AC-02** | `dom4j:dom4j` / `bcprov-jdk15on` 已排除、2.1.5 与 1.86 生效、无 `bcprov-jdk15on` 残留、依赖树逐项 ≤ 52 | **全部满足**。旧坐标由上游 pom 排除，本模块不需重复排除；实测树无 `dom4j:dom4j`、无 `bcprov-jdk15on`；可加载 class 最大 major = 52，`>52` 的 0 例外（仅 JPMS 描述符与 Multi-Release 变体，Java 8 不可达） | §2.2、§2.3 |
 | **AC-10~12** | 验签方法向量（普通公钥 / 公钥证书 × 同步 GET / 异步 POST） | **闭环，且修正了 PRD 的假设**：① 普通公钥 = `AlipaySignature.rsaCheckV1(params, publicKey, charset, signType)`；② 公钥证书 = 从**证书文本内容**取公钥（`AntCertificationUtil.getCertPublicKey(content)`）后同样调 `rsaCheckV1`，**不用**已废弃的 `rsaCertCheckV1(path)`；③ 证书序列号 = `AntCertificationUtil.getCertSN(certContent)`；④ 同步 GET 与异步 POST 在模块内**统一收敛为 `Map<String,String>`**，由唯一解析点 `internal.PayForms` 负责 urlencoded 解码，两条入参路径（`Map` 直接给 / `String` 由模块解析）各自唯一；⑤ 内核限制：`sign_type` 仅 `RSA2`、`charset` 仅 `UTF-8`；⑥ **`rsaCheckV1` 会原地修改入参 Map**，模块必须先做防御性拷贝（保 R-07 纯函数性） | §2.4.4、§6.3 |
 | **Q4** | IJPay 是否存在可继承 / 可重写扩展点 | **闭环：不依赖任何扩展点，坚持组合（包装）。** V3 内核无 SPI / `META-INF/services`；`AliPayTradeApi` 与 `GenericExecuteApi` 都是 `public class`（非 `final`）且提供 `public` 构造注入 `ApiClient`，因此「组合 + 构造注入」在类型层面完全可行，无需继承。**本模块不继承任何 IJPay / SDK 类型**（`G-05` 断言 `extends com.ijpay` / `extends com.alipay` 为零） | §2.4.1、§2.4.5 |
-| **AC-19** | IJPay 与支付宝 SDK 依赖 `optional` 的具体 scope 落点 | **闭环：全部 `optional`（等价 `compile` + 阻断传递）**，无需登记 `compile` 例外。`aifei-all` 为 `provided`。`dom4j` 与 `bcprov-jdk18on` 同为 `optional`。门禁 `G-06` 断言 pom 直接依赖集合精确匹配 | §8.1、§8.2 |
+| **AC-19** | IJPay 与支付宝 SDK 依赖 `optional` 的具体 scope 落点 | **闭环：全部 `optional`（等价 `compile` + 阻断传递）**，无需登记 `compile` 例外。`aifei` 为 `provided`。`dom4j` 与 `bcprov-jdk18on` 同为 `optional`。门禁 `G-06` 断言 pom 直接依赖集合精确匹配 | §8.1、§8.2 |
 
 ---
 
@@ -1116,7 +1116,7 @@ pay.alipay-main.verify.1.value = @file:/etc/pay/alipay-public-cert-2025.crt
     <!-- 生态统一底座：provided，消费方自带，不向下游传递 -->
     <dependency>
         <groupId>cn.aifei</groupId>
-        <artifactId>aifei-all</artifactId>
+        <artifactId>aifei</artifactId>
         <version>${aifei.version}</version>
         <scope>provided</scope>
     </dependency>
@@ -1170,7 +1170,7 @@ pay.alipay-main.verify.1.value = @file:/etc/pay/alipay-public-cert-2025.crt
 
 | 构件 | scope | 理由 | AC |
 | --- | --- | --- | --- |
-| `cn.aifei:aifei-all` | `provided` | 仓库统一口径：框架由消费方自带，不向下游传递 | AC-19 |
+| `cn.aifei:aifei` | `provided` | 仓库统一口径：框架由消费方自带，不向下游传递 | AC-19 |
 | `com.github.javen205:IJPay-AliPay-V3` | `optional` | PRD D-03 已裁决；`optional` 既在本模块编译期可见，又阻断向消费方传递，避免强制下游接受整条依赖链 | AC-19 |
 | `com.alipay.sdk:alipay-sdk-java-v3` | `optional` | 同上；显式声明是为了**锁定版本**（否则版本随 IJPay 变化而漂移，AC-02 断言对象不稳定） | AC-02 / AC-19 |
 | `org.dom4j:dom4j` | `optional` | 上游必需的编译期依赖；显式锁定 2.1.5（2.2.0 起字节码 55） | AC-02 |
@@ -1341,7 +1341,7 @@ sequenceDiagram
 | **G-03** | `g03NoSqlAndNoOtherChannels` | ① 全模块 `src/main/java` 无 `import java.sql.`；② 无 `cn.aifei.weixin` 代码引用（与 `aifei-weixin` 零依赖）；③ 无 `IJPay-Servlet-` 构件引用。七渠道（QQ / 京东 / 银联 / PayPal / Stripe / 富友 / XPay）引用已允许，由 G-04 白名单约束 | AC-20 |
 | **G-04** | `g04LayerBoundary` | ① `cn.aifei.*` 只允许出现在 `aifei/` 包；例外登记表（文件 → 允许前缀）精确等于 `{internal/PayErrors.java -> cn.aifei.log., internal/PayVerifier.java -> cn.aifei.log.}`，多一条少一条都失败；② `com.ijpay.*` 只允许出现在 `internal` 白名单登记的 12 个文件（`IjpayPayKernel` / `PayClients` / `AliPayV2Clients` / `AliPayV2PayKernel` / `channels/ChannelResponses` / `channels/QqKernel` / `channels/JdKernel` / `channels/UnionPayKernel` / `channels/PayPalKernel` / `channels/StripeKernel` / `channels/FuiYouKernel` / `channels/XPayKernel`）；③ `com.alipay.*` 只允许出现在 `internal` 白名单登记的 7 个文件（`IjpayPayKernel` / `PayClients` / `PayVerifyKey` / `PayVerifier` / `AliPayV2Clients` / `AliPayV2PayKernel` / `AliPayV2Verifier`）；④ `com.stripe.*` 仅 `channels/StripeKernel.java`，`cn.hutool.*` 仅 `channels/ChannelResponses.java` 与 `channels/FuiYouKernel.java`；⑤ `internal/` 之外不得出现第三方 import | AC-04 |
 | **G-05** | `g05Java8AndBytecode` | ① 主 JAR 产物（`target/classes`）全部 `.class` 的 `major_version` **等于 52**（含嵌套类型，无豁免）；② 源码不得出现 `List.of(` / `Map.of(` / `Set.of(` / `record ` / `var ` / `"""` / `sealed ` / `instanceof * [A-Za-z]` 模式匹配；③ 源码不得出现 `extends com.ijpay.` / `extends com.alipay.`（组合非继承，Q4） | AC-02（部分） |
-| **G-06** | `g06DependencyDiscipline` | ① `pom.xml` 的 `<dependencies>` 直接依赖集合精确等于 18 项：{cn.aifei:aifei-all(provided), com.github.javen205:IJPay-AliPay-V3(optional), com.alipay.sdk:alipay-sdk-java-v3(optional), com.github.javen205:IJPay-AliPay(optional), com.alipay.sdk:alipay-sdk-java(optional), com.alibaba:fastjson(optional), com.squareup.okhttp3:okhttp(optional), org.dom4j:dom4j(optional), org.bouncycastle:bcprov-jdk18on(optional), com.github.javen205:IJPay-QQ(optional), com.github.javen205:IJPay-JDPay(optional), com.github.javen205:IJPay-UnionPay(optional), com.github.javen205:IJPay-PayPal(optional), com.github.javen205:IJPay-Stripe(optional), com.stripe:stripe-java(optional), com.github.javen205:IJPay-FuiYou(optional), com.github.javen205:IJPay-XPay(optional), junit:junit(test)}；② 无任何日志门面/绑定直接依赖（`slf4j` / `logback` / `log4j` / `commons-logging` / `tinylog` / `log4j2`）；③ V2 / V3 SDK 与各渠道 SDK 的六个 exclusion 精确存在 | AC-19 |
+| **G-06** | `g06DependencyDiscipline` | ① `pom.xml` 的 `<dependencies>` 直接依赖集合精确等于 18 项：{cn.aifei:aifei(provided), com.github.javen205:IJPay-AliPay-V3(optional), com.alipay.sdk:alipay-sdk-java-v3(optional), com.github.javen205:IJPay-AliPay(optional), com.alipay.sdk:alipay-sdk-java(optional), com.alibaba:fastjson(optional), com.squareup.okhttp3:okhttp(optional), org.dom4j:dom4j(optional), org.bouncycastle:bcprov-jdk18on(optional), com.github.javen205:IJPay-QQ(optional), com.github.javen205:IJPay-JDPay(optional), com.github.javen205:IJPay-UnionPay(optional), com.github.javen205:IJPay-PayPal(optional), com.github.javen205:IJPay-Stripe(optional), com.stripe:stripe-java(optional), com.github.javen205:IJPay-FuiYou(optional), com.github.javen205:IJPay-XPay(optional), junit:junit(test)}；② 无任何日志门面/绑定直接依赖（`slf4j` / `logback` / `log4j` / `commons-logging` / `tinylog` / `log4j2`）；③ V2 / V3 SDK 与各渠道 SDK 的六个 exclusion 精确存在 | AC-19 |
 | 附加 ① | `a01NoContainerArtifacts` | 模块目录内不存在容器化产物：文件名（大小写不敏感）不得为 `Dockerfile` / `docker-compose*` / `*.dockerfile`，且不得存在 `k8s/` `kubernetes/` `helm/` `charts/` 目录；`src/main/java` 内不得出现 `public static void main(String[]` | 项目硬约束 |
 | 附加 ② | `a02NoForbiddenDocWord` | `README.md`、`AGENTS.md`、`docs/**/*.md` 内容（大小写不敏感）不含被禁词根 `work` + `buddy` 的连写形式 | 项目硬约束 |
 | 附加 ③ | `a03NoGlobalMutableState` | 全模块源码不得出现 `Configuration.setDefaultApiClient` / `Configuration.getDefaultApiClient` / `AliPayApiConfigKit` / `Security.addProvider` / `System.setProperty` / `System.getProperties().put`（避免进程级可变全局状态与跨应用串扰） | AC-16（强化） |
@@ -1637,7 +1637,7 @@ graph LR
 | `AC-16` | R-09 多商户 / 多通道 | `PayConfig`（`Map<appId, PayAppConfig>`）+ `PayChannelRegistry`（多通道）+ 各方法 `merchantId` 首参 | `PayMultiAppTest` | 两通道各自使用对应配置与 `merchantId`、互不串扰；未配置通道默认商户时抛 `PayException` |
 | `AC-17` | R-10 依赖缺失 | `internal/PayDeps`（唯一 `Class.forName` 点） | `PayDepsTest` | 隔离类加载器模拟缺失 → `PayException`，消息含缺失坐标；无裸 `NoClassDefFoundError` |
 | `AC-18` | R-12 异常收敛 | `internal/PayErrors`（唯一构造点）+ `DefaultPayClient` 的 `catch` 收口 | `PayErrorsTest` | 调用方只收到 `PayException`；`code()` 与 `cause` 可见；无 `com.alipay.v3.ApiException` 出现在 `catch` 之外 |
-| `AC-19` | §7.2 依赖 scope | `pom.xml`（§8.1） | `G-06` | 直接依赖集合精确等于 18 项；IJPay/SDK/dom4j/bcprov 全为 `optional`；`aifei-all` 为 `provided`；无需 `compile` 例外 |
+| `AC-19` | §7.2 依赖 scope | `pom.xml`（§8.1） | `G-06` | 直接依赖集合精确等于 18 项；IJPay/SDK/dom4j/bcprov 全为 `optional`；`aifei` 为 `provided`；无需 `compile` 例外 |
 | AC-20 | 零 DB / 零 aifei-weixin 依赖 | 全部源码 | `G-03` | 无 `import java.sql.`；无 `cn.aifei.weixin` 代码引用；无 `IJPay-Servlet-` 构件引用 |
 | `AC-21` | 依赖内核不复制 | §1.5 + `README.md` | `PayKernelAttributionTest` + 人工审查 + `a02` | Maven 构件引入；无源码复制痕迹（特征扫描断言）；README/design 含 Apache-2.0 署名 |
 | `AC-22` | 构建 | 全部 | `mvn clean verify` | 0 failure / 0 error |

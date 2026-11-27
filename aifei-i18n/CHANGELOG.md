@@ -35,7 +35,7 @@
 - **构建命令**：`cd aifei-i18n && mvn clean verify`。实测输出关键行：`Tests run: 126, Failures: 0, Errors: 0, Skipped: 0`、`BUILD SUCCESS`。
 - **产物**：`target/aifei-i18n-1.0.0.jar`。内含 32 个主源文件编译产物及 Maven 元数据（`pom.xml` / `pom.properties`）。
 - **版本核对**：`javap -verbose` 抽验 `cn.hg.aifei.i18n.I18nKit` → `major version: 52`；`pom.xml` 为 `1.0.0`，与坐标 `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` 一致。
-- **环境要求**：JDK 8+（class major 52）、Maven 3.6+；`cn.aifei:aifei-all:1.1.2` 由消费方提供（`provided`）；仅用 `kv` 来源时才需 `io.github.gollyhu:aifei-cache:1.1.0`。
+- **环境要求**：JDK 8+（class major 52）、Maven 3.6+；`cn.aifei:aifei:1.1.2` 由消费方提供（`provided`）；仅用 `kv` 来源时才需 `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT`。
 
 ## 交付物清单
 
@@ -60,7 +60,7 @@
 </dependency>
 ```
 
-消费方须自带 `aifei-all:1.1.2`（`provided`，不传递）。仅用 `kv` 来源时再显式引入 `aifei-cache:1.1.0`（`optional`，不传递）；未声明 `kv` 时无需该依赖。
+消费方须自带 `aifei:1.1.2`（`provided`，不传递）。仅用 `kv` 来源时再显式引入 `aifei-cache:1.2.0-SNAPSHOT`（`optional`，不传递）；未声明 `kv` 时无需该依赖。
 
 ### 2. 最小装配
 

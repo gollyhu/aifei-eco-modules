@@ -14,7 +14,7 @@
 
 ### 1.1 定位
 
-`aifei-all` 只有**入站** HTTP（`aifei-undertow` + HIO），**出站** HTTP 无任何构件。本模块补齐**出站 HTTP 统一客户端**：业务只构造请求 + 读响应，超时、重试、拦截、编解码、资源名由模块统一负责。
+`aifei` 只有**入站** HTTP（`aifei-undertow` + HIO），**出站** HTTP 无任何构件。本模块补齐**出站 HTTP 统一客户端**：业务只构造请求 + 读响应，超时、重试、拦截、编解码、资源名由模块统一负责。
 
 四件事，一件一个落点：
 
@@ -45,7 +45,7 @@
 | --- | --- |
 | 1 | **根包公共 API 精确 6 个类型**：`HttpClient` / `HttpRequest` / `HttpResponse` / `HttpKit` / `HttpException` / `HttpInterceptor`。**不得增删、不得改名**；嵌套类型（`HttpInterceptor.HttpAttempt`）不单独计数 |
 | 2 | **零第三方类型**、**零框架类型**出现在公共面：`cn.aifei.*` 只允许出现在 `aifei` 接入包（`cn.aifei.log.*` 另允许出现在 `internal` 的记录点） |
-| 3 | **零第三方依赖**：pom 只有 `cn.aifei:aifei-all`（`provided`）+ `junit`（`test`）；**无 `optional`、无 `compile` 第三方** |
+| 3 | **零第三方依赖**：pom 只有 `cn.aifei:aifei`（`provided`）+ `junit`（`test`）；**无 `optional`、无 `compile` 第三方** |
 | 4 | 公共面签名只用 `String` / `byte[]` / `Map` / `List` / 基本类型 / 本模块类型；**不出现** `java.net.URL` / `HttpURLConnection` / `java.util.function.*` |
 | 5 | 每类规则只有一个定义点（§6.4），实现类不得复制 |
 | 6 | Java 8 语法与 API 双约束；主 JAR class major = 52 |
@@ -839,8 +839,8 @@ sequenceDiagram
 
 ```text
 aifei-http/                                    io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                    # Java 8；aifei-all provided；junit test；零第三方
-├── README.md                                  # 用法 / 能力边界 / 消费方自带 aifei-all（编码角色写）
+├── pom.xml                                    # Java 8；aifei provided；junit test；零第三方
+├── README.md                                  # 用法 / 能力边界 / 消费方自带 aifei（编码角色写）
 ├── AGENTS.md                                  # 模块硬约束（本文同级）
 ├── docs/
 │   ├── design.md                              # ★ 本文（契约事实来源）
@@ -885,7 +885,7 @@ aifei-http/                                    io.github.gollyhu:aifei-http:1.0.
 
 | 文件 | 职责 | 预估行数 |
 | --- | --- | --- |
-| `pom.xml` | 单模块构建：`aifei-all` provided、`junit` test、compiler 1.8 / UTF-8、surefire | 70–90 |
+| `pom.xml` | 单模块构建：`aifei` provided、`junit` test、compiler 1.8 / UTF-8、surefire | 70–90 |
 | `HttpClient.java` | 单方法发送接口 + javadoc 契约 | 30–40 |
 | `HttpRequest.java` | 可变构建器：工厂 / 链式 setter / 读取器 / `retry` 幂等守卫 / `url()` 拼接 | 300–380 |
 | `HttpResponse.java` | 不可变值对象：`of` 单一工厂 + 大小写不敏感查找 + `bodyAsString` 委派 `HttpCodec` | 150–200 |
@@ -932,7 +932,7 @@ aifei-http/                                    io.github.gollyhu:aifei-http:1.0.
 | AC | 判定条件摘要 | 实现点（类 / 方法） | 验证通道 |
 | --- | --- | --- | --- |
 | `AC-R-01` | 根包顶层 public 类型集合恰等于 6 个 | 根包 6 个 `.java` 文件（§5.8） | 门禁 **⑤ `publicSurfaceExact`**（数量 + 文件名集合精确相等）+ 编译产物反射扫描 |
-| `AC-R-02` | 除 `aifei-all`（provided）外零第三方依赖 / 源码 import 受限 | `pom.xml`；`internal` 与根包全无第三方 import | 门禁 **① `noThirdPartyReference`** + **② `frameworkOnlyInBridgePackage`** + `mvn dependency:tree` |
+| `AC-R-02` | 除 `aifei`（provided）外零第三方依赖 / 源码 import 受限 | `pom.xml`；`internal` 与根包全无第三方 import | 门禁 **① `noThirdPartyReference`** + **② `frameworkOnlyInBridgePackage`** + `mvn dependency:tree` |
 | `AC-R-03` | 全部 class major = 52；无 Java 8 后语法 | `pom.xml`（source/target 1.8） | 门禁 **⑧ `java8Compatibility`** + 构建后 `javap -verbose` 批量断言 |
 | `AC-R-04` | 未开启重试时端点计数 == 1 | `HttpRetry#maxAttempts`（`requestRetry=-1` + `config=0` → 1）+ `DefaultHttpClient#exec` | `JdkHttpTransportTest`（回环计数器） |
 | `AC-R-05` | GET + `retry(2)`：前 2 次 503、第 3 次 200 → 计数 3、`attempts == 3` | `HttpRetry.IDEMPOTENT_METHODS` / `maxAttempts` / `shouldRetryOnStatus` + `DefaultHttpClient` 重试循环 | `DefaultHttpClientTest`（伪 transport）+ `JdkHttpTransportTest` |
@@ -1006,7 +1006,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **`provided`** | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.AopKit` / `cn.aifei.util.Prop`（**仅 `aifei` 接入包**）+ `cn.aifei.log.Log`（`internal` / `aifei` 的记录点）。**不向下游传递**，消费方必须自带（README 声明） |
+| `cn.aifei:aifei:1.1.2` | **`provided`** | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.AopKit` / `cn.aifei.util.Prop`（**仅 `aifei` 接入包**）+ `cn.aifei.log.Log`（`internal` / `aifei` 的记录点）。**不向下游传递**，消费方必须自带（README 声明） |
 | `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
 - **零第三方 compile / optional**：本模块无任何第三方实现依赖（传输实现是 JDK 自带 `HttpURLConnection`），**不引入日志绑定**（无 `slf4j` / `logback` / `log4j`）。
@@ -1042,7 +1042,7 @@ mvn clean verify
 
 ## 14. `aifei-http-demo`（示例工程，平级目录，不随模块发布）
 
-- **位置**：`aifei-http-demo/`（仓库根、与 `aifei-http/` 平级）；端口 **18120**；依赖 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all`（demo 自带，验证模块 `provided` 口径）。
+- **位置**：`aifei-http-demo/`（仓库根、与 `aifei-http/` 平级）；端口 **18120**；依赖 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT` + `cn.aifei:aifei`（demo 自带，验证模块 `provided` 口径）。
 - **离线可跑**：demo 自带**本地回环 echo 端点**，页面**不请求任何外网地址**；端点支持 6 种可控行为（回显 query / 请求头 / 请求体、指定状态码、延迟 N 毫秒、前 N 次 5xx、gzip 压缩响应、重定向到自身）。
 - **页面**：单页（`src/main/webapp/view/demo/index.html` + `assets/{js,css}`），零构建工具，覆盖需求 §八 的 8 个场景（请求构造 / 发送与响应 / 重试 / 超时 / 拦截器与资源名 / 空态 / 错误态 / 连接池边界只读展示）。
 - **不出原型、不走 QA 基线门禁**（已定档）；**不得**因页面需求回头要求模块新增公共 API。

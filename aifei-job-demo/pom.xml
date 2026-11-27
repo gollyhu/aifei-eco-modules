@@ -16,24 +16,66 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
         <undertow.version>2.2.39.Final</undertow.version>
         <log4j.version>2.26.0</log4j.version>
     </properties>
+
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- 框架内核：aifei-job 对它是 provided，不传递，必须由应用自带 -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-enjoy</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-json</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-undertow</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-log</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-db</artifactId>
+            <scope>compile</scope>
         </dependency>
 
         <!-- 被演示的模块：定时任务（Quartz 与 slf4j-api 随之传递） -->
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-job</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>

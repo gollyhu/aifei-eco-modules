@@ -6,7 +6,7 @@
 
 ## 一、背景
 
-`aifei-eco-modules` 是 aifei 框架的生态模块集合（无根聚合 pom，各模块独立构建/发布）。
+`aifei-eco-modules` 是 aifei 框架的生态模块集合（立项时为无根聚合 pom、各模块独立构建/发布；现行仓库根 pom 兼作聚合器与 BOM）。
 现有能力模块：`aifei-cache`（缓存/计数）、`aifei-sentinel`（流量治理）、`aifei-weixin`（微信）、
 `aifei-sa-token`（认证鉴权）、`aifei-websocket`（WebSocket 双向通信）。
 

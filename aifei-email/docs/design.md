@@ -4,7 +4,7 @@
 >
 > **交付性质**：`aifei-email` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**。任务输入 §〇 已定档：表结构草案（零存储、禁 `java.sql.*`）、Service 方法清单（无 `@Path` / 服务）、低保真 UI 原型（跳过 PM 原型与 QA 基线门禁）三章节**不适用**。本模块只有「根包公共 API + `spi` 通道扩展 SPI + `internal` 适配层 + `aifei` 接入层」四层，无 `AppConfig` / `Launcher` / `@Path` / 业务库表 / `Db+Row` / `Generator`。
 >
-> **坐标**：`io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT`（`packaging=jar`）；根包 `cn.hg.aifei.email`；接入层 `cn.hg.aifei.email.aifei`；适配层 `cn.hg.aifei.email.internal`（含 `internal.smtp` 子包）；通道扩展 SPI `cn.hg.aifei.email.spi`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；sms4j 邮件插件内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 `optional`，`aifei-all:1.1.2` 为 `provided`。
+> **坐标**：`io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT`（`packaging=jar`）；根包 `cn.hg.aifei.email`；接入层 `cn.hg.aifei.email.aifei`；适配层 `cn.hg.aifei.email.internal`（含 `internal.smtp` 子包）；通道扩展 SPI `cn.hg.aifei.email.spi`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；sms4j 邮件插件内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 `optional`，`aifei:1.1.2` 为 `provided`。
 >
 > **技术路线（用户点名锁定，不得推翻）**：基于 **sms4j-Email-core v3.3.6**（dromara 社区，https://sms4j.com/doc3/plugin/mail.html，Apache-2.0，JDK 8+）二次封装。sms4j 邮件插件必须以「**引入核心 + `internal.smtp` 适配层隔离**」的技术路线落地，**不得被「自研 SMTP 等价」顶替**；**禁** `sms4j-spring-boot-starter` / `sms4j-solon-plugin`（本就不存在邮件 starter，但须禁任何形式的 starter 引入）。发送内核一律走 sms4j 的 `MailBuild` / `MailClient`（实证见 §2）；本模块 `internal.smtp` 只做配置解析、类型映射、依赖探测、异常翻译、附件转换与 HTML 模板渲染映射，**不自行实现 SMTP 协议**。
 >
@@ -132,7 +132,7 @@ aifei 生态有 `aifei-sms` 覆盖短信通道，但**出站邮件通道缺位**
 
 ```text
 io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT
-├─ cn.aifei:aifei-all:1.1.2 ........................ provided（消费方自带，不传递）
+├─ cn.aifei:aifei:1.1.2 ........................ provided（消费方自带，不传递）
 ├─ org.dromara.sms4j:sms4j-Email-core:3.3.6 ........ optional（阻断传递，唯一实现内核）
 │  ├─ org.dromara.sms4j:sms4j-Email-api:3.3.6 ...... optional（传递）
 │  │  └─ org.dromara.sms4j:sms4j-Email-comm:3.3.6 .. optional（传递）
@@ -196,14 +196,14 @@ io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT
 | --- | --- | --- |
 | ① 仓库内是否有 aifei-enjoy 独立模块？ | `list_dir` 仓库根 + 根 `README.md` 模块表检索 | **无独立 `aifei-enjoy/` 模块目录**；它是 aifei **框架自身模块**，由 `cn.aifei:aifei-enjoy:1.1.2` 独立发布，并以 shade 方式内含于 `aifei-all:1.1.2` |
 | ② aifei-all:1.1.2 是否提供 Enjoy 能力？ | `jar tf aifei-all-1.1.2.jar \| Select-String 'cn/aifei/enjoy/'` | **提供**：内含 180 个 `cn/aifei/enjoy/*.class`（`Engine` / `Env` / `Directive` / `EngineConfig` / `expr.ast.*` 等）；`jar tf aifei-enjoy-1.1.2.jar` 顶层仅 `cn/aifei/enjoy` 一个包 |
-| ③ Java 8 兼容？ | `javap -verbose -classpath aifei-all-1.1.2.jar cn.aifei.enjoy.Engine \| Select-String "major version"` | **major version: 52**（Java 8 字节码，兼容） |
+| ③ Java 8 兼容？ | `javap -verbose -classpath aifei-1.1.2.jar cn.aifei.enjoy.Engine \| Select-String "major version"` | **major version: 52**（Java 8 字节码，兼容） |
 | ④ 新增依赖 / 公共面影响？ | 读 `aifei-enjoy-1.1.2.pom` + `javap cn.aifei.enjoy.Engine` | pom 仅 test-scope junit，**零第三方运行依赖**；`Engine.use()` / `getTemplate(String)` / `getTemplateByString(String)` 可用。但类型均在 `cn.aifei.enjoy.*`，属框架类型 |
 
 **决策（D15）与理由**：
 
 1. **能力可用（不简单拒绝）**：aifei-enjoy 确实内含于本模块已有的 `provided` 依赖 `aifei-all:1.1.2`，Java 8 兼容、零新增依赖坐标，技术上完全可作渲染内核；仓库 `aifei-i18n` 已有「复用 aifei-all 内含 Enjoy、零 pom 改动」的先例（其 `docs/需求/aifei-i18n.md` §11 实证）。
-2. **不在库模块内嵌（不盲目采纳）**：① 本模块 `internal.smtp` 若 `import cn.aifei.enjoy.*`，将**直接违反 D12 与门禁 ③ `frameworkOnlyInBridgePackage`**（`cn.aifei.*` 仅允许 `aifei` 接入包），须放宽门禁——违背「门禁不得为兼容错误用法放宽」纪律；② 与 D10「不引模板引擎」冲突；③ Enjoy 指令语法（`#(x)` / `#directive`）与 sms4j `#{变量名}` 双轨并存，增加消费方学习成本与契约歧义；④ `aifei-all` 为 `provided`，库模块自身不应在适配层绑定框架实现类型。
-3. **推荐路径（消费方侧，零本模块改动）**：复杂模板场景由消费方在调用前用 aifei-enjoy（`aifei-all` provided 已含）渲染为 HTML 字符串，再经 `MailMessage.htmlContent(...)` 传入——该路径 D10 已预留、公共面零变化、门禁零放宽，且已被 aifei-i18n 先例证实可行。**本模块公共面继续只承诺 `#{变量名}` 替换语义**（AC-01），不承诺 Enjoy 语法。
+2. **不在库模块内嵌（不盲目采纳）**：① 本模块 `internal.smtp` 若 `import cn.aifei.enjoy.*`，将**直接违反 D12 与门禁 ③ `frameworkOnlyInBridgePackage`**（`cn.aifei.*` 仅允许 `aifei` 接入包），须放宽门禁——违背「门禁不得为兼容错误用法放宽」纪律；② 与 D10「不引模板引擎」冲突；③ Enjoy 指令语法（`#(x)` / `#directive`）与 sms4j `#{变量名}` 双轨并存，增加消费方学习成本与契约歧义；④ `aifei` 为 `provided`，库模块自身不应在适配层绑定框架实现类型。
+3. **推荐路径（消费方侧，零本模块改动）**：复杂模板场景由消费方在调用前用 aifei-enjoy（`aifei` provided 已含）渲染为 HTML 字符串，再经 `MailMessage.htmlContent(...)` 传入——该路径 D10 已预留、公共面零变化、门禁零放宽，且已被 aifei-i18n 先例证实可行。**本模块公共面继续只承诺 `#{变量名}` 替换语义**（AC-01），不承诺 Enjoy 语法。
 4. **若未来确需库模块内嵌**：须先改 §3 D10/D12 + 门禁 ③ 并提请主会话登记根 `AGENTS.md`，属独立增量，不在本期范围。
 
 ---
@@ -738,7 +738,7 @@ private static final Set<String> EXPECTED_SPI_TYPES_SET = new LinkedHashSet<>(Ar
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **`provided`** | 生态底座（`Plugin` / `Prop` / `AopKit`）；本模块源码仅 `aifei` 包引用；消费方自带、不传递 |
+| `cn.aifei:aifei:1.1.2` | **`provided`** | 生态底座（`Plugin` / `Prop` / `AopKit`）；本模块源码仅 `aifei` 包引用；消费方自带、不传递 |
 | `org.dromara.sms4j:sms4j-Email-core:3.3.6` | **`optional`** | 唯一实现内核（§2），经 `internal.smtp` 引用；不传递，缺失时启动期可读失败（场景 8） |
 | `junit:junit:4.13.2` | `test` | 单元测试 + 架构门禁 |
 | （测试辅助）mock sms4j `MailClient` | test 源码 | 测试自行实现 sms4j `MailClient` 接口（`send` 不抛异常即模拟成功），不真实发邮件、不提交二进制 |
@@ -749,7 +749,7 @@ private static final Set<String> EXPECTED_SPI_TYPES_SET = new LinkedHashSet<>(Ar
 
 ### 10.2 `dependency:tree` 允许清单
 
-以 §2.3 实测树为准。断言口径重申：① 除 `aifei-all:provided` / `sms4j-Email-core:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控；② sms4j 全传递项均 `optional`；③ 无日志绑定实现；④ 无 Spring / JDBC / 连接池；⑤ 无 starter / solon；⑥ 允许清单额外登记一项**受限传递依赖**——`hamcrest-core`（scope `test`，由 `junit` 传递），非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」纪律：`hamcrest-core` 仅测试期、不属 sms4j 传递链且非任何日志绑定实现；精确坐标与版本以 `mvn dependency:tree` 实测为准。
+以 §2.3 实测树为准。断言口径重申：① 除 `aifei:provided` / `sms4j-Email-core:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控；② sms4j 全传递项均 `optional`；③ 无日志绑定实现；④ 无 Spring / JDBC / 连接池；⑤ 无 starter / solon；⑥ 允许清单额外登记一项**受限传递依赖**——`hamcrest-core`（scope `test`，由 `junit` 传递），非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」纪律：`hamcrest-core` 仅测试期、不属 sms4j 传递链且非任何日志绑定实现；精确坐标与版本以 `mvn dependency:tree` 实测为准。
 
 ### 10.3 验证命令（模块根目录）
 
@@ -769,7 +769,7 @@ javap -verbose target/classes/cn/hg/aifei/email/MailClient.class | findstr "majo
 
 ```text
 aifei-email/                                  io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                   # Java 8；aifei-all provided；sms4j-Email-core optional；junit test；零日志绑定/零 starter
+├── pom.xml                                   # Java 8；aifei provided；sms4j-Email-core optional；junit test；零日志绑定/零 starter
 ├── README.md                                 # 用法 / email.* 配置 / 同步发送声明 / sms4j optional 警告 / javax.mail 许可证声明（T08 写）
 ├── AGENTS.md                                 # 模块硬约束（T08 写，素材 §9 + §3 决策表）
 └── src/main/resources/                       # 非 Java 资源（T04 落地，ServiceLoader 发现 SMTP provider）
@@ -874,7 +874,7 @@ aifei-email/                                  io.github.gollyhu:aifei-email:1.0.
 
 ### 12.2 demo 端点清单（`aifei-email-demo`，不发布）
 
-- **位置**：仓库根 `aifei-email-demo/`（与 `aifei-email/` 平级）；依赖 `io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT` + `org.dromara.sms4j:sms4j-Email-core:3.3.6`（demo 以 `compile` 自带，验证 optional 口径）+ `cn.aifei:aifei-all`（demo 以 `compile` 自带，验证 provided 口径）。
+- **位置**：仓库根 `aifei-email-demo/`（与 `aifei-email/` 平级）；依赖 `io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT` + `org.dromara.sms4j:sms4j-Email-core:3.3.6`（demo 以 `compile` 自带，验证 optional 口径）+ `cn.aifei:aifei`（demo 以 `compile` 自带，验证 provided 口径）。
 - **端口**：**18190**（已定档；18100 mq / 18110 job / 18120 http / 18130 trace / 18140 id / 18150 excel / 18160 audit / 18170 i18n / 18180 sms 已占用）。
 - **形态**：自写 HIO（包名 `cn.hg.aifei.email.demo`，跟随 `aifei-sms-demo` 的 `arch` 同步类结构：`ContentType` / `In` / `InParser` / `IoDispatcher` / `IoHandler` / `Out` / `OutCode` / `TargetFactory`）+ `console/**`（自带日志）+ `EmailDemoService` + `DemoAppConfig` + `start-demo.bat` / `stop-demo.bat`；离线可跑、零外网。
 - **mock**：demo 经 §7.6 注入点设 `MockSms4jMailClient`（sms4j `MailClient` 的 mock，`send` 不抛异常即模拟成功），**不真实发邮件**。
@@ -945,7 +945,7 @@ aifei-email/                                  io.github.gollyhu:aifei-email:1.0.
 | AC-10 | `cn.aifei.*` 只允许出现在 `aifei` 接入包 | 门禁 ③ | 公共面 |
 | AC-11 | `java.sql.*` / `io.undertow.*` 全模块禁止（库模块本体） | 门禁 ④ | 公共面 |
 | AC-12 | 主 JAR 内全部 class major == **52**；源码无 `var` / `record` / `switch` 表达式 / text block / `List.of(` / `Map.of(` | 门禁 ⑩ + `javap` 抽查 | Java 8 |
-| AC-13 | `mvn dependency:tree` 除 `cn.aifei:aifei-all`（provided）外，sms4j-Email-core 为 `optional`、无其它第三方 compile / runtime 依赖、无日志绑定实现、无 starter | 门禁 ⑤⑪ + `dependency:tree`（§2.3） | 依赖 |
+| AC-13 | `mvn dependency:tree` 除 `cn.aifei:aifei`（provided）外，sms4j-Email-core 为 `optional`、无其它第三方 compile / runtime 依赖、无日志绑定实现、无 starter | 门禁 ⑤⑪ + `dependency:tree`（§2.3） | 依赖 |
 | AC-14 | 模块目录内 `mvn clean verify` **0 failure / 0 error** | 构建 | 构建 |
 | AC-15 | 文档四件套齐备（`README.md` / `docs/design.md` / `AGENTS.md` / `docs/testing.md`）+ 根 `README.md` 模块总览补条目 | 文件检查 | 文档 |
 | AC-16 | `aifei-email-demo` 可启动（端口定档 **18190**）；发送与 HTML 模板渲染场景可见；页面与源码零外网 host（门禁） | 实测 + 门禁 ⑭（demo 侧） | demo |

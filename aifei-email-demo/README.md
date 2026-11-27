@@ -18,7 +18,7 @@ http://localhost:18190/email/demo/page
 
 停止用 `stop-demo.bat`（按端口 18190 结束进程）。
 
-依赖口径：demo 以 `compile` 自带 `aifei-all` 与 `org.dromara.sms4j:sms4j-Email-core`，用于验证库本体 `provided` / `optional` 的声明；这**不改变**库的零强制依赖口径。
+依赖口径：demo 以 `compile` 自带 `aifei` 与 `org.dromara.sms4j:sms4j-Email-core`，用于验证库本体 `provided` / `optional` 的声明；这**不改变**库的零强制依赖口径。
 
 ## 六场景
 

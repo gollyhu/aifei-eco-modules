@@ -23,7 +23,7 @@
 
 ### 兼容性
 
-- **依赖口径**：`cn.aifei:aifei-all:1.1.2` 为 `provided`（源码零引用、不向下游传递，消费方自带）；`com.alibaba:easyexcel:3.3.2` 为 `optional`（阻断传递，消费方须显式引入）；`junit:junit:4.13.2` 为 `test`。零日志绑定、零 DB、零 Web 面。
+- **依赖口径**：**零 `cn.aifei` 依赖**（源码零引用、不向下游传递，消费方自带）；`com.alibaba:easyexcel:3.3.2` 为 `optional`（阻断传递，消费方须显式引入）；`junit:junit:4.13.2` 为 `test`。零日志绑定、零 DB、零 Web 面。
 - **内核缺失行为**：未引入 `com.alibaba:easyexcel:3.3.2` 时，首次调用读写 API 抛可读 `ExcelException`（提示补齐依赖），不泄漏裸 `NoClassDefFoundError`；属「能力按需引入」，非功能降级。
 - **门面形态**：`Excel` 为有生命周期的流式会话对象，`ExcelKit` 为无装配期的一次性便捷门面；均随取随用（不需要 Plugin）。
 - 首版无存量调用方，无迁移动作。
@@ -31,7 +31,7 @@
 ### 验证
 
 - `mvn clean verify` = 61 例 / 0 failure / 0 error / 0 skipped（门禁 14 例 + 功能 47 例），`BUILD SUCCESS`。
-- 主 JAR 全部 class major = 52（Java 8）；`dependency:tree` 仅允许清单（aifei-all provided + easyexcel optional + junit test）。
+- 主 JAR 全部 class major = 52（Java 8）；`dependency:tree` 仅允许清单（aifei provided + easyexcel optional + junit test）。
 - QA 第 2 轮 `IS_PASS: YES`；门禁变异探针实证有效；示例工程 `/page` 200、导出真实 xlsx（PK 头）、解析回读 `code=0 rows=12`。
 
 ### 已知问题

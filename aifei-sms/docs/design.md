@@ -4,7 +4,7 @@
 >
 > **交付性质**：`aifei-sms` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**。任务输入 §〇 已定档：表结构草案（零存储、禁 `java.sql.*`）、Service 方法清单（无 `@Path` / 服务）、低保真 UI 原型（跳过 PM 原型与 QA 基线门禁）三章节**不适用**。本模块只有「根包公共 API + `internal` 适配层 + `aifei` 接入层 + `spi` 回执 SPI」四层，无 `AppConfig` / `Launcher` / `@Path` / 业务库表 / `Db+Row` / `Generator`。
 >
-> **坐标**：`io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT`（`packaging=jar`）；根包 `cn.hg.aifei.sms`；接入层 `cn.hg.aifei.sms.aifei`；适配层 `cn.hg.aifei.sms.internal`；回执 SPI `cn.hg.aifei.sms.spi`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；sms4j 内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 `optional`，`aifei-all:1.1.2` 为 `provided`。
+> **坐标**：`io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT`（`packaging=jar`）；根包 `cn.hg.aifei.sms`；接入层 `cn.hg.aifei.sms.aifei`；适配层 `cn.hg.aifei.sms.internal`；回执 SPI `cn.hg.aifei.sms.spi`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；sms4j 内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 `optional`，`aifei:1.1.2` 为 `provided`。
 >
 > **技术路线（用户点名锁定，不得推翻）**：基于 **sms4j v3.3.6**（dromara 社区，https://gitee.com/dromara/sms4j，Apache-2.0，JDK 8+）二次封装。sms4j 必须以「**引入核心 + `internal` 适配层隔离**」的技术路线落地，**不得被「自研等价」顶替**；**禁** `sms4j-spring-boot-starter` / `sms4j-solon-plugin`。发送内核一律走 sms4j 的 `SmsFactory` / `SmsBlend`（实证见 §2）；本模块 `internal` 只做配置解析、类型映射、依赖探测、异常翻译、回执验签与结果适配，**不自行实现短信发送协议**。
 
@@ -118,8 +118,8 @@ aifei 生态有 `aifei-weixin` 覆盖微信通道，但**短信通道缺位**：
 
 ```text
 io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT
-├─ cn.aifei:aifei-all:1.1.2 ........................ provided（消费方自带，不传递）
-│  └─ fastjson2 .................................... provided（由 aifei-all 底座传递；非本模块直接声明，不进消费方运行 classpath）
+├─ cn.aifei:aifei:1.1.2 ........................ provided（消费方自带，不传递）
+│  └─ fastjson2 .................................... provided（由 aifei 底座传递；非本模块直接声明，不进消费方运行 classpath）
 ├─ org.dromara.sms4j:sms4j-core:3.3.6 .............. optional（阻断传递，唯一实现内核）
 │  └─ org.dromara.sms4j:sms4j-provider:3.3.6 ....... optional（传递）
 │     ├─ org.dromara.sms4j:sms4j-api:3.3.6 ......... optional（传递）
@@ -135,7 +135,7 @@ io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT
    └─ hamcrest-core ................................ test（由 junit 传递；仅测试期，不进生产 classpath）
 ```
 
-**断言口径**：① `sms4j-core` 及全部传递项均为 `optional`（`optional` 阻断向下游传递，消费方要用发送能力必须显式引入 sms4j-core，从而连带获得其传递项）；② 无日志绑定实现（仅 `slf4j-api`，消费方自行选择绑定）；③ 无 Spring / 无 JDBC / 连接池；④ 除上表外出现任何条目即视为依赖失控（`dependency:tree` 人工核对项）；⑤ 表中 `fastjson2`（aifei-all `provided` 传递）与 `hamcrest-core`（junit `test` 传递）为实测受限传递项，均非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」三条纪律——前者 scope 为 `provided`（消费方自带、不传递），后者 scope 为 `test`（仅测试期），二者均不属 sms4j 传递链、亦非任何日志绑定实现；其精确坐标与版本以 `mvn dependency:tree` 实测为准。
+**断言口径**：① `sms4j-core` 及全部传递项均为 `optional`（`optional` 阻断向下游传递，消费方要用发送能力必须显式引入 sms4j-core，从而连带获得其传递项）；② 无日志绑定实现（仅 `slf4j-api`，消费方自行选择绑定）；③ 无 Spring / 无 JDBC / 连接池；④ 除上表外出现任何条目即视为依赖失控（`dependency:tree` 人工核对项）；⑤ 表中 `fastjson2`（由消费方自带，非本模块声明）与 `hamcrest-core`（junit `test` 传递）为实测受限传递项，均非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」三条纪律——前者 scope 为 `provided`（消费方自带、不传递），后者 scope 为 `test`（仅测试期），二者均不属 sms4j 传递链、亦非任何日志绑定实现；其精确坐标与版本以 `mvn dependency:tree` 实测为准。
 
 **`optional` 语义必须写入 README**：不引 `org.dromara.sms4j:sms4j-core:3.3.6` 则本模块发送不可用（首次调用抛可读 `SmsException`，消息由 `SmsErrors` 给出，不得出现裸 `NoClassDefFoundError`）——这是「能力按需引入」。sms4j 缺失的可读失败由适配层唯一探测点捕获 `ClassNotFoundException` / `LinkageError` 后包装（§7.4）。
 
@@ -719,7 +719,7 @@ private static final Set<String> EXPECTED_SPI_TYPES_SET = new LinkedHashSet<>(Ar
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **`provided`** | 生态底座（`Plugin` / `Prop` / `AopKit` / `Handler` / `Input` / `Output`）；本模块源码仅 `aifei` 包引用；消费方自带、不传递 |
+| `cn.aifei:aifei:1.1.2` | **`provided`** | 生态底座（`Plugin` / `Prop` / `AopKit` / `Handler` / `Input` / `Output`）；本模块源码仅 `aifei` 包引用；消费方自带、不传递 |
 | `org.dromara.sms4j:sms4j-core:3.3.6` | **`optional`** | 唯一实现内核（§2），经 `internal.sms4j` 引用；不传递，缺失时启动期可读失败（场景 8） |
 | `junit:junit:4.13.2` | `test` | 单元测试 + 架构门禁 |
 | （测试辅助）mock `SmsBlend` | test 源码 | 测试自行实现 `SmsBlend` 接口返回预设 `SmsResponse`，不真实发短信、不提交二进制 |
@@ -730,7 +730,7 @@ private static final Set<String> EXPECTED_SPI_TYPES_SET = new LinkedHashSet<>(Ar
 
 ### 10.2 `dependency:tree` 允许清单
 
-以 §2.3 实测树为准。断言口径重申：① 除 `aifei-all:provided` / `sms4j-core:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控；② sms4j 全传递项均 `optional`；③ 无日志绑定实现；④ 无 Spring / JDBC / 连接池；⑤ 无 starter / solon；⑥ 允许清单额外登记两项**受限传递依赖**——`fastjson2`（scope `provided`，由 `aifei-all` 底座传递）与 `hamcrest-core`（scope `test`，由 `junit` 传递），二者均非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」纪律：`fastjson2` 为 provided（消费方自带、不传递）、`hamcrest-core` 仅测试期、二者均不属 sms4j 传递链且非任何日志绑定实现；精确坐标与版本以 `mvn dependency:tree` 实测为准。
+以 §2.3 实测树为准。断言口径重申：① 除 `aifei:provided` / `sms4j-core:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控；② sms4j 全传递项均 `optional`；③ 无日志绑定实现；④ 无 Spring / JDBC / 连接池；⑤ 无 starter / solon；⑥ 允许清单额外登记两项**受限传递依赖**——`fastjson2`（scope `provided`，由消费方自带）与 `hamcrest-core`（scope `test`，由 `junit` 传递），二者均非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」纪律：`fastjson2` 为 provided（消费方自带、不传递）、`hamcrest-core` 仅测试期、二者均不属 sms4j 传递链且非任何日志绑定实现；精确坐标与版本以 `mvn dependency:tree` 实测为准。
 
 ### 10.3 验证命令（模块根目录）
 
@@ -750,7 +750,7 @@ javap -verbose target/classes/cn/hg/aifei/sms/SmsClient.class | findstr "major v
 
 ```text
 aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                   # Java 8；aifei-all provided；sms4j-core optional；junit test；零日志绑定/零 starter
+├── pom.xml                                   # Java 8；aifei provided；sms4j-core optional；junit test；零日志绑定/零 starter
 ├── README.md                                 # 用法 / sms.* 配置 / 同步发送声明 / sms4j optional 警告（T09 写，素材 §5–§8、§10）
 ├── AGENTS.md                                 # 模块硬约束（T09 写，素材 §9 + §3 决策表）
 ├── docs/
@@ -858,7 +858,7 @@ aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-
 
 ### 12.2 demo 端点清单（`aifei-sms-demo`，不发布）
 
-- **位置**：仓库根 `aifei-sms-demo/`（与 `aifei-sms/` 平级）；依赖 `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` + `org.dromara.sms4j:sms4j-core:3.3.6`（demo 以 `compile` 自带，验证 optional 口径）+ `cn.aifei:aifei-all`（demo 以 `compile` 自带，验证 provided 口径）。
+- **位置**：仓库根 `aifei-sms-demo/`（与 `aifei-sms/` 平级）；依赖 `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` + `org.dromara.sms4j:sms4j-core:3.3.6`（demo 以 `compile` 自带，验证 optional 口径）+ `cn.aifei:aifei`（demo 以 `compile` 自带，验证 provided 口径）。
 - **端口**：**18180**（已定档；18100 mq / 18110 job / 18120 http / 18130 trace / 18140 id / 18150 excel / 18160 audit / 18170 i18n 已占用）。
 - **形态**：自写 HIO（包名 `cn.hg.aifei.sms.demo`，跟随 `aifei-excel-demo` 的 `arch` 同步类结构：`ContentType` / `In` / `InParser` / `IoDispatcher` / `IoHandler` / `Out` / `OutCode` / `TargetFactory`）+ `console/**`（自带日志）+ `SmsDemoService` + `DemoAppConfig` + `start-demo.bat` / `stop-demo.bat`；离线可跑、零外网。
 - **mock**：demo 经 §7.6 注入点设 `MockSmsBlend`（返回预设 `SmsResponse`），**不真实发短信**。
@@ -923,7 +923,7 @@ aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-
 | AC-10 | 根包公共类型精确 5（`SmsClient`/`SmsKit`/`SmsMessage`/`SmsResult`/`SmsException`），spi 精确 2（`SmsReceiptListener` / `SmsReceipt`） | 门禁 ⑤ `publicSurfaceExact` + 反射 | Q-01 |
 | AC-11 | `cn.aifei.*` 仅 `aifei` 包；`java.sql.*` / `io.undertow.*` 全模块禁止 | 门禁 ②③ | Q-01/Q-07 |
 | AC-12 | 主 JAR 全 class major 52；源码无 Java 8 之后语法/API | 门禁 ⑨ + `javap` 抽查 | Q-02 |
-| AC-13 | 除 aifei-all(provided) 外 sms4j optional、无其它第三方编译/运行依赖、无日志绑定、无 starter | 门禁 ④⑩ + `dependency:tree`（§2.3） | Q-03 |
+| AC-13 | 除 aifei(provided) 外 sms4j optional、无其它第三方编译/运行依赖、无日志绑定、无 starter | 门禁 ④⑩ + `dependency:tree`（§2.3） | Q-03 |
 | AC-14 | 模块目录 `mvn clean verify` 0 failure / 0 error | 构建日志 | Q-04 |
 | AC-15 | 文档四件套齐备 + 根 README 补条目 | 文件检查 + T09 | Q-05 |
 | AC-16 | demo 端口 18180 可启动、六场景可见、零外网 host | `aifei-sms-demo` 实测 + 门禁 ⑭（demo 侧） | Q-06 |

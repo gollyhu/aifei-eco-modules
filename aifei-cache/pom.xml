@@ -6,7 +6,7 @@
 
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-cache</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>aifei-cache</name>
@@ -46,43 +46,60 @@
         <url>https://github.com/gollyhu/aifei-cache</url>
     </scm>
 
+    <!-- 只声明 snapshot 仓库：release 由 central-publishing-maven-plugin 以 bundle 方式提交，不经 maven-deploy-plugin。 -->
+    <distributionManagement>
+        <snapshotRepository>
+            <id>central-portal-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
         <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
         <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
-        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <central.publishing.server.id>aifei</central.publishing.server.id>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
 
-        <aifei.version>1.1.2</aifei.version>
 
-        <caffeine.version>2.9.3</caffeine.version>     <!-- 注意：高于 2.9.3 版本不支持 JDK 8 -->
-        <jedis.version>8.0.1</jedis.version>
-        <fury-core.version>0.10.3</fury-core.version>
-        <junit.version>4.13.2</junit.version>
+
+        <!-- 注意：高于 2.9.3 版本不支持 JDK 8 -->
 
         <!-- Redis 集成测试开关，可用 -Dredis.integration=true -Dredis.uri=... 覆盖 -->
         <redis.integration>false</redis.integration>
         <redis.uri>redis://127.0.0.1:6379/0</redis.uri>
     </properties>
 
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- Aifei 框架：核心依赖，非 optional -->
         <dependency>
             <groupId>cn.aifei</groupId>
             <artifactId>aifei</artifactId>
-            <version>${aifei.version}</version>
         </dependency>
 
         <!-- 本地缓存引擎 -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
-            <version>${caffeine.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -90,7 +107,6 @@
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
-            <version>${jedis.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -98,7 +114,6 @@
         <dependency>
             <groupId>org.apache.fury</groupId>
             <artifactId>fury-core</artifactId>
-            <version>${fury-core.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -106,7 +121,6 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -183,41 +197,52 @@
                 </executions>
             </plugin>
 
-            <!-- GPG 签名插件，绑定到 verify 阶段 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>${maven-gpg-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <keyname>EEE1FB1248AE52DF</keyname>
-                    <!-- 加上这一行，替换为你实际的 gpg.exe 路径 -->
-                    <executable>D:\Program Files\GnuPG\bin\gpg.exe</executable>
-                </configuration>
-            </plugin>
 
-            <!-- Central Portal 官方发布插件 -->
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>${central-publishing-maven-plugin.version}</version> <!-- 注意：官方目前最新稳定版是 0.9.0 -->
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <deploymentName>aifei-cache-${project.version}</deploymentName>
-                    <autoPublish>false</autoPublish>
-                    <waitUntil>validated</waitUntil>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
+
+    <profiles>
+        <!-- mvn -Pcentral-release clean deploy -->
+        <profile>
+            <id>central-release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven-gpg-plugin.version}</version>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-maven-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>${central.publishing.server.id}</publishingServerId>
+                            <deploymentName>${project.artifactId}-${project.version}</deploymentName>
+                            <autoPublish>false</autoPublish>
+                            <waitUntil>validated</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

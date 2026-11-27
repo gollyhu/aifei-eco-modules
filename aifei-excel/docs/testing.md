@@ -12,7 +12,7 @@
 mvn clean verify                                    # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest            # 仅跑架构门禁（14 例）
 mvn test -Dtest=ExcelReadTest#shouldCallbackInBatches  # 单方法
-mvn dependency:tree                                 # 断言：aifei-all(provided) + easyexcel(optional) + junit(test)
+mvn dependency:tree                                 # 断言：aifei(provided) + easyexcel(optional) + junit(test)
 javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major version"   # 期望 52（Windows；Linux/Git Bash 用 grep）
 ```
 
@@ -95,4 +95,4 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 
 - 新增公共行为用例须同步 `docs/design.md`（契约）与 `README.md`（用法）；改门禁须先改设计决策并提请主会话登记。
 - 测试 POJO 用业务视角命名；样本一律在 `target/` 现场生成，不提交二进制；URL 字面量只用 `127.0.0.1` / `localhost`。
-- 门禁外依赖口径由 `dependency:tree` 人工核对：除 `aifei-all(provided)` / `easyexcel(optional)` 及其传递项 / `junit(test)` 外出现任何条目即依赖失控。
+- 门禁外依赖口径由 `dependency:tree` 人工核对：除 `aifei(provided)` / `easyexcel(optional)` 及其传递项 / `junit(test)` 外出现任何条目即依赖失控。

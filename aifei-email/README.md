@@ -27,7 +27,7 @@
 <!-- 生态底座：provided，消费方应用必须自带（插件接口 / 配置源 / 注入工具） -->
 <dependency>
     <groupId>cn.aifei</groupId>
-    <artifactId>aifei-all</artifactId>
+    <artifactId>aifei</artifactId>
     <version>1.1.2</version>
 </dependency>
 
@@ -472,7 +472,7 @@ IMAP / POP3 收信、退信与打开点击追踪、发送记录持久化、内�
 ### 公共面与依赖
 
 - 根包 `cn.hg.aifei.email` 精确 5 个类型：`MailClient` / `MailKit` / `MailMessage` / `MailResult` / `MailException`；`spi` 包 1 个：`MailProvider`。公共签名零第三方 / 零框架类型。
-- `cn.aifei:aifei-all:1.1.2` 为 `provided`（消费方自带）；`org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 `optional`（**不向下游传递**，见第 6 条注意事项）；零 DB、零 Web 容器、零日志绑定、零 starter。
+- `cn.aifei:aifei:1.1.2` 为 `provided`（消费方自带）；`org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 `optional`（**不向下游传递**，见第 6 条注意事项）；零 DB、零 Web 容器、零日志绑定、零 starter。
 
 ### 文档索引
 
@@ -488,5 +488,5 @@ IMAP / POP3 收信、退信与打开点击追踪、发送记录持久化、内�
 cd aifei-email
 mvn clean verify                                  # 编译 + 83 个测试（含 14 例架构门禁），0/0
 mvn test -Dtest=ArchitectureBoundaryTest          # 仅跑架构门禁
-mvn dependency:tree                               # 仅 aifei-all(provided) / sms4j-Email-core(optional) / junit(test)
+mvn dependency:tree                               # 仅 aifei(provided) / sms4j-Email-core(optional) / junit(test)
 ```

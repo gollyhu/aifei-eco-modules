@@ -16,10 +16,10 @@ aifei 生态的 **Excel 读写统一门面**（库模块 / SDK）：注解表头
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
 
-<!-- 消费方必须自带框架内核：本模块对 aifei-all 是 provided，不向下游传递 -->
+<!-- 消费方必须自带框架内核：本模块对 aifei 是 provided，不向下游传递 -->
 <dependency>
     <groupId>cn.aifei</groupId>
-    <artifactId>aifei-all</artifactId>
+    <artifactId>aifei</artifactId>
     <version>1.1.2</version>
 </dependency>
 
@@ -33,7 +33,7 @@ aifei 生态的 **Excel 读写统一门面**（库模块 / SDK）：注解表头
 
 > **可选依赖语义（重要）**：本模块对 `com.alibaba:easyexcel:3.3.2` 声明为 `optional`，**不会**随本模块传递到消费方。若消费方未显式引入它，本模块的读写 API 在**首次调用**时抛 `ExcelException`，消息为 `excel: com.alibaba:easyexcel:3.3.2 is required, add it to your dependencies`，而**不是**裸 `NoClassDefFoundError`。这是「能力按需引入」而非「功能降级」：不引 easyexcel，读写完全不可用。EasyExcel 传递的 POI 4.1.2、slf4j-api 1.7.32 等同样不向下游传递。
 
-> `cn.aifei:aifei-all:1.1.2` 为 `provided`，本模块源码零引用、不向下游传递，消费方须自带。
+> **零 `cn.aifei` 依赖**，本模块源码零引用、不向下游传递，消费方须自带。
 
 ## 取用方式
 
@@ -149,7 +149,7 @@ CSV 读写；模板导出；公式 / 图片 / 富文本 / 批注 / 合并单元�
 cd aifei-excel
 mvn clean verify                                  # 必须 0 failure / 0 error（61 例，含门禁 14 例）
 mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（14 例）
-mvn dependency:tree                               # 断言：仅 aifei-all(provided) + easyexcel(optional) + junit(test)
+mvn dependency:tree                               # 断言：仅 aifei(provided) + easyexcel(optional) + junit(test)
 javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major version"   # 期望 52
 ```
 
@@ -168,7 +168,7 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 
 ## 示例工程
 
-[aifei-excel-demo](../aifei-excel-demo/)（**示例工程，不发布**）：自写 HIO、单页演示，端口 **18150**，真实演示「上传解析 → 分批统计 / 一次性导出 / 流式导出」。启动 `start-demo.bat`、停止 `stop-demo.bat`，验证地址 `http://localhost:18150/`。demo 以 `compile` 自带 `com.alibaba:easyexcel:3.3.2` 与 `cn.aifei:aifei-all`，用于验证 `optional` / `provided` 口径。
+[aifei-excel-demo](../aifei-excel-demo/)（**示例工程，不发布**）：自写 HIO、单页演示，端口 **18150**，真实演示「上传解析 → 分批统计 / 一次性导出 / 流式导出」。启动 `start-demo.bat`、停止 `stop-demo.bat`，验证地址 `http://localhost:18150/`。demo 以 `compile` 自带 `com.alibaba:easyexcel:3.3.2` 与 `cn.aifei:aifei`，用于验证 `optional` / `provided` 口径。
 
 ## 文档
 

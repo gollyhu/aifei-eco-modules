@@ -18,15 +18,15 @@
 
 ## 2. 依赖与发布序列
 
-发布序列固定为 `aifei-cache:1.1.0` → `aifei-lock:1.0.0-SNAPSHOT`（先发、不同批发布）。
+发布序列固定为 `aifei-cache:1.2.0-SNAPSHOT` → `aifei-lock:1.0.0-SNAPSHOT`（先发、不同批发布）。
 
 | 依赖 | 版本 / 范围 | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all` | 1.1.2，`provided` | 消费方自带；日志门面 `cn.aifei.log` 由它提供 |
+| `cn.aifei:aifei` | 1.1.2，`provided` | 消费方自带；日志门面 `cn.aifei.log` 由它提供 |
 | `io.github.gollyhu:aifei-cache` | ≥ 1.1.0，`optional` | 共享存储能力来源；**不向下游传递** |
 | 不直接引入 Jedis | — | 连接与编解码全部由 `aifei-cache` 负责 |
 
-**optional 的代价（必须写进消费方须知）**：消费方漏引入 `aifei-cache` ≥ 1.1.0 时，`cn.hg.aifei.lock.cache.CacheLockStore` 在**类加载期**即 `NoClassDefFoundError`，早于 `LockPlugin` 的启动校验，无法转成可读错误。
+**optional 的代价（必须写进消费方须知）**：消费方漏引入 `aifei-cache`（BOM 管理为 1.2.0-SNAPSHOT） 时，`cn.hg.aifei.lock.cache.CacheLockStore` 在**类加载期**即 `NoClassDefFoundError`，早于 `LockPlugin` 的启动校验，无法转成可读错误。
 
 依赖的 cache 能力（1.1.0 新增或既有）：
 

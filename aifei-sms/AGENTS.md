@@ -12,7 +12,7 @@
 ## 技术路线（用户点名锁定）
 
 - 基于 `org.dromara.sms4j:sms4j-core:3.3.6` 二次封装；发送一律经 `SmsFactory` / `SmsBlend`，**不得自研等价顶替**；禁 starter / solon。
-- sms4j 为 `optional`（消费方显式引入），`aifei-all` 为 `provided`；缺失时 `start()` 抛可读 `SmsException`，不裸抛 `NoClassDefFoundError`。
+- sms4j 为 `optional`（消费方显式引入），`aifei` 为 `provided`；缺失时 `start()` 抛可读 `SmsException`，不裸抛 `NoClassDefFoundError`。
 - 同步发送：不暴露异步 API、不建线程池；零存储、不做幂等去重；不引入 `aifei-db`。
 
 ## Java 8 双约束

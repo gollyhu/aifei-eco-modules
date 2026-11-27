@@ -60,34 +60,43 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
-        <xfs.version>2.3.0</xfs.version>
-        <junit.version>4.13.2</junit.version>
-        <minio.version>8.5.7</minio.version>
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <central.publishing.server.id>aifei</central.publishing.server.id>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
         <!-- 与 X File Storage 传递的 slf4j-api 版本保持一致 -->
         <slf4j.version>1.7.36</slf4j.version>
 
-        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
-        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
-        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
-        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
-        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
-        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
 
         <!-- MinIO 集成测试开关，可用 -Doss.integration=true 覆盖（默认关闭） -->
         <oss.integration>false</oss.integration>
 
         <!-- Central Portal 凭据的 server id（在 settings.xml 中配置）；
              若已有 ossrh 凭据，可用 -Dcentral.publishing.server.id=ossrh 复用 -->
-        <central.publishing.server.id>aifei</central.publishing.server.id>
     </properties>
+
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- 框架内核：provided，消费方自带，不向下游传递 -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -98,13 +107,11 @@
         <dependency>
             <groupId>org.dromara.x-file-storage</groupId>
             <artifactId>x-file-storage-core</artifactId>
-            <version>${xfs.version}</version>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -120,7 +127,6 @@
         <dependency>
             <groupId>io.minio</groupId>
             <artifactId>minio</artifactId>
-            <version>${minio.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -233,7 +239,7 @@
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>${central.publishing.server.id}</publishingServerId>
-                            <deploymentName>aifei-oss-${project.version}</deploymentName>
+                            <deploymentName>${project.artifactId}-${project.version}</deploymentName>
                             <autoPublish>false</autoPublish>
                             <waitUntil>validated</waitUntil>
                         </configuration>

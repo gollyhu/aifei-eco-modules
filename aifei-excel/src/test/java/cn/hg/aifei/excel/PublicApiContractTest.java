@@ -172,9 +172,11 @@ public class PublicApiContractTest {
     // ---------------------------------------------------------------- 组6：依赖边界文本复核
 
     @Test
-    public void pom_aifeiAllProvided_easyExcelOptional_junitTest() throws IOException {
+    public void pom_zeroAifeiDependency_easyExcelOptional_junitTest() throws IOException {
         String pom = new String(Files.readAllBytes(POM), StandardCharsets.UTF_8);
-        assertTrue("aifei-all 须 provided", dependencyBlock(pom, "aifei-all").contains("<scope>provided</scope>"));
+        assertFalse("本模块源码零引用，pom 不得声明任何 cn.aifei 依赖",
+                pom.contains("<groupId>cn.aifei</groupId>"));
+        assertFalse("pom 不得再声明 aifei-all", pom.contains("<artifactId>aifei-all</artifactId>"));
         assertTrue("easyexcel 须 optional", dependencyBlock(pom, "easyexcel").contains("<optional>true</optional>"));
         assertTrue("junit 须 test", dependencyBlock(pom, "junit").contains("<scope>test</scope>"));
         for (String forbidden : Arrays.asList("slf4j-simple", "logback", "log4j",

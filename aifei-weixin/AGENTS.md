@@ -22,7 +22,7 @@
 ### 技术栈
 
 - 代码、依赖与 API 必须兼容 Java 8（`source` / `target` 均为 1.8），不得使用 Java 8 之后才有的 API。
-- 唯一编译依赖是 `cn.aifei:aifei-all`，且必须保持 `provided`（不传递，消费方自带）。
+- 唯一编译依赖是 `cn.aifei:aifei`，且必须保持 `provided`（不传递，消费方自带）。
 - 不得引入 `aifei-vip-arch`、`undertow`、`jedis`、`okhttp`、`jackson`、`fastjson1`、`mysql`、`druid`。
 - 加解密、签名、验签、GCM、mTLS 一律使用 JDK 自带 API，不引入第三方密码学库。
 
@@ -85,7 +85,7 @@
 1. **读设计**：确认需求在 `docs/design.md` 中有依据；没有依据先补决策。
 2. **改实现**：遵守上述定义点与冻结契约，不越出分层边界。
 3. **补测试**：新增或改变公共行为时同步更新测试；触及协议格式时补固定向量用例。
-4. **跑验证**：在模块根目录执行 `mvn clean test`，必须 0 failure / 0 error（`KernelBindingTest` 依赖相对路径 `src/main/java`，不得在仓库根执行本模块的测试）。
+4. **跑验证**：模块单独验证时在模块根目录执行 `mvn clean test`，必须 0 failure / 0 error（`KernelBindingTest` 依赖相对路径 `src/main/java`）；仓库根 pom 兼作聚合器与 BOM，可先在根执行 `mvn -N install` 后用 `mvn clean verify` 跑全量 reactor。
 5. **同步文档**：按「开发前提」中的四处文档同步。
 
 ## 提交前检查清单

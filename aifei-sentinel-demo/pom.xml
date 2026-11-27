@@ -13,33 +13,70 @@
     <description>自写 HIO 的最小接入示例，验证 aifei-sentinel 对接</description>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
-        <sentinel.version>1.8.8</sentinel.version>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
         <undertow.version>2.2.39.Final</undertow.version>
         <log4j.version>2.26.0</log4j.version>
     </properties>
 
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-enjoy</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-json</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-undertow</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-log</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-db</artifactId>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-sentinel</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <!-- Dashboard 模式需要：连接官方 Sentinel 控制台（本地模式不配 dashboard.server 则不受影响） -->
         <dependency>
             <groupId>com.alibaba.csp</groupId>
             <artifactId>sentinel-transport-simple-http</artifactId>
-            <version>${sentinel.version}</version>
         </dependency>
 
         <dependency>

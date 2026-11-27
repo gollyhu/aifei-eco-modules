@@ -16,7 +16,7 @@
 
 | 依赖 | 范围 | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 消费方自带，不传递 |
+| `cn.aifei:aifei:1.1.2` | `provided` | 消费方自带，不传递 |
 | `org.dromara.sms4j:sms4j-core:3.3.6` | **`optional`** | 唯一实现内核，**不传递** |
 | `junit:junit:4.13.2` | `test` | 单元测试 + 架构门禁 |
 

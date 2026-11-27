@@ -24,7 +24,7 @@
 
 - **`x-file-storage-core` 由本模块传递引入**（`compile` 依赖），消费方无需再声明可正常使用。
 - **各云厂商 SDK 需消费方按需自带**（例如阿里云 `com.aliyun.oss:aliyun-sdk-oss`、AWS `com.amazonaws:aws-java-sdk-s3`、MinIO `io.minio:minio`）。仅使用本地存储时无需引入任何云 SDK。
-- aifei 框架（`cn.aifei:aifei-all`）为 `provided`，由应用自带。
+- aifei 框架（`cn.aifei:aifei`）为 `provided`，由应用自带。
 
 > **Java 8 说明**：X File Storage 官方文档中的「JDK 11+」指其**自身构建环境**要求；其发布 jar 的字节码为 Java 8，可被 Java 8 应用直接依赖运行。aifei-oss 与消费方均无需升级 JDK。
 

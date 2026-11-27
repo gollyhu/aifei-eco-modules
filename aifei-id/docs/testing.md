@@ -168,7 +168,7 @@ javap -verbose target/classes/cn/hg/aifei/id/IdKit.class | findstr "major versio
 
 ```text
 io.github.gollyhu:aifei-id:jar:1.0.0
-+- cn.aifei:aifei-all:jar:1.1.2:provided
++- cn.aifei:aifei:jar:1.1.2:provided
 |  \- com.alibaba.fastjson2:fastjson2:jar:2.0.65:provided
 +- io.github.gollyhu:aifei-cache:jar:1.1.0:compile (optional)
 |  \- cn.aifei:aifei:jar:1.1.2:compile (optional)

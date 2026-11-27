@@ -21,7 +21,7 @@
 
 - **Java 8 双约束（语法 + API）**：`source`/`target` = `1.8`；主 JAR 内全部 class major = **52**。禁 `var` / `record` / `switch` 表达式 / text block（`"""`）/ `sealed` / pattern matching；禁 `List.of` / `Map.of` / `Set.of` 等 Java 9+ 集合工厂与其它 Java 8 后 API。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、异常消息）；原创文件写统一版权头，既有版权块不得改写。
-- **零第三方**：pom 只允许 `cn.aifei:aifei-all`（**`provided`**，不向下游传递，消费方自带）+ `junit`（`test`）。**不得**新增 `optional` / `compile` 第三方依赖；**不得引入任何日志绑定**（`slf4j` / `logback` / `log4j` 一律禁止——模块只面向 `cn.aifei.log` 接口）；**不声明 `cn.aifei:aifei-log`**（Log / LogFactory 接口在内核 `cn.aifei:aifei` 中，随 aifei-all 提供）。
+- **零第三方**：pom 只允许 `cn.aifei:aifei`（**`provided`**，不向下游传递，消费方自带）+ `junit`（`test`）。**不得**新增 `optional` / `compile` 第三方依赖；**不得引入任何日志绑定**（`slf4j` / `logback` / `log4j` 一律禁止——模块只面向 `cn.aifei.log` 接口）；**不声明 `cn.aifei:aifei-log`**（Log / LogFactory 接口在内核 `cn.aifei:aifei` 中，随 aifei 提供）。
 - **零 DB**：全模块禁 `import java.sql.`。
 - **禁改写 JVM 全局状态**：不得出现 `System.setProperty` / `System.getProperties().put` / `System.setErr` / `System.setOut`。
 - **无 Plugin / 无 SPI / 无 `META-INF/services`**：模块无装配插件、无配置键、无自动装配；`src/main/resources` 下不得出现 `META-INF/services/` 目录。
@@ -97,7 +97,7 @@
 mvn clean verify                                     # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest             # 仅跑架构门禁（10 例）
 mvn test -Dtest=TraceKitTest                         # 单用例：类名或 类名#方法名
-mvn dependency:tree                                  # 断言：仅 aifei-all(provided) + junit(test)
+mvn dependency:tree                                  # 断言：仅 aifei(provided) + junit(test)
 ```
 
 构建后可用 `javap -verbose` 抽查主 class major = 52。

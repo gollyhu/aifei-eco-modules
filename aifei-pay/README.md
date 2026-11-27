@@ -61,7 +61,7 @@ PayNotifyUtil.verifyAndParse("alipay-main", null, PayNotifyRequest.of(params));
 
 ### 2.1 声明依赖
 
-`aifei-all` 由应用自带（`provided`）；支付宝内核相关构件在本模块是 `optional`，**不会向下游传递**，
+`aifei` 由应用自带（`provided`）；支付宝内核相关构件在本模块是 `optional`，**不会向下游传递**，
 消费方必须自己声明。
 
 ```xml
@@ -69,7 +69,7 @@ PayNotifyUtil.verifyAndParse("alipay-main", null, PayNotifyRequest.of(params));
     <!-- 生态统一底座（应用自带） -->
     <dependency>
         <groupId>cn.aifei</groupId>
-        <artifactId>aifei-all</artifactId>
+        <artifactId>aifei</artifactId>
         <version>1.1.2</version>
         <scope>provided</scope>
     </dependency>

@@ -12,22 +12,79 @@
     <name>aifei-job</name>
     <description>In-application scheduled jobs for aifei applications.</description>
 
+    <url>https://github.com/gollyhu/aifei-job</url>
+
+    <!-- 以下为发布到 Maven Central 的必需元数据，清单见 https://central.sonatype.org/publish/requirements/
+         licenses 元素与仓库根 LICENSE 的 Apache License 2.0 保持一致。 -->
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>gollyhu</name>
+        <url>https://github.com/gollyhu</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>gollyhu</id>
+            <name>糊搞</name>
+            <email>3722711@qq.com</email>
+            <url>https://github.com/gollyhu</url>
+            <roles>
+                <role>maintainer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/gollyhu/aifei-job.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/gollyhu/aifei-job.git</developerConnection>
+        <url>https://github.com/gollyhu/aifei-job</url>
+    </scm>
+
+    <!-- 只声明 snapshot 仓库：release 由 central-publishing-maven-plugin 以 bundle 方式提交，不经 maven-deploy-plugin。 -->
+    <distributionManagement>
+        <snapshotRepository>
+            <id>central-portal-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
-        <junit.version>4.13.2</junit.version>
-        <quartz.version>2.3.2</quartz.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+        <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <central.publishing.server.id>aifei</central.publishing.server.id>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
+
         <slf4j.version>1.7.30</slf4j.version>
     </properties>
+
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- 框架内核：provided，消费方自带，不向下游传递 -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -35,7 +92,6 @@
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
-            <version>${quartz.version}</version>
             <exclusions>
                 <!-- 连接池与 JDBC 相关传递项：本模块无持久化需求，全部排空 -->
                 <exclusion>
@@ -63,7 +119,6 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -87,4 +142,48 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- mvn -Pcentral-release clean deploy -->
+        <profile>
+            <id>central-release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven-gpg-plugin.version}</version>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-maven-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>${central.publishing.server.id}</publishingServerId>
+                            <deploymentName>${project.artifactId}-${project.version}</deploymentName>
+                            <autoPublish>false</autoPublish>
+                            <waitUntil>validated</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

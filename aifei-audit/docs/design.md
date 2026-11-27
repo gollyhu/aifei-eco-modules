@@ -2,7 +2,7 @@
 
 > 版本：v1.0｜系统架构师：**贾苟思**｜日期：**2026-11-18**
 > 输入：`docs/需求/aifei-audit.md`（任务输入，最高权威）、`aifei-audit/docs/prd.md`（需求关已通过）
-> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei-all:1.1.2` 为 `provided`；零第三方 compile / runtime 依赖
+> 坐标与基线：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.audit`；Java 8（class major 52）；`cn.aifei:aifei:1.1.2` 为 `provided`；零第三方 compile / runtime 依赖
 > 本文口径：需求 §二 非目标、§三 五条已定档前提、§五 契约口径**原样承接**；公共面逐字签名、配置键名、异常职责、不可变实现方式、门禁方法级判据均由本文定稿。**本文与需求冲突时以需求为准**，并须走需求回写流程。
 
 ---
@@ -782,7 +782,7 @@ sequenceDiagram
 | 坐标 | `io.github.gollyhu:aifei-audit-demo:1.0.0-SNAPSHOT`（示例工程，不发布） |
 | 端口 | **18160**（`-Dundertow.port=18160`），WebSocket / mq / job / http / trace / id / excel 端口均不占用 |
 | 结构 | 与 `aifei-http-demo` 同构：`DemoApp` → `Aifei.start(DemoAppConfig)`；自写 HIO（`cn.aifei.demo.common.arch` 11 个文件逐字拷贝自 `aifei-http-demo`）；`service` 包声明 `@Path`；`webapp` 静态页；`start-demo.bat` / `stop-demo.bat` |
-| 依赖 | `aifei-all`(compile) + `aifei-audit`(compile) + `aifei-trace` + `aifei-sa-token` + `aifei-mq`（示例工程行为，`Q16` 定档）。**模块 pom 不得出现这些** |
+| 依赖 | aifei 官方构件（compile） + `aifei-audit`(compile) + `aifei-trace` + `aifei-sa-token` + `aifei-mq`（示例工程行为，`Q16` 定档）。**模块 pom 不得出现这些** |
 | 离线 | 页面与源码零外网 host（`G-13`），无构建工具（纯 HTML/CSS/JS） |
 
 ### 12.2 装配（`DemoAppConfig`）
@@ -1050,7 +1050,7 @@ AopKit.get().addSingletonObject(AuditActorProvider.class, new SaTokenActorProvid
 
 | 任务 | 内容 | 依赖 | 完成判据（可执行） |
 | --- | --- | --- | --- |
-| **T01** | 项目基础设施：`pom.xml`（`aifei-all` provided + junit test，surefire 固定 `workingDirectory`）、`RecordingLogFactory`、4 个 PV 探针保留 | — | `mvn -o clean test` 11 例全绿（已达成） |
+| **T01** | 项目基础设施：`pom.xml`（`aifei` provided + junit test，surefire 固定 `workingDirectory`）、`RecordingLogFactory`、4 个 PV 探针保留 | — | `mvn -o clean test` 11 例全绿（已达成） |
 | **T02** | 公共值类型：`Audit` / `AuditEvent`(+`Result`+`toString`) / `AuditException` | T01 | `mvn -o clean test` 仍全绿；`javap` 看到 15 参构造器与全 getter |
 | **T03** | SPI 契约：`AuditSink` / `AuditActorProvider` / `AuditResultJudge` | T02 | 编译通过；`spi` 包恰好 3 个文件 |
 | **T04** | 配置与错误：`AuditConfig`（键常量 + 严格解析）、`AuditErrors`（消息构造） | T02 | 单测可断言非法值消息含键名与原值（随 T13 固化） |
@@ -1065,7 +1065,7 @@ AopKit.get().addSingletonObject(AuditActorProvider.class, new SaTokenActorProvid
 | **T13** | 事件与生命周期用例：`AuditEventTest`（AC-04/05/06/13-toString）、`ConfigAndLifecycleTest`（AC-18/19/29 配置部分） | T10 T11 | 对应用例全绿 |
 | **T14** | 采集用例：`AnnotationCollectTest`（AC-01/02/03/21/29）、`ManualRecordTest`（AC-07/09b/18b）、`MaskingTest`（AC-13/14/15） | T11 T13 | 对应用例全绿 |
 | **T15** | 隔离与交付用例：`IsolationTest`（AC-10/11/12）、`SinkDeliveryTest`（AC-08/09/16/17a/17b）、`TraceSupplierTest`（AC-20） | T11 T13 | 对应用例全绿 |
-| **T16** | 模块文档：`README.md`（能力边界 / 三态 / 慢 sink 警告 / 拦截器必须首个注册 / 消费方自带 `aifei-all`）、`AGENTS.md`（开发约束）、`aifei-audit-demo/README.md` | T12 T15 | README 含 §5.4.1 三态表与 `PV-02` 接线要求 |
+| **T16** | 模块文档：`README.md`（能力边界 / 三态 / 慢 sink 警告 / 拦截器必须首个注册 / 消费方自带 aifei 官方构件）、`AGENTS.md`（开发约束）、`aifei-audit-demo/README.md` | T12 T15 | README 含 §5.4.1 三态表与 `PV-02` 接线要求 |
 | **T17** | demo 骨架：`pom.xml`、`DemoApp`、`DemoAppConfig`、11 个 HIO 文件、`app-config.txt`、两个 bat | T16 | `mvn -o clean package` 通过；`start-demo.bat` 能起 18160 |
 | **T18** | demo 落点与协作件：`EventFeed` / `SinkCounters` / 3 个 sink / `SwitchableAuditSink` / `SaTokenActorProvider` / `AuditMqSubscription` | T17 | 页面切 sink 后计数变化；mq 消费计数增长 |
 | **T19** | demo 业务动作：`AuditedOrderService`（含必抛异常动作）/ `PlainOperationService` | T17 | 被 `routes.scan(..., new AuditInterceptor())` 覆盖后产事件 |
@@ -1100,7 +1100,7 @@ AopKit.get().addSingletonObject(AuditActorProvider.class, new SaTokenActorProvid
 
 | artifact | version | scope | 说明 |
 | --- | --- | --- | --- |
-| `cn.aifei:aifei-all` | `1.1.2` | `provided` | 不传递，消费方必须自带（README 声明） |
+| `cn.aifei:aifei` | `1.1.2` | `provided` | 不传递，消费方必须自带（README 声明） |
 | `junit:junit` | `4.13.2` | `test` | 唯一测试依赖；**test scope 也不得出现任何日志绑定**（`AC-25`） |
 | `org.apache.maven.plugins:maven-compiler-plugin` | `3.15.0` | build | `source`/`target` = 1.8 |
 | `org.apache.maven.plugins:maven-surefire-plugin` | `3.2.5` | build | `workingDirectory=${project.basedir}`（门禁用相对路径） |
@@ -1111,7 +1111,7 @@ AopKit.get().addSingletonObject(AuditActorProvider.class, new SaTokenActorProvid
 
 | artifact | version | scope | 说明 |
 | --- | --- | --- | --- |
-| `cn.aifei:aifei-all` | `1.1.2` | compile | 应用工程自带 |
+| `cn.aifei:aifei` | `1.1.2` | compile | 应用工程自带 |
 | `io.github.gollyhu:aifei-audit` | `1.0.0` | compile | 被演示的模块 |
 | `io.github.gollyhu:aifei-trace` | `1.0.0` | compile | 场景 6 |
 | `io.github.gollyhu:aifei-sa-token` | `1.0.0` | compile | 操作人来源 |
@@ -1258,7 +1258,7 @@ AopKit.get().addSingletonObject(AuditActorProvider.class, new SaTokenActorProvid
 
 > `AC-23` | `G-02` / `G-03` | `spi` 包顶层 public 类型集合精确等于 3 个；`aifei` 包存在 `AuditPlugin` 与 `AuditInterceptor`；`cn.aifei.*` 出现位置仅限 `aifei` 包与 `design.md` 白名单登记的 **4** 个 `internal` 点（`SafeInvoker` 的 `cn.aifei.log.*`、`AuditSpi` 的 `cn.aifei.aop.Aop`、`AuditCollector` 的 `cn.aifei.aop.Invocation`、`AuditScanner` 的 `cn.aifei.scanner.Scanner`）
 
-B 的代价（须在裁决时一并接受）：`G-03` 从「`internal` 零框架引用」退化为「4 个受控例外」；`internal` 与 `aifei-all` 版本硬耦合（`Invocation` / `Scanner` / `Aop` 任一 API 变动，`internal` 直接编译失败）。
+B 的代价（须在裁决时一并接受）：`G-03` 从「`internal` 零框架引用」退化为「4 个受控例外」；`internal` 与 `aifei` 版本硬耦合（`Invocation` / `Scanner` / `Aop` 任一 API 变动，`internal` 直接编译失败）。
 
 ### 21.3 需向用户报备的事项
 

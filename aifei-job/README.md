@@ -35,7 +35,7 @@
 <!-- 框架内核：本模块对它是 provided，不传递，必须由你的应用自带 -->
 <dependency>
     <groupId>cn.aifei</groupId>
-    <artifactId>aifei-all</artifactId>
+    <artifactId>aifei</artifactId>
     <version>1.1.2</version>
 </dependency>
 ```
@@ -234,11 +234,11 @@ public class DemoJobListener implements JobListener {
 
 | 依赖 | 范围 | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核（`Plugin` / `Aop` / `Prop` / `Scanner` / `Log`）；**不向消费方传递** |
+| `cn.aifei:aifei:1.1.2` | `provided` | 框架内核（`Plugin` / `Aop` / `Prop` / `Scanner` / `Log`）；**不向消费方传递** |
 | `org.quartz-scheduler:quartz:2.3.2` | `compile` | 仅用于 `CronExpression`（表达式校验 + 下次触发计算）；**会向消费方传递** |
 | `org.slf4j:slf4j-api:1.7.30` | `compile` | **仅 Quartz 内部日志门面**；模块代码零 `org.slf4j.*` 引用 |
 
-- **消费方须自带 `aifei-all`**：本模块对它是 `provided`，**不传递**。只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期会以 `NoClassDefFoundError: cn/aifei/log/Log` 失败（早于任何可读错误）——看到这个错误先查依赖。
+- **消费方须自带 `aifei`**：本模块对它是 `provided`，**不传递**。只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期会以 `NoClassDefFoundError: cn/aifei/log/Log` 失败（早于任何可读错误）——看到这个错误先查依赖。
 - **Quartz 2.3.2 会向消费方传递**：若你的应用已有其它 Quartz 版本，请自行 `exclusion` 或**显式对齐版本**。Quartz 只被当作「表达式解析器 + 时刻计算器」使用，**不启动任何调度器、不建表、不连库**（`Scheduler` / `JobDetail` / `Trigger` / `JobDataMap` / JobStore / misfire 策略一概不用）。
 - Quartz 的三个连接池 / JDBC 传递项（`com.mchange:c3p0` / `com.mchange:mchange-commons-java` / `com.zaxxer:HikariCP-java7`）已被本模块排空，不会传给你的应用。
 - 消费方**不得**把本模块带来的 `slf4j-api` 当作自身日志门面（本模块不承诺其日志语义）。

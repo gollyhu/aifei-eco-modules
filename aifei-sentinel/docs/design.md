@@ -14,7 +14,7 @@ aifei 生态已有缓存（`aifei-cache`）、鉴权（`aifei-sa-token`）等社
 
 设计目标：
 
-- `provided` 依赖仅 `aifei-all`，对 arch / undertow 零依赖。
+- `provided` 依赖仅 `aifei`，对 arch / undertow 零依赖。
 - 业务代码零 Sentinel 类型，只注册拦截器、实现降级策略。
 - 五种能力共用同一处埋点，差异只在规则类型。
 
@@ -66,7 +66,7 @@ aifei-sentinel/src/main/java/cn/hg/aifei/sentinel/
 
 | 依赖 | scope | 说明 |
 |---|---|---|
-| `cn.aifei:aifei-all` | `provided` | 内核，消费方自带（含传递的 `fastjson2`） |
+| `cn.aifei:aifei` | `provided` | 内核，消费方自带（含传递的 `fastjson2`） |
 | `com.alibaba.csp:sentinel-core` | `compile` | Sentinel 核心：埋点、规则管理器、降级 |
 | `com.alibaba.csp:sentinel-parameter-flow-control` | `compile` | 热点参数限流（独立于 core 的扩展模块） |
 | `com.alibaba.csp:sentinel-datasource-extension` | `compile` | `FileRefreshableDataSource`，规则文件热读 |
@@ -77,7 +77,7 @@ aifei-sentinel/src/main/java/cn/hg/aifei/sentinel/
 
 ### 3.4 demo HIO
 
-`aifei-sentinel-demo` 不依赖 `aifei-vip-arch`：其 HIO 逐字同步自官方仓库 `jfinal/aifei-eco` 的 `aifei-demo/src/main/java/cn/aifei/demo/common`（保留官方包名 `cn.aifei.demo.common.arch` 与版权块），配一个 `@Path("/demo")` 演示 Service，用于跑通并验证拦截器与两种运行模式。依赖 `aifei-all`（内核）+ `undertow-core` + SDK 本体 + `fastjson2`（JSON 序列化）。
+`aifei-sentinel-demo` 不依赖 `aifei-vip-arch`：其 HIO 逐字同步自官方仓库 `jfinal/aifei-eco` 的 `aifei-demo/src/main/java/cn/aifei/demo/common`（保留官方包名 `cn.aifei.demo.common.arch` 与版权块），配一个 `@Path("/demo")` 演示 Service，用于跑通并验证拦截器与两种运行模式。依赖 `aifei`（内核）+ `undertow-core` + SDK 本体 + `fastjson2`（JSON 序列化）。
 
 ## 4. 核心组件
 

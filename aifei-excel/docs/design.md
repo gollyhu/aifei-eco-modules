@@ -4,7 +4,7 @@
 
 > **交付性质**：`aifei-excel` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**。工程内**没有** `AppConfig implements AifeiConfig` / `Launcher` / `@Path` Service 方法 / `service/` 业务包 / 业务库表 / `Db+Row` / `Generator` / 服务拓扑 / 部署架构 / 数据层实现 / UI 原型与 QA 基线门禁；只有「根包公共 API 精确 5 类型 + `internal/easyexcel` 非承诺适配层」。不适用章节声明见 §0。
 >
-> **坐标**：`io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.excel`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**唯一第三方依赖** `com.alibaba:easyexcel:3.3.2`（`optional`），`aifei-all:1.1.2` 为 `provided`。
+> **坐标**：`io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.excel`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**唯一第三方依赖** `com.alibaba:easyexcel:3.3.2`（`optional`），`aifei:1.1.2` 为 `provided`。
 >
 > **文档状态**：1.0.0 已落地（库模块 + demo + 门禁测试齐备）。§5 的 5 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
 >
@@ -57,7 +57,7 @@ aifei 生态有 `aifei-oss` 负责「文件往哪存」，但**缺 Excel 读写�
 | --- | --- |
 | 1 | **根包 `cn.hg.aifei.excel` 精确 5 个公共类型**：`Excel` / `ExcelKit` / `ExcelException` / `ExcelColumn` / `ExcelIgnore`。**不得增删、不得改名**；变更须先改本文 §5 并过设计决策 |
 | 2 | **公共签名零第三方类型、零框架类型**：5 个公共类型的签名只出现 JDK 类型（`InputStream` / `OutputStream` / `Class` / `List` / `Consumer` / 基本类型 / `String`）+ 本模块类型；不出现 `com.alibaba.*` / `org.apache.poi.*` / `cn.aifei.*` |
-| 3 | **唯一第三方依赖 `easyexcel:3.3.2` 为 `optional`**（阻断传递），`aifei-all:1.1.2` 为 `provided`；`junit:4.13.2` 为 `test` |
+| 3 | **唯一第三方依赖 `easyexcel:3.3.2` 为 `optional`**（阻断传递），`aifei:1.1.2` 为 `provided`；`junit:4.13.2` 为 `test` |
 | 4 | **无 provider / 无 SPI / 无 `META-INF/services`**；不设自定义转换器 SPI，仅用 EasyExcel 内置常用类型转换器 |
 | 5 | `internal.easyexcel` 为非承诺实现层：可引用 EasyExcel / POI / `com.alibaba.*`；**不得**被公共面签名暴露 |
 | 6 | 每类规则只有一个定义点（§7.2），实现类不得复制 |
@@ -88,12 +88,12 @@ aifei 生态有 `aifei-oss` 负责「文件往哪存」，但**缺 Excel 读写�
 
 ## 2. 选型实证记录（含依赖树结论）
 
-> **门禁要求**：对框架 / 依赖做「不可用 / 有缺陷」断言前必须当场实测；本次对定档依赖做完整性、Java 8 兼容与传递依赖实测，结论如下（**离线优先，必要时联网核验**）。依赖探测类命令在模块目录内执行，实测环境为 `D:/WorkspaceIdea/aifei-eco-modules/aifei-excel`（与根 `AGENTS.md` 构建纪律一致：构建 / 测试命令一律在模块目录内执行）。
+> **门禁要求**：对框架 / 依赖做「不可用 / 有缺陷」断言前必须当场实测；本次对定档依赖做完整性、Java 8 兼容与传递依赖实测，结论如下（**离线优先，必要时联网核验**）。依赖探测类命令在模块目录内执行，实测环境为 `D:/WorkspaceIdea/aifei-eco-modules/aifei-excel`（与根 `AGENTS.md` 构建口径一致：模块单独构建 / 测试在模块目录内执行，全量 reactor 可在仓库根执行）。
 
 ### 2.1 定档依赖（不可推翻，仅记录理由）
 
 - `com.alibaba:easyexcel:3.3.2`，`optional=true`（主会话定档 1）：本机仓库已有该版本；POI 4.1.2 / 5.5.1 已在本地。
-- `aifei-all:1.1.2` 为 `provided`（共同底座，消费方自带）。
+- `aifei:1.1.2` 为 `provided`（共同底座，消费方自带）。
 - 若 3.3.2 实测不可用，**须回报主会话而非私自换方案**——本次实测结论为**可用**（§2.3 / §2.4）。
 
 ### 2.2 实测环境与命令
@@ -129,7 +129,7 @@ aifei 生态有 `aifei-oss` 负责「文件往哪存」，但**缺 Excel 读写�
 
 ```text
 io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT
-├─ cn.aifei:aifei-all:1.1.2 ........................ provided（消费方自带）
+├─ cn.aifei:aifei:1.1.2 ........................ provided（消费方自带）
 ├─ com.alibaba:easyexcel:3.3.2 ..................... optional（阻断传递）
 │  ├─ com.alibaba:easyexcel-core:3.3.2 ............... optional
 │  │  ├─ com.alibaba:easyexcel-support:3.3.2 ......... optional
@@ -168,7 +168,7 @@ io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT
 | # | 决策（对应定档） | 理由 | 被否决的替代方案 |
 | --- | --- | --- | --- |
 | **D1**（定档 1） | **依赖 `com.alibaba:easyexcel:3.3.2` 且 `optional=true`**；POI 随其传递、库模块源码不直接 import POI | §2 已实测：版本齐全、major 52、离线依赖树 EXIT=0、无 Spring/JDBC；`optional` 阻断传递，消费方按需自带，符合仓库「第三方一律 optional/provided」 | ① 裸用 POI 自实现：重复造注解映射与 SAX 流式，正是要消灭的分散实现；② `compile`（像 `aifei-oss` 内核）：会把整棵 POI 树强加给所有消费方，本模块门面可独立存在（缺依赖时可读失败即可），不构成「脱离即无任何功能」的 compile 例外；③ 私自换成 3.3.3 / POI 5.5.1：违反定档，且已实测 3.3.2 可用 |
-| **D2**（定档 1） | **`aifei-all:1.1.2` 为 `provided`**，但库模块源码**零 `cn.aifei.*` 引用**（含 log） | 生态统一底座（规划 §6.1），demo 侧以 `compile` 自带验证 provided 口径；本模块是纯数据能力，无需装配入口与框架日志，异常即契约 | ① 不声明 `aifei-all`：破坏生态基线一致性且 demo 需另行传递；② 用 `cn.aifei.log` 记日志：引入装配期 `NoLogFactory` 陷阱（`aifei-id` §2 D10 已论证），且需在根 `AGENTS.md` 登记例外，无收益 |
+| **D2**（定档 1） | **源码零 `cn.aifei.*` 引用（含 log），pom 不声明任何 `cn.aifei` 依赖** | 生态统一底座（规划 §6.1），demo 侧以 `compile` 自带验证 provided 口径；本模块是纯数据能力，无需装配入口与框架日志，异常即契约 | ① 不声明 `aifei-all`：破坏生态基线一致性且 demo 需另行传递；② 用 `cn.aifei.log` 记日志：引入装配期 `NoLogFactory` 陷阱（`aifei-id` §2 D10 已论证），且需在根 `AGENTS.md` 登记例外，无收益 |
 | **D3**（定档 2） | **根包精确 5 个公共类型**：`Excel` / `ExcelKit` / `ExcelException` / `ExcelColumn` / `ExcelIgnore`；门禁按**文件名集合精确相等**断言 | 定档冻结；集合相等可防「同名替换 / 悄悄增删」（`aifei-http` 决策 3 先例） | ① 只断言数量：无法防同名替换；② 增设 `ExcelWriter` / `ExcelReader` 公共句柄类：突破精确 5，改由 `Excel` 会话类承载（D7） |
 | **D4**（定档 2） | **公共签名零第三方 / 零框架类型**：只用 JDK 类型 + 本模块类型 | 公共 API 实现无关；消费方签名不被迫依赖 EasyExcel / POI | ① 公共方法暴露 `com.alibaba.excel.read.listener.ReadListener` / `ExcelWriter`：把内核类型拖进公共面，换内核即破坏二进制兼容 |
 | **D5**（定档 2 / 9） | **不设 Plugin、不设配置键、无 `aifei` 接入包，全模块零 `cn.aifei.*` 引用**；门禁断言 `cn.aifei.*` 全模块禁止，**需登记的框架类型例外清单为空** | 按 `aifei-trace` 先例（design §2 决策 6）：无连接资源需 start/stop、无可从 `app-config.txt` 解析的配置，强造 Plugin 只剩空壳；全部行为由方法入参（类型、批大小、流）决定 | ① 仿 `aifei-http` 加 `ExcelPlugin`：无配置无资源无单例注册，纯空转；② 用 `cn.aifei.log.*` 记日志：与 D2 同因否决；③ 设 `excel.*` 配置键：调用点分散、语义靠全局状态，违背显式入参 |
@@ -727,7 +727,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES_SET = new LinkedHashSet<>(A
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **`provided`** | 生态统一底座（D2）；本模块源码零引用，消费方自带、不向下游传递 |
+| `cn.aifei:aifei:1.1.2` | **`provided`** | 生态统一底座（D2）；本模块源码零引用，消费方自带、不向下游传递 |
 | `com.alibaba:easyexcel:3.3.2` | **`optional`** | 唯一实现内核，经 `internal/easyexcel` 引用；不传递，缺失时启动期（首次调用）可读失败（场景 12） |
 | `junit:junit:4.13.2` | `test` | 单元测试 + 架构门禁 |
 | （测试辅助）临时 xlsx / xls 样本 | `test` 资源 | 由测试在 `target/` 生成（EasyExcel 写出），或用固定小样本；**禁止提交二进制样本到仓库**（根 `AGENTS.md` 安全条款） |
@@ -738,7 +738,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES_SET = new LinkedHashSet<>(A
 
 ### 10.2 `dependency:tree` 允许清单
 
-以 §2.4 实测树为准。断言口径重申：① 除 `aifei-all:provided` / `easyexcel:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控；② 全部 EasyExcel / POI 传递项均 `optional`；③ 无日志绑定实现；④ 无 JDBC / 连接池。
+以 §2.4 实测树为准。断言口径重申：① 除 `easyexcel:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控（本模块零 `cn.aifei` 依赖）；② 全部 EasyExcel / POI 传递项均 `optional`；③ 无日志绑定实现；④ 无 JDBC / 连接池。
 
 ### 10.3 验证命令（模块根目录）
 
@@ -758,7 +758,7 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 
 ```text
 aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                   # Java 8；aifei-all provided；easyexcel optional；junit test；零日志绑定
+├── pom.xml                                   # Java 8；aifei provided；easyexcel optional；junit test；零日志绑定
 ├── README.md                                 # 用法 / 配置 / 内存边界 / 可选依赖警告（实现批次写，素材见 §5–§7、§10）
 ├── AGENTS.md                                 # 模块硬约束（实现批次写，素材见 §9 + §3 决策表）
 ├── docs/
@@ -839,7 +839,7 @@ aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.
 
 ### 12.2 demo 端点清单（`aifei-excel-demo`，不发布）
 
-- **位置**：仓库根 `aifei-excel-demo/`（与 `aifei-excel/` 平级）；依赖 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` + `com.alibaba:easyexcel:3.3.2`（消费方自带，验证 `optional` 口径）+ `cn.aifei:aifei-all`（demo 以 `compile` 自带，验证 provided 口径）。
+- **位置**：仓库根 `aifei-excel-demo/`（与 `aifei-excel/` 平级）；依赖 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` + `com.alibaba:easyexcel:3.3.2`（消费方自带，验证 `optional` 口径）+ `cn.aifei:aifei`（demo 以 `compile` 自带，验证 provided 口径）。
 - **端口**：**18150**（已实测空闲；18100 mq / 18110 job / 18120 http / 18130 trace / 18140 id 顺延）。
 - **形态**：自写 HIO（包名 **`cn.hg.aifei.excel.demo`**，跟随 `aifei-id-demo` 的 `arch` 同步类结构：`ContentType` / `In` / `InParser` / `IoDispatcher` / `IoHandler` / `Out` / `OutCode` / `TargetFactory`）+ 单页静态层（`webapp/view/excel/index.html` + `assets/{js,css,lib}`，Vue 走本地 `assets/lib`）+ `ExcelDemoService` + `DemoAppConfig` + `start-demo.bat` / `stop-demo.bat`；离线可跑、零日志绑定（自带 `ConsoleLogFactory` 如需装配日志，同 `aifei-id-demo`）。
 - **端点契约**（信封 `code` / `data` / `msg`，HTTP 状态恒 200，语义由 `code` 承载；上传为 `multipart/form-data`，其余 `GET`；`/excel/demo/...` 命名空间）：
@@ -897,7 +897,7 @@ aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.
 | AC-06 | 流式写同实例多次追加、表头时机、finish 幂等、不关流、xls+xlsx | `ExcelWriteTest` | ③⑤ |
 | AC-07 | `readAll` 空结果空 `List`、小文件全量、javadoc/README 注明内存边界；`write` 语法糖一致 | `ExcelKitTest` + 文档检查 | ③⑨ |
 | AC-08 | 异常三段（参数/IO/解析转换）逐字消息、cause 保留、唯一构造点 `ExcelErrors`、依赖缺失可读失败 | `ExcelExceptionTest` + 门禁 ⑬ | ⑤ |
-| AC-09 | 仅 `easyexcel:optional` + `aifei-all:provided` + `junit:test`；无 Spring / JDBC / 日志绑定；全传递项 optional | 门禁 ②④⑦ + `dependency:tree`（§10.2） | ⑥ |
+| AC-09 | 仅 `easyexcel:optional` + `aifei:provided` + `junit:test`；无 Spring / JDBC / 日志绑定；全传递项 optional | 门禁 ②④⑦ + `dependency:tree`（§10.2） | ⑥ |
 | AC-10 | Java 8：全 class major 52；无 Java 8 后语法 / API | pom 1.8 + 门禁 ⑧ + `javap` 抽查 | ⑥⑧ |
 | AC-11 | 架构门禁 14 例全绿；根 `AGENTS.md` 无需新增登记 | `mvn test -Dtest=ArchitectureBoundaryTest` + §13 事项 1 | ⑥ |
 | AC-12 | demo：端口 18150、5 端点、上传解析/一次性导出/流式导出真实可用、页面零外网请求、真跑一遍通过 | `aifei-excel-demo` 实测（§12.2 / §12.3） | ⑦ |
@@ -906,5 +906,5 @@ aifei-excel/                                  io.github.gollyhu:aifei-excel:1.0.
 
 ---
 
-> **一句话总览**：`io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` 单模块 —— 根包 **精确 5 个公共类型**（`Excel` 流式门面 / `ExcelKit` 一次性便捷门面 / `ExcelException` / `@ExcelColumn` / `@ExcelIgnore`）+ `internal.easyexcel` 非承诺适配层。读 = SAX 逐批回调（`batchSize` 默认 1000、内存 `O(batchSize)`），写 = 同会话多次追加（`finish` 收尾）；注解做表头名/列序/排除映射，仅内置类型转换、无 SPI；三段异常统一收敛且保留 cause。唯一第三方 `easyexcel:3.3.2` 为 `optional`（已实测 Java 8 兼容、离线依赖树 EXIT=0），`aifei-all` 为 `provided`，零 Plugin / 零配置键 / 零 `cn.aifei.*` / 零 DB / 零 Web 面 / 零日志绑定。示例工程 `aifei-excel-demo` 端口 18150 真实可跑（上传解析 + 两种导出），不发布。
+> **一句话总览**：`io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT` 单模块 —— 根包 **精确 5 个公共类型**（`Excel` 流式门面 / `ExcelKit` 一次性便捷门面 / `ExcelException` / `@ExcelColumn` / `@ExcelIgnore`）+ `internal.easyexcel` 非承诺适配层。读 = SAX 逐批回调（`batchSize` 默认 1000、内存 `O(batchSize)`），写 = 同会话多次追加（`finish` 收尾）；注解做表头名/列序/排除映射，仅内置类型转换、无 SPI；三段异常统一收敛且保留 cause。唯一第三方 `easyexcel:3.3.2` 为 `optional`（已实测 Java 8 兼容、离线依赖树 EXIT=0），零 `cn.aifei` 依赖，零 Plugin / 零配置键 / 零 `cn.aifei.*` / 零 DB / 零 Web 面 / 零日志绑定。示例工程 `aifei-excel-demo` 端口 18150 真实可跑（上传解析 + 两种导出），不发布。
 

@@ -309,7 +309,7 @@ public class ArchitectureBoundaryTest {
      * 期望的直接依赖集合。
      */
     private static final Set<String> EXPECTED_DEPENDENCIES = new LinkedHashSet<>(Arrays.asList(
-            "cn.aifei:aifei-all:provided",
+            "cn.aifei:aifei:provided",
             "com.github.javen205:IJPay-AliPay-V3:optional",
             "com.alipay.sdk:alipay-sdk-java-v3:optional",
             "com.github.javen205:IJPay-AliPay:optional",

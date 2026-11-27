@@ -5,7 +5,7 @@
 ## 硬约束
 
 1. **Java 8**：`source/target 1.8`；禁 `var` / `record` / `switch` 表达式 / text block / `List.of` / `Map.of`。
-2. **依赖纪律**：模块 pom 只有 `cn.aifei:aifei-all:1.1.2`（`provided`）+ junit（test）。零第三方 compile / runtime；test scope 也不得出现任何日志绑定。
+2. **依赖纪律**：模块 pom 只有 `cn.aifei:aifei:1.1.2`（`provided`）+ junit（test）。零第三方 compile / runtime；test scope 也不得出现任何日志绑定。
 3. **公共面**：根包顶层 public 类型精确 4 个（`Audit` / `AuditEvent` / `AuditKit` / `AuditException`），`spi` 精确 3 个，`aifei` 2 个。新增公共类型须先过设计决策；门面必须是 Kit，不得改名。
 4. **唯一定义点**：事件构造（`internal/EventFactory`）、脱敏截断（`internal/Truncator`）、成败判定兜底（`internal/ResultPolicy`）、失败隔离 `catch`（`internal/SafeInvoker` / `internal/AuditSpi` / `internal/AuditCollector#intercept`）、事件号（`internal/EventIds`）、时钟（`internal/Clock`）、配置键与默认值（`internal/AuditConfig`）、注解属性读取（`internal/AuditAnnotations`）。实现类不得复制这些规则。
 5. **`catch` 白名单**：`src/main/java` 中只有三个文件可出现 `catch (`，且 `AuditCollector` 的每个 `catch` 块必须在 200 字符内 `throw`。新增隔离点须同步门禁与设计文档。

@@ -96,7 +96,7 @@ try (Lock lock = LockKit.tryLock("job:coupon:issue", Duration.ofSeconds(60))) {
 </dependency>
 ```
 
-- `cn.aifei:aifei-all` 为 `provided`，消费方应用自带（日志门面 `cn.aifei.log` 由它提供）。
+- `cn.aifei:aifei` 为 `provided`，消费方应用自带（日志门面 `cn.aifei.log` 由它提供）。
 - **`aifei-cache` 为 `optional`，不向下游传递**：漏引入时 `cn.hg.aifei.lock.cache.CacheLockStore` 在**类加载期**即 `NoClassDefFoundError`，早于 `LockPlugin` 的启动校验，无法转成可读错误。
 - 锁只对**共享存储**后端有意义：主缓存必须是 `jedis`。`caffeine` 后端会在启动期被能力校验拒绝（`lock backend is not a shared store`），因为进程内锁静默无互斥比报错更危险。
 

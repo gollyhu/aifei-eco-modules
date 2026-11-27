@@ -31,7 +31,7 @@
 - **Java 8 双约束（语法 + API）**：`source`/`target` = `1.8`；主 JAR 内全部 class major = **52**。禁 `var` / `record` / `switch` 表达式 / text block（`"""`）/ `sealed` / `instanceof` 模式匹配；禁 `List.of` / `Map.of` / `Set.of` 等 Java 9+ 集合工厂与其它 Java 8 后 API（门禁⑨）。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、协议字面量与异常消息）。原创文件写统一版权头，既有版权块不得改写。
 - **行尾**：`.md` 输出 CRLF；Java 源码保持仓库现状不做无关行尾改写。批量改写按字节整文件读入 → 逐处断言命中次数 → 全部通过才单次写回，不得对同一文件并发多次编辑。
-- 构建/测试命令一律在**模块目录**执行（门禁依赖相对路径 `src/main/java`）；仓库根无聚合 pom，不得在仓库根执行模块测试。
+- 模块单独构建/测试时在**模块目录**执行（门禁依赖相对路径 `src/main/java`）；仓库根 pom 兼作聚合器与 BOM，先 `mvn -N install` 安装根 BOM 后可在仓库根执行全量 reactor 构建。
 
 ### 依赖（不可推翻）
 
@@ -39,9 +39,9 @@ pom 只允许下列五项，属性 `<ip2region.version>3.3.7</ip2region.version>
 
 | 依赖 | scope | 约束 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **provided** | 生态统一底座；本模块源码零引用、不传递 |
+| `cn.aifei:aifei:1.1.2` | **provided** | 生态统一底座；本模块源码零引用、不传递 |
 | `org.lionsoul:ip2region:3.3.7` | **optional** | ip 内核，经 `ipdb/internal` 引用；阻断传递；缺失→`IpException` |
-| `io.github.gollyhu:aifei-cache:1.1.0` | **optional** | captcha 集群存储，经 `captcha/internal` 反射探测；阻断传递；缺失→`CaptchaException` |
+| `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | **optional** | captcha 集群存储，经 `captcha/internal` 反射探测；阻断传递；缺失→`CaptchaException` |
 | `com.google.zxing:core:3.5.3` | **optional** | qr 内核，经 `qr/internal` 引用；零传递依赖；阻断传递；缺失→`QrException`；**不引 javase** |
 | `junit:junit:4.13.2` | **test** | 单测 + 门禁 |
 
@@ -196,12 +196,12 @@ cn.hg.aifei.tools.codec       codec：2 公共类型 + internal（非承诺）
 
 ## 验证
 
-**命令在 `aifei-tools/` 根目录执行**（门禁依赖相对路径 `src/main/java`；仓库根无聚合 pom）：
+**命令在 `aifei-tools/` 根目录执行**（门禁依赖相对路径 `src/main/java`；仓库根 pom 兼作聚合器与 BOM，全量构建可在仓库根执行）：
 
 ```bash
 mvn clean verify                                  # 必须 235 例 0 failure / 0 error（含架构门禁 33 例）
 mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（33 例）
-mvn dependency:tree                                # 断言：aifei-all(provided) + ip2region/zxing/aifei-cache(optional) + junit(test)，无 javese/jcommander/jai-imageio，四个新子包零新增第三方
+mvn dependency:tree                                # 断言：aifei(provided) + ip2region/zxing/aifei-cache(optional) + junit(test)，无 javese/jcommander/jai-imageio，四个新子包零新增第三方
 javap -verbose target/classes/cn/hg/aifei/tools/ipdb/IpSearcher.class | findstr "major version"   # 期望 52
 javap -verbose target/classes/cn/hg/aifei/tools/kdf/KdfKit.class | findstr "major version"        # 期望 52
 javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findstr "major version" # 期望 52
@@ -229,6 +229,6 @@ javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findst
 3. **不改既有签名**：既有九子包 28 个公共类型与 §3 / §11.3 逐字签名、§8 决策全部冻结；新工具公共签名只含 JDK + 本模块类型、零第三方/框架类型、公共方法无 `throws`、javadoc 写全；后缀 `XxxUtil`（无状态）/ `XxxKit`（有状态门面），不另立 `XxxHelper`/`XxxSupport`/`XxxTool`。
 4. **文档四同步**：先回写 `docs/design.md`（§1.1 / §2 / §3 / §5 / §6.2 / §9）过设计决策，再同步 `README.md`、本文件（公共面清单/门禁表/唯一定义点）与 `docs/testing.md`；测试按各子包同构（`PublicApiContract` + 功能测试 + internal 单测）。
 
-- **依赖**：新内核一律 `optional` 阻断传递、缺失首次调用抛可读模块异常；`aifei-all` 仍 provided；零日志绑定。
+- **依赖**：新内核一律 `optional` 阻断传递、缺失首次调用抛可读模块异常；`aifei` 仍 provided；零日志绑定。
 - **不做跨工具抽象**：不引入统一 `Tool` 接口、公共基类或 `common/` 层，工具之间零依赖、零互相引用。
 - **版本**：SNAPSHOT 阶段不升位，按根 `AGENTS.md`「版本纪律（SNAPSHOT 不升位）」执行；正式发布去掉 SNAPSHOT 后才按语义化版本递增（`1.0.0` → `1.1.0` …）。变更写入当前版本条目，不新建更高版本条目。

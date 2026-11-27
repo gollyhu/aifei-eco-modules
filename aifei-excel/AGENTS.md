@@ -32,11 +32,11 @@
 - **Java 8 双约束（语法 + API）**：`source`/`target` = `1.8`；主 JAR 内全部 class major = **52**。禁 `var` / `record` / `switch` 表达式 / text block（`"""`）/ `sealed` / `instanceof` 模式匹配；禁 `List.of` / `Map.of` / `Set.of` 等 Java 9+ 集合工厂与其它 Java 8 后 API。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、协议字面量与异常消息）；原创文件写统一版权头，既有版权块不得改写。
 - **行尾**：`.md` 输出 CRLF；Java 源码保持仓库现状不做无关行尾改写。批量改写按字节整文件读入 → 逐处断言 → 单次写回。
-- 构建/测试命令一律在**模块目录**执行（门禁依赖相对路径 `src/main/java`）；仓库根无聚合 pom。
+- 模块单独构建/测试时在**模块目录**执行（门禁依赖相对路径 `src/main/java`）；仓库根 pom 兼作聚合器与 BOM，可在根执行全量 reactor（先 `mvn -N install`）。
 
 ### 依赖（不可推翻）
 
-- pom 只允许三项：`cn.aifei:aifei-all:1.1.2`（**`provided`**，源码零引用、不传递）、`com.alibaba:easyexcel:3.3.2`（**`optional`**，唯一第三方内核）、`junit:junit:4.13.2`（`test`）。
+- pom 只允许三项：`cn.aifei:aifei:1.1.2`（**`provided`**，源码零引用、不传递）、`com.alibaba:easyexcel:3.3.2`（**`optional`**，唯一第三方内核）、`junit:junit:4.13.2`（`test`）。
 - **不得**新增其它第三方依赖；**不得**引入任何日志绑定（`slf4j-simple` / `logback` / `log4j` 一律禁止；EasyExcel 传递的 `slf4j-api` 仅 API，消费方自行选择绑定）。
 - **零 DB**：全模块禁 `import java.sql.`，不声明 JDBC 驱动 / 连接池坐标。
 - **零 Web 面**：库模块本体禁 `import io.undertow.`；Web 端点只在 demo。
@@ -108,7 +108,7 @@
 ```bash
 mvn clean verify                                  # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（14 例）
-mvn dependency:tree                                # 断言：仅 aifei-all(provided) + easyexcel(optional) + junit(test)
+mvn dependency:tree                                # 断言：仅 aifei(provided) + easyexcel(optional) + junit(test)
 javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major version"   # 期望 52
 ```
 

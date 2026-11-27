@@ -18,7 +18,7 @@ import java.util.Map;
  * 单点命中 {@code SELECT content FROM i18n_message WHERE locale=? AND msg_key=?}；
  * 整包列举 {@code SELECT msg_key, content FROM i18n_message WHERE locale=?}（可列举）。</p>
  *
- * <p>框架 {@code cn.aifei.db.core.Db/Row} 随 aifei-all(provided) 提供，引用只在方法体内使用全限定名，
+ * <p>框架 {@code cn.aifei.db.core.Db/Row} 由 {@code cn.aifei:aifei-db}(provided) 提供，引用只在方法体内使用全限定名，
  * 字段与签名只出现 JDK / 本模块类型（架构门禁①②⑤）。</p>
  */
 public final class DbSource implements MessageSource {

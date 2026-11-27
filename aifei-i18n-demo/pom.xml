@@ -16,24 +16,59 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
-        <aifei-i18n.version>1.0.0-SNAPSHOT</aifei-i18n.version>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
         <undertow.version>2.2.39.Final</undertow.version>
     </properties>
+
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- demo 是应用工程：框架内核以 compile 自带（含 Enjoy） -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-enjoy</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-json</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-undertow</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-db</artifactId>
+            <scope>compile</scope>
         </dependency>
 
         <!-- 被演示的库本体：需先在 aifei-i18n/ 执行 mvn -DskipTests install -->
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-i18n</artifactId>
-            <version>${aifei-i18n.version}</version>
         </dependency>
 
         <dependency>
@@ -46,7 +81,6 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <version>2.2.224</version>
         </dependency>
 
         <!-- 零日志绑定：demo 自带极简 ConsoleLogFactory（System.out） -->

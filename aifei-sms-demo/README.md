@@ -16,7 +16,7 @@ cd ..\aifei-sms && mvn -q -DskipTests clean install
 http://localhost:18180/sms/demo/page
 ```
 
-停止用 `stop-demo.bat`。依赖树中 demo 以 `compile` 自带 `sms4j-core` 与 `aifei-all`，验证库的 `optional` / `provided` 口径，不改变库本体零强制依赖口径。
+停止用 `stop-demo.bat`。依赖树中 demo 以 `compile` 自带 `sms4j-core` 与 `aifei`，验证库的 `optional` / `provided` 口径，不改变库本体零强制依赖口径。
 
 ## 六场景
 

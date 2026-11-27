@@ -5,7 +5,7 @@
 `properties` / `db` / `kv` 三个默认件，运行期可刷新。
 
 - 坐标：`io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`
-- Java 8（class major 52）；`aifei-all` 为 `provided`，消费方自带
+- Java 8（class major 52）；`aifei` 为 `provided`，消费方自带
 - 零第三方 compile 依赖
 
 ## 一、它能做什么
@@ -120,7 +120,7 @@ FormatKit.formatDateTime(new Date(), TimeZone.getTimeZone("Asia/Shanghai"), "zh-
 | 稳定名 | 依赖 | 全量列举 | 运行期刷新 | 说明 |
 | --- | --- | --- | --- | --- |
 | `properties` | 零第三方 | 支持 | 不支持（须重启） | classpath `i18n.properties`，启动期一次全量载入 |
-| `db` | 框架内核（随 aifei-all） | 支持 | 支持 | 只读、参数化查询、不执行 DDL |
+| `db` | 框架内核（随 aifei） | 支持 | 支持 | 只读、参数化查询、不执行 DDL |
 | `kv` | `aifei-cache`（optional） | 不支持 | 支持 | 不可列举时整包导出跳过 + WARN |
 
 ### properties 资源格式
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS i18n_message (
 ## 六、Enjoy 模板指令（可选，非承诺 API）
 
 面向使用 Enjoy 做服务端渲染的应用，模块在 `enjoy/directive/` 提供三条指令。它们依赖
-`aifei-all` 已内含的 `cn.aifei:aifei-enjoy`，**零新增依赖坐标**；Enjoy 类型不进入任何公共签名。
+`aifei` 已内含的 `cn.aifei:aifei-enjoy`，**零新增依赖坐标**；Enjoy 类型不进入任何公共签名。
 构造引擎后注册一次即可：
 
 ```java

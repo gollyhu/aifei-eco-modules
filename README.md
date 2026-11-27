@@ -1,13 +1,14 @@
 # aifei-eco-modules
 Aifei 项目的生态补充，提供多种生态能力模块。
 
-本仓库是多个 aifei 生态组件集合，各模块独立构建、按需引入，发布状态见各模块说明；无父级聚合 pom。
+本仓库是多个 aifei 生态组件集合。根 `pom.xml` 兼作 BOM 与 reactor 聚合器：统一依赖版本，子模块不设 parent 而是 import 根 BOM。构建前先执行 `mvn -N install` 安装 BOM，之后可逐模块构建，也可直接在根执行 reactor 构建（`mvn clean verify`）。BOM 必须先 release 发布，子模块才能发布。
 
 ## 模块总览
 
 | 模块 | 坐标 | 定位 |
 | --- | --- | --- |
-| [aifei-cache](aifei-cache/README.md) | `io.github.gollyhu:aifei-cache:1.1.0` | 缓存与计数组件：Caffeine / Redis 双后端，支持多实例 |
+| [根 BOM（pom.xml）](pom.xml) | `io.github.gollyhu:aifei-eco-bom:1.0.0-SNAPSHOT` | 依赖版本管理（dependencyManagement）；不含业务代码 |
+| [aifei-cache](aifei-cache/README.md) | `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | 缓存与计数组件：Caffeine / Redis 双后端，支持多实例 |
 | [aifei-sentinel](aifei-sentinel/README.md) | `io.github.gollyhu:aifei-sentinel:1.0.0-SNAPSHOT` | Sentinel 流量治理接入 SDK：流控、熔断、系统保护 |
 | [aifei-sentinel-demo](aifei-sentinel-demo/README.md) | （示例工程，不发布） | aifei-sentinel 的完整接入示例 |
 | [aifei-weixin](aifei-weixin/README.md) | `io.github.gollyhu:aifei-weixin:1.0.0-SNAPSHOT` | 微信开发包：公众号 + 小程序 + 微信支付 V3 |
@@ -131,7 +132,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 公共面固定 7 个类型：`JobKit` / `JobEvent` / `JobListener` / `JobException` + `@Cron` / `@FixedRate` / `@FixedDelay`，零第三方类型、零框架类型
 - 调度内核为 JDK `ScheduledThreadPoolExecutor` 上的**单飞自续排**：每任务恒至多一个待触发实例，不重叠、不堆叠、不补跑是结构属性；唤醒层固定 1 线程只做提交，执行层有界队列 + `AbortPolicy`，被拒就地重排并记 `SKIPPED`
 - cron 解析委托 Quartz `CronExpression`（唯一用途，不启动调度器、不建表、不连库）；Quartz 2.3.2 为 `compile`，**会向消费方传递**
-- `aifei-all` 为 `provided`，**消费方须自带**；不引入任何日志绑定，模块记录经 `cn.aifei.log.Log`
+- `aifei` 为 `provided`，**消费方须自带**；不引入任何日志绑定，模块记录经 `cn.aifei.log.Log`
 - **v1 不支持多实例互斥**：多实例各跑一次，业务任务必须自行幂等
 - 详细用法见 [aifei-job/README.md](aifei-job/README.md)，设计文档见 [docs/design.md](aifei-job/docs/design.md)
 
@@ -154,7 +155,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 - 三件事各一个落点：链路上下文（`TraceKit` + `TraceContext`）、日志贯通（`settings.setLogFactory(new TraceLogFactory(...))` 一行，全应用日志自动带 `[traceId] ` 前缀）、Web 入口（`TraceHandler` 第一个 `addHandler`，finally 保证清理）
 - TraceId 固定 32 位小写十六进制（UUID 去横线），生成器可替换；提取失败 / 空白回退生成，trace 失败永不影响业务请求
 - 跨线程传播须业务手动传递（刻意不用 `InheritableThreadLocal` 防线程池串号）；MQ / WS / Job 跨模块传播 v1 不做
-- 零第三方依赖：`aifei-all` 为 `provided`，不绑定任何日志实现（只面向 `cn.aifei.log` 接口）
+- 零第三方依赖：`aifei` 为 `provided`，不绑定任何日志实现（只面向 `cn.aifei.log` 接口）
 - 详细用法见 [aifei-trace/README.md](aifei-trace/README.md)，设计文档见 [docs/design.md](aifei-trace/docs/design.md)
 
 ### aifei-http
@@ -178,7 +179,7 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - Locale 四级优先级：显式 > 上下文 > 请求头 > `defaultLocale`；`I18nHandler` 第一个 `addHandler`，finally 保证清理（不串语言）；`_` 归一 `-` 后精确匹配
 - 整包导出四字段 `locale` / `localeName` / `dir` / `messages`：`dir` 只走 JDK `ComponentOrientation`（Java 9+ jlink 须保留 `java.desktop`，不可用降级 `ltr` + WARN），配置 `i18n.locales` 白名单仅用于请求头过滤、不阻断显式 locale 导出
 - 格式化为 Locale 贯通薄封装：数值（含百分比）/ 货币 / 日期 / 日期时间四能力、三参正交、默认 MEDIUM 硬编码；不自建任何 CLDR 模式串 / 货币符号表 / 方向表，推荐 `-Djava.locale.providers=CLDR` 统一行为
-- 4 配置键恰好无启用开关：`i18n.defaultLocale`（必填）/ `i18n.locales` / `i18n.sources`（默认仅 properties）/ `i18n.cache.ttlMillis`（默认 60000，≤0 不缓存）；零第三方 compile 依赖，`aifei-all` 为 `provided`
+- 4 配置键恰好无启用开关：`i18n.defaultLocale`（必填）/ `i18n.locales` / `i18n.sources`（默认仅 properties）/ `i18n.cache.ttlMillis`（默认 60000，≤0 不缓存）；零第三方 compile 依赖，`aifei` 为 `provided`
 - 详细用法见 [aifei-i18n/README.md](aifei-i18n/README.md)，设计文档见 [docs/design.md](aifei-i18n/docs/design.md)
 
 ### aifei-excel
@@ -189,7 +190,7 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 读：`Excel.read` 按行 SAX 解析、满 `batchSize`（默认 1000）回调、内存 `O(batchSize)`；`ExcelKit.readAll` 一次性全量读，**仅小文件**。写：`Excel.writer(...)` 会话分步 `write(...)` → `finish()` 多次追加，`ExcelKit.write` 一次写；`write` / `finish` 返回 `void`，不链式
 - 注解默认全部当前类字段参与、`@ExcelColumn.value` 指定表头名（严格相等）/ `index>=0` 按列序优先、`@ExcelIgnore` 排除；仅内置常用类型转换，无自定义转换器 SPI
 - 三段失败统一收敛 `ExcelException`（保留 cause）；流所有权归调用方（读不关 `in`、写不关 `out`）
-- 唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（不传递，消费方须显式引入，缺失时首次调用抛可读 `ExcelException`），`aifei-all:1.1.2` 为 `provided`
+- 唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（不传递，消费方须显式引入，缺失时首次调用抛可读 `ExcelException`），`aifei:1.1.2` 为 `provided`
 - 详细用法见 [aifei-excel/README.md](aifei-excel/README.md)，设计文档见 [docs/design.md](aifei-excel/docs/design.md)
 
 ### aifei-audit
@@ -200,7 +201,7 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 三态语义：① 未启动 / 启动失败 / `audit.enabled=false`——注解路径不采集不抛、`AuditKit.record*` 抛 `AuditException`；② 已启动但容器无 `AuditSink`——注解路径不构造事件直接返回、`start()` 恰一条告警；③ 已停止——同 ①
 - 采集拦截器**必须首个传入** `routes.scan(...)`（下标 0 即最外层）：顺序颠倒时审计完全失效——不是少记字段，而是一条都不记
 - 落点在业务方法所在线程**同步直写**：无线程池、无队列、无批量、无重试——**sink 慢则业务慢**；落点 / 操作人 / 判定任一处异常就地吞掉并记一条模块日志，业务返回值与异常语义不变
-- 零存储、零线程池、零生态依赖：`aifei-all:1.1.2` 为 `provided`，不引任何日志绑定，零 `java.sql`、零线程创建
+- 零存储、零线程池、零生态依赖：pom 不声明任何 `cn.aifei` 依赖（源码零引用），不引任何日志绑定，零 `java.sql`、零线程创建
 - 详细用法见 [aifei-audit/README.md](aifei-audit/README.md)，设计文档见 [docs/design.md](aifei-audit/docs/design.md)
 
 ### aifei-sms
@@ -235,33 +236,20 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 
 ## 构建
 
-所有模块编译目标为 **Java 8**，需要 Maven 3.6+。各模块独立构建，仓库根无聚合 pom。
-
-**命令口径**：`mvn clean install` 把库安装到本地仓库（**运行 demo 前必须先执行**）；`mvn clean verify` / `mvn clean test` 只做本地编译与门禁验证、**不安装到本地仓库**。下表两个模块沿用其 `AGENTS.md` 的门禁验收命令 `verify`，若要运行依赖它们的 demo，请改用 `mvn -q -DskipTests clean install` 安装。
+所有模块编译目标为 **Java 8**，需要 Maven 3.6+。根 `pom.xml` 兼作 BOM 与 reactor 聚合器（列出全部 32 个模块）。
 
 ```bash
-cd aifei-cache     && mvn clean install
-cd aifei-sentinel  && mvn clean install
-cd aifei-weixin    && mvn clean install
-cd aifei-sa-token  && mvn clean install
-cd aifei-websocket && mvn clean install
-cd aifei-mq        && mvn clean install
-cd aifei-oss       && mvn clean install
-cd aifei-lock      && mvn clean install
-cd aifei-job       && mvn clean install
-cd aifei-id        && mvn clean install
-cd aifei-trace     && mvn clean install
-cd aifei-http      && mvn clean install
-cd aifei-excel     && mvn clean install
-cd aifei-audit     && mvn clean install
-cd aifei-i18n      && mvn clean verify      # 门禁验收命令
-cd aifei-tools     && mvn clean verify      # 门禁验收命令
-cd aifei-sms       && mvn clean install
-cd aifei-pay       && mvn clean install
-cd aifei-email     && mvn clean install
+# 第一步：安装根 BOM 到本地仓库（逐模块构建的前提；BOM 需先 release 才能发布子模块）
+mvn -N install
+
+# 第二步二选一
+mvn clean verify          # 全量 reactor：一次构建 / 验证所有模块
+cd aifei-tools && mvn clean verify   # 或逐模块构建（BOM 已安装后即可）
 ```
 
-**发布能力**：当前 `aifei-cache`、`aifei-oss`、`aifei-tools`、`aifei-pay` 四个 pom 配置了 `central-release` profile 与 `distributionManagement`，使用 `mvn -Pcentral-release clean deploy` 发布至 Maven Central；其余 15 个库模块暂无发布配置（未配置 / 私服 / 待定，见各模块说明）。对未配置该 profile 的模块执行该命令不会发布，只会走默认构建生命周期。具备发布配置 ≠ 已正式发布：当前仅 `aifei-cache` 已正式发布（基线，版本 `1.1.0`），其余模块均保持 `SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
+**命令口径**：`mvn clean install` 把模块安装到本地仓库（**运行 demo 前必须先执行**）；`mvn clean verify` / `mvn clean test` 只做本地编译与门禁验证、**不安装到本地仓库**。
+
+**发布能力**：根 BOM 与 19 个库模块均配置了 `central-release` profile 与 `distributionManagement`（仅 snapshotRepository），使用 `mvn -Pcentral-release clean deploy` 提交 Maven Central；13 个 `*-demo` 示例工程不配置发布。具备发布配置 ≠ 已正式发布：`aifei-cache` 已发布版本 `1.1.0` 为冻结基线，源码主线为 **`1.2.0-SNAPSHOT`**；其余模块保持 `1.0.0-SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
 
 ## 运行示例
 
@@ -287,27 +275,27 @@ cd aifei-email     && mvn clean install
 
 ## 依赖说明
 
-**框架内核**：本生态绝大多数模块以 `provided` 声明框架内核 `cn.aifei:aifei-all:1.1.2`（`aifei-cache` 例外，用 `cn.aifei:aifei`），由 aifei 框架提供、消费方须自带。该依赖不在本仓库产物内，请通过 aifei 官方渠道（<https://aifei.cn>）按其文档获取坐标与仓库配置；本仓库未内置其下载地址，故不在此臆造仓库 URL 或 `settings.xml` server 配置。各模块下文的"`aifei-all` 为 `provided`"均指此内核。
+**框架内核**：本生态库模块按源码实际需要声明 `cn.aifei` 官方子构件（`aifei` / `aifei-enjoy` / `aifei-json` / `aifei-log` / `aifei-undertow` / `aifei-db`，均 `1.1.2`），由根 BOM 统一管理版本；库模块多为 `provided`、demo 为 `compile`。`aifei-excel` / `aifei-tools` 源码零引用，不声明任何 `cn.aifei` 依赖。该依赖不在本仓库产物内，请通过 aifei 官方渠道（<https://aifei.cn>）按其文档获取坐标与仓库配置；本仓库未内置其下载地址，故不在此臆造仓库 URL 或 `settings.xml` server 配置。下文各模块依赖口径中的 `aifei` 均指 `cn.aifei:aifei:1.1.2`（由 BOM 管理版本）。
 
 - `aifei-cache`：强依赖 `cn.aifei:aifei`；Caffeine、Jedis、Fury 为可选依赖，用哪个后端加哪个
-- `aifei-sentinel`：`aifei-all` 为 `provided`，消费方应用自带；`sentinel-core` / `sentinel-parameter-flow-control` / `sentinel-datasource-extension` 为 `compile`，随 SDK 传递；`sentinel-transport-simple-http` 为 `provided + optional`，仅 Dashboard 模式由消费方提供
-- `aifei-weixin`：`aifei-all` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 与 fastjson2 由它提供）
-- `aifei-sa-token`：`aifei-all` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
-- `aifei-websocket`：`aifei-all` 为 `provided`，**运行时零第三方依赖**（传输层为内建 JDK 自实现，无传输库与日志绑定要求）
-- `aifei-mq`：`aifei-all` 为 `provided`，消费方应用自带；内存后端零第三方运行依赖，6 个真实后端的客户端（`rocketmq-client` / `mqttv3` / `mqttv5` / `amqp-client` / `kafka-clients` / `jedis`）均为 `optional`，用到哪个后端自带哪个，不向下游传递
-- `aifei-lock`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 为 `optional`（**不向下游传递**，消费方必须显式引入，否则类加载期即 `NoClassDefFoundError`）；不直接依赖 Jedis
-- `aifei-job`：`aifei-all` 为 `provided`，消费方应用自带（只引核心 `cn.aifei:aifei` 时运行期 `NoClassDefFoundError: cn/aifei/log/Log`）；`quartz:2.3.2` 与 `slf4j-api:1.7.30` 为 **`compile`**，**会随本模块传递**（Quartz 版本冲突由消费方 `exclusion` 或显式对齐；`slf4j-api` 仅 Quartz 内部使用，不承诺日志语义），Quartz 的 `c3p0` / `mchange-commons-java` / `HikariCP-java7` 传递项已排空；不引入任何日志绑定
-- `aifei-oss`：`aifei-all` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
-- `aifei-id`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` ≥ 1.1.0 与 `aifei-lock` 1.0.0 均为 `optional`（**不向下游传递**，用到 `cache` / `lock` workerId 来源或 `cache` 号段存储时显式引入）；**零第三方**，不引入任何日志绑定
-- `aifei-trace`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方、无 Plugin、无配置键**——纯静态门面 + 使用方在自身 `AppConfig` 显式构造接入构件（`TraceLogFactory` / `TraceHandler`），不绑定任何日志实现（只面向 `cn.aifei.log` 接口，`Slf4jLogFactory` 等适配器由消费方经 aifei-all 自带）
-- `aifei-http`：`aifei-all` 为 `provided`，消费方应用自带；**零第三方（纯 JDK `HttpURLConnection`）、无 `optional`、不引任何日志绑定**；不支持 HTTP/2，连接池仅受 JVM 全局 `http.maxConnections` / `http.keepAlive` 只读约束
-- `aifei-excel`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（**不向下游传递**，消费方要用读写能力必须显式引入，缺失时首次调用抛可读 `ExcelException` 而非裸 `NoClassDefFoundError`），POI 随其传递；零 DB、零 Web 面、无 Plugin、无配置键、不引任何日志绑定
-- `aifei-audit`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
-- `aifei-i18n`：`aifei-all` 为 `provided`，消费方应用自带；`aifei-cache` 为 `provided + optional`（**不向下游传递**，仅 `kv` 来源需要，用到时消费方须显式引入）；**零第三方 compile 依赖**（`junit` 仅 `test`），不引任何日志绑定；Java 8 / class major 52
-- `aifei-tools`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；最终口径为 **9 子包**（`ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec`，其中 kdf 为纠错补入，后四个为本次新增）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.1.0`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机、mask 脱敏与四个新增纯 JDK 子包零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
-- `aifei-sms`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `SmsPlugin.start()` 抛可读 `SmsException`）；零日志绑定、零存储、同步发送
-- `aifei-pay`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；`IJPay-AliPay-V3:3.0.0` / `alipay-sdk-java-v3:3.1.89.ALL` / `bcprov-jdk18on:1.86` / `dom4j:2.1.5` 均为 **`optional`**，消费方须显式声明，且不要引入 `bcprov-jdk15on`、`dom4j` 不得升到字节码 55 的版本；零存储、不做幂等
-- `aifei-email`：`aifei-all:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `EmailPlugin.start()` 抛可读 `MailException`，非 `compile` 例外）；其传递依赖 `com.sun.mail:javax.mail:1.6.2` 许可证为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**（另有 `javax.activation`），法务已确认 CPE 豁免可接受，声明见 `aifei-email/LICENSE` / `aifei-email/NOTICE`；零日志绑定、零存储、同步发送、禁 starter
+- `aifei-sentinel`：`aifei` 为 `provided`，消费方应用自带；`sentinel-core` / `sentinel-parameter-flow-control` / `sentinel-datasource-extension` 为 `compile`，随 SDK 传递；`sentinel-transport-simple-http` 为 `provided + optional`，仅 Dashboard 模式由消费方提供
+- `aifei-weixin`：`aifei` 为 `provided`，消费方应用自带（`Handler`/`Input`/`Output`/`Log` 由它提供；fastjson2 由消费方自带）
+- `aifei-sa-token`：`aifei` 与 `undertow-core` 为 `provided`，`sa-token-core` 为 `compile`
+- `aifei-websocket`：`aifei` 为 `provided`，**运行时零第三方依赖**（传输层为内建 JDK 自实现，无传输库与日志绑定要求）
+- `aifei-mq`：`aifei` 为 `provided`，消费方应用自带；内存后端零第三方运行依赖，6 个真实后端的客户端（`rocketmq-client` / `mqttv3` / `mqttv5` / `amqp-client` / `kafka-clients` / `jedis`）均为 `optional`，用到哪个后端自带哪个，不向下游传递
+- `aifei-lock`：`aifei` 为 `provided`，消费方应用自带；`aifei-cache`（由 BOM 管理为 `1.2.0-SNAPSHOT`）为 `optional`（**不向下游传递**，消费方必须显式引入，否则类加载期即 `NoClassDefFoundError`）；不直接依赖 Jedis
+- `aifei-job`：`aifei` 为 `provided`，消费方应用自带；`quartz:2.3.2` 与 `slf4j-api:1.7.30` 为 **`compile`**，**会随本模块传递**（Quartz 版本冲突由消费方 `exclusion` 或显式对齐；`slf4j-api` 仅 Quartz 内部使用，不承诺日志语义），Quartz 的 `c3p0` / `mchange-commons-java` / `HikariCP-java7` 传递项已排空；不引入任何日志绑定
+- `aifei-oss`：`aifei` 为 `provided`，消费方应用自带；实现内核 `x-file-storage-core`（`org.dromara.x-file-storage`）为 **`compile`**，属已登记于仓库根 `AGENTS.md` 的显式例外，随本模块传递引入；各云厂商 SDK 由消费方按需自带；日志门面 `slf4j-api:1.7.36` 随之传递（消费方已有日志绑定即可），模块仅在测试期使用 `slf4j-simple`（`test` scope，不随发布）
+- `aifei-id`：`aifei` 为 `provided`，消费方应用自带；`aifei-cache`（由 BOM 管理为 `1.2.0-SNAPSHOT`）与 `aifei-lock:1.0.0-SNAPSHOT` 均为 `optional`（**不向下游传递**，用到 `cache` / `lock` workerId 来源或 `cache` 号段存储时显式引入）；**零第三方**，不引入任何日志绑定
+- `aifei-trace`：`aifei` 为 `provided`，消费方应用自带；**零第三方、无 Plugin、无配置键**——纯静态门面 + 使用方在自身 `AppConfig` 显式构造接入构件（`TraceLogFactory` / `TraceHandler`），不绑定任何日志实现（只面向 `cn.aifei.log` 接口，`Slf4jLogFactory` 等适配器由消费方经 aifei-log 自带）
+- `aifei-http`：`aifei` 为 `provided`，消费方应用自带；**零第三方（纯 JDK `HttpURLConnection`）、无 `optional`、不引任何日志绑定**；不支持 HTTP/2，连接池仅受 JVM 全局 `http.maxConnections` / `http.keepAlive` 只读约束
+- `aifei-excel`：`aifei:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（**不向下游传递**，消费方要用读写能力必须显式引入，缺失时首次调用抛可读 `ExcelException` 而非裸 `NoClassDefFoundError`），POI 随其传递；零 DB、零 Web 面、无 Plugin、无配置键、不引任何日志绑定
+- `aifei-audit`：`aifei:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
+- `aifei-i18n`：`aifei` 为 `provided`，消费方应用自带；`aifei-cache` 为 `provided + optional`（**不向下游传递**，仅 `kv` 来源需要，用到时消费方须显式引入）；**零第三方 compile 依赖**（`junit` 仅 `test`），不引任何日志绑定；Java 8 / class major 52
+- `aifei-tools`：`aifei:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；最终口径为 **9 子包**（`ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec`，其中 kdf 为纠错补入，后四个为本次新增）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机、mask 脱敏与四个新增纯 JDK 子包零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
+- `aifei-sms`：`aifei:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `SmsPlugin.start()` 抛可读 `SmsException`）；零日志绑定、零存储、同步发送
+- `aifei-pay`：`aifei:1.1.2` 为 `provided`，消费方应用自带；`IJPay-AliPay-V3:3.0.0` / `alipay-sdk-java-v3:3.1.89.ALL` / `bcprov-jdk18on:1.86` / `dom4j:2.1.5` 均为 **`optional`**，消费方须显式声明，且不要引入 `bcprov-jdk15on`、`dom4j` 不得升到字节码 55 的版本；零存储、不做幂等
+- `aifei-email`：`aifei:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `EmailPlugin.start()` 抛可读 `MailException`，非 `compile` 例外）；其传递依赖 `com.sun.mail:javax.mail:1.6.2` 许可证为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**（另有 `javax.activation`），法务已确认 CPE 豁免可接受，声明见 `aifei-email/LICENSE` / `aifei-email/NOTICE`；零日志绑定、零存储、同步发送、禁 starter
 
 **装配类写法约定**：下文及所有 demo 中，应用装配类统一声明为 `implements AifeiConfig<In, Out>`（`In` / `Out` 为应用自身的输入 / 输出类型，可替换为具体类型如 `AifeiConfig<OrderRequest, Result>`）；不使用裸类型 `implements AifeiConfig`（会产生编译警告），也不使用 `extends AppConfig`。各模块在 `config(Plugins)` / `config(Settings)` 中按自身需要装配插件或接入构件。
 

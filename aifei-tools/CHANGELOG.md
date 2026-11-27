@@ -32,7 +32,7 @@
 ### 依赖与测试口径
 
 - 模块坐标：`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`
-- 依赖清单不变：`aifei-all`(provided) + `ip2region` / `zxing` / `aifei-cache`(optional) + `junit`(test)；四个新子包纯 JDK
+- 依赖清单不变：`aifei`(provided) + `ip2region` / `zxing` / `aifei-cache`(optional) + `junit`(test)；四个新子包纯 JDK
 - 全量回归期望 235 例（门禁 33 + 功能 202），0 failure / 0 error 为准入线；用例按 `docs/testing.md` §3.7–§3.12 执行，全部离线
 
 ## [1.0.0] - 2026-11-24
@@ -48,7 +48,7 @@ aifei 生态的极简工具集库模块（SDK，可被应用依赖），定位�
 | 子包 | 公共类型（N） | 内核 | 缺失时 |
 | --- | --- | --- | --- |
 | `ipdb` | `IpSearcher` / `IpKit` / `IpRegion` / `IpException` / `IpQueryMode`（5） | `org.lionsoul:ip2region:3.3.7`（optional） | 首次调用抛可读 `IpException` |
-| `captcha` | `Captcha` / `CaptchaKit` / `CaptchaType` / `CaptchaException`（4） | `io.github.gollyhu:aifei-cache:1.1.0`（optional，仅集群存储） | 单机零依赖；切集群缺 aifei-cache 抛可读 `CaptchaException` |
+| `captcha` | `Captcha` / `CaptchaKit` / `CaptchaType` / `CaptchaException`（4） | `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT`（optional，仅集群存储） | 单机零依赖；切集群缺 aifei-cache 抛可读 `CaptchaException` |
 | `qr` | `QrKit` / `QrOptions` / `QrErrorCorrection` / `QrException`（4） | `com.google.zxing:core:3.5.3`（optional，不引 javase） | 首次调用抛可读 `QrException` |
 | `mask` | `MaskUtil` / `MaskKit` / `MaskException`（3） | 无（纯 JDK） | 始终可用 |
 | `kdf` | `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException`（4） | 无（纯 JDK `javax.crypto` / `java.security`） | 始终可用 |
@@ -85,4 +85,4 @@ aifei 生态的极简工具集库模块（SDK，可被应用依赖），定位�
 
 ### 依赖清单
 
-`aifei-all`(provided) + `ip2region`/`aifei-cache`/`zxing`(optional) + `junit`(test)；kdf 纯 JDK，不新增任何第三方依赖。零日志绑定、零 DB、零 Web 面、无 Plugin、无配置键、无 SPI。
+`aifei`(provided) + `ip2region`/`aifei-cache`/`zxing`(optional) + `junit`(test)；kdf 纯 JDK，不新增任何第三方依赖。零日志绑定、零 DB、零 Web 面、无 Plugin、无配置键、无 SPI。

@@ -62,7 +62,7 @@
 
 ### 依赖与约束
 
-- `cn.aifei:aifei-all:1.1.2` 为 `provided`：由应用侧自带，不向下游传递
+- `cn.aifei:aifei:1.1.2` 为 `provided`：由应用侧自带，不向下游传递
 - `IJPay-AliPay-V3:3.0.0`、`alipay-sdk-java-v3:3.1.89.ALL`、`org.dom4j:dom4j:2.1.5`、`org.bouncycastle:bcprov-jdk18on:1.86` 全部为 `optional`：**不引入则不传递**，消费方须显式声明（接入片段见 `docs/release.md`）
 - `alipay-sdk-java-v3` 的三个排除项不可移除：
   - `dom4j:dom4j`（旧坐标，与 `org.dom4j:dom4j` 冲突）

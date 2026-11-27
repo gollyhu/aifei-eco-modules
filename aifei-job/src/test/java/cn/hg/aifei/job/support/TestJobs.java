@@ -256,6 +256,12 @@ public final class TestJobs {
         private volatile boolean interrupted;
 
         /**
+         * 中断到达信号：{@code stop()} 触发中断与任务体记录标志之间存在线程竞态，
+         * 用例须等待该信号，不能假设 {@code stop()} 返回时标志已可见。
+         */
+        private final CountDownLatch interruptedLatch = new CountDownLatch(1);
+
+        /**
          * 最近一次任务体所在线程。
          */
         private volatile Thread bodyThread;
@@ -333,6 +339,7 @@ public final class TestJobs {
             } catch (InterruptedException e) {
                 // 停机中断：记录后恢复中断位并正常返回，让终态记账与续排（被拒）都照常走一遍。
                 interrupted = true;
+                interruptedLatch.countDown();
                 Thread.currentThread().interrupt();
             } finally {
                 inFlight.decrementAndGet();
@@ -475,6 +482,21 @@ public final class TestJobs {
          */
         public boolean interrupted() {
             return interrupted;
+        }
+
+        /**
+         * 等待任务体收到中断（消除 {@code stop()} 返回与中断标志可见之间的竞态）。
+         *
+         * @param timeoutMillis 超时上限
+         * @return 超时前是否收到中断
+         */
+        public boolean awaitInterrupted(long timeoutMillis) {
+            try {
+                return interruptedLatch.await(timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
         }
 
         /**

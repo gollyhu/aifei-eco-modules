@@ -6,13 +6,13 @@
 
 微信公众平台服务端开发需要自行落地一批协议细节：SHA-1 验签、AES-256-CBC 消息加解密、安全 XML 解析、`access_token` 生命周期、被动回复 XML 结构；微信支付 V3 还需要 RSA 签名与验签、AES-256-GCM 解密、平台证书轮换。这些细节分散在官方文档中，直接实现容易在编码、填充、签名串格式上出错。
 
-`aifei-weixin` 把上述能力收敛为一个分层 SDK，供任意自带 `aifei-all` 的 aifei 应用引入。
+`aifei-weixin` 把上述能力收敛为一个分层 SDK，供任意自带 `aifei` 的 aifei 应用引入。
 
 设计目标：
 
 | 目标 | 落地方式 |
 | --- | --- |
-| 依赖隔离 | 唯一编译依赖 `cn.aifei:aifei-all`（`provided`，由消费方自带）；不引入第三方 HTTP / JSON / 密码学库 |
+| 依赖隔离 | 唯一编译依赖 `cn.aifei:aifei`（`provided`，由消费方自带）；不引入第三方 HTTP / JSON / 密码学库 |
 | 传输无关 | 协议内核不感知 HTTP：回调链路经 `WeixinIo` SPI 适配，Api 链路经 `HttpClient` / `PayHttpClient` SPI 适配 |
 | 业务零协议细节 | 业务只实现 `MsgHandler` 钩子（返回 `OutMsg`）与账号 / 缓存 SPI，不接触 XML、签名与加解密 |
 | 纯 JDK 实现 | 加解密、签名、GCM、mTLS 全部使用 JDK 自带 API，且限定 Java 8 可用范围 |
@@ -33,7 +33,7 @@
 ## 3. 总体架构
 
 ```
-消费方应用（自带 aifei-all）
+消费方应用（自带 aifei）
         │  settings.addHandler(new WeixinHandler<>(...))   ← 必须在 FrontHandler 之前
         ▼
 接入层  cn.aifei.weixin.aifei   WeixinHandler            ← 唯一 import cn.aifei.core.* 的类
@@ -69,7 +69,7 @@
 
 | 依赖 | scope | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all` | `provided` | 提供 `Handler` / `Input` / `Output` / `Log` 与 fastjson2；不传递，消费方自带 |
+| `cn.aifei:aifei` | `provided` | 提供 `Handler` / `Input` / `Output` / `Log` 与 fastjson2；不传递，消费方自带 |
 | `junit:junit` | `test` | 单元测试 |
 
 明确不依赖的组件清单与 Java 8 兼容要求见 `AGENTS.md` 的「硬性约束 → 技术栈」（唯一定义点）。

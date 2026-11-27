@@ -1,6 +1,6 @@
 # aifei-weixin
 
-微信开发包：公众号协议内核 + 开放接口客户端 + 小程序 + 微信支付 V3 + aifei 接入层。任意自带 `aifei-all` 的 aifei 项目引入即可用。
+微信开发包：公众号协议内核 + 开放接口客户端 + 小程序 + 微信支付 V3 + aifei 接入层。任意自带 `aifei` 的 aifei 项目引入即可用。
 
 坐标：`io.github.gollyhu:aifei-weixin:1.0.0-SNAPSHOT`
 
@@ -37,7 +37,7 @@
 </dependency>
 ```
 
-`aifei-all` 为 **`provided`**、不传递，应用须自行声明；编译依赖与禁用依赖清单见 `docs/design.md` 3.2 与 `AGENTS.md` 硬性约束。
+`aifei` 为 **`provided`**、不传递，应用须自行声明；编译依赖与禁用依赖清单见 `docs/design.md` 3.2 与 `AGENTS.md` 硬性约束。
 
 ```java
 // 必须注册在 FrontHandler 之前，否则微信首验 GET 会被渲染成首页（详见 design.md 5.3）

@@ -168,7 +168,7 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 
 | 依赖 | 用途 |
 | --- | --- |
-| `cn.aifei:aifei-all` | 框架内核（`aifei-mq` 内为 `provided`，消费方自带） |
+| `cn.aifei:aifei` | 框架内核（`aifei-mq` 内为 `provided`，消费方自带） |
 | `io.github.gollyhu:aifei-mq` | 消息能力（`MqPlugin` + 8 个公共类型 + 7 个后端实现） |
 | `org.apache.rocketmq:rocketmq-client`<br>`org.eclipse.paho:org.eclipse.paho.client.mqttv3`<br>`org.eclipse.paho:org.eclipse.paho.mqttv5.client`<br>`com.rabbitmq:amqp-client`<br>`org.apache.kafka:kafka-clients`<br>`redis.clients:jedis` | 后端客户端：`aifei-mq` 以 `optional` 声明、不向下游传递，由 demo 自行声明以演示多后端切换 |
 | `io.undertow:undertow-core` | HTTP 命令式服务端（不用 Servlet） |

@@ -38,7 +38,7 @@ RFC6455 的握手与帧编解码用 JDK 自带的 `Socket` / `SSLSocket` / `Mess
 - **只内建一个传输实现**：`cn.hg.aifei.websocket.internal.jdk`，纯 JDK 自实现 RFC6455；
 - **无 provider / 注册表扩展点**（已删除）：`WebSocketProvider` / `AbstractWebSocketProvider` / `WebSocketProviderRegistry` 不再存在，公共面不含任何传输后端抽象；
 - **装配路径直连实现**：`WebSocketUtil` 与两个 `Plugin` 直接 `new` JDK 实现，不经任何注册表；
-- **零第三方运行时依赖**：运行时只依赖 `cn.aifei:aifei-all`（`provided`），消费方无需自带传输库，也无需自带日志绑定。
+- **零第三方运行时依赖**：运行时只依赖 `cn.aifei:aifei`（`provided`），消费方无需自带传输库，也无需自带日志绑定。
 
 后端标识常量 `"jdk"` 的唯一定义点是 `internal.WebSocketBackend`；`WebSocketClient.backendType()` / `WebSocketServer.backendType()` **保留**，固定返回 `"jdk"`（不读配置）。
 
@@ -49,7 +49,7 @@ RFC6455 的握手与帧编解码用 JDK 自带的 `Socket` / `SSLSocket` / `Mess
 | 1 | **公共 API 零第三方类型**：全模块**禁止**出现 `org.java_websocket.*`（旧版 Java-WebSocket 后端已删除） |
 | 2 | **公共 API 零框架类型**：`cn.aifei.*`（除本模块 `cn.hg.aifei.websocket.*`）只允许出现在 `cn.hg.aifei.websocket.aifei` 接入包 |
 | 3 | 根包公共类型**逐个列出并说明职责**（现为 15 个）；新增公共类型必须先过设计决策 |
-| 4 | **零第三方运行时依赖**：仅 `cn.aifei:aifei-all`（`provided`）；传输自实现，消费方无需自带任何传输库 |
+| 4 | **零第三方运行时依赖**：仅 `cn.aifei:aifei`（`provided`）；传输自实现，消费方无需自带任何传输库 |
 | 5 | Java 8 语法与 API；主 JAR class major version = 52 |
 | 6 | 每类规则只有一个定义点（校验 / 退避 / 状态迁移 / 回调保护 / 会话登记 / 编解码） |
 
@@ -847,7 +847,7 @@ stateDiagram-v2
         <!-- 框架内核：provided，消费方自带，不向下游传递 -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
+            <artifactId>aifei</artifactId>
             <version>${aifei.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -886,7 +886,7 @@ stateDiagram-v2
 
 | 坐标 | 版本 | scope / optional | 用途 |
 | --- | --- | --- | --- |
-| `cn.aifei:aifei-all` | 1.1.2 | `provided` | `Plugin` / `Prop` / `AopKit`（对齐 aifei-weixin：消费方自带） |
+| `cn.aifei:aifei` | 1.1.2 | `provided` | `Plugin` / `Prop` / `AopKit`（对齐 aifei-weixin：消费方自带） |
 | `junit:junit` | 4.13.2 | `test` | 单元 / 契约 / 回环测试 |
 
 - **Java 8 编译目标**：`source` / `target` = `1.8`，主 JAR class major version = 52。
@@ -922,7 +922,7 @@ stateDiagram-v2
     <dependencies>
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
+            <artifactId>aifei</artifactId>
             <version>${aifei.version}</version>
         </dependency>
 
@@ -968,7 +968,7 @@ stateDiagram-v2
 
 ### 7.3 消费方额外需要提供的依赖
 
-**无。** 传输层为纯 JDK 自实现，模块**零第三方运行时依赖**，消费方除 `cn.aifei:aifei-all` 外无需自带任何传输库，也无需自带日志绑定（README 已同步）。
+**无。** 传输层为纯 JDK 自实现，模块**零第三方运行时依赖**，消费方除 `cn.aifei:aifei` 外无需自带任何传输库，也无需自带日志绑定（README 已同步）。
 
 ---
 
@@ -1314,7 +1314,7 @@ classDiagram
 
 | 批 | 名称 | 依赖 | 源文件（相对 `aifei-websocket/`） | 文件数 | 建议执行者 |
 | --- | --- | --- | --- | --- | --- |
-| **B1** | 构建骨架 + 公开面 | 无 | `pom.xml`（仅 `aifei-all` provided + `junit` test）；根包 15 个类型（`WebSocketClient` / `ClientListener` / `WebSocketServer` / `ServerListener` / `WebSocketSession` / `ConnectionState` / `Message` / `WebSocketConfig` / `ClientConfig` / `ServerConfig` / `MessageCodec` / `WebSocketException` / `WebSocketConnectionException` / `WebSocketCodecException` / `WebSocketUtil`） | **16** | `aifei-core-engineer` |
+| **B1** | 构建骨架 + 公开面 | 无 | `pom.xml`（仅 `aifei` provided + `junit` test）；根包 15 个类型（`WebSocketClient` / `ClientListener` / `WebSocketServer` / `ServerListener` / `WebSocketSession` / `ConnectionState` / `Message` / `WebSocketConfig` / `ClientConfig` / `ServerConfig` / `MessageCodec` / `WebSocketException` / `WebSocketConnectionException` / `WebSocketCodecException` / `WebSocketUtil`） | **16** | `aifei-core-engineer` |
 | **B2** | 内部共享骨架与工具 | B1 | `internal/AbstractWebSocketClient`、`internal/AbstractWebSocketServer`、`internal/Backoff`、`internal/ListenerGuard`、`internal/SessionIds`、`internal/WebSocketValidator` | **6** | `aifei-core-engineer` |
 | **B3** | 后端标识 + 编解码入口 + JDK 传输实现 | B2 | `internal/WebSocketBackend`、`internal/MessageCodecs`；`internal/jdk/Rfc6455Handshake`、`Rfc6455FrameCodec`、`JdkSocketSupport`、`JdkWebSocketConnection`、`JdkWebSocketClient`、`JdkWebSocketServer`、`JdkWebSocketSession` | **9** | `aifei-core-engineer` |
 | **B4** | aifei 接入层 | B3 | `aifei/WebSocketClientPlugin`、`aifei/WebSocketServerPlugin`、`aifei/WebSocketConfigLoader` | **3** | `aifei-service-engineer` |
@@ -1392,11 +1392,11 @@ mvn test -Dtest=BackoffTest#bounds       # 单用例：类名#方法名
 
 | 事实 | 出处 |
 | --- | --- |
-| `cn.aifei.plugin.Plugin` 仅 `start()` / `stop()` 两个方法 | `cn.aifei:aifei-all:1.1.2` 构件中的 `cn.aifei.plugin.Plugin`（可用 `-sources.jar` 核对） |
-| `Prop#get(String)` / `get(String, String)` / `getInt` / `getBoolean` / `containsKey` | `cn.aifei:aifei-all:1.1.2` 构件中的 `cn.aifei.util.Prop` |
+| `cn.aifei.plugin.Plugin` 仅 `start()` / `stop()` 两个方法 | `cn.aifei:aifei:1.1.2` 构件中的 `cn.aifei.plugin.Plugin`（可用 `-sources.jar` 核对） |
+| `Prop#get(String)` / `get(String, String)` / `getInt` / `getBoolean` / `containsKey` | `cn.aifei:aifei:1.1.2` 构件中的 `cn.aifei.util.Prop` |
 | 装配模式：构造期只持有 `Prop`，解析/建连在 `start()`，`AopKit.get().addSingletonObject` 注册 `@Inject` 单例 | `aifei-cache/src/main/java/cn/hg/aifei/cache/CachePlugin.java` |
 | 门禁测试纪律：包边界自动化断言（第三方类型 / 框架类型分布） | `aifei-weixin/src/test/java/cn/aifei/weixin/KernelBindingTest.java`、`aifei-sa-token/src/test/java/cn/hg/aifei/satoken/KernelBindingTest.java` |
-| `aifei-all` 以 `provided` 引入 | `aifei-weixin/pom.xml`、`aifei-sentinel/pom.xml` |
+| `aifei` 以 `provided` 引入 | `aifei-weixin/pom.xml`、`aifei-sentinel/pom.xml` |
 | demo 组织方式（`DemoApp` → `Aifei.start` + 自写 HIO + 批处理） | `aifei-sentinel-demo/` |
 | RFC6455 握手：`Sec-WebSocket-Accept = Base64(SHA1(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))`；服务端回 `101 Switching Protocols` | RFC 6455 §1.3 / §4.1 / §4.2.2 |
 | RFC6455 帧格式：FIN / opcode / 掩码（客户端发必须掩码、服务端发不掩码）/ 7 / 16 / 64 位长度；控制帧 `≤125` 且不得分片；关闭码 `1000` / `1001` / `1002` / `1007` / `1009` | RFC 6455 §5.2 / §5.4 / §5.5 / §7.4 |

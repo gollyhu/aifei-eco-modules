@@ -16,32 +16,59 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
-        <aifei-email.version>1.0.0-SNAPSHOT</aifei-email.version>
-        <sms4j.version>3.3.6</sms4j.version>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
         <undertow.version>2.2.39.Final</undertow.version>
     </properties>
 
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- demo 是应用工程：框架内核以 compile 自带（库模块 aifei-all 为 provided） -->
+        <!-- demo 是应用工程：框架内核以 compile 自带（库模块 aifei 为 provided） -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-enjoy</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-json</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-undertow</artifactId>
+            <scope>compile</scope>
         </dependency>
 
         <!-- 被演示的库本体：需先在 aifei-email/ 执行 mvn -q -DskipTests clean install -->
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-email</artifactId>
-            <version>${aifei-email.version}</version>
         </dependency>
 
         <!-- 库模块以 optional 声明唯一内核；demo 以 compile 自带，验证 optional 口径 -->
         <dependency>
             <groupId>org.dromara.sms4j</groupId>
             <artifactId>sms4j-Email-core</artifactId>
-            <version>${sms4j.version}</version>
         </dependency>
 
         <dependency>

@@ -56,7 +56,7 @@
 ```bash
 mvn clean verify                       # 全量 49 例，必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest   # 仅架构门禁（15 例 = 10 门禁 + 5 自证）
-mvn dependency:tree -Dverbose          # 依赖面：根 + aifei-all(provided) + junit(test)
+mvn dependency:tree -Dverbose          # 依赖面：根 + aifei(provided) + junit(test)
 ```
 
 class 版本抽验（AC-03）：

@@ -14,7 +14,7 @@
 
 ## 2. 5 分钟快速开始
 
-加依赖（消费方自带 aifei 框架内核 `cn.aifei:aifei-all`，本模块不传递）：
+加依赖（消费方自带 aifei 框架内核 `cn.aifei:aifei`，本模块不传递）：
 
 ```xml
 <dependency>
@@ -303,7 +303,7 @@ id.segment.key=payment-flow
 - **号段后端必须是共享存储**：本地缓存后端（Caffeine）不支持条件操作，多实例会各自从 1 开始，因此号段 `store=cache` 在启动期即被拒绝。
 - **不支持命名实例**：一个进程只应有一个 workerId，一个 workerId 只能对应一个生成器；两个生成器共享一个号必然重号。
 - **没有状态查询 API**：生效策略与 workerId 只出现在启动日志里；这是刻意的，避免为运维定位新增公共类型。
-- **零第三方依赖**：`aifei-all`（`provided`）+ `aifei-cache` / `aifei-lock`（`optional`）+ `junit`（`test`），不引入任何日志绑定与 DB 驱动。
+- **零第三方依赖**：`aifei`（`provided`）+ `aifei-cache` / `aifei-lock`（`optional`）+ `junit`（`test`），不引入任何日志绑定与 DB 驱动。
 
 ## 7. 参考
 
@@ -344,5 +344,5 @@ id.segment.key=payment-flow
 
 - **契约与决策（事实来源）**：`docs/design.md`——公共 API 逐字签名、位布局与冻结数据格式、回拨与号段语义、异常消息表、验收标准。
 - **开发代理约束**：本模块 `AGENTS.md`——包边界与架构门禁、唯一定义点清单、验证命令。
-- **坐标与依赖口径**：`io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT`（`packaging=jar`，Java 8）；`cn.aifei:aifei-all` 为 `provided`，`aifei-cache` / `aifei-lock` 为 `optional`。
+- **坐标与依赖口径**：`io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT`（`packaging=jar`，Java 8）；`cn.aifei:aifei` 为 `provided`，`aifei-cache` / `aifei-lock` 为 `optional`。
 - **示例工程**：`aifei-id-demo/`（平级目录、端口 18140、离线可跑），演示单号生成、并发批量去重、号段换段与 workerId 来源。

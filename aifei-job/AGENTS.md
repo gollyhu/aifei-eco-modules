@@ -25,13 +25,13 @@
 
 ### 依赖纪律
 
-- **`cn.aifei:aifei-all` 为 `provided`**：消费方自带，不向下游传递。只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期 `NoClassDefFoundError: cn/aifei/log/Log`——README 必须声明「消费方须自带 `aifei-all`」。
+- **`cn.aifei:aifei` 为 `provided`**：消费方自带，不向下游传递。只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期 `NoClassDefFoundError: cn/aifei/log/Log`——README 必须声明「消费方须自带 `aifei`」。
 - **`org.quartz-scheduler:quartz:2.3.2` 为 `compile`**：仅用于 cron 表达式计算（`CronExpression`），**会向消费方传递**（版本冲突由消费方 `exclusion` 或对齐，README 声明）。除 `CronExpression` 外**不得**使用 Quartz 任何其它类型（`Scheduler` / `JobDetail` / `Trigger` / `JobDataMap` / `JobStore` / misfire 策略全禁）。
 - **`org.slf4j:slf4j-api:1.7.30` 为 `compile`**：**仅 Quartz 内部日志门面**，显式直接声明；**模块代码零 `org.slf4j.*` 引用**（门禁③）。
 - **不引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j` 系一律禁止）。
 - 除上述两项第三方依赖外**不新增任何直接依赖**；传递依赖排除清单与允许清单见 `docs/design.md` §10.2 / §10.3（**已实测回填**，2026-11-10：Maven 3.9.16 / JDK 21.0.11，主 JAR 仍为 class major 52）。
 - **`<exclusions>` 只允许写实测真实存在的传递项**：当前 3 条（`com.mchange:c3p0` / `com.mchange:mchange-commons-java` / `com.zaxxer:HikariCP-java7`）经去掉 exclusion 前后对照实测均为**有效排除**；`c3p0:c3p0` 旧 groupId 变体在 Quartz 2.3.2 中**不存在**，故**不得**写入（空操作 exclusion 会造成「已排空」的错觉）。新增 exclusion 前必须先以 `mvn dependency:tree` 证明该项存在。
-- **实测允许清单（6 个构件）**：`cn.aifei:aifei-all:1.1.2`(provided) / `com.alibaba.fastjson2:fastjson2:2.0.65`(provided，随 `aifei-all`) / `org.quartz-scheduler:quartz:2.3.2`(compile) / `org.slf4j:slf4j-api:1.7.30`(compile) / `junit:junit:4.13.2`(test) / `org.hamcrest:hamcrest-core:1.3`(test)；除此外出现任何条目即依赖失控。**判定口径**：无任何日志绑定（`slf4j-simple` / `logback` / `log4j` / `commons-logging` 等 0 项），无任何 `java.sql` 相关传递项（JDBC 驱动 / 连接池 0 项，且门禁④保证零 `import java.sql.`）。
+- **实测允许清单（5 个构件）**：`cn.aifei:aifei:1.1.2`(provided，版本由根 BOM 管理) / `org.quartz-scheduler:quartz:2.3.2`(compile) / `org.slf4j:slf4j-api:1.7.30`(compile) / `junit:junit:4.13.2`(test) / `org.hamcrest:hamcrest-core:1.3`(test)；除此外出现任何条目即依赖失控。**判定口径**：无任何日志绑定（`slf4j-simple` / `logback` / `log4j` / `commons-logging` 等 0 项），无任何 `java.sql` 相关传递项（JDBC 驱动 / 连接池 0 项，且门禁④保证零 `import java.sql.`）。
 - 该两项 `compile` 依赖须在**仓库根 `AGENTS.md`** 的「已登记的 `compile` 例外」处登记（`docs/design.md` §10.5）。
 
 ### 日志纪律
@@ -133,5 +133,5 @@ mvn dependency:tree -Dverbose                 # 依赖核对：与 docs/design.m
 ## 文档同步要求
 
 - 涉及**公共行为**的改动，必须同步 `docs/design.md`（契约）与 `README.md`（用法 / 语义声明），并更新 `docs/testing.md`。
-- README 必须始终包含这七处声明：触发与执行语义表、**v1 不支持多实例互斥**、任务参数由业务自行获取、监听器同步回调且慢监听器会拖慢全部任务触发、监听器可选且单例（须自行注册进容器，未注册则无任何事件）、日志经 aifei 框架 `Log`（未装配 `LogFactory` 时按框架既有语义）、**消费方须自带 `aifei-all`**。
+- README 必须始终包含这七处声明：触发与执行语义表、**v1 不支持多实例互斥**、任务参数由业务自行获取、监听器同步回调且慢监听器会拖慢全部任务触发、监听器可选且单例（须自行注册进容器，未注册则无任何事件）、日志经 aifei 框架 `Log`（未装配 `LogFactory` 时按框架既有语义）、**消费方须自带 `aifei`**。
 - 术语必须与 `docs/design.md` §2 统一：任务 / 任务名 / 触发方式 / 节拍 / 唤醒层 / 执行层 / 待触发实例 / 续排 / 终态 / 观测面。不得另起叫法（如「作业」/「定时器」/「调度器实例」）。

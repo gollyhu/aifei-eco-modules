@@ -62,4 +62,4 @@ curl -F "file=@once.xlsx" "http://localhost:18150/excel/demo/parse?batchSize=500
 </dependency>
 ```
 
-本 demo 是应用工程（非库）：框架内核 `cn.aifei:aifei-all:1.1.2` 以 `compile` 自带；无 Plugin、无配置键，全程离线。
+本 demo 是应用工程（非库）：框架内核 `cn.aifei:aifei:1.1.2` 以 `compile` 自带；无 Plugin、无配置键，全程离线。

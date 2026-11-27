@@ -90,10 +90,10 @@ cn.hg.aifei.email.internal        适配层（非承诺）：注册表 / 错误�
 
 | 依赖 | 范围 | 约束 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 消费方自带，仅 `aifei` 包引用 |
+| `cn.aifei:aifei:1.1.2` | `provided` | 消费方自带，仅 `aifei` 包引用 |
 | `org.dromara.sms4j:sms4j-Email-core:3.3.6` | **`optional`** | 唯一内核；**不是** `compile` 例外，根 `AGENTS.md` 的 compile 例外清单不变 |
 | `junit:junit:4.13.2` | `test` | 测试与门禁；`hamcrest-core` 为其受限传递项 |
-| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided` | **受限传递依赖**：由 `aifei-all` 底座传递，`provided` 不向下游传递；**非**本模块直接声明，不构成第三方 compile / runtime 依赖（AC-13 判定不受影响，`aifei-sms` 有同款先例）。`design.md` §2.3 未列该项，属设计文档补登遗留 |
+| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided` | **受限传递依赖**：由 `aifei` 底座传递，`provided` 不向下游传递；**非**本模块直接声明，不构成第三方 compile / runtime 依赖（AC-13 判定不受影响，`aifei-sms` 有同款先例）。`design.md` §2.3 未列该项，属设计文档补登遗留 |
 
 - 不声明任何日志绑定实现（`slf4j-simple` / `logback` / `log4j`）；内核传递的 `slf4j-api` 仅门面。
 - **许可证留痕**：内核传递依赖 `com.sun.mail:javax.mail:1.6.2` 为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**（另有 `javax.activation`），法务已确认 CPE 豁免可接受；声明落地在 `LICENSE` / `NOTICE` / `README.md`，并在根 `AGENTS.md` 登记。改动依赖版本须同步更新这三处。
@@ -134,7 +134,7 @@ cn.hg.aifei.email.internal        适配层（非承诺）：注册表 / 错误�
 mvn -q -DskipTests clean compile                 # 编译（Java 8，产物 major 52）
 mvn test -Dtest=ArchitectureBoundaryTest         # 架构门禁 14 例
 mvn clean verify                                 # 全量：83 个测试，必须 0 failure / 0 error
-mvn dependency:tree                               # 仅 aifei-all(provided) / sms4j-Email-core(optional) / junit(test)
+mvn dependency:tree                               # 仅 aifei(provided) / sms4j-Email-core(optional) / junit(test)
 javap -verbose -classpath target/classes cn.hg.aifei.email.MailClient | findstr /C:"major version"   # 期望 52
 ```
 

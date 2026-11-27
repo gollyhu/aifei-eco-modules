@@ -10,7 +10,7 @@
 
 ## 适用场景
 
-- 使用 aifei（`cn.aifei:aifei-all`）；
+- 使用 aifei（`cn.aifei:aifei`）；
 - 使用 Undertow 作为底层 Server；
 - 希望用 Sa-Token 做登录认证、角色权限、注解鉴权；
 - 不想为了鉴权去重写控制层与出入参模型。
@@ -25,7 +25,7 @@
 </dependency>
 ```
 
-SDK 对 `cn.aifei:aifei-all` 与 `io.undertow:undertow-core` 均为 `provided`，由你的应用自行提供。
+SDK 对 `cn.aifei:aifei` 与 `io.undertow:undertow-core` 均为 `provided`，由你的应用自行提供。
 
 环境要求：JDK 8+，Sa-Token 1.46.0。
 

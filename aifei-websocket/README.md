@@ -26,7 +26,7 @@
 
 ## 依赖说明
 
-模块**运行时零第三方依赖**：传输层为内建实现，不依赖任何第三方 WebSocket 库，也不使用任何日志门面。模块内 `aifei-all` 为 `provided`，**不向下游传递**，消费方自带 aifei 框架即可，**无需**再补任何传输依赖或日志绑定。
+模块**运行时零第三方依赖**：传输层为内建实现，不依赖任何第三方 WebSocket 库，也不使用任何日志门面。模块内 `aifei` 为 `provided`，**不向下游传递**，消费方自带 aifei 框架即可，**无需**再补任何传输依赖或日志绑定。
 
 > 旧版本依赖 `org.java-websocket:Java-WebSocket`（`optional`），并要求消费方自带 `slf4j-api` + 一个日志绑定；该实现与 `websocket.{client|server}.type` 配置均已移除。
 

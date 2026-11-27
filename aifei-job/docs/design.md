@@ -96,9 +96,9 @@
 | Quartz 用途 | 只用 `CronExpression` 的构造（校验）与 `getNextValidTimeAfter(Date)` |
 | `org.quartz.*` 唯一落点 | `local.QuartzCronSupport`（`CronExpression` 实例按**表达式字符串**缓存，构造有解析开销，计算只读且线程安全；口径见 §12 D3） |
 | 传递依赖 | 排除 `c3p0` 变体、`HikariCP-java7`、全部日志绑定；**保留 `slf4j-api`** 并在 `pom.xml` 显式声明为 `compile` 直接依赖（版本 `1.7.30`）；该门面**只供 Quartz 内部使用**，模块代码零 `org.slf4j.*` 引用（§11 门禁③） |
-| 模块自身记录 | 统一经 `cn.aifei.log.Log`（`Log.get(本类.class)`），随 `cn.aifei:aifei-all`（provided）提供；**不新增依赖**、**不引入任何日志绑定**、禁止 `System.err` 与自建记录通道 |
+| 模块自身记录 | 统一经 `cn.aifei.log.Log`（`Log.get(本类.class)`），随 `cn.aifei:aifei`（provided）提供；**不新增依赖**、**不引入任何日志绑定**、禁止 `System.err` 与自建记录通道 |
 | 日志获取时机 | **一律惰性**：静态工具类在**方法内**取用，实例类在**构造内 / 字段初始化期**取用；**禁止** `static` 字段持有 `Log`（理由见 §5.4） |
-| provided 不传递 | 消费方必须自带 `aifei-all`；只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期 `NoClassDefFoundError: cn/aifei/log/Log`（早于任何可读错误）。README 与本文 §10 双处声明 |
+| provided 不传递 | 消费方必须自带 `aifei`；只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期 `NoClassDefFoundError: cn/aifei/log/Log`（早于任何可读错误）。README 与本文 §10 双处声明 |
 | 依赖实测 | 排除清单与 `dependency:tree` 允许清单见 §10.2 / §10.3，**已实测回填**（2026-11-10）：3 条 exclusion 均有效、零日志绑定、`c3p0:c3p0` 旧变体不存在 |
 
 ### 3.2 决策 2 —— 注解声明式，公共类型定 7 个
@@ -889,14 +889,14 @@ sequenceDiagram
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **provided** | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.Aop` / `AopKit` / `Singleton` / `cn.aifei.util.Prop` / `cn.aifei.scanner.Scanner`（仅 `aifei` 包使用）+ `cn.aifei.log.Log`（任意包，模块自身记录） |
+| `cn.aifei:aifei:1.1.2` | **provided** | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.aop.Aop` / `AopKit` / `Singleton` / `cn.aifei.util.Prop` / `cn.aifei.scanner.Scanner`（仅 `aifei` 包使用）+ `cn.aifei.log.Log`（任意包，模块自身记录） |
 | `org.quartz-scheduler:quartz:2.3.2` | **compile** | **仅 `CronExpression`**（表达式校验 + `getNextValidTimeAfter`）；只被 `local.QuartzCronSupport` 使用 |
 | `org.slf4j:slf4j-api:1.7.30` | **compile** | **仅 Quartz 内部日志门面**；显式直接依赖（不靠 Quartz 传递，避免 Quartz 变动后门面消失）；**模块代码零 `org.slf4j.*` 引用**（门禁③） |
 | `junit:junit:4.13.2` | **test** | 单元测试与架构门禁 |
 
 **声明理由与代价（必须写入 README）**：
 
-- `aifei-all` 为 `provided` → **不向消费方传递**。消费方必须自带 `aifei-all`；只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期 `NoClassDefFoundError: cn/aifei/log/Log`（早于任何可读错误）。与 `aifei-weixin` 的依赖声明口径一致。
+- `aifei` 为 `provided` → **不向消费方传递**。消费方必须自带 `aifei`；只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期 `NoClassDefFoundError: cn/aifei/log/Log`（早于任何可读错误）。与 `aifei-weixin` 的依赖声明口径一致。
 - Quartz 为 `compile` **会向消费方传递**：版本冲突由消费方 `exclusion` 或显式对齐（README 与本文双处声明）。
 - **不引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j` 等一律禁止）。
 - 除上述两项外**无其它第三方运行时依赖**；不再新增直接依赖（需先过设计决策）。
@@ -928,7 +928,7 @@ Quartz 2.3.2 官方 POM 声明的依赖**全部为 `compile` 且均未标 `optio
 
 ```text
 io.github.gollyhu:aifei-job:jar:1.0.0
-+- cn.aifei:aifei-all:jar:1.1.2:provided
++- cn.aifei:aifei:jar:1.1.2:provided
 |  \- com.alibaba.fastjson2:fastjson2:jar:2.0.65:provided
 +- org.quartz-scheduler:quartz:jar:2.3.2:compile
 |  \- (org.slf4j:slf4j-api:jar:1.7.7:compile - omitted for conflict with 1.7.30)
@@ -943,8 +943,8 @@ io.github.gollyhu:aifei-job:jar:1.0.0
 
 | 构件 | 范围 | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核，消费方自带，**不传递** |
-| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided` | `aifei-all` 的传递项；随 `provided` 不向消费方传递，本模块代码零引用 |
+| `cn.aifei:aifei:1.1.2` | `provided` | 框架内核，消费方自带，**不传递** |
+| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided` | `aifei` 的传递项；随 `provided` 不向消费方传递，本模块代码零引用 |
 | `org.quartz-scheduler:quartz:2.3.2` | `compile` | **唯一第三方运行时依赖**（仅 `CronExpression`），**会传递** |
 | `org.slf4j:slf4j-api:1.7.30` | `compile` | 仅 Quartz 内部日志门面；模块代码零 `org.slf4j.*`（门禁③） |
 | `junit:junit:4.13.2` / `org.hamcrest:hamcrest-core:1.3` | `test` | 测试与架构门禁，不随发布 |
@@ -1114,7 +1114,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | `DemoSlowJob#slow` | `@FixedRate(period = 2000)`，任务体 `Thread.sleep(4000)` | fixedRate 超时跳过（观测点 3） |
 | `DemoShutdownJob#waiting` | `@FixedDelay(delay = 3000)`，任务体阻塞 | 停机收敛（观测点 5） |
 
-> demo 的日志工厂按框架既有语义处理（`aifei-all` 由 demo 自带）。
+> demo 的日志工厂按框架既有语义处理（`aifei` 由 demo 自带）。
 
 ---
 
@@ -1141,7 +1141,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 
 ```text
 aifei-job/                                  io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                 # Java 8；aifei-all provided；quartz + slf4j-api compile；传递依赖排空
+├── pom.xml                                 # Java 8；aifei provided；quartz + slf4j-api compile；传递依赖排空
 ├── README.md                               # 用法 / 语义声明 / 依赖声明（面向使用者）
 ├── AGENTS.md                               # 开发约束（面向开发代理）
 ├── docs/

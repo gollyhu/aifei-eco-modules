@@ -58,32 +58,36 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
         <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
         <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
-        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <central.publishing.server.id>aifei</central.publishing.server.id>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
 
-        <aifei.version>1.1.2</aifei.version>
-        <ijpay.version>3.0.0</ijpay.version>
-        <alipay.v2.version>4.40.1067.ALL</alipay.v2.version>
-        <alipay.v3.version>3.1.89.ALL</alipay.v3.version>
-        <fastjson.version>2.0.66</fastjson.version>
-        <okhttp.version>4.12.0</okhttp.version>
-        <dom4j.version>2.1.5</dom4j.version>
-        <bcprov.version>1.86</bcprov.version>
-        <stripe.version>34.1.0</stripe.version>
-        <junit.version>4.13.2</junit.version>
+
     </properties>
+
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- 生态统一底座：provided，消费方自带，不向下游传递 -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -91,7 +95,6 @@
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-AliPay-V3</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -99,7 +102,6 @@
         <dependency>
             <groupId>com.alipay.sdk</groupId>
             <artifactId>alipay-sdk-java-v3</artifactId>
-            <version>${alipay.v3.version}</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
@@ -122,7 +124,6 @@
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-AliPay</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -130,7 +131,6 @@
         <dependency>
             <groupId>com.alipay.sdk</groupId>
             <artifactId>alipay-sdk-java</artifactId>
-            <version>${alipay.v2.version}</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
@@ -159,14 +159,12 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
-            <version>${fastjson.version}</version>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
-            <version>${okhttp.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -174,7 +172,6 @@
         <dependency>
             <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
-            <version>${dom4j.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -182,7 +179,6 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
-            <version>${bcprov.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -190,56 +186,47 @@
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-QQ</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-JDPay</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-UnionPay</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-PayPal</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-Stripe</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.stripe</groupId>
             <artifactId>stripe-java</artifactId>
-            <version>${stripe.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-FuiYou</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.github.javen205</groupId>
             <artifactId>IJPay-XPay</artifactId>
-            <version>${ijpay.version}</version>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -338,8 +325,8 @@
                         <version>${central-publishing-maven-plugin.version}</version>
                         <extensions>true</extensions>
                         <configuration>
-                            <publishingServerId>aifei</publishingServerId>
-                            <deploymentName>aifei-pay-${project.version}</deploymentName>
+                            <publishingServerId>${central.publishing.server.id}</publishingServerId>
+                            <deploymentName>${project.artifactId}-${project.version}</deploymentName>
                             <autoPublish>false</autoPublish>
                             <waitUntil>validated</waitUntil>
                         </configuration>

@@ -117,7 +117,7 @@
 
 ## 4. 运行方法
 
-构建、测试**必须在模块目录执行**（门禁测试依赖相对路径 `src/main/java`，仓库根无聚合 pom，禁止在根执行）：
+模块单独构建、测试时在**模块目录**执行（门禁测试依赖相对路径 `src/main/java`）；仓库根 pom 兼作聚合器与 BOM，先 `mvn -N install` 安装根 BOM 后可在根执行全量 reactor：
 
 ```bash
 cd aifei-tools

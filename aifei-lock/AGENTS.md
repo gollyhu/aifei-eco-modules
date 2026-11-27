@@ -22,8 +22,8 @@
 
 - 代码、依赖与 API 兼容 **Java 8**：语法与 API 双约束；主 JAR 全部 class 的 major version 必须为 **52**。
 - 源码 UTF-8、缩进 4 空格；注释一律简体中文（保留英文原文的只有 javadoc 标签名、代码标识符、异常消息）；文件头版权块不得改写。
-- **`cn.aifei:aifei-all` 为 `provided`**，消费方自带。
-- **`io.github.gollyhu:aifei-cache` ≥ 1.1.0 为 `optional`**：不向下游传递。消费方漏引入时 `cache.CacheLockStore` 在类加载期即 `NoClassDefFoundError`（早于启动校验），该须知必须保留在 README 与 `docs/design.md`。
+- **`cn.aifei:aifei` 为 `provided`**，消费方自带。
+- **`io.github.gollyhu:aifei-cache`（BOM 管理为 1.2.0-SNAPSHOT） 为 `optional`**：不向下游传递。消费方漏引入时 `cache.CacheLockStore` 在类加载期即 `NoClassDefFoundError`（早于启动校验），该须知必须保留在 README 与 `docs/design.md`。
 - **不直接引入 Jedis**；连接、编解码与 TTL 校验全部由 `aifei-cache` 负责。
 
 ### 公共面收敛

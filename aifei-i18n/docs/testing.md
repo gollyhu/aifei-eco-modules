@@ -307,7 +307,7 @@
 | 零联网 | PASS | 门禁⑬ + QA 独立扫描 `src/test/java`：无外网 URL 字面量（gitee 版权头注释已剥离/排除） |
 | 零 Thread.sleep | PASS | `I18nKitTest` 采用 nanoTime 有界轮询；当前 0 处实际 sleep 调用；3 次重跑稳定 |
 | kv 集成默认关闭 | PASS | 无真实 KV/DB/HTTP 集成测试；`kv` 命中语义以 FakeMessageSource 覆盖，依赖缺失以隔离 ClassLoader 探针覆盖 |
-| 依赖范围 | PASS | `mvn dependency:tree`：`aifei-all:provided` + `aifei-cache:provided,optional` + `junit:test`，零 compile 第三方 |
+| 依赖范围 | PASS | `mvn dependency:tree`：`aifei:provided` + `aifei-cache:provided,optional` + `junit:test`，零 compile 第三方 |
 
 ### 4. 本轮优化补测（5 项优化中的 2 条 WARN 路径）
 

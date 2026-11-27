@@ -29,7 +29,7 @@
 
 - **Java 8 双约束（语法 + API）**：`source`/`target` = `1.8`；主 JAR 内全部 class major = **52**。禁 `var` / `record` / `switch` 表达式 / text block（`"""`）/ `sealed` / pattern matching；禁 `List.of` / `Map.of` / `Set.of` 等 Java 9+ 集合工厂。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、配置键名与异常消息）；原创文件写统一版权头，既有版权块不得改写。
-- **零第三方**：pom 只允许 `cn.aifei:aifei-all`（`provided`）+ `io.github.gollyhu:aifei-cache` / `aifei-lock`（`optional`）+ `junit`（`test`）。不得新增依赖，不得引入任何日志绑定（`slf4j` / `logback` / `log4j` 一律禁止）。
+- **零第三方**：pom 只允许 `cn.aifei:aifei`（`provided`）+ `io.github.gollyhu:aifei-cache` / `aifei-lock`（`optional`）+ `junit`（`test`）。不得新增依赖，不得引入任何日志绑定（`slf4j` / `logback` / `log4j` 一律禁止）。
 - **零 DB**：全模块禁 `import java.sql.`。
 - **禁改写 JVM 全局状态**：不得出现 `System.setProperty` / `System.getProperties().put` / `System.setErr` / `System.setOut`。
 - **无 provider / 无 SPI**：不得出现 `ServiceLoader` / `META-INF/services`；`src/main/resources` 下不得存在 `META-INF/services/` 目录。自定义生成器注册不在 v1 范围。
@@ -131,7 +131,7 @@ cn.hg.aifei.id.internal     实现层（非承诺 API）：配置 / 错误 / 命
 mvn clean verify                                  # 必须 0 failure / 0 error（含架构门禁 14 例）
 mvn test -Dtest=ArchitectureBoundaryTest          # 仅跑架构门禁
 mvn test -Dtest=SnowflakeIdGeneratorTest          # 单用例：类名或 类名#方法名
-mvn dependency:tree                               # 断言：仅 aifei-all(provided) + cache/lock(optional) + junit(test)
+mvn dependency:tree                               # 断言：仅 aifei(provided) + cache/lock(optional) + junit(test)
 ```
 
 构建后可用 `javap -verbose` 抽查主 class major = 52。

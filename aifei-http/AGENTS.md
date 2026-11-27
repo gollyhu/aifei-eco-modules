@@ -21,7 +21,7 @@
 
 - **Java 8 双约束（语法 + API）**：`source`/`target` = `1.8`；主 JAR 内全部 class major = **52**。禁 `var` / `record` / `switch` 表达式 / text block（`"""`）/ `sealed` / pattern matching；禁 `List.of` / `Map.of` / `Set.of` 等 Java 9+ 集合工厂与其它 Java 8 后 API。
 - 源码 **UTF-8**；缩进 4 空格；注释一律**简体中文**（保留英文原文的只有 javadoc 标签名、代码标识符、配置键名与异常消息）；原创文件写统一版权头，既有版权块不得改写。
-- **零第三方**：pom 只允许 `cn.aifei:aifei-all`（**`provided`**，不向下游传递）+ `junit`（`test`）。**不得**新增 `optional` / `compile` 第三方依赖；**不得**引入任何日志绑定（`slf4j` / `logback` / `log4j` 一律禁止）。
+- **零第三方**：pom 只允许 `cn.aifei:aifei`（**`provided`**，不向下游传递）+ `junit`（`test`）。**不得**新增 `optional` / `compile` 第三方依赖；**不得**引入任何日志绑定（`slf4j` / `logback` / `log4j` 一律禁止）。
 - **零 DB**：全模块禁 `import java.sql.`，不依赖 `aifei-db`。
 - **传输实现只用 `HttpURLConnection`**：`java.net.HttpURLConnection` / `java.net.URL` 只允许出现在 `internal` 包（根包禁止）；不支持 HTTP/2、不做协议协商。
 - **禁改写 JVM 全局属性**：不得出现 `System.setProperty` / `System.getProperties().put`，不得出现 `http.maxConnections` / `http.keepAlive` 字面量——这些是 JVM 级全局值，改写会波及同进程其它 JDK HTTP 使用方，**只读不写**。
@@ -100,7 +100,7 @@
 mvn clean verify                                     # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest             # 仅跑架构门禁（10 例）
 mvn test -Dtest=HttpConfigTest                       # 单用例：类名或 类名#方法名
-mvn dependency:tree                                  # 断言：仅 aifei-all(provided) + junit(test)
+mvn dependency:tree                                  # 断言：仅 aifei(provided) + junit(test)
 ```
 
 demo（平级目录 `aifei-http-demo/`，端口 18120，离线可跑）：

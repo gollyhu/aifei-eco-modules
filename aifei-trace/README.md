@@ -40,7 +40,7 @@ public class OrderAppConfig implements AifeiConfig<InputImpl, OutputImpl> {
 }
 ```
 
-> `Slf4jLogFactory` 等 aifei-log 工厂由消费方经 aifei-all 自带；本模块不绑定任何日志实现。
+> `Slf4jLogFactory` 等 aifei-log 工厂由消费方经 aifei 自带；本模块不绑定任何日志实现。
 > 纯生成模式下每条请求生成新 TraceId；要从上游透传请看 §4 场景二。
 
 跑通后即可观测：业务里正常打日志，控制台输出形如 `[8c02a1f4e6d3b7a9c1e5f203a4b6c8d0] 订单已创建`，同一请求内所有环节前缀一致；刷新页面（重发请求）TraceId 变化。
@@ -179,6 +179,6 @@ TraceKit.setTraceIdGenerator(DefaultTraceIdGenerator.INSTANCE);
 - **行为契约与异常语义**（init 回退、提取异常吞并回退、finally 清理、`IllegalArgumentException` 消息逐字表）：`docs/design.md` §7——契约细节以设计文档为准，本文只给结论。
 - **TraceHandler 执行序与链上语义**：`docs/design.md` §5.7 / §8.1。
 - **架构门禁（10 例）与公共面收敛纪律**：`docs/design.md` §10；开发代理约束见本模块 `AGENTS.md`。
-- **坐标与依赖口径**：`docs/design.md` §11（`io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`，aifei-all provided）。
+- **坐标与依赖口径**：`docs/design.md` §11（`io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`，aifei provided）。
 - **示例工程**：`aifei-trace-demo/`（平级目录、端口 18130、离线可跑），演示当前请求 TraceId 实时展示、日志前缀贯通、线程池手动传递、上游透传提取 4 个场景。
 - **常见问题**：日志没有前缀？——当前线程没有绑定值（检查是否经过 `TraceHandler` 或手动 `init`）；异步任务日志串了别的请求？——任务结束忘了 `clear()` 或未走手动传递；提取不到上游 TraceId？——`Input` 无 header 能力，确认已自定义 Input 并正确实现 `getHeader`。

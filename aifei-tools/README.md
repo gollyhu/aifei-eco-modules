@@ -22,7 +22,7 @@
 </dependency>
 ```
 
-`aifei-all:1.1.2` 由消费方自带（本模块对它 `provided`、不传递）。九个工具各给一个最小闭环，按需取用即可。
+`aifei:1.1.2` 由消费方自带（本模块对它 `provided`、不传递）。九个工具各给一个最小闭环，按需取用即可。
 
 **脱敏（纯 JDK，零额外依赖）**
 
@@ -239,7 +239,7 @@ byte[] plain = CodecUtil.gunzip(compressed);  // null → null，空数组 → �
 
 业务问题：登录页由多个实例提供服务，验证码在一台实例生成、请求落到另一台实例校验，默认进程内存储会校验失败。
 
-给工程加上 `aifei-cache:1.1.0`，启动时切一次共享存储，之后业务代码不变：
+给工程加上 `aifei-cache:1.2.0-SNAPSHOT`，启动时切一次共享存储，之后业务代码不变：
 
 ```xml
 <dependency>
@@ -345,13 +345,13 @@ public class CustomerExportService {
 
 ### 可选依赖策略
 
-本模块坚持“零强制第三方运行依赖”：`aifei-all` 为 `provided`，三个能力内核为 `optional`，都不向下游传递。
+本模块坚持“零强制第三方运行依赖”：`aifei` 为 `provided`，三个能力内核为 `optional`，都不向下游传递。
 
 | 能力 | 内核依赖 | 缺失时 |
 | --- | --- | --- |
 | IP 归属地 | `org.lionsoul:ip2region:3.3.7` | 首次调用 `IpSearcher` / `IpKit` 抛可读 `IpException` |
 | 二维码 | `com.google.zxing:core:3.5.3` | 首次调用 `QrKit` 抛可读 `QrException` |
-| 验证码集群存储 | `io.github.gollyhu:aifei-cache:1.1.0` | 调用 `enableClusterStore()` 抛可读 `CaptchaException` |
+| 验证码集群存储 | `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | 调用 `enableClusterStore()` 抛可读 `CaptchaException` |
 | 密钥派生 | 无（纯 JDK `javax.crypto` / `java.security`） | 始终可用，无缺失场景 |
 | 摘要与认证码 | 无（纯 JDK） | 始终可用，无缺失场景 |
 | 安全随机 | 无（纯 JDK） | 始终可用，无缺失场景 |
@@ -401,10 +401,10 @@ public class CustomerExportService {
 
 | 依赖 | scope | 传递 | 用途 |
 | --- | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | provided | 否 | 生态底座，本模块源码零引用，消费方自带 |
+| `cn.aifei:aifei:1.1.2` | provided | 否 | 生态底座，本模块源码零引用，消费方自带 |
 | `org.lionsoul:ip2region:3.3.7` | optional | 否 | IP 归属地内核 |
 | `com.google.zxing:core:3.5.3` | optional | 否 | 二维码内核，零传递依赖、不引 javase |
-| `io.github.gollyhu:aifei-cache:1.1.0` | optional | 否 | 验证码集群共享存储 |
+| `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | optional | 否 | 验证码集群共享存储 |
 | `junit:junit:4.13.2` | test | 否 | 单测与架构门禁 |
 
 零日志绑定、零 DB、零 Web 面、无 Plugin、无配置键。
@@ -441,7 +441,7 @@ public class CustomerExportService {
 cd aifei-tools
 mvn clean verify                 # 0 failure / 0 error（235 例：门禁 33 + 功能 202）
 mvn test -Dtest=ArchitectureBoundaryTest   # 仅跑架构门禁（33 例）
-mvn dependency:tree              # 核对：仅 aifei-all(provided) + 三个 optional 内核 + junit(test)，四个新子包无新增第三方
+mvn dependency:tree              # 核对：仅 aifei(provided) + 三个 optional 内核 + junit(test)，四个新子包无新增第三方
 javap -verbose target/classes/cn/hg/aifei/tools/ipdb/IpSearcher.class | findstr "major version"   # 期望 52
 javap -verbose target/classes/cn/hg/aifei/tools/kdf/KdfKit.class | findstr "major version"        # 期望 52
 javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findstr "major version"  # 期望 52

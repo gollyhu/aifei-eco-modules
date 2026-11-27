@@ -4,7 +4,7 @@
 
 > **交付性质**：`aifei-id` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。见 §1.2 的不适用章节声明表。
 >
-> **坐标**：`io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.id`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方依赖**（`aifei-cache` / `aifei-lock` 均 `optional`，`aifei-all` 为 `provided`）。
+> **坐标**：`io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.id`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方依赖**（`aifei-cache` / `aifei-lock` 均 `optional`，`aifei` 为 `provided`）。
 >
 > **文档状态**：1.0.0 设计定稿；**代码已落地**（模块单测 + 架构门禁全绿，`aifei-id-demo` 双策略实测通过），本文已按实现期既成事实回写 §7.1 / §7.5 / §7.6 / §10 / §11 / §12 / §13 / §14（均为记录与订正，公共契约不变）。§5 的 4 个公共类型签名是编码角色的**唯一依据**，变更前必须先改本文。
 >
@@ -29,7 +29,7 @@ aifei 生态缺少**分布式 ID 生成能力**，雪花算法散落在各业务
 
 - `aifei-cache`：号段取段的原子原语 = `Counter#increaseAndRefreshTtl`（`Counter` 由 `aifei-cache` 提供，底层 Redis `INCRBY` 原子）；键落在主缓存的 `__ID__` 保留分区。
 - `aifei-lock`：`id.worker.source=lock` 时经 `LockKit#tryLock` 抢占式持有 workerId；锁内的 `CacheLockStore#tryAcquire` 正是 `Cache#putIfAbsent`，即需求中「号段/workerId 复用 cache 的 `putIfAbsent`」由 `aifei-lock` 间接覆盖。
-- `aifei-log`：模块自身记录只用 `cn.aifei.log.Log`（随 `cn.aifei:aifei-all` 提供），**不引入任何日志绑定**。
+- `aifei-log`：模块自身记录只用 `cn.aifei.log.Log`（随 `cn.aifei:aifei` 提供），**不引入任何日志绑定**。
 
 ### 1.2 为什么是「库/SDK」而非应用工程（不适用章节声明）
 
@@ -49,7 +49,7 @@ aifei 生态缺少**分布式 ID 生成能力**，雪花算法散落在各业务
 | --- | --- |
 | 1 | **根包 `cn.hg.aifei.id` 精确 3 个公共类型**：`IdGenerator` / `IdKit` / `IdException`；**装配包 `cn.hg.aifei.id.aifei` 精确 1 个**：`IdPlugin`。**不得增删、不得改名**；变更须先改本文 §5 并过设计决策 |
 | 2 | **根包零框架类型、零第三方类型**：`IdGenerator` / `IdKit` / `IdException` 的签名不出现任何 `cn.aifei.*`；`IdPlugin` 位于装配包（非承诺 API），暴露 `cn.aifei.plugin.Plugin` / `cn.aifei.util.Prop`（§12 事项 2 已给登记结论） |
-| 3 | **零第三方依赖**：pom 只有 `cn.aifei:aifei-all`（`provided`）+ `io.github.gollyhu:aifei-cache` / `aifei-lock`（`optional`）+ `junit`（`test`） |
+| 3 | **零第三方依赖**：pom 只有 `cn.aifei:aifei`（`provided`）+ `io.github.gollyhu:aifei-cache` / `aifei-lock`（`optional`）+ `junit`（`test`） |
 | 4 | `internal` 包为非承诺实现层：可引用 `aifei-cache` / `aifei-lock` / `cn.aifei.log.*`，**不得**被公共面签名暴露 |
 | 5 | 每类规则只有一个定义点（§6.3），实现类不得复制 |
 | 6 | Java 8 语法与 API 双约束；主 JAR class major = 52 |
@@ -349,7 +349,7 @@ now < lastTimestamp ?
 | `lock` | 按 `n = 0..1023` 升序 `LockKit#tryLock(IdNames.workerLockName(n), lease)`（立即尝试、不等待），首个成功即持有；同时启动续期线程 | 续期成功 → `true`；`renew()` 返回 `false` 或抛 `LockException` → 置 `false` 并 `log.error` | 中断线程 + `Lock#release()` | 依赖 `aifei-lock`+`aifei-cache`；**全部占用即启动失败**（不等待：租约按进程生命周期持有，等待通常无意义，快速失败更利于运维）；续期丢失后**不可自愈**（重号不可逆，宁可停机） |
 
 - 三来源都实现 `WorkerIdSource`，雪花生成器只依赖 `acquire()` / `healthy()`；`nextId()` 每次先读 `healthy()`（`volatile` 读，未持有锁时也安全），`false` 即抛 `IdException`（场景 5）。
-- **零依赖（不引 cache / lock）**：`id.strategy=snowflake` + `id.worker.source=config`（默认组合）即可工作，只依赖 `aifei-all`。
+- **零依赖（不引 cache / lock）**：`id.strategy=snowflake` + `id.worker.source=config`（默认组合）即可工作，只依赖 `aifei`。
 - **可选依赖缺失**：`IdDeps` 在 `start()` 探测 → `IdException`（场景 13/14），不降级。
 
 ### 7.4 号段策略（`internal.SegmentIdGenerator`）
@@ -818,8 +818,8 @@ private static final Set<String> EXPECTED_BRIDGE_TYPES_SET = new LinkedHashSet<>
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **`provided`** | 框架：`cn.aifei.plugin.Plugin` / `cn.aifei.util.Prop` / `cn.aifei.aop.AopKit`（仅装配包）+ `cn.aifei.log.Log`（`internal` 与装配包）。**不向下游传递**，消费方必须自带 |
-| `io.github.gollyhu:aifei-cache:1.1.0` | **`optional`** | `Counter` / `CounterKit` / `Cache` / `CacheKit`（号段取段、cache 模式 workerId、共享后端校验）。不传递，缺失时按 §7.5 场景 12/13 启动期失败 |
+| `cn.aifei:aifei:1.1.2` | **`provided`** | 框架：`cn.aifei.plugin.Plugin` / `cn.aifei.util.Prop` / `cn.aifei.aop.AopKit`（仅装配包）+ `cn.aifei.log.Log`（`internal` 与装配包）。**不向下游传递**，消费方必须自带 |
+| `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | **`optional`** | `Counter` / `CounterKit` / `Cache` / `CacheKit`（号段取段、cache 模式 workerId、共享后端校验）。不传递，缺失时按 §7.5 场景 12/13 启动期失败 |
 | `io.github.gollyhu:aifei-lock:1.0.0-SNAPSHOT` | **`optional`** | `LockKit#tryLock` / `Lock#renew` / `Lock#release`（`id.worker.source=lock`）。不传递，缺失时按 §7.5 场景 14 启动期失败 |
 | `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
@@ -834,9 +834,9 @@ private static final Set<String> EXPECTED_BRIDGE_TYPES_SET = new LinkedHashSet<>
 | 构件 | 范围 | 说明 |
 | --- | --- | --- |
 | `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT` | 根 | 本模块 |
-| `cn.aifei:aifei-all:1.1.2` | `provided` | 框架内核，消费方自带 |
-| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided` | `aifei-all` 的传递项，本模块零引用 |
-| `io.github.gollyhu:aifei-cache:1.1.0` | `optional` | 不向下游传递；其传递项 `cn.aifei:aifei` 在本模块树中随 `optional` 一并标记（见下一行） |
+| `cn.aifei:aifei:1.1.2` | `provided` | 框架内核，消费方自带 |
+| `com.alibaba.fastjson2:fastjson2:2.0.65` | `provided` | `aifei` 的传递项，本模块零引用 |
+| `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | `optional` | 不向下游传递；其传递项 `cn.aifei:aifei` 在本模块树中随 `optional` 一并标记（见下一行） |
 | `cn.aifei:aifei:1.1.2` | `optional` | **`aifei-cache` 的传递项**（非本模块直接声明）；属框架内核而非「第三方」，本模块零直接引用，不改变 §1.3 第 3 条的「零第三方」口径 |
 | `io.github.gollyhu:aifei-lock:1.0.0-SNAPSHOT` | `optional` | 不传递（实测无传递项） |
 | `junit:junit:4.13.2` / `org.hamcrest:hamcrest-core:1.3` | `test` | 测试与门禁，不随发布 |
@@ -860,7 +860,7 @@ mvn dependency:tree                               # 断言：仅 11.2 允许清�
 
 | # | 事项 | 处理 / 假设 | 归属 |
 | --- | --- | --- | --- |
-| 1 | **依赖坐标与需求文档不一致** | 需求与派发说明写 `cn.hg.aifei:aifei-cache` / `aifei-lock`，仓库**实际坐标为 `io.github.gollyhu:aifei-cache:1.1.0` / `io.github.gollyhu:aifei-lock:1.0.0-SNAPSHOT`**（`cn.hg.aifei.*` 只是包名前缀，已核对两个模块的 `pom.xml`）。本文按实际坐标，README 与 pom 一律使用 `io.github.gollyhu` | 已定档（如需改回，请指示） |
+| 1 | **依赖坐标与需求文档不一致** | 需求与派发说明写 `cn.hg.aifei:aifei-cache` / `aifei-lock`，仓库**实际坐标为 `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT（版本由根 BOM 管理）` / `io.github.gollyhu:aifei-lock:1.0.0-SNAPSHOT`**（`cn.hg.aifei.*` 只是包名前缀，已核对两个模块的 `pom.xml`）。本文按实际坐标，README 与 pom 一律使用 `io.github.gollyhu` | 已定档（如需改回，请指示） |
 | 2 | **根 `AGENTS.md` 需登记的类型清单** | 经核对先例：`aifei-job` 的 `aifei.JobPlugin` 暴露 `Plugin` / `Prop` / `Scanner`，因其位于**装配包（非承诺 API）**、根包零框架类型，**未**在根 `AGENTS.md` 登记。本模块照此处理 → **需登记清单为空**（无 `compile` 例外：`aifei-cache` / `aifei-lock` 均 `optional`；根包零框架类型）。**若评审要求把 `IdPlugin` 计入公共面**，则需在根 `AGENTS.md` 登记两条：`cn.aifei.plugin.Plugin`（`IdPlugin implements`）与 `cn.aifei.util.Prop`（`IdPlugin` 构造参数）。本设计**不修改根 `AGENTS.md`** | **已定档：按 job 先例不登记**——根 `AGENTS.md` 无 `aifei-id` 条目，经落地复核确认 |
 | 3 | **`cn.aifei.log.*` 的模块内白名单** | 门禁 ③ 定档：`cn.aifei.log.*` 允许在 `internal` 与 `aifei` 包，根包禁止。属模块级白名单（同 `aifei-job` 做法），无需根登记 | 已定档 |
 | 4 | ⚠ **`id.worker.source=lock` 的后台续期线程是否纳入 v1** | 纳入：该模式下 workerId 按进程生命周期持有，不续期则租约到期后被他人抢走 → 重号，功能不完整。复杂度已隔离在单文件 `LockWorkerIdSource`（门禁 ⑫ 断言线程只在此处）。**若判定 v1 风险过高**，削减方案为：v1 只保留 `config` / `cache` 两来源，`lock` 推迟到 1.1（此时 `id.worker.source` 的合法值改为 `[config, cache]`，`aifei-lock` 依赖一并移除） | **已定档：v1 纳入 `lock` 来源及后台续期**，实现见 `LockWorkerIdSource`，合法值为 `[config, cache, lock]`；削减方案未采用 |
@@ -879,7 +879,7 @@ mvn dependency:tree                               # 断言：仅 11.2 允许清�
 
 ## 13. `aifei-id-demo`（示例工程，平级目录，不随模块发布）
 
-- **位置**：`aifei-id-demo/`（仓库根、与 `aifei-id/` 平级）；依赖 `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all`（demo 自带，验证模块 `provided` 口径）。
+- **位置**：`aifei-id-demo/`（仓库根、与 `aifei-id/` 平级）；依赖 `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT` + `cn.aifei:aifei`（demo 自带，验证模块 `provided` 口径）。
 - **端口**：**18140**（18100 mq / 18110 job / 18120 http / 18130 trace 顺延；已核对仓库内 18140 未被任何文件占用）。
 - **形态**：`aifei-trace-demo` 同款——零构建 Aifei 静态层单页（`src/main/webapp/view/id/index.html` + `assets/{js,css,lib}`，Vue 走本地 `assets/lib`）+ 自写 HIO（包名 **`cn.hg.aifei.id.demo.arch`**，从 `aifei-trace-demo` 复制并改包名）+ 自带 `LogFactory`（`cn.hg.aifei.id.demo.console.{ConsoleLog, ConsoleLogFactory}`）+ `IdDemoService` + `DemoAppConfig` + `start-demo.bat` / `stop-demo.bat` / `start-demo-segment.bat`。
 - **HIO 口径（实现期落地记录）**：本模块采 **`aifei-trace-demo` 口径**（落 `cn.hg.aifei.id.demo.arch`）；`cn.aifei.demo.common.arch` 是 `aifei-job-demo` / `aifei-sentinel-demo` 的形态，二者不是同一套，本 demo 不混用。
@@ -914,7 +914,7 @@ mvn dependency:tree                               # 断言：仅 11.2 允许清�
 
 ```text
 aifei-id/                                     io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                   # Java 8；aifei-all provided；cache/lock optional；junit test；零第三方
+├── pom.xml                                   # Java 8；aifei provided；cache/lock optional；junit test；零第三方
 ├── README.md                                 # 用法 / 配置 / 能力边界 / 部署警告（实现批次写，素材见 §5–§9）
 ├── AGENTS.md                                 # 模块硬约束（实现批次写，素材见 §10 + 本文决策表）
 ├── docs/
@@ -974,7 +974,7 @@ aifei-id/                                     io.github.gollyhu:aifei-id:1.0.0-S
 | # | 判定条件 | 验证通道 |
 | --- | --- | --- |
 | AC-01 | 根包顶层 public 类型集合恰等于 3 个、装配包恰等于 1 个 | 门禁 ④ `publicSurfaceExact` |
-| AC-02 | 除 `aifei-all`（provided）/ `aifei-cache`+`aifei-lock`（optional）外零第三方；无日志绑定 | 门禁 ① + `dependency:tree`（§11.2） |
+| AC-02 | 除 `aifei`（provided）/ `aifei-cache`+`aifei-lock`（optional）外零第三方；无日志绑定 | 门禁 ① + `dependency:tree`（§11.2） |
 | AC-03 | 全部 class major = 52；无 Java 8 后语法 / API | pom（1.8）+ 门禁 ⑦ + `javap -verbose` 抽查 |
 | AC-04 | 雪花位布局 = 1+41+10+12、EPOCH = `1704067200000L`、单节点 4096/ms；`workerId ∈ [0,1023]` | `SnowflakeIdGeneratorTest`（位拆解断言 + 序列耗尽用例） |
 | AC-05 | 回拨 ≤5ms 等待后继续（无重号）；>5ms 抛消息 B；时钟早于 EPOCH 抛消息 C；时间戳溢出抛消息 D | `SnowflakeIdGeneratorTest`（假时钟） |

@@ -102,7 +102,7 @@ public class PayKernelAttributionTest {
         String pom = new String(Files.readAllBytes(Paths.get("pom.xml")), StandardCharsets.UTF_8);
 
         assertTrue("pom 应声明 IJPay-AliPay-V3 构件", pom.contains("<artifactId>IJPay-AliPay-V3</artifactId>"));
-        assertTrue("pom 应声明构件版本属性", pom.contains("<ijpay.version>"));
+        assertTrue("IJPay 版本须由根 BOM 统一管理", pom.contains("<artifactId>aifei-eco-bom</artifactId>"));
         assertTrue("pom 应声明支付宝 SDK 构件",
                 pom.contains("<artifactId>alipay-sdk-java-v3</artifactId>"));
     }

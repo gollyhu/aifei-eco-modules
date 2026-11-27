@@ -15,10 +15,10 @@ aifei 生态的**出站 HTTP 统一客户端**（库模块 / SDK）：业务只�
     <version>1.0.0-SNAPSHOT</version>
 </dependency>
 
-<!-- 消费方必须自带框架内核：本模块对 aifei-all 是 provided，不向下游传递 -->
+<!-- 消费方必须自带框架内核：本模块对 aifei 是 provided，不向下游传递 -->
 <dependency>
     <groupId>cn.aifei</groupId>
-    <artifactId>aifei-all</artifactId>
+    <artifactId>aifei</artifactId>
     <version>1.1.2</version>
 </dependency>
 ```

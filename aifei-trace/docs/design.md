@@ -4,7 +4,7 @@
 
 > **交付性质**：`aifei-trace` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。工程内**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面；只有「根包公共 API 精确 6 类型 + `web` 接入包精确 2 类型」，**无 Plugin、无配置键、无 internal 包**。
 >
-> **坐标**：`io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.trace`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（pom 仅 `cn.aifei:aifei-all` provided + junit test）。
+> **坐标**：`io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.trace`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（pom 仅 `cn.aifei:aifei` provided + junit test）。
 >
 > **文档状态**：本文是 1.0.0 的**设计定稿，已按本文实现交付**（模块 + `aifei-trace-demo` 已落地并过 `mvn clean verify`，§12 事项 1 已完成根 `AGENTS.md` 登记）。§5 的 8 个公共类型签名仍是公共面的**唯一依据**，变更前必须先改本文。
 >
@@ -44,7 +44,7 @@ aifei 生态缺少**请求链路贯穿能力**：一次请求跨 Handler → Ser
 | --- | --- |
 | 1 | **根包公共 API 精确 6 个类型**：`TraceKit` / `TraceContext` / `TraceIdGenerator` / `DefaultTraceIdGenerator` / `TraceLog` / `TraceLogFactory`；**`web` 包精确 2 个**：`TraceHandler` / `TraceIdExtractor`。**不得增删、不得改名**；变更须先改本文 §5 并过设计决策 |
 | 2 | 公共面出现 `cn.aifei.log.Log` / `LogFactory`（TraceLog / TraceLogFactory 签名）与 `cn.aifei.core.Handler` / `Input` / `Output`（web 包签名）属**已定档的框架类型例外**（§2 决策 2 / 决策 3）；除这两组外，公共面**零第三方类型** |
-| 3 | **零第三方依赖**：pom 只有 `cn.aifei:aifei-all`（`provided`）+ `junit`（`test`）；**不声明 `cn.aifei:aifei-log`**（其 `Log` / `LogFactory` 接口定义在框架内核 `cn.aifei:aifei`，随 `aifei-all` 提供，已核实本地仓库 1.1.2 内含 `cn/aifei/log/{Log,LogFactory,LogKit}.class`） |
+| 3 | **零第三方依赖**：pom 只有 `cn.aifei:aifei`（`provided`）+ `junit`（`test`）；**不声明 `cn.aifei:aifei-log`**（其 `Log` / `LogFactory` 接口定义在框架内核 `cn.aifei:aifei`，随 `aifei` 提供，已核实本地仓库 1.1.2 内含 `cn/aifei/log/{Log,LogFactory,LogKit}.class`） |
 | 4 | **无 internal 包**：全模块 8 公共类型即全部实现（§2 决策 5），是对 aifei-http 范式（根包公共 + internal 实现）的**有意偏离** |
 | 5 | 每类规则只有一个定义点（§6.4），实现类不得复制 |
 | 6 | Java 8 语法与 API 双约束；主 JAR class major = 52 |
@@ -64,7 +64,7 @@ aifei 生态缺少**请求链路贯穿能力**：一次请求跨 Handler → Ser
 | # | 决策 | 理由 | 被否决的替代方案 |
 | --- | --- | --- | --- |
 | 1 | **公共面对齐官方 8 类型，不收敛、不改名**：根包 `TraceKit` / `TraceContext` / `TraceIdGenerator` / `DefaultTraceIdGenerator` / `TraceLog` / `TraceLogFactory` + `web.TraceHandler` / `web.TraceIdExtractor`；**不引入 `TraceException`** | ① 官方 1.1.1 公共面即此 8 个，需求排期表中预估的 `TraceException` 在官方实际产物中**不存在**——本模块全部失败路径均为「静默回退/吞掉」（extractor 异常吞掉回退生成、init 空白回退生成），**没有任何场景需要向业务抛模块异常**，为不存在的失败造异常类型纯属公共面扩张；② 生态协同（未来 mq / ws / job 读 traceId）与官方用法一致可零成本迁移；③ 命名 `TraceKit` 保留：它操作的是**有状态的运行期对象**（ThreadLocal 绑定的链路上下文 + 可替换的 TraceIdGenerator），与 aifei 官方 `LogKit` 门面形态同类，且 `TraceKit` 名称已被需求文档冻结 | ① 收敛为 4~5 类型（如合并 TraceContext 进 TraceKit）：破坏与官方 API 一致性，且 TraceContext 作为「ThreadLocal 唯一持有点」独立存在才能支撑门禁单点断言；② 引入 TraceException：无抛出场景，纯面扩张；③ TraceKit 改名 TraceUtil（按 Util 判定口径）：破坏需求冻结名称与生态术语一致性——其「无装配生命周期、任何时刻可调用」的特性偏离 Kit 判据这一点已在 §2 决策 4 显式声明为命名例外 |
-| 2 | **TraceLog / TraceLogFactory 保留为公共类型并登记「公共面框架类型」例外**：二者 `implements cn.aifei.log.Log` / `LogFactory`，签名直接出现框架类型 | `settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()))` 是框架配置入口（`AifeiConfig` 的 `config(Settings)` 内），**使用方必须在自身 AppConfig 中构造并传入该类型**——收进 internal 等于核心用法不可用；类比根 `AGENTS.md` 已登记的 `aifei-sa-token` 例外（公共 API 签名直接暴露内核类型）。pom 维持 `aifei-all` provided，消费方自带框架，无传递依赖问题。**须在根 `AGENTS.md` 登记后落地**（§12 待明确事项 1） | ① 收进 internal：`setLogFactory` 入口拿不到类型，核心用法崩塌；② 自定义 `TraceLog` 接口 + 适配器：`setLogFactory` 只接受 `cn.aifei.log.LogFactory`，自造接口无法注入 |
+| 2 | **TraceLog / TraceLogFactory 保留为公共类型并登记「公共面框架类型」例外**：二者 `implements cn.aifei.log.Log` / `LogFactory`，签名直接出现框架类型 | `settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()))` 是框架配置入口（`AifeiConfig` 的 `config(Settings)` 内），**使用方必须在自身 AppConfig 中构造并传入该类型**——收进 internal 等于核心用法不可用；类比根 `AGENTS.md` 已登记的 `aifei-sa-token` 例外（公共 API 签名直接暴露内核类型）。pom 维持 `aifei` provided，消费方自带框架，无传递依赖问题。**须在根 `AGENTS.md` 登记后落地**（§12 待明确事项 1） | ① 收进 internal：`setLogFactory` 入口拿不到类型，核心用法崩塌；② 自定义 `TraceLog` 接口 + 适配器：`setLogFactory` 只接受 `cn.aifei.log.LogFactory`，自造接口无法注入 |
 | 3 | **`web.TraceHandler` / `web.TraceIdExtractor` 放 `cn.hg.aifei.trace.web`，属公共承诺 API**；门禁定档：`cn.aifei.core.*` 允许出现在 `web` 包（本模块唯一接入包），`cn.aifei.log.*` 允许出现在根包（TraceLog / TraceLogFactory），其余 `cn.aifei.*` 全模块禁止 | ① TraceHandler 是本模块**核心使用入口**：使用方必须在 AppConfig 中 `new TraceHandler<>(...)` 并 `addHandler` 进 Handler 链；② 若按 aifei-http 纪律收进非承诺桥接包（`cn.hg.aifei.trace.aifei`），核心功能变成「消费方不得引用」——模块定位自相矛盾；③ trace 与 aifei-http 的差异是本质的：http 的公共面刻意与框架无关（纯出站客户端），trace 是**天然的框架接合模块**，接合类型即产品。`TraceIdExtractor` 签名含 `cn.aifei.core.Input`（lambda 用法 `input -> input.getHeader(...)`），与 TraceHandler 同包同承诺级 | ① 放 `aifei` 桥接包作非承诺 API：核心入口不可承诺，违背模块定位；② 放根包：`cn.aifei.core.*` 污染根包公共面，包边界不可断言 |
 | 4 | **`TraceKit` 命名为对 Kit 判据的显式命名例外**：它是 `final` + 私有构造 + 全静态门面，但**无装配生命周期**——未做任何配置时调用即成立（`getTraceId()` 返回 null，`init()` 直接生成） | 仓库 Kit 判据（「需先从注册表取实例才能干活」）本应判 Util；但 ① `TraceKit` 是 aifei 官方与需求文档**冻结的术语**（类比 LogKit——LogKit 同样无装配期、随取随用）；② 它操作的对象（ThreadLocal 上下文、可替换生成器）确实**有状态**，「有状态门面」语义成立，只是该状态**无生命周期边界**；③ 改名收益为零、破坏生态一致性。后果：TraceKit **永不抛「未装配」异常**，与 aifei-http `HttpKit` 的「未装配即失败」是**两种门面形态**，README 须分写 | ① 改名 `TraceUtil`：语义上更贴判据，但破坏官方术语冻结与生态术语一致（根 `AGENTS.md`：跨模块术语必须一致）；② 保留 TraceKit 并附加 Plugin 强造装配期：为不存在的生命周期付全部契约成本（见决策 6） |
 | 5 | **无 internal 包**：全模块 8 公共类型即全部实现，无任何隐藏实现类 | ① 模块体量极小（8 类型、无编排逻辑），拆 internal 只添间接层；② 官方 1.1.1 同样无 internal；③ 唯一定义点由「类型即定义点」天然满足：ThreadLocal 持有点 = TraceContext、生成点 = DefaultTraceIdGenerator、前缀拼装点 = TraceLog，各自公开且唯一，门禁按「字面量只在唯一文件出现」断言（§10 ⑥⑦）即无实现藏匿空间 | ① 仿 aifei-http 设 internal 包（把 TraceContext / DefaultTraceIdGenerator 收进去）：破坏官方公共面一致性，且 TraceContext 必须被 TraceLog（根包）与 TraceHandler（web 包）跨包访问，收 internal 反而需要提升可见性，自相矛盾 |
@@ -267,7 +267,7 @@ public class TraceLogFactory implements LogFactory {
 | --- | --- |
 | 构造 | `delegate == null` → `IllegalArgumentException`；**delegate 必须显式给定**（javadoc 声明：避免自包装造成无限递归——`new TraceLogFactory(new TraceLogFactory(...))` 或包自身工厂属使用方错误，模块不检测不防护） |
 | 三个 `getLog` | 返回 `new TraceLog(delegate.getLog(...))`——每次取用新建装饰器（TraceLog 无状态，成本为零） |
-| 用法 | `settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()))` / `new TraceLogFactory(new Log4jLogFactory())`——与 aifei-log 各工厂天然兼容；适配器由消费方经 aifei-all 自带，本模块不造日志 |
+| 用法 | `settings.setLogFactory(new TraceLogFactory(new Slf4jLogFactory()))` / `new TraceLogFactory(new Log4jLogFactory())`——与 aifei-log 各工厂天然兼容；适配器由消费方经 aifei 自带，本模块不造日志 |
 
 ### 5.7 `web.TraceHandler`（公共接入处理器，`extends cn.aifei.core.Handler`）——框架类型例外（决策 3）
 
@@ -697,7 +697,7 @@ private static final Set<String> EXPECTED_WEB_TYPES_SET = new LinkedHashSet<>(Ar
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **`provided`** | 框架内核：`cn.aifei.log.Log` / `LogFactory`（TraceLog / TraceLogFactory 实现）+ `cn.aifei.core.Handler` / `Input` / `Output`（web 包）。**不向下游传递**，消费方必须自带（README 声明）。**不声明 `cn.aifei:aifei-log`**——其 Log/LogFactory 接口在内核 `cn.aifei:aifei` 中，随 aifei-all 提供（已核实本地仓库 1.1.2 内含 `cn/aifei/log/{Log,LogFactory,LogKit}.class`） |
+| `cn.aifei:aifei:1.1.2` | **`provided`** | 框架内核：`cn.aifei.log.Log` / `LogFactory`（TraceLog / TraceLogFactory 实现）+ `cn.aifei.core.Handler` / `Input` / `Output`（web 包）。**不向下游传递**，消费方必须自带（README 声明）。**不声明 `cn.aifei:aifei-log`**——其 Log/LogFactory 接口在内核 `cn.aifei:aifei` 中，随 aifei 提供（已核实本地仓库 1.1.2 内含 `cn/aifei/log/{Log,LogFactory,LogKit}.class`） |
 | `junit:junit:4.13.2` | `test` | 单元测试与架构门禁 |
 
 - **零第三方 compile / optional**：不引入任何日志绑定（`slf4j` / `logback` / `log4j` 一律禁止——模块只面向 `cn.aifei.log` 接口）。
@@ -709,7 +709,7 @@ private static final Set<String> EXPECTED_WEB_TYPES_SET = new LinkedHashSet<>(Ar
 cd aifei-trace
 mvn clean verify                                     # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest             # 仅跑架构门禁（10 例）
-mvn dependency:tree                                  # 断言：仅 aifei-all(provided) + junit(test)
+mvn dependency:tree                                  # 断言：仅 aifei(provided) + junit(test)
 ```
 
 ---
@@ -718,7 +718,7 @@ mvn dependency:tree                                  # 断言：仅 aifei-all(pr
 
 | # | 事项 | 处理 / 假设 |
 | --- | --- | --- |
-| 1 | **公共面框架类型例外的根 AGENTS.md 登记** | **已完成**：根 `AGENTS.md`「已登记的公共面框架类型例外」清单已登记本模块两处例外（`TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `LogFactory`；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`），理由引用本文 §2 决策 2 / 3。pom 依赖口径不受影响（维持 aifei-all provided，非 compile 例外） |
+| 1 | **公共面框架类型例外的根 AGENTS.md 登记** | **已完成**：根 `AGENTS.md`「已登记的公共面框架类型例外」清单已登记本模块两处例外（`TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `LogFactory`；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`），理由引用本文 §2 决策 2 / 3。pom 依赖口径不受影响（维持 aifei provided，非 compile 例外） |
 | 2 | **IllegalArgumentException 替代官方 NPE** | 官方三处（setTraceIdGenerator / TraceLog / TraceLogFactory 构造）用 `Objects.requireNonNull` 抛 NPE；本模块统一 `IllegalArgumentException`（§7.3 消息逐字对齐官方 message）。属显式偏离，测试按本表断言 |
 | 3 | **运行期替换生成器的可见性** | `idGenerator` 为普通 static 字段（官方同形态），运行期替换无锁；javadoc 与 README 声明「建议仅启动期替换」。不引入 volatile / AtomicReference：替换属一次性启动期动作，为它加同步语义收益为零 |
 | 4 | **生成产出不校验** | 替换实现产出格式违例（如非 32 位）时模块按原值绑定、不拦截（决策 7）；格式契约靠 javadoc。若未来需要强校验，属公共行为变更，先改本文再实施 |
@@ -732,7 +732,7 @@ mvn dependency:tree                                  # 断言：仅 aifei-all(pr
 
 ## 13. `aifei-trace-demo`（示例工程，平级目录，不随模块发布）
 
-- **位置**：`aifei-trace-demo/`（仓库根、与 `aifei-trace/` 平级）；端口 **18130**（18110 job-demo / 18120 http-demo 顺延）；依赖 `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT` + `cn.aifei:aifei-all`（demo 自带，验证模块 `provided` 口径）+ junit 无关（demo 无测试要求）。
+- **位置**：`aifei-trace-demo/`（仓库根、与 `aifei-trace/` 平级）；端口 **18130**（18110 job-demo / 18120 http-demo 顺延）；依赖 `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT` + `cn.aifei:aifei`（demo 自带，验证模块 `provided` 口径）+ junit 无关（demo 无测试要求）。
 - **形态**：`aifei-http-demo` 同款——零构建静态层单页（`src/main/webapp/view/demo/index.html` + `assets/{js,css}`）+ HIO + `DemoService` + `DemoAppConfig`；`start-demo.bat` / `stop-demo.bat`。
 - **演示场景（4 个）**：
   1. **当前请求 traceId / spanId 实时展示**：`DemoService` 经 HIO 返回 `TraceKit.getTraceId()` / `getSpanId()`，页面显示——验证 TraceHandler 绑定与 finally 清理（刷新页面 traceId 每次变化）。
@@ -751,7 +751,7 @@ mvn dependency:tree                                  # 断言：仅 aifei-all(pr
 
 ```text
 aifei-trace/                                   io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                    # Java 8；aifei-all provided；junit test；零第三方
+├── pom.xml                                    # Java 8；aifei provided；junit test；零第三方
 ├── README.md                                  # 用法 / 能力边界 / 手动传递指引（编码角色写，素材见 §8）
 ├── AGENTS.md                                  # 模块硬约束（另任务产出，不在本批次）
 ├── docs/
@@ -801,7 +801,7 @@ aifei-trace/                                   io.github.gollyhu:aifei-trace:1.0
 | # | 判定条件 | 验证通道 |
 | --- | --- | --- |
 | AC-01 | 根包顶层 public 类型集合恰等于 6 个、web 包恰等于 2 个 | 门禁 **③ `publicSurfaceExact`**（数量 + 文件名集合精确相等） |
-| AC-02 | 除 `aifei-all`（provided）外零第三方依赖；`mvn dependency:tree` 仅两节点 | `dependency:tree` + 门禁 **①** + **②** |
+| AC-02 | 除 `aifei`（provided）外零第三方依赖；`mvn dependency:tree` 仅两节点 | `dependency:tree` + 门禁 **①** + **②** |
 | AC-03 | 全部 class major = 52；无 Java 8 后语法 / API | pom（source/target 1.8）+ 门禁 **⑧** + 构建后 `javap -verbose` 批量断言 |
 | AC-04 | `init(null/空白)` 回退生成；`init(" abc ")` 绑定 `"abc"`；返回值恒为最终生效 traceId | `TraceKitTest` |
 | AC-05 | `startSpan()` 覆盖旧 spanId 且不影响 traceId；`getSpanId()` 未绑定返回 null | `TraceKitTest` |

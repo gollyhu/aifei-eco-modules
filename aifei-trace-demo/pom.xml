@@ -16,23 +16,53 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <aifei.version>1.1.2</aifei.version>
+        <aifei.eco.bom.version>1.0.0-SNAPSHOT</aifei.eco.bom.version>
         <undertow.version>2.2.39.Final</undertow.version>
     </properties>
+
+    <!-- 根 pom 兼作 BOM：子模块不设 parent，通过 import 统一版本 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.github.gollyhu</groupId>
+                <artifactId>aifei-eco-bom</artifactId>
+                <version>${aifei.eco.bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- demo 是应用工程：框架内核用 compile（aifei-trace 以 provided 声明，消费方必须自带） -->
         <dependency>
             <groupId>cn.aifei</groupId>
-            <artifactId>aifei-all</artifactId>
-            <version>${aifei.version}</version>
+            <artifactId>aifei</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-enjoy</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-json</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.aifei</groupId>
+            <artifactId>aifei-undertow</artifactId>
+            <scope>compile</scope>
         </dependency>
 
         <!-- 被演示的库本体：链路上下文 + 日志贯通 + Web 接入，零第三方 -->
         <dependency>
             <groupId>io.github.gollyhu</groupId>
             <artifactId>aifei-trace</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>

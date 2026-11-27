@@ -20,7 +20,7 @@
 | `mvn -o clean verify` | **BUILD SUCCESS**（0 failure / 0 error，耗时 6.5 s） |
 | 架构门禁 G-01~G-15 | **15 / 15 通过** |
 | `G-03` 反证（门禁是否空心） | **变红后又还原**：临时在 `internal/AuditEnvironment.java` 插 `import cn.aifei.aop.Aop;` → `Failures: 1`（`expected:<[internal/SafeInvoker.java -> cn.aifei.log.]> but was:<[internal/AuditEnvironment.java -> cn.aifei.aop.Aop, internal/SafeInvoker.java -> cn.aifei.log.]>`）；按 SHA256 还原后重跑全绿 |
-| 依赖树（AC-25） | 仅 `aifei-all:provided` + `junit:test`，零第三方 compile/runtime，test 无日志绑定 |
+| 依赖树（AC-25） | 仅 `aifei:provided` + `junit:test`，零第三方 compile/runtime，test 无日志绑定 |
 | class major（AC-26） | 主 JAR **32 个 class 全部 52**（返工前 28） |
 | demo 8 场景（AC-30） | **8 / 8 通过**，页面与静态资源零外网 host，18160 已释放 |
 | demo 控制台 WARN（R-04） | **已复验通过**：`log4j2.xml` 生效，sink 抛异常时控制台出现**恰 1 条** `WARN [cn.hg.aifei.audit.internal.SafeInvoker] - [aifei-audit] 落点交付失败，已按失败隔离吞掉` |
@@ -198,13 +198,13 @@ mvn -o -f d:\WorkspaceIdea\aifei-eco-modules\aifei-audit\pom.xml dependency:tree
 
 ```text
 io.github.gollyhu:aifei-audit:jar:1.0.0
-+- cn.aifei:aifei-all:jar:1.1.2:provided
++- cn.aifei:aifei:jar:1.1.2:provided
 |  \- com.alibaba.fastjson2:fastjson2:jar:2.0.66:provided
 \- junit:junit:jar:4.13.2:test
    \- org.hamcrest:hamcrest-core:jar:1.3:test
 ```
 
-结论：零第三方 compile/runtime；`aifei-all` 为 provided 且其传递依赖同为 provided；test scope 仅 JUnit + Hamcrest，**无任何日志绑定**；无 `aifei-db`。
+结论：零第三方 compile/runtime；`aifei` 为 provided 且其传递依赖同为 provided；test scope 仅 JUnit + Hamcrest，**无任何日志绑定**；无 `aifei-db`。
 
 ### 7.3 class major（AC-26）
 

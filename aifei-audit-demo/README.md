@@ -3,7 +3,7 @@
 `aifei-audit` 的示例工程：注解采集、手动埋点、脱敏对照、落点切换、失败事件、`traceId` 关联、空态与错误态，全部在**单页**上可点可看。
 
 - 端口：**18160**（HTTP）｜离线可跑｜零 CDN、零构建工具
-- 依赖：`aifei-all` + `aifei-audit` + `aifei-trace` + `aifei-sa-token` + `aifei-mq`（示例工程行为，库模块零生态依赖）
+- 依赖：`aifei` + `aifei-audit` + `aifei-trace` + `aifei-sa-token` + `aifei-mq`（示例工程行为，库模块零生态依赖）
 
 ## 运行
 

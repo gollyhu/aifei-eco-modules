@@ -83,9 +83,9 @@ mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsBasedOnLastStart   # 单�
 | A17 | 监听器注册 | `ListenerContractTest` + `StartupExceptionContractTest` | 无实现时正常启动并照常触发；有实现时事件全部送达；`start()` 只解析一次；多例 → 启动失败 |
 | A18 | 记账顺序 | `StateViewTest` | 终态回调内 `state()` 已是本次终态；`STARTED` 回调内为上一次终态（首次执行时不在 `state()`） |
 | A19 | 被拒重排入参 | `RejectionRescheduleTest` + `JobScheduleTest` | `isFirst` 已置 `false`（不重复消费 `initialDelay`、连续被拒不累加）；`lastStart` / `lastEnd` 取自同一 `now`（纯计算等价断言 `nextDelay(t, now, now, now, false)` 与 `nextDelay(t, now, now, now, true)` 差异仅在 `isFirst`）；`SKIPPED` 事件时间 = 原计划触发时刻 ≠ 重置基准 |
-| A20 | 公共面零框架 / 零第三方类型 + 依赖树 | `ArchitectureBoundaryTest` + 人工核对 | 门禁①–⑥ 通过；`mvn dependency:tree` 与设计 §10.3 允许清单一致，无日志绑定；`aifei-all` 为 `provided` |
+| A20 | 公共面零框架 / 零第三方类型 + 依赖树 | `ArchitectureBoundaryTest` + 人工核对 | 门禁①–⑥ 通过；`mvn dependency:tree` 与设计 §10.3 允许清单一致，无日志绑定；`aifei` 为 `provided` |
 | A21 | 日志装配 | 全部测试 | 模块代码零 `org.slf4j.*`（门禁③）；用例 `@BeforeClass` 装配 Noop 工厂后无日志相关异常 |
-| A22 | README 七处声明 | 人工核对 | 语义表 / v1 不支持多实例互斥 / 参数由业务自行获取 / 慢监听器拖慢全部触发 / 监听器可选且单例须自行注册 / 日志经 aifei `Log` / **消费方须自带 `aifei-all`** |
+| A22 | README 七处声明 | 人工核对 | 语义表 / v1 不支持多实例互斥 / 参数由业务自行获取 / 慢监听器拖慢全部触发 / 监听器可选且单例须自行注册 / 日志经 aifei `Log` / **消费方须自带 `aifei`** |
 | A23 | 四份文档齐备且与实现一致 | 人工核对 | `design.md` / `testing.md` / `README.md` / `AGENTS.md` |
 | A24 | demo 静态原型 + 完整 Demo | demo 工程（§6） | 观测点 5 项逐项验收；完整 demo 端口 `18110` 可启动 |
 | N1 | v1.1 集群互斥（**不验收**） | — | 无用例、无桩代码 |
@@ -370,7 +370,7 @@ stop-demo.bat     # 停：taskkill 目标 PID，端口立即释放，无残留 j
 | 3 | `org.quartz.*` 仅在 `local/QuartzCronSupport.java` | PASS | 全量 grep 命中 2 行，均在该文件（import + 使用） |
 | 4 | `org.slf4j.*` 零引用 | PASS | `src/main/java` 命中数 **0** |
 | 5 | `java.sql.*` 零引用 | PASS | `src/main/java` 命中数 **0** |
-| 6 | `aifei-all` 为 `provided` | PASS | `dependency:tree` → `cn.aifei:aifei-all:jar:1.1.2:provided`；`pom.xml` 显式 `<scope>provided</scope>` |
+| 6 | `aifei` 为 `provided` | PASS | `dependency:tree` → `cn.aifei:aifei:jar:1.1.2:provided`；`pom.xml` 显式 `<scope>provided</scope>` |
 | 7 | 无日志绑定 | PASS | `dependency:tree -Dscope=runtime` 仅 `quartz:2.3.2` + `slf4j-api:1.7.30`（均 compile），无 `log4j` / `logback` / `jcl-over-slf4j` 等绑定 |
 | 8 | 无分层污染 | PASS | 模块包结构仅 `cn.hg.aifei.job`（7 类型）/ `.aifei`（`JobPlugin`）/ `.internal` / `.local`；无 controller / repository / mapper / dto / render 包 |
 | 9 | Java 8 兼容 | PASS | 两个产物 `.class` 头 `CAFEBABE` + `major=52`；pom `maven.compiler.source/target=1.8` |

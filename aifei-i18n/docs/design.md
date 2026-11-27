@@ -6,7 +6,7 @@
 >
 > **交付性质**：`aifei-i18n` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。工程内**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构实体 / Generator / UI 页面。只有「根包公共 API 精确 7 类型 + `web` 接入包 2 类型 + `aifei` 装配包 1 类型 + `internal` 非承诺实现」。**本模块不提供 HTTP 端点**——语言包下发由消费方 Just Service 一行完成（契约见 §9.4）。
 >
-> **坐标**：`io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.i18n`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（`aifei-all` 为 `provided`、`aifei-cache` 为 `optional`，junit 为 `test`）。
+> **坐标**：`io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT`（`packaging=jar`）；包名 `cn.hg.aifei.i18n`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；**零第三方**（`aifei` 为 `provided`、`aifei-cache` 为 `optional`，junit 为 `test`）。
 >
 > **文档状态**：本文是 1.0.0 的**设计定稿（契约）**。§5 的公共类型签名、§7 的 4 个配置键名、§2 的 4 项定档结论是编码与维护的**唯一依据**，变更前必须先改本文并过设计决策。增量需求来源见 `docs/需求/aifei-i18n.md` §十一。
 
@@ -48,7 +48,7 @@
 | --- | --- |
 | 1 | **根包公共 API 精确 7 个类型**：`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；**`web` 包精确 2 个**：`I18nHandler` / `LocaleExtractor`；**`aifei` 包精确 1 个**：`I18nPlugin`。合计 10 个公共类型。不得增删、不得改名；变更须先改本文 §5 并过设计决策 |
 | 2 | 公共面**零第三方类型、零框架类型**：`cn.aifei.*` 只允许出现在 `aifei` 接入包（`I18nPlugin`），`cn.hg.aifei.cache.*` 只允许出现在 `internal.source.KvSource`（且仅限方法体，不进签名）。根包与 `web` 包的公共签名**只出现** JDK 类型（`String` / `Locale` / `Date` / `TimeZone` / `Map` / `Object...` / `double`）与本模块类型 |
-| 3 | **零第三方 compile 依赖**：pom 只有 `aifei-all`（`provided`）+ `aifei-cache`（`optional`）+ `junit`（`test`）；无日志绑定、无 `java.sql` 依赖 |
+| 3 | **零第三方 compile 依赖**：pom 只有 `aifei`（`provided`）+ `aifei-cache`（`optional`）+ `junit`（`test`）；无日志绑定、无 `java.sql` 依赖 |
 | 4 | 每类规则只有一个定义点（§6.3），实现类不得复制 |
 | 5 | Java 8 语法与 API 双约束；主 JAR class major = 52（§12 门禁 ⑬） |
 | 6 | 无 SPI、无 `ServiceLoader`、无 `META-INF/services`；来源扩展走**显式注册**（§9.6） |
@@ -490,7 +490,7 @@ cn.hg.aifei.i18n.defaultSource   3 默认来源实现（PropertiesSource / DbSou
   web.LocaleExtractor ──→ cn.aifei.core.Input
   internal.* ──→ 根包类型；仅 I18nHolder/引擎 可写门面安装
   defaultSource.KvSource ──→ (方法体内) cn.hg.aifei.cache.CacheKit；字段/签名只用 JDK 类型
-  defaultSource.DbSource ──→ (方法体内) cn.aifei.db.Db / Row（随 aifei-all provided）
+  defaultSource.DbSource ──→ (方法体内) cn.aifei.db.Db / Row（随 aifei provided）
 
   禁止：根包/web 包 import cn.aifei.*（web 的 core 例外见 §5.7）；
         根包/web/internal import cn.hg.aifei.cache.*（仅 KvSource 方法体例外）；
@@ -1157,7 +1157,7 @@ private static final Set<String> EXPECTED_AIFEI_TYPES = new LinkedHashSet<>(Arra
 cd aifei-i18n
 mvn clean verify                                # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest,ClassFileVersionTest   # 仅跑双门禁
-mvn dependency:tree                             # 断言：aifei-all(provided) + aifei-cache(optional) + junit(test)
+mvn dependency:tree                             # 断言：aifei(provided) + aifei-cache(optional) + junit(test)
 ```
 
 ---
@@ -1166,8 +1166,8 @@ mvn dependency:tree                             # 断言：aifei-all(provided) +
 
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | **`provided`** | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.util.Prop` / `cn.aifei.aop.AopKit`（仅 `aifei` 包）+ `cn.aifei.core.Handler`/`Input`/`Output`（`web` 包）+ `cn.aifei.log.Log`（`internal` WARN 点）+ `cn.aifei.db.Db`/`Row`（`db` 来源）。不向下游传递，消费方自带（README 声明） |
-| `io.github.gollyhu:aifei-cache:1.1.0` | **`optional`** | `kv` 来源的缓存访问（仅 `KvSource` 方法体引用 `CacheKit`）。**不向下游传递**，消费方须显式引入；缺失时已声明 `kv` → 启动失败（AC-11-1） |
+| `cn.aifei:aifei:1.1.2` | **`provided`** | 框架内核：`cn.aifei.plugin.Plugin` / `cn.aifei.util.Prop` / `cn.aifei.aop.AopKit`（仅 `aifei` 包）+ `cn.aifei.core.Handler`/`Input`/`Output`（`web` 包）+ `cn.aifei.log.Log`（`internal` WARN 点）+ `cn.aifei.db.Db`/`Row`（`db` 来源）。不向下游传递，消费方自带（README 声明） |
+| `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT` | **`optional`** | `kv` 来源的缓存访问（仅 `KvSource` 方法体引用 `CacheKit`）。**不向下游传递**，消费方须显式引入；缺失时已声明 `kv` → 启动失败（AC-11-1） |
 | `junit:junit:4.13.2` | `test` | 单元测试 + 双门禁（`assertThrows` 断言异常） |
 
 - **零第三方 compile 强制**：无 slf4j/logback/log4j/okhttp/jackson 等；日志只面向 `cn.aifei.log.Log`。
@@ -1185,7 +1185,7 @@ mvn dependency:tree                             # 断言：aifei-all(provided) +
 | 3 | **D-3 档位策略** | 选枚举编译期检查 + `null`→IAE；**不定义字符串档位解析**，不给运行期「任意档位值」IAE 分支（编译期不可达） |
 | 4 | **D-2 key 排序** | `TreeMap` 自然序；对 ASCII/BMP key 等价码点序；代理对边界（supplementary 字符）按 Java `String.compareTo` 语义，i18n key 惯用 ASCII 无影响 |
 | 5 | **`kv` 依赖缺失的异常时机** | optional 依赖若被其它路径提前加载仍可能 `NoClassDefFoundError`（`aifei-lock` 已知教训）；本模块通过 `KvSource` 方法体隔离 + `Class.forName` 探测，把「已声明 kv 但缺失」转为可读 `I18nException`（AC-11-1）；未声明不探测（AC-11-3） |
-| 6 | **`db` 来源框架 API 形态** | `cn.aifei.db.Db` / `Row` 随 `aifei-all` provided；`DbSource` 用只读参数化查询 + 全量列举（§9.5），**不执行 DDL**。具体调用对齐框架 `Db+Row` 用法；建表 SQL 由消费方执行 |
+| 6 | **`db` 来源框架 API 形态** | `cn.aifei.db.Db` / `Row` 随 `aifei` provided；`DbSource` 用只读参数化查询 + 全量列举（§9.5），**不执行 DDL**。具体调用对齐框架 `Db+Row` 用法；建表 SQL 由消费方执行 |
 | 7 | **`LocaleExtractor` 与框架 Input** | 框架 `Input` 无 header API（trace 已核实）：消费方须自定义 Input 暴露 header 并以 lambda 提供 `LocaleExtractor`；README 写明此边界，模块不做「万能提取器」（D-13） |
 | 8 | **`i18n.locales` 白名单对导出的作用** | 需求 §5.7 定义白名单用于「请求头匹配与导出合法性判断」；导出入口 `bundle(localeTag)` 以显式 locale 为准，白名单用于判定该 locale 是否「受支持」——本设计定档：**白名单不阻断导出**（导出仍按显式 locale 产出），仅在请求头匹配时作为过滤条件（AC-12-6 与 AC-09-4 不冲突）。若裁定导出须拒绝非白名单 locale，属行为变更，先改本文 |
 | 9 | **Demo 与 QA 基线** | 需求 Q7 不新建 demo；D-02 用例落模块测试内（§9.2/§9.3），不引入 Enjoy 依赖 |
@@ -1203,7 +1203,7 @@ mvn dependency:tree                             # 断言：aifei-all(provided) +
 
 ```text
 aifei-i18n/                                       io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                       # 构建：aifei-all provided + aifei-cache optional + junit test
+├── pom.xml                                       # 构建：aifei provided + aifei-cache optional + junit test
 ├── README.md                                     # 面向使用者：用法 / JSON 契约 / 建表 SQL / CLDR & jlink 说明
 ├── AGENTS.md                                     # 面向开发代理：硬约束与门禁说明
 ├── docs/
@@ -1399,7 +1399,7 @@ aifei-i18n-demo（新建示例工程，不发布，端口 18170）
 
 | 项 | 决策 | 实证 / 依据 |
 | --- | --- | --- |
-| 模板引擎 | 复用 `aifei-all:1.1.2` 已内含的 `cn.aifei:aifei-enjoy`，**零新增依赖坐标、零库模块 pom 改动** | `docs/需求/aifei-i18n.md` §11.7 spike（2026-11-19）已验证指令契约在真实 Enjoy 1.1.2 全部成立；`aifei-enjoy` 随 `aifei-all(provided)` 提供 |
+| 模板引擎 | 复用 `aifei:1.1.2` 已内含的 `cn.aifei:aifei-enjoy`，**零新增依赖坐标、零库模块 pom 改动** | `docs/需求/aifei-i18n.md` §11.7 spike（2026-11-19）已验证指令契约在真实 Enjoy 1.1.2 全部成立；`aifei-enjoy` 随 `aifei(provided)` 提供 |
 | 指令基类 / 注册 | 基类 `cn.aifei.enjoy.Directive extends Stat`；注册 `Engine.addDirective(name, Class<? extends Directive>, keepLineBlank)` | `docs/需求/aifei-i18n.md` §11.7 结论④（spike 实证） |
 | 具名参数取值 | `Assign.getRight().eval(scope)`，**禁用** `Assign.eval(scope)`（后者写 scope，污染页面作用域） | `docs/需求/aifei-i18n.md` §11.7「具名参数语义提醒」 |
 | 语言层落点 | 新增 `DirectivePageState` 持有页面级 lang/dir；`effectivePageLang()` 为优先级链唯一落点 | 本文 §5.5/§6.3 四级优先级不含「页面级」，故在指令层组合，不修改 `LocaleResolver` |
@@ -1618,7 +1618,7 @@ String effectivePageLang():
 
 ```text
 aifei-i18n-demo/                              io.github.gollyhu:aifei-i18n-demo:1.0.0-SNAPSHOT（jar，示例工程不发布）
-├── pom.xml                                   aifei-all compile + aifei-i18n compile + undertow-core
+├── pom.xml                                   aifei compile + aifei-i18n compile + undertow-core
 ├── README.md                                 启动方式、端点、P-01~P-06 核对、版本不发布声明
 ├── start-demo.bat                            -Dundertow.port=18170
 ├── stop-demo.bat                             netstat 查 18170 → taskkill
@@ -1647,7 +1647,7 @@ aifei-i18n-demo/                              io.github.gollyhu:aifei-i18n-demo:
 
 | 依赖 | 范围 | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei-all:1.1.2` | compile | 示例工程自带内核（含 Enjoy + Undertow 内核 API） |
+| `cn.aifei:aifei:1.1.2` | compile | 示例工程自带内核（含 Enjoy + Undertow 内核 API） |
 | `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` | compile | 被演示的库本体；启动前先 `cd ..\aifei-i18n && mvn -q -DskipTests clean install` |
 | `io.undertow:undertow-core:2.2.39.Final` | compile | 对齐 excel-demo 版本；零日志绑定（自带 ConsoleLogFactory） |
 
