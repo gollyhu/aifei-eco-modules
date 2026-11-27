@@ -251,6 +251,8 @@ cd aifei-tools && mvn clean verify   # 或逐模块构建（BOM 已安装后即�
 
 **发布能力**：根 BOM 与 19 个库模块均配置了 `central-release` profile 与 `distributionManagement`（仅 snapshotRepository），使用 `mvn -Pcentral-release clean deploy` 提交 Maven Central；13 个 `*-demo` 示例工程不配置发布。具备发布配置 ≠ 已正式发布：`aifei-cache` 已发布版本 `1.1.0` 为冻结基线，源码主线为 **`1.2.0-SNAPSHOT`**；其余模块保持 `1.0.0-SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
 
+完整的本地验证步骤、定版流程与 Maven Central 发布顺序见 [docs/本地验证与发布.md](docs/本地验证与发布.md)。
+
 ## 运行示例
 
 仓库含 13 个可运行 demo（均为**示例工程，不发布**），统一在各 demo 目录下用脚本启停：脚本先 `mvn compile dependency:build-classpath` 生成 classpath，再以 `java -cp ... cn.hg.aifei.<模块>.demo.DemoApp` 启动。运行前须先安装被演示的库模块（见上节"构建"，各 demo README 的"前置"小节亦有说明）。
