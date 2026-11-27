@@ -831,3 +831,252 @@ pom 属性：`<ip2region.version>3.3.7</ip2region.version>` 与 `<zxing.version>
 - **版本策略**：当前基线 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（五子包基线）。后续能力扩展走 minor 递增（`1.1.0`、`1.2.0`…）、缺陷修复走 patch、破坏性变更走 major（本模块公共面冻结，原则上不发生）。
 - **CHANGELOG**：本模块当前无 CHANGELOG；约定**首次新增工具时建立** `aifei-tools/CHANGELOG.md`（沿用仓库文档语言与行尾规范），记录版本号、日期、新增工具与公共面、门禁例数变化、依赖变化；此后每次发布同步追加。
 - 版本与 CHANGELOG 由发布工程师落地，设计关只定口径；坐标版本变更同步 `pom.xml` 与 README/文档索引等引用处。
+
+## 11. 增量设计：通用原语子包（2026-11-27）
+
+> 本章是本次「通用加密 / 随机 / XML / gzip 原语收敛」的**设计事实来源**，优先级高于 §1–§10 中与本章冲突的表述。本章只新增四个子包，**既有五子包（ipdb / captcha / qr / mask / kdf）的公共类型集合、逐字签名、行为契约、依赖与门禁断言均不改**；根包 `cn.hg.aifei.tools` 仍精确 0 公共类型。
+> 关联 PRD：芬西施《aifei-tools 通用原语收敛增量 PRD》P0-1～P0-6；交付负责人裁决 1–4（见 §11.2 / §11.3）。
+
+### 11.1 范围与定档摘要
+
+| 项 | 定档 |
+| --- | --- |
+| 新增子包 | **四个独立子包**：`cn.hg.aifei.tools.crypto` / `.random` / `.xml` / `.codec`（codec 只放 gzip 解压）。不并入 codec、不建统一门面 / 共享接口 / 基类 / `common/` 层。 |
+| 子包总数 | 既有 5 子包 → 最终 **9 子包**：`ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec`（既有 5 + 新增 4）。P0-1 的「4→5 补 kdf」仅为执行过程的**中间态**，**最终文档口径一律 9 子包**，避免根 README / 规划文档再次漂移。 |
+| 公共类型增量 | 每子包 **N=2**（`XxxUtil` 无状态工具 + `XxxException` 统一异常），共新增 **8 个公共类型**；全模块公共类型 20 → **28**。 |
+| 公共原语 | crypto 5 个、random 2 个、xml 2 个、codec 1 个，共 **10 个公共方法**。 |
+| 参数 / 返回值类型 | **仅 `String` / `byte[]` / `boolean` / `int` / `java.util.Map<String,String>`**（均为 JDK 类型）；公共层零 `javax.crypto.` / `java.security.` / 第三方 / 框架字面量。 |
+| 技术基线 | Java 8（`source`/`target`=1.8、class major 52）、UTF-8、CRLF（`.md`）、纯 JDK、零新增依赖、零配置键、零 Plugin / SPI、零日志绑定、零 DB / Web 面。 |
+| 本期不做 | 不迁移协议语义（微信 `sortedSign` 字典序拼接 / RFC6455 GUID / 阿里云 canonical 串与 `signature` 字段名 / 微信 `<xml>` 根节点与字段名 / `http.gzip` 配置键 / `Accept-Encoding` 决策）；不迁移整块模块能力；captcha 题目 / 答案生成仍留 `captcha/internal`，既有 captcha 公共集合与签名不变。 |
+
+### 11.2 授权与版权复核结论（P0-6，定档）
+
+**结论：不复制来源源码文件，按通用算法与公开规范自行重写实现。**
+
+| 来源文件 | 来源授权声明 | 处置 |
+| --- | --- | --- |
+| `aifei-weixin/.../encrypt/Sha1Util.java` | `Copyright 2011-2035 詹波 (aifei.cn)` / `授权：aifei vip 订阅用户` | 不复制源码 / 注释 / 方法名 `sortedSign`；仅按 SHA-1 公开算法重写 → `crypto` |
+| `aifei-weixin/.../encrypt/RandomUtil.java` | 同上 | 不复制源码 / 注释 / 字符集常量声明形态；仅按「SecureRandom + 62 字符集」通用算法重写 → `random` |
+| `aifei-weixin/.../util/XmlUtil.java` | 同上 | 不复制源码 / 注释 / `<xml>` 根节点与微信字段名；仅按 DOM + XXE 硬化公开规范重写 → `xml` |
+| `aifei-weixin/.../util/XmlBuilder.java` | 同上 | 只取 `& < > " '` 五实体转义这一通用规则自行重写 → `xml`；CDATA / `open`/`close`/`raw` 的构建器能力不迁入 |
+| `aifei-websocket/.../Rfc6455Handshake.java` | 仓库统一原创版权头 | 不复制 GUID 字面量 / 头名 / 协议串；只取 `Base64(SHA1(bytes))` 通用计算形态 → `crypto.sha1Base64` |
+| `aifei-sms/.../AliyunReceiptVerifier.java` | 仓库统一原创版权头 | 不复制 canonical 串拼装 / `signature` 字段名；只取 `HMAC-SHA1` + 常量时间比较通用算法 → `crypto` |
+| `aifei-http/.../HttpGzip.java` | 仓库统一原创版权头 | 不复制 `http.gzip` 配置键 / `Accept-Encoding` 决策 / `HttpConfig` 依赖；只取「null/空原样返回 + GZIPInputStream 解压 + 失败抛可读异常」通用算法 → `codec` |
+
+**版权头要求**：四个新子包的**全部** `.java`（公共层 + internal + 测试）使用仓库统一原创版权头：
+
+```java
+/*
+ * Copyright 2014-2026 糊搞 (3722711@qq.com)
+ *
+ * https://gitee.com/gollyhu
+ */
+```
+
+不得出现 `aifei vip 订阅用户` / `詹波` / `aifei.cn` / `Copyright 2011-2035`。`aifei-tools/pom.xml` 保持 Apache-2.0 声明不变。**静态合规检查**落点见 §11.9 与 `docs/testing.md` §3.11。
+
+### 11.3 新增子包公共面精确定义
+
+> 四个新子包公共层各 **2 个类型**（`XxxUtil` / `XxxException`），internal 为非承诺实现。所有公共类型 `final`、工具类私有构造、异常仅两个公共构造（`(String)` / `(String, Throwable)`）、`serialVersionUID=1L`。公共方法**不写 `throws` 子句**，失败一律抛本子包可读异常。公共类型与公共成员**必须有完整简体中文 javadoc**（`@param` / `@return` / `@throws` 写全，空值 / 默认值 / 异常 / 线程安全语义写入 javadoc）。
+
+#### 11.3.1 crypto 子包（N=2）
+
+| 公共类型 | 文件名 | 职责 |
+| --- | --- | --- |
+| `CryptoUtil` | `CryptoUtil.java` | 无状态摘要 / MAC / 常量时间比较工具（全 static） |
+| `CryptoException` | `CryptoException.java` | 统一异常，收敛参数非法与算法不可用 |
+
+```java
+public final class CryptoUtil {                                  // 无状态工具（全 static）
+    private CryptoUtil();
+    public static String sha1Hex(String text);                   // SHA-1 → 40 位小写十六进制
+    public static String sha1Base64(String text);                // SHA-1 → 标准 Base64
+    public static String hmacSha1(String key, String data);      // HMAC-SHA1 → 标准 Base64
+    public static String hmacSha256(String key, String data);    // HMAC-SHA256 → 标准 Base64
+    public static boolean constantTimeEquals(String expected, String actual); // 常量时间比较
+}
+public final class CryptoException extends RuntimeException {
+    public CryptoException(String message);
+    public CryptoException(String message, Throwable cause);
+}
+```
+
+internal（非承诺）：`CryptoErrors`（`crypto: ` 消息与异常构造唯一定义点）、`Sha1Engine`（`sha1Hex` / `sha1Base64`）、`HmacEngine`（`hmacSha1` / `hmacSha256`）、`ConstantTimeEngine`（`constantTimeEquals`）。
+
+**参数 / 返回值 / null 语义**
+
+- 字符编码统一 `StandardCharsets.UTF_8`（`String` ↔ `byte[]`）；**不暴露字符集参数**。
+- `sha1Hex(text)`：对 `"abc"` 返回 `a9993e364706816aba3e25717850c26c9cd0d89d`，40 位小写十六进制（逐字符 `Character.forDigit((b>>4)&0x0F,16)` + `Character.forDigit(b&0x0F,16)`，与 `Sha1Util.sha1` 逐字节一致）；`text` 为 null → `crypto: text must not be null`；`text=""` 合法（返回空串的 SHA-1）。
+- `sha1Base64(text)`：`Base64.getEncoder().encodeToString(SHA1(UTF8(text)))`（标准 Base64、带填充）；与 `Rfc6455Handshake.acceptFor(key)` 的关系是 `sha1Base64(key + GUID)` **逐字节等于** `acceptFor(key)`——GUID 由调用方拼接、**不迁入本子包**；`text` 为 null → `crypto: text must not be null`。
+- `hmacSha1(key, data)` / `hmacSha256(key, data)`：`Mac.getInstance("HmacSHA1"/"HmacSHA256")` + `SecretKeySpec(UTF8(key), alg)`，`doFinal(UTF8(data))`，返回**标准 Base64 字符串**。参数顺序遵循 RFC 2104 `HMAC(K, text)`：`key`=K、`data`=text。`key` 为 null → `crypto: key must not be null`；`data` 为 null → `crypto: data must not be null`；`data=""` 合法（空消息 HMAC）。
+- `constantTimeEquals(expected, actual)`：`MessageDigest.isEqual(UTF8(expected), UTF8(actual))`，`expected`/`actual` 任一为 null → **返回 false（不抛异常）**，对齐 `AliyunReceiptVerifier`「签名缺失 → false」口径；相等（含两个空串）→ true；长度不同也走常量时间路径、不提前返回。
+- 算法不可用（JDK 缺失 SHA-1 / HmacSHA1 / HmacSHA256）→ `crypto: algorithm "{alg}" not available in this JDK, cause: {msg}`，保留 `NoSuchAlgorithmException` cause；`InvalidKeyException` → `crypto: hmac failed, cause: {msg}`，保留 cause。
+
+#### 11.3.2 random 子包（N=2）
+
+| 公共类型 | 文件名 | 职责 |
+| --- | --- | --- |
+| `RandomUtil` | `RandomUtil.java` | 无状态安全随机工具（全 static） |
+| `RandomException` | `RandomException.java` | 统一异常，收敛非法长度 |
+
+```java
+public final class RandomUtil {                                  // 无状态工具（全 static）
+    private RandomUtil();
+    public static String randomString(int length);               // [A-Za-z0-9] 安全随机串，length = 字符数
+    public static String token();                                // 32 字节 SecureRandom → Base64URL 无填充
+}
+public final class RandomException extends RuntimeException {
+    public RandomException(String message);
+    public RandomException(String message, Throwable cause);
+}
+```
+
+internal（非承诺）：`RandomErrors`（`random: ` 消息与异常构造唯一定义点）、`RandomEngine`（唯一持有 `SecureRandom`、字符集表与 Base64URL 编码）。
+
+**参数 / 返回值 / null 语义**
+
+- `randomString(length)`：字符集固定 `"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"`（62 个 ASCII 字符，与来源 `RandomUtil.CHARS` 同内容但**自行重写声明**，不复制注释与文件头）；逐字符 `SecureRandom.nextInt(62)` 取样；`length >= 0`，`length=0` → 返回空串 `""`；`length < 0` → `random: length must not be negative, but was: {n}`。无 null 入参（基本类型）。
+- `token()`：固定 32 字节 `SecureRandom.nextBytes` → `Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)`（Base64URL、无 `=` 填充，43 字符）；与 captcha 既有 token 形态一致但**不引用 captcha 任何类型 / internal**。
+- 线程安全：`RandomEngine` 内单个 `static final SecureRandom`（JDK 保证线程安全），无其它可变静态状态；两个方法均可多线程并发调用。
+- captcha 题目 / 答案生成仍在 `captcha/internal/TokenGenerator`，**不迁入本子包**；`captcha` 公共面（4 类型）与全部签名冻结不变。
+
+#### 11.3.3 xml 子包（N=2）
+
+| 公共类型 | 文件名 | 职责 |
+| --- | --- | --- |
+| `XmlUtil` | `XmlUtil.java` | 无状态 XXE 安全解析与实体转义工具（全 static） |
+| `XmlException` | `XmlException.java` | 统一异常，收敛空内容、解析失败与参数非法 |
+
+```java
+public final class XmlUtil {                                     // 无状态工具（全 static）
+    private XmlUtil();
+    public static Map<String, String> parse(String xml);         // XXE 安全 DOM 解析：根节点直接子元素名 → 文本
+    public static String escape(String text);                    // 文本节点实体转义 & < > " '
+}
+public final class XmlException extends RuntimeException {
+    public XmlException(String message);
+    public XmlException(String message, Throwable cause);
+}
+```
+
+internal（非承诺）：`XmlErrors`（`xml: ` 消息与异常构造唯一定义点）、`XmlParser`（`DocumentBuilderFactory` XXE 硬化唯一定义点）。
+
+**参数 / 返回值 / null 语义**
+
+- `parse(xml)`：用 `javax.xml.parsers.DocumentBuilderFactory` + `org.w3c.dom` 解析；返回 `LinkedHashMap<String,String>`（**JDK 类型**，保序）——根节点下**直接子元素**的节点名 → `getTextContent()`；同名节点**保留首个**（`!ret.containsKey(name)`）；非元素节点（文本 / 注释）跳过；`<xml>` 根节点与微信字段名**不硬编码**，不迁入任何协议语义。
+- `xml` 为 null 或 `trim().isEmpty()` → `xml: content must not be null or empty`；`builder.parse` 失败（含 DOCTYPE / XXE 命中 / 非法 XML）→ `xml: failed to parse content, cause: {msg}`（保留 cause）；根节点为 null → `xml: missing root element`；`DocumentBuilderFactory` 不支持硬化特性 → `xml: XXE protection feature not supported, cause: {msg}`（保留 cause）。
+- XXE 硬化（**唯一定义点 `XmlParser`**）：`disallow-doctype-decl=true`（DOCTYPE 输入**抛异常，不展开**）、`external-general-entities=false`、`external-parameter-entities=false`、`load-external-dtd=false`、`setXIncludeAware(false)`、`setExpandEntityReferences(false)`、`ACCESS_EXTERNAL_DTD=""`、`ACCESS_EXTERNAL_SCHEMA=""`；对老 JDK 不支持的 `XMLConstants` 属性以 `IllegalArgumentException` 忽略（前六项在 JDK 8+ 已足够）。
+- `escape(text)`：逐字符替换 `&`→`&amp;`、`<`→`&lt;`、`>`→`&gt;`、`"`→`&quot;`、`'`→`&apos;`（顺序先 `&` 后其余，避免二次转义），其余字符原样；`text=""` → `""`；`text` 为 null → `xml: text must not be null`；**不含 CDATA / 构建器能力**（`cdata` / `open` / `close` / `raw` / `build` 不迁入）。
+- 线程安全：每次 `parse` 新建 `DocumentBuilderFactory` / `DocumentBuilder`（`DocumentBuilder` 非线程安全，**不缓存共享实例**）；`escape` 为纯函数；两类方法均可并发调用。
+
+#### 11.3.4 codec 子包（N=2）
+
+| 公共类型 | 文件名 | 职责 |
+| --- | --- | --- |
+| `CodecUtil` | `CodecUtil.java` | 无状态 gzip 解压工具（全 static） |
+| `CodecException` | `CodecException.java` | 统一异常，收敛解压失败 |
+
+```java
+public final class CodecUtil {                                   // 无状态工具（全 static）
+    private CodecUtil();
+    public static byte[] gunzip(byte[] raw);                     // gzip 解压；null/空原样返回；失败抛 CodecException
+}
+public final class CodecException extends RuntimeException {
+    public CodecException(String message);
+    public CodecException(String message, Throwable cause);
+}
+```
+
+internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一定义点）、`GzipEngine`（`java.util.zip.GZIPInputStream` 解压唯一定义点）。
+
+**参数 / 返回值 / null 语义**
+
+- `gunzip(raw)`：`raw == null` 或 `raw.length == 0` → **原样返回 `raw`**（null 返回 null、空数组返回该空数组）；否则 `new GZIPInputStream(new ByteArrayInputStream(raw))`，8192 字节缓冲循环读出到 `ByteArrayOutputStream`，返回解压后 `byte[]`。
+- 解压失败（`IOException`，含非 gzip 字节 / 截断流 / CRC 错）→ `codec: gunzip failed, cause: {msg}`，保留 cause；不返回 null、不静默吞错。
+- 纯 JDK `java.util.zip`，零第三方；`http.gzip` 配置键、`Accept-Encoding` 决策、`HttpConfig` 依赖**不迁入**（调用方自行决定是否传压缩字节）。
+- 线程安全：`gunzip` 为纯函数（局部流与缓冲），可并发调用。
+
+### 11.4 异常语义表（增量，消息前缀唯一定义点 `*Errors.java`）
+
+| 前缀 | 唯一定义点 | 场景 → 消息 |
+| --- | --- | --- |
+| `crypto: ` | `crypto/internal/CryptoErrors.java` | `text must not be null`；`key must not be null`；`data must not be null`；`algorithm "{alg}" not available in this JDK, cause: {msg}`；`hmac failed, cause: {msg}` |
+| `random: ` | `random/internal/RandomErrors.java` | `length must not be negative, but was: {n}` |
+| `xml: ` | `xml/internal/XmlErrors.java` | `content must not be null or empty`；`failed to parse content, cause: {msg}`；`missing root element`；`XXE protection feature not supported, cause: {msg}`；`text must not be null` |
+| `codec: ` | `codec/internal/CodecErrors.java` | `gunzip failed, cause: {msg}` |
+
+以上四组前缀纳入门禁⑪的**扩充覆盖**（以新增同构门禁方法实现，既有 `ip: `/`captcha: `/`qr: `/`mask: `/`kdf: ` 五组断言逐字不改，见 §11.7）。
+
+### 11.5 依赖与线程安全口径
+
+- **零新增依赖**：pom 依赖清单（§6.1）不变，`aifei-all` 仍 provided，三个内核仍 optional，junit 仍 test；`THIRD_PARTY_NOTICES.md` 不新增条目（四新子包均为纯 JDK 工具）。
+- **JDK 包边界（门禁⑲扩充）**：`javax.crypto.` / `java.security.` 允许出现在 `kdf/internal`、`captcha/internal`（既有）、新增的 `crypto/internal`、`random/internal`；**其余位置一律禁止**。`javax.xml.parsers.` / `org.w3c.dom.` 仅允许 `xml/internal`；`java.util.zip.` 仅允许 `codec/internal`（二者当前无门禁约束，本轮**不新增** import 边界门禁以避免过度设计，由公共层零字面量门禁守护）。
+- **无状态**：四个 `XxxUtil` 全 static、无实例字段；`RandomEngine` 的 `SecureRandom` 是 JDK 保证线程安全的唯一共享状态；`XmlParser` 每次新建 `DocumentBuilder`。所有公共方法均可并发调用。
+- **公共签名类型白名单**：`String` / `byte[]` / `boolean` / `int` / `Map<String,String>` + 本模块类型；零第三方 / 零框架 / 零 JDK 加密类型。
+
+### 11.6 与既有子包的边界（兼容性）
+
+- 既有五子包 **20 个公共类型、§3 逐字签名、§7/§8 全部行为契约、§6.2 原 21 例门禁文本与集合完全不变**；新子包不修改、不扩展、不转发既有子包任何公共类型。
+- 新子包之间**零互相引用**；`crypto/internal` / `random/internal` / `xml/internal` / `codec/internal` 均不得被其它子包 import（延续 §10.6「不做跨工具抽象」）。
+- `captcha` 的 token 仍由 `captcha/internal/TokenGenerator` 生成（既有 32 字节 Base64URL 无填充口径不变），**不改为调用 `RandomUtil.token()`**；其公共集合（4 类型）与签名冻结。
+- 根 `README.md:36` / `README.md:307` 与 `docs/计划/aifei-eco-modules 模块规划与排期.md:37,67,82,176` 最终统一为 **9 子包**口径并**列出全部九个子包名**：`ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec`（既有 5 + 新增 4）。其中 `kdf` 是本次纠错补入；P0-1 的「4→5 补 kdf」只是执行过程**中间态**，不得作为最终文档口径，否则会再次漂移。**公共 API 描述 / 依赖声明 / 配置键不改**；四个新子包的用法写入 `aifei-tools/README.md`，不在根 README / 规划文档新增能力描述。
+
+### 11.7 门禁扩充定档（ArchitectureBoundaryTest，21 → 33 例）
+
+**纯追加纪律**：既有 21 例的方法体、断言消息文本、期望集合**逐字不改**；唯一例外是按 PRD P0-5 **放宽** `cryptoOnlyInKdfInternal`（原 ⑲）的 import 白名单。新 `@Test` 方法小驼峰、见名知义、同风格。
+
+| 类别 | 新增方法（每子包一个） | 判定口径 |
+| --- | --- | --- |
+| 公共面精确（+4） | `cryptoPublicSurfaceExact` / `randomPublicSurfaceExact` / `xmlPublicSurfaceExact` / `codecPublicSurfaceExact` | `assertPublicSurface(..., 2, 子包名)`：对应子包直接子级 `.java` **精确 2** 且集合相等 = {`XxxUtil.java`, `XxxException.java`}（复用 §6.2 口径，防同名替换） |
+| 消息前缀唯一（+4） | `cryptoPrefixOnlyInErrors` / `randomPrefixOnlyInErrors` / `xmlPrefixOnlyInErrors` / `codecPrefixOnlyInErrors` | `<前缀>: ` 仅允许对应 `<Tool>Errors.java`（测试断言与公共 javadoc 除外），且 Errors 文件必须承载该前缀；口径同 ⑳ |
+| 公共层零字面量（+4） | `publicSignaturesNoThirdPartyCrypto` / `...Random` / `...Xml` / `...Codec` | 各子包**公共层**（非 internal）源码不得出现 `javax.crypto.` / `java.security.` / `org.lionsoul.` / `com.google.zxing.` / `cn.aifei.` / `cn.hg.aifei.cache.`；另按子包追加协议串禁用：crypto 禁 GUID 串 / `sortedSign` / `canonical` / `"signature"`；xml 禁 `"<xml>"` / `ToUserName` / `FromUserName`；codec 禁 `http.gzip` / `Accept-Encoding` / `HttpConfig`；random 禁 `Captcha` / `TokenGenerator` / `ImageGenerator` |
+| import 边界放宽（+0） | 修改 `cryptoOnlyInKdfInternal`（原 ⑲） | `javax.crypto.` / `java.security.` 由「仅 kdf/internal（+captcha/internal 的 java.security. 既有放宽）」放宽为「kdf/internal、captcha/internal、**crypto/internal、random/internal**」；方法名与既有断言文本不改，仅扩展允许路径 |
+| 根包恒定（+0） | 复用 `rootPackageEmpty`（①） | 根包仍精确 0；不创建 `package-info.java` |
+
+**门禁 ⑧/⑳′ 的覆盖扩充以新增同构方法实现**（`publicSignaturesNoThirdPartyXxx` 四例），原 ⑧ `publicSignaturesNoThirdParty` 与 ⑳′ `publicSignaturesNoThirdPartyKdf` 的方法体 / `publicFiles` 集合 / 断言文本**逐字不改**，避免触碰既有断言集合。验证命令期望例数同步改写：`mvn clean verify` 期望 0 failure / 0 error（含门禁 **33** 例）；`mvn test -Dtest=ArchitectureBoundaryTest` 期望 **33** 例。全量回归期望 **178（原）+ 新增功能例** 全绿。
+
+### 11.8 文件清单与任务列表（增量，每文件恰好归属一个任务）
+
+> 任务号 T23–T31 接续既有 T01–T22；T00 为架构师本轮已完成的设计落盘（不再由实现方重复产出）。文件均相对 `aifei-tools/`；根 README 与规划文档相对仓库根。
+
+**T00 架构设计（贾苟思，已完成）**：`aifei-tools/docs/design.md`（本章 §11）· `aifei-tools/docs/testing.md`（§3.7–§3.12）— 设计事实来源与测试策略，实现期只按此落地、不得自行改写契约。
+
+| 任务 | 内容（文件） | 依赖 | 验收要点 |
+| --- | --- | --- | --- |
+| **T23 文档口径定档（P0-1）** | 仓库根 `README.md`（`:36` 工具表与 `子包隔离` 口径改为 **9 子包**并列出九个子包名；`:307` 依赖段口径改为 **9 子包**，其中 kdf 为本次纠错补入）· `docs/计划/aifei-eco-modules 模块规划与排期.md`（`:37,67,82,176` 改为 **9 子包**并列出九个子包名） | T00 | 最终口径统一为 9 子包（既有 5 + 新增 4：ipdb/captcha/qr/mask/kdf/crypto/random/xml/codec），kdf 为本次纠错补入；P0-1「4→5」仅为中间态不得保留；公共 API 描述 / 依赖声明 / 配置键逐字不改；四个新子包用法只写 `aifei-tools/README.md`；CRLF 保持 |
+| **T24 crypto 子包** | `src/main/java/cn/hg/aifei/tools/crypto/CryptoUtil.java` · `CryptoException.java` · `internal/CryptoErrors.java` · `internal/Sha1Engine.java` · `internal/HmacEngine.java` · `internal/ConstantTimeEngine.java` | T00 | §11.3.1 签名逐字一致；5 原语向量与来源实现逐字节一致；公共层零 JDK 加密 / 第三方字面量；统一版权头；中文 javadoc 写全 |
+| **T25 random 子包** | `src/main/java/cn/hg/aifei/tools/random/RandomUtil.java` · `RandomException.java` · `internal/RandomErrors.java` · `internal/RandomEngine.java` | T00 | §11.3.2 签名逐字一致；字符集 / 长度 / Base64URL 无填充正确；负长度可读异常；不引用 captcha |
+| **T26 xml 子包** | `src/main/java/cn/hg/aifei/tools/xml/XmlUtil.java` · `XmlException.java` · `internal/XmlErrors.java` · `internal/XmlParser.java` | T00 | §11.3.3 签名逐字一致；XXE 六项硬化齐全、DOCTYPE 抛异常不展开；`escape` 五实体；不硬编码 `<xml>` / 微信字段名 |
+| **T27 codec 子包** | `src/main/java/cn/hg/aifei/tools/codec/CodecUtil.java` · `CodecException.java` · `internal/CodecErrors.java` · `internal/GzipEngine.java` | T00 | §11.3.4 签名逐字一致；null/空原样返回；失败抛 `CodecException` 保留 cause；不引入配置键 / `Accept-Encoding` |
+| **T28 门禁扩充** | `src/test/java/cn/hg/aifei/tools/ArchitectureBoundaryTest.java`（放宽 ⑲；追加 12 个新 `@Test`） | T24–T27 | §11.7；原 21 例逐字不改；门禁 33 例全绿、0 failure / 0 error |
+| **T29 新子包测试** | `src/test/java/cn/hg/aifei/tools/crypto/CryptoTest.java` · `crypto/PublicApiContractCryptoTest.java` · `random/RandomUtilTest.java` · `random/PublicApiContractRandomTest.java` · `xml/XmlUtilTest.java` · `xml/PublicApiContractXmlTest.java` · `codec/CodecUtilTest.java` · `codec/PublicApiContractCodecTest.java` · `support/SourceReuseComplianceTest.java` | T24–T27 | `docs/testing.md` §3.7–§3.11 用例全覆盖；向量一致性 / 授权版权静态检查 / 公共面断言全绿；全离线 |
+| **T30 模块文档同步** | `aifei-tools/README.md`（四新子包用法、边界、零新增依赖说明、文档索引）· `aifei-tools/AGENTS.md`（公共面清单 20→28、包结构、门禁表 21→33 与 §11.7 新行、唯一定义点、冻结契约红线、冻结 vs 可演进、扩展新工具四步） | T28、T29 | 与 `docs/design.md` §11 逐字一致；`docs/testing.md` 用例数同步；不删改既有条目 |
+| **T31 全量回归** | 无新增文件 | T28–T30 | `mvn clean verify`（模块目录执行）0 failure / 0 error；`javap` 抽查新公共类 major=52；`mvn dependency:tree` 与 §6.1 一致（零新增） |
+
+> 实现期硬纪律：若 §11.3 公共签名不可行，**先回写本章 §11.3 再改代码与门禁**（根 AGENTS.md / 本模块 AGENTS.md）；不得自行增删公共类型或扩大公共 API 面。
+
+### 11.9 跨文件约定（供寇戴码实现、策市袁测试共同遵守）
+
+1. **命名**：无状态工具 → `XxxUtil`（`CryptoUtil` / `RandomUtil` / `XmlUtil` / `CodecUtil`）；有状态门面 → `XxxKit`（本轮**不新增**）；异常 → `XxxException`；internal → `Errors` / `Engine` / `Parser`。不另立 `XxxHelper` / `XxxSupport` / `XxxTool`。
+2. **版权头**：四新子包全部 `.java`（含测试）首部用 §11.2 统一版权头；`SourceReuseComplianceTest` 静态断言禁用 `aifei vip 订阅用户` / `詹波` / `aifei.cn` / `Copyright 2011-2035`。
+3. **消息前缀**：`crypto: ` / `random: ` / `xml: ` / `codec: ` **仅**在对应 `*Errors.java` 构造；公共 javadoc 可提及但须为注释（门禁 `stripComments` 会剥离）；测试逐字断言消息全文，不得用常量拼期望值。
+4. **JDK 加密字面量**：`javax.crypto.` / `java.security.` **只**出现在 `crypto/internal` / `random/internal`（及既有 `kdf/internal` / `captcha/internal`）；公共层零这类字面量。XML 用 `javax.xml.parsers.` / `org.w3c.dom.`，gzip 用 `java.util.zip.`，均只在各自 internal。
+5. **协议语义隔离**：新子包源码（公共层与 internal）不得出现 `sortedSign` / RFC6455 GUID 串 / `canonical` / `"signature"` / `"<xml>"` / `ToUserName` / `FromUserName` / `http.gzip` / `Accept-Encoding` / `HttpConfig` / `Captcha` / `TokenGenerator` / `ImageGenerator` 等来源协议串或类型名（测试参考实现除外，测试不扫此门禁）。
+6. **门禁写法**：复用 `assertPublicSurface(packagePath, expectedSet, 2, label)`；新集合以 `new LinkedHashSet<String>(Arrays.asList(...))` 声明，与既有五组同构；新 `@Test` 方法逐字追加，**不重排、不改写、不放宽**既有 21 例；唯一放宽是 ⑲ 的 import 允许路径（§11.7）。
+7. **Java 8 / 行尾**：禁 `var` / `record` / `List.of` / `Map.of` / `Set.of` / text block / `sealed` / `instanceof` 模式匹配；`.md` 用 CRLF；源码 UTF-8、4 空格缩进、简体中文注释 / javadoc。
+8. **测试离线**：全部新测试零联网；gzip 样本用 `GZIPOutputStream` 内存生成，XML 样本为内嵌字符串常量，不引测试向量库、不落外部文件。
+
+### 11.10 与来源实现的向量一致性口径
+
+| 新增原语 | 权威参考 | 一致性要求 |
+| --- | --- | --- |
+| `sha1Hex` | `Sha1Util.sha1(String)` + SHA-1 标准向量 | 同一非 null 入参输出**逐字符相等**（40 位小写十六进制）；`"abc"` → `a9993e364706816aba3e25717850c26c9cd0d89d` |
+| `sha1Base64` | `Rfc6455Handshake.acceptFor(key)` 的 `Base64(SHA1(...))` 部分 | `sha1Base64(key + GUID)` 与 `acceptFor(key)` **逐字节相等**；另以 JDK `MessageDigest`+`Base64` 独立参考与 RFC 6455 标准 key/accept 向量双重断言 |
+| `hmacSha1` | `AliyunReceiptVerifier.verify` 的 `HMAC-SHA1` 摘要 | 同 key/data 的 Base64 输出与 JDK `Mac("HmacSHA1")`+`Base64` 独立参考逐字节相等；另用 RFC 4231 HMAC-SHA1 向量 |
+| `hmacSha256` | RFC 4231 HMAC-SHA256 官方向量 | 与 JDK `Mac("HmacSHA256")`+`Base64` 独立参考逐字节相等 |
+| `constantTimeEquals` | `AliyunReceiptVerifier.verify` 的 `MessageDigest.isEqual` 比较 | 与 JDK `MessageDigest.isEqual(UTF8(a), UTF8(b))` 结果逐位一致；null 语义按 §11.3.1 |
+| `randomString` / `token` | `RandomUtil.randomStr` / captcha token 形态（非固定向量） | 断言字符集、长度、唯一性、Base64URL 无填充；**不断言具体随机值** |
+| `parse` / `escape` | `XmlUtil.parse` / `XmlBuilder.escape`（仅通用算法） | `escape` 五实体结果与来源**逐字符相等**；`parse` 仅比对通用 DOM 行为（保序 / 同名取首 / XXE 拒绝），**不比对微信字段名** |
+| `gunzip` | `HttpGzip.decode`（仅通用算法） | 同压缩字节解压结果**逐字节相等**；null/空原样返回；失败抛可读异常 |
+
+> 来源模块的公共 API / 协议串 / 字段名**不进入 aifei-tools 依赖与源码**；向量一致性由测试内 JDK 独立参考实现与公开 RFC 向量保证，而非复制来源代码。

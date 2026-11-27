@@ -25,7 +25,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 架构门禁（设计 §6.2，21 例：原 17 + kdf 追加 4）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
+ * 架构门禁（设计 §6.2 与 §11.7，33 例：原 21 + 通用原语追加 12）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
  *
  * <p>执行位置必须为 aifei-tools 模块根目录（依赖相对路径 src/main/java），
  * 由 surefire workingDirectory 固定为 ${project.basedir} 保证。</p>
@@ -58,6 +58,24 @@ public class ArchitectureBoundaryTest {
             "MaskUtil.java", "MaskKit.java", "MaskException.java"));
     private static final Set<String> KDF_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
             "KdfKit.java", "KdfSpec.java", "KdfHash.java", "KdfException.java"));
+
+    private static final String CRYPTO_PACKAGE = ROOT_PACKAGE + "crypto/";
+    private static final String RANDOM_PACKAGE = ROOT_PACKAGE + "random/";
+    private static final String XML_PACKAGE = ROOT_PACKAGE + "xml/";
+    private static final String CODEC_PACKAGE = ROOT_PACKAGE + "codec/";
+    private static final String CRYPTO_INTERNAL = CRYPTO_PACKAGE + "internal/";
+    private static final String RANDOM_INTERNAL = RANDOM_PACKAGE + "internal/";
+    private static final String XML_INTERNAL = XML_PACKAGE + "internal/";
+    private static final String CODEC_INTERNAL = CODEC_PACKAGE + "internal/";
+
+    private static final Set<String> CRYPTO_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
+            "CryptoUtil.java", "CryptoException.java"));
+    private static final Set<String> RANDOM_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
+            "RandomUtil.java", "RandomException.java"));
+    private static final Set<String> XML_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
+            "XmlUtil.java", "XmlException.java"));
+    private static final Set<String> CODEC_PUBLIC = new LinkedHashSet<String>(Arrays.asList(
+            "CodecUtil.java", "CodecException.java"));
 
     /** ① 根包 cn/hg/aifei/tools/ 直接子级 .java 精确 0。 */
     @Test
@@ -292,9 +310,9 @@ public class ArchitectureBoundaryTest {
     }
 
     /**
-     * ⑲ javax.crypto. import 仅允许 kdf/internal；java.security. import 仅允许 kdf/internal 与
-     * captcha/internal（captcha 既有的 SecureRandom 用于 token 随机数，设计 §6.2 原口径未覆盖此既有用法，
-     * 实现期偏离：放宽 java.security. 边界至 captcha/internal，javax.crypto. 边界不变）。
+     * ⑲ javax.crypto. / java.security. import 仅允许 kdf/internal、captcha/internal、
+     * crypto/internal、random/internal（captcha 既有的 SecureRandom 用于 token 随机数，
+     * 设计 §11.5 / §11.7 定档放宽：加入本次新增的 crypto/internal 与 random/internal）。
      */
     @Test
     public void cryptoOnlyInKdfInternal() throws IOException {
@@ -303,11 +321,13 @@ public class ArchitectureBoundaryTest {
             for (String line : imports(stripComments(read(file)))) {
                 if (line.startsWith("javax.crypto.")) {
                     assertTrue("javax.crypto 泄漏出 kdf/internal: " + path + " -> " + line,
-                            path.startsWith(KDF_INTERNAL));
+                            path.startsWith(KDF_INTERNAL) || path.startsWith(CAPTCHA_INTERNAL)
+                                    || path.startsWith(CRYPTO_INTERNAL) || path.startsWith(RANDOM_INTERNAL));
                 }
                 if (line.startsWith("java.security.")) {
                     assertTrue("java.security 泄漏出 kdf/internal 或 captcha/internal: " + path + " -> " + line,
-                            path.startsWith(KDF_INTERNAL) || path.startsWith(CAPTCHA_INTERNAL));
+                            path.startsWith(KDF_INTERNAL) || path.startsWith(CAPTCHA_INTERNAL)
+                                    || path.startsWith(CRYPTO_INTERNAL) || path.startsWith(RANDOM_INTERNAL));
                 }
             }
         }
@@ -341,6 +361,167 @@ public class ArchitectureBoundaryTest {
                     "org.lionsoul.", "com.google.zxing.",
                     "cn.aifei.", "cn.hg.aifei.cache.")) {
                 assertFalse("kdf 公共类型不得含 JDK 加密/第三方/框架字面量: " + name + " -> " + forbidden,
+                        text.contains(forbidden));
+            }
+        }
+    }
+
+    /** ㉑ crypto 公共面精确 2 且集合相等。 */
+    @Test
+    public void cryptoPublicSurfaceExact() throws IOException {
+        assertPublicSurface(CRYPTO_PACKAGE, CRYPTO_PUBLIC, 2, "crypto");
+    }
+
+    /** ㉒ random 公共面精确 2 且集合相等。 */
+    @Test
+    public void randomPublicSurfaceExact() throws IOException {
+        assertPublicSurface(RANDOM_PACKAGE, RANDOM_PUBLIC, 2, "random");
+    }
+
+    /** ㉓ xml 公共面精确 2 且集合相等。 */
+    @Test
+    public void xmlPublicSurfaceExact() throws IOException {
+        assertPublicSurface(XML_PACKAGE, XML_PUBLIC, 2, "xml");
+    }
+
+    /** ㉔ codec 公共面精确 2 且集合相等。 */
+    @Test
+    public void codecPublicSurfaceExact() throws IOException {
+        assertPublicSurface(CODEC_PACKAGE, CODEC_PUBLIC, 2, "codec");
+    }
+
+    /** ㉕ crypto: 消息前缀仅允许 CryptoErrors.java（扩充门禁⑪，口径同⑳）。 */
+    @Test
+    public void cryptoPrefixOnlyInErrors() throws IOException {
+        String prefix = "crypto: ";
+        String errorsFile = CRYPTO_INTERNAL + "CryptoErrors.java";
+        for (Path file : javaFiles(SOURCE_ROOT)) {
+            String path = normalize(file);
+            if (path.equals(errorsFile)) {
+                continue;
+            }
+            assertFalse("crypto: 前缀只允许在 CryptoErrors: " + path,
+                    stripComments(read(file)).contains(prefix));
+        }
+        assertTrue("CryptoErrors 必须承载 crypto: 前缀",
+                stripComments(read(SOURCE_ROOT.resolve(errorsFile))).contains(prefix));
+    }
+
+    /** ㉖ random: 消息前缀仅允许 RandomErrors.java。 */
+    @Test
+    public void randomPrefixOnlyInErrors() throws IOException {
+        String prefix = "random: ";
+        String errorsFile = RANDOM_INTERNAL + "RandomErrors.java";
+        for (Path file : javaFiles(SOURCE_ROOT)) {
+            String path = normalize(file);
+            if (path.equals(errorsFile)) {
+                continue;
+            }
+            assertFalse("random: 前缀只允许在 RandomErrors: " + path,
+                    stripComments(read(file)).contains(prefix));
+        }
+        assertTrue("RandomErrors 必须承载 random: 前缀",
+                stripComments(read(SOURCE_ROOT.resolve(errorsFile))).contains(prefix));
+    }
+
+    /** ㉗ xml: 消息前缀仅允许 XmlErrors.java。 */
+    @Test
+    public void xmlPrefixOnlyInErrors() throws IOException {
+        String prefix = "xml: ";
+        String errorsFile = XML_INTERNAL + "XmlErrors.java";
+        for (Path file : javaFiles(SOURCE_ROOT)) {
+            String path = normalize(file);
+            if (path.equals(errorsFile)) {
+                continue;
+            }
+            assertFalse("xml: 前缀只允许在 XmlErrors: " + path,
+                    stripComments(read(file)).contains(prefix));
+        }
+        assertTrue("XmlErrors 必须承载 xml: 前缀",
+                stripComments(read(SOURCE_ROOT.resolve(errorsFile))).contains(prefix));
+    }
+
+    /** ㉘ codec: 消息前缀仅允许 CodecErrors.java。 */
+    @Test
+    public void codecPrefixOnlyInErrors() throws IOException {
+        String prefix = "codec: ";
+        String errorsFile = CODEC_INTERNAL + "CodecErrors.java";
+        for (Path file : javaFiles(SOURCE_ROOT)) {
+            String path = normalize(file);
+            if (path.equals(errorsFile)) {
+                continue;
+            }
+            assertFalse("codec: 前缀只允许在 CodecErrors: " + path,
+                    stripComments(read(file)).contains(prefix));
+        }
+        assertTrue("CodecErrors 必须承载 codec: 前缀",
+                stripComments(read(SOURCE_ROOT.resolve(errorsFile))).contains(prefix));
+    }
+
+    /** ㉙ crypto 公共层零 JDK 加密 / 第三方 / 框架字面量与来源协议串。 */
+    @Test
+    public void publicSignaturesNoThirdPartyCrypto() throws IOException {
+        for (String name : CRYPTO_PUBLIC) {
+            Path file = SOURCE_ROOT.resolve(CRYPTO_PACKAGE).resolve(name);
+            String text = stripComments(read(file));
+            for (String forbidden : Arrays.asList(
+                    "javax.crypto.", "java.security.",
+                    "org.lionsoul.", "com.google.zxing.",
+                    "cn.aifei.", "cn.hg.aifei.cache.",
+                    "258EAFA5-E914-47DA-95CA-C5AB0DC85B11", "sortedSign",
+                    "canonical", "\"signature\"")) {
+                assertFalse("crypto 公共类型不得含 JDK 加密/第三方/协议字面量: " + name + " -> " + forbidden,
+                        text.contains(forbidden));
+            }
+        }
+    }
+
+    /** ㉚ random 公共层零 JDK 加密 / 第三方 / 框架字面量与来源类型名。 */
+    @Test
+    public void publicSignaturesNoThirdPartyRandom() throws IOException {
+        for (String name : RANDOM_PUBLIC) {
+            Path file = SOURCE_ROOT.resolve(RANDOM_PACKAGE).resolve(name);
+            String text = stripComments(read(file));
+            for (String forbidden : Arrays.asList(
+                    "javax.crypto.", "java.security.",
+                    "org.lionsoul.", "com.google.zxing.",
+                    "cn.aifei.", "cn.hg.aifei.cache.",
+                    "Captcha", "TokenGenerator", "ImageGenerator")) {
+                assertFalse("random 公共类型不得含 JDK 加密/第三方/来源类型字面量: " + name + " -> " + forbidden,
+                        text.contains(forbidden));
+            }
+        }
+    }
+
+    /** ㉛ xml 公共层零 JDK 加密 / 第三方 / 框架字面量与来源协议串。 */
+    @Test
+    public void publicSignaturesNoThirdPartyXml() throws IOException {
+        for (String name : XML_PUBLIC) {
+            Path file = SOURCE_ROOT.resolve(XML_PACKAGE).resolve(name);
+            String text = stripComments(read(file));
+            for (String forbidden : Arrays.asList(
+                    "javax.crypto.", "java.security.",
+                    "org.lionsoul.", "com.google.zxing.",
+                    "cn.aifei.", "cn.hg.aifei.cache.",
+                    "\"<xml>\"", "ToUserName", "FromUserName")) {
+                assertFalse("xml 公共类型不得含 JDK 加密/第三方/协议字面量: " + name + " -> " + forbidden,
+                        text.contains(forbidden));
+            }
+        }
+    }
+
+    /** ㉜ codec 公共层零 JDK 加密 / 第三方 / 框架字面量与来源配置键、传输头。 */
+    @Test
+    public void publicSignaturesNoThirdPartyCodec() throws IOException {
+        for (String name : CODEC_PUBLIC) {
+            Path file = SOURCE_ROOT.resolve(CODEC_PACKAGE).resolve(name);
+            String text = stripComments(read(file));
+            for (String forbidden : Arrays.asList(
+                    "javax.crypto.", "java.security.",
+                    "org.lionsoul.", "com.google.zxing.",
+                    "cn.aifei.", "cn.hg.aifei.cache.",
+                    "http.gzip", "Accept-Encoding", "HttpConfig")) {
+                assertFalse("codec 公共类型不得含 JDK 加密/第三方/配置键字面量: " + name + " -> " + forbidden,
                         text.contains(forbidden));
             }
         }

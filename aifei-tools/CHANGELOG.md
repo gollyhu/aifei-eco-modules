@@ -2,6 +2,38 @@
 
 本文件记录 `aifei-tools` 模块的版本变更，按时间倒序。版本号遵循语义化版本（capability 扩展走 minor 递增、缺陷修复走 patch、破坏性变更走 major）。
 
+## [1.1.0] - 2026-11-27
+
+### 概述
+
+新增四个纯 JDK 通用原语子包 `crypto` / `random` / `xml` / `codec`，模块公共类型由 20 增至 **28**（最终九子包），架构门禁由 21 增至 **33**；pom 依赖清单不变，**零新增第三方依赖、零配置键、零 Plugin / SPI、零日志绑定**。既有五子包（ipdb / captcha / qr / mask / kdf）公共面、签名、行为与依赖冻结不变，根包仍精确 0 公共类型。
+
+### 新增四子包（每子包公共类型 N=2）
+
+| 子包 | 公共类型 | 公共原语 | internal |
+| --- | --- | --- | --- |
+| `crypto` | `CryptoUtil` / `CryptoException` | `sha1Hex` / `sha1Base64` / `hmacSha1` / `hmacSha256` / `constantTimeEquals`（5） | `CryptoErrors` / `Sha1Engine` / `HmacEngine` / `ConstantTimeEngine` |
+| `random` | `RandomUtil` / `RandomException` | `randomString(int)` / `token()`（2） | `RandomErrors` / `RandomEngine` |
+| `xml` | `XmlUtil` / `XmlException` | `parse(String)` / `escape(String)`（2） | `XmlErrors` / `XmlParser` |
+| `codec` | `CodecUtil` / `CodecException` | `gunzip(byte[])`（1） | `CodecErrors` / `GzipEngine` |
+
+- `crypto` 文本编码固定 UTF-8，摘要输出 40 位小写十六进制或标准 Base64，HMAC 按 RFC 2104 `HMAC(K, text)` 顺序传参并输出标准 Base64；`constantTimeEquals` 遇 null 返回 false 不抛异常
+- `random` 使用 62 个 ASCII 字母数字字符，`length >= 0`、0 返回空串；`token()` 为 32 字节安全随机源转无填充 Base64URL（43 字符）
+- `xml` 在 `XmlParser` 单点完成六项 XXE 硬化，文档类型声明命中即抛异常不展开；`parse` 返回 JDK 保序映射、同名取首；`escape` 只做五实体单次替换；不硬编码协议根节点与字段名
+- `codec` 的 `gunzip` 对 null / 空数组原样返回，失败抛 `CodecException` 并保留 cause；不读取配置键、不干涉传输层协商
+- 四个新子包互不引用，也不被既有五子包引用；公共层零 JDK 加密类型、零第三方 / 框架字面量；`javax.crypto.*` / `java.security.*` 仅 `crypto/internal` / `random/internal`（及既有 `kdf/internal` / `captcha/internal`）使用，门禁⑲按设计 §11.7 放宽
+- 全部新增 `.java` 使用仓库统一原创版权头，按公开算法与规范自行重写，不复制来源模块的源码、注释、协议串或字段名
+
+### 架构门禁（21 → 33 例）
+
+- 原 21 例的方法体、断言消息文本与期望集合逐字不改；唯一放宽为 `cryptoOnlyInKdfInternal`（⑲）的 import 允许路径，加入 `crypto/internal` / `random/internal`
+- 新增 12 例：四 `XxxPublicSurfaceExact`、四 `XxxPrefixOnlyInErrors`、四 `publicSignaturesNoThirdPartyXxx`（设计 §11.7）
+
+### 依赖与测试口径
+
+- 依赖清单不变：`aifei-all`(provided) + `ip2region` / `zxing` / `aifei-cache`(optional) + `junit`(test)；四个新子包纯 JDK
+- 全量回归期望 235 例（门禁 33 + 功能 202），0 failure / 0 error 为准入线；用例按 `docs/testing.md` §3.7–§3.12 执行，全部离线
+
 ## [1.0.0] - 2026-11-24
 
 ### 概述

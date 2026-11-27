@@ -2,11 +2,11 @@
 
 ## 1. 定位与场景
 
-把“几十行就能写完、却每个应用都要抄一遍”的极简能力收拢到一个 JAR：**图形验证码、离线 IP 归属地、二维码、通用脱敏、KDF 密钥派生**，五个工具互不相关、各用一个子包，取用哪个就只用哪个，互不牵连。
+把“几十行就能写完、却每个应用都要抄一遍”的极简能力收拢到一个 JAR：**图形验证码、离线 IP 归属地、二维码、通用脱敏、KDF 密钥派生、摘要与消息认证码、安全随机、XML 安全解析、gzip 解压**，九个工具互不相关、各用一个子包，取用哪个就只用哪个，互不牵连。
 
 - 坐标：`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`）
 - 包名：`cn.hg.aifei.tools`；Java 8（class major 52）；根包零公共类型
-- 五个工具：`captcha` 验证码 / `ipdb` IP 归属地 / `qr` 二维码 / `mask` 脱敏 / `kdf` 密钥派生
+- 九个工具：`captcha` 验证码 / `ipdb` IP 归属地 / `qr` 二维码 / `mask` 脱敏 / `kdf` 密钥派生 / `crypto` 摘要与认证码 / `random` 安全随机 / `xml` 解析与转义 / `codec` gzip 解压
 
 **适合**：单体或小应用里需要上述某一项能力、又不愿为它单独引一个框架或起一个服务；**不适合**：滑块 / 点选行为验证、短信邮件验证码发送、联网 IP 库、经纬度与风控画像——这些都不在本模块范围内。
 
@@ -22,7 +22,7 @@
 </dependency>
 ```
 
-`aifei-all:1.1.2` 由消费方自带（本模块对它 `provided`、不传递）。五个工具各给一个最小闭环，按需取用即可。
+`aifei-all:1.1.2` 由消费方自带（本模块对它 `provided`、不传递）。九个工具各给一个最小闭环，按需取用即可。
 
 **脱敏（纯 JDK，零额外依赖）**
 
@@ -84,11 +84,31 @@ IpRegion region = IpKit.search("/data/ip2region_v4.xdb", "/data/ip2region_v6.xdb
 String country = region.getCountry();   // 中国
 ```
 
-> `ip` 与 `qr` 的内核是**可选依赖**，不会随本模块传递。要用这两个工具，须在你的工程里显式加上对应依赖（见 §5、§7 依赖表）。未引入时首次调用抛可读异常，提示补齐坐标，而不是裸 `NoClassDefFoundError`。`captcha` 单机用无需额外依赖，`mask` 全程零依赖。
+> `ip` 与 `qr` 的内核是**可选依赖**，不会随本模块传递。要用这两个工具，须在你的工程里显式加上对应依赖（见 §5、§7 依赖表）。未引入时首次调用抛可读异常，提示补齐坐标，而不是裸 `NoClassDefFoundError`。`captcha` 单机、`mask`、`crypto`、`random`、`xml`、`codec` 全程零依赖。
+
+**摘要与认证码 / 安全随机 / XML / gzip 解压（纯 JDK，零额外依赖）**
+
+```java
+import java.util.Map;
+
+import cn.hg.aifei.tools.crypto.CryptoUtil;
+import cn.hg.aifei.tools.random.RandomUtil;
+import cn.hg.aifei.tools.xml.XmlUtil;
+import cn.hg.aifei.tools.codec.CodecUtil;
+
+String hex = CryptoUtil.sha1Hex("abc");                    // 40 位小写十六进制
+String mac = CryptoUtil.hmacSha256("my-secret", "payload"); // 标准 Base64
+boolean same = CryptoUtil.constantTimeEquals(mac, received); // 常量时间比较
+String nonce = RandomUtil.randomString(16);               // 62 字符集的随机串
+String token = RandomUtil.token();                        // 43 字符 Base64URL
+Map<String, String> fields = XmlUtil.parse(xmlText);      // 保序、禁用外部实体
+String escaped = XmlUtil.escape("a&b<c>\"d\"'");            // 五实体转义
+byte[] plain = CodecUtil.gunzip(compressed);              // null / 空数组原样返回
+```
 
 ## 3. 常用用法
 
-五个工具各是一个静态门面 / 无状态工具，随取随用，没有装配期、没有配置键。
+九个工具各是一个静态门面 / 无状态工具，随取随用，没有装配期、没有配置键。
 
 ### 验证码：`CaptchaKit`
 
@@ -164,7 +184,54 @@ KdfSpec hmac = KdfSpec.hmac(KdfHash.SHA512, 64);
 byte[] key3 = KdfKit.derive(hmac, secret);
 ```
 
-三种算法 + 两档哈希（SHA-256 / SHA-512）经 `KdfSpec` 工厂组合，`KdfKit.derive` 按 `algorithm` 分派；`javax.crypto` / `java.security` 仅 `kdf/internal` 引用，公共签名零 JDK 加密类型。
+三种算法 + 两档哈希（SHA-256 / SHA-512）经 `KdfSpec` 工厂组合，`KdfKit.derive` 按 `algorithm` 分派；`javax.crypto` / `java.security` 仅 `kdf/internal`、`crypto/internal`、`random/internal` 引用，公共签名零 JDK 加密类型。
+
+### 摘要与认证码：`CryptoUtil`（纯 JDK，零额外依赖）
+
+```java
+import cn.hg.aifei.tools.crypto.CryptoUtil;
+
+String hex = CryptoUtil.sha1Hex("abc");                         // a9993e364706816aba3e25717850c26c9cd0d89d
+String base64 = CryptoUtil.sha1Base64("abc");                   // 标准 Base64（带填充）
+String sign1 = CryptoUtil.hmacSha1("secret", "message");        // RFC 2104：key 在前、data 在后
+String sign256 = CryptoUtil.hmacSha256("secret", "message");
+boolean ok = CryptoUtil.constantTimeEquals(sign256, received);  // 任一方为 null 返回 false
+```
+
+文本按 UTF-8 编码；摘要与认证码均输出标准 Base64；参数非法或算法不可用抛 `CryptoException`，公共方法不声明 `throws`。协议约定（拼接串、握手常量、字段名）由调用方自行处理，本子包只做通用计算。
+
+### 安全随机：`RandomUtil`（纯 JDK，零额外依赖）
+
+```java
+import cn.hg.aifei.tools.random.RandomUtil;
+
+String nonce = RandomUtil.randomString(16);   // A-Z / a-z / 0-9，长度即字符数
+String token = RandomUtil.token();            // 32 字节随机源 → 43 字符 Base64URL，无等号填充
+```
+
+`randomString(0)` 返回空串，负长度抛 `RandomException`；随机源为 JDK 保证线程安全的 `SecureRandom`，可并发调用。不读取任何配置键，也不与既有 `captcha` 子包互相引用。
+
+### XML 安全解析与转义：`XmlUtil`（纯 JDK，零额外依赖）
+
+```java
+import java.util.Map;
+import cn.hg.aifei.tools.xml.XmlUtil;
+
+Map<String, String> fields = XmlUtil.parse(xmlText);  // 根节点直接子元素名 → 文本，保序、同名取首
+String safe = XmlUtil.escape("a&b<c>\"d\"'");          // & < > " ' 五实体转义
+```
+
+解析禁用文档类型声明与外部实体（命中即抛 `XmlException`，不展开），每次调用新建解析器；返回 JDK 自带的保序映射，不硬编码任何协议根节点或字段名。文本内容为 null 或全空白抛 `XmlException`。
+
+### gzip 解压：`CodecUtil`（纯 JDK，零额外依赖）
+
+```java
+import cn.hg.aifei.tools.codec.CodecUtil;
+
+byte[] plain = CodecUtil.gunzip(compressed);  // null → null，空数组 → 原数组
+```
+
+只做解压计算：是否传入压缩字节由调用方决定，本子包不读取配置键、不干涉传输层请求头。字节非法或流损坏抛 `CodecException` 并保留根因，不静默返回 null。
 
 ## 4. 深入使用
 
@@ -286,8 +353,12 @@ public class CustomerExportService {
 | 二维码 | `com.google.zxing:core:3.5.3` | 首次调用 `QrKit` 抛可读 `QrException` |
 | 验证码集群存储 | `io.github.gollyhu:aifei-cache:1.1.0` | 调用 `enableClusterStore()` 抛可读 `CaptchaException` |
 | 密钥派生 | 无（纯 JDK `javax.crypto` / `java.security`） | 始终可用，无缺失场景 |
+| 摘要与认证码 | 无（纯 JDK） | 始终可用，无缺失场景 |
+| 安全随机 | 无（纯 JDK） | 始终可用，无缺失场景 |
+| XML 解析与转义 | 无（纯 JDK） | 始终可用，无缺失场景 |
+| gzip 解压 | 无（纯 JDK） | 始终可用，无缺失场景 |
 
-- 验证码单机模式、脱敏、密钥派生不依赖任何内核，引了本模块即可用。
+- 验证码单机模式、脱敏、密钥派生与新增四个子包（`crypto` / `random` / `xml` / `codec`）不依赖任何内核，引了本模块即可用；本次新增**零依赖、零配置键**。
 - `zxing` 只引 `core`，**不引 `javase`**（后者会额外拖入命令行与图像 IO 库）；二维码 PNG 由模块内部绘制。
 - 缺失内核时抛的是本模块异常、消息里写明需要补齐的坐标，且保留底层 cause——这是“能力按需引入”，不是“功能降级”。
 - 版本口径：`ip2region` / `zxing` 版本由本模块 pom 的属性（`ip2region.version` / `zxing.version`）管理；`aifei-cache` 版本在 pom 中直接写死为 `1.1.0`（无对应属性）。消费方需与上表坐标一致。
@@ -308,11 +379,11 @@ public class CustomerExportService {
 - **二维码解码失败不静默**：无法识别的图片抛 `QrException` 并保留 cause，不返回 null；`decode(InputStream)` 不关闭调用方传入的流，流的开关由调用方负责。
 - **脱敏是宽松文本处理**：`maskIp` 对非法文本不抛异常——按分隔符特征打码，`::` 压缩形式会先展开为完整 8 段再打码（如 `2001:db8:85a3::8a2e:370:7334` → `2001:*:*:*:*:*:*:*`），等价写法结果一致，畸形输入健壮退化。`value` 为 null 返回 null、空串返回空串；`MaskException` 只用于规则注册类错误与负数保留位。
 - **双许可署名**：`ip2region` 采用 **Apache-2.0 OR MIT** 双许可。消费方引入该内核时，须按其许可要求随产品保留相应署名与许可声明；许可文本随依赖自带，本模块不复制。完整署名与许可信息见 `THIRD_PARTY_NOTICES.md`。
-- **密钥派生纯 JDK**：`kdf` 子包用 JDK 8 自带的 `javax.crypto.Mac` / `java.security` 实现 HKDF（RFC 5869）、PBKDF2（RFC 8018）、HMAC（RFC 4231）三算法，零第三方依赖；`javax.crypto` / `java.security` import 仅出现在 `kdf/internal/`，公共签名零 JDK 加密类型（门禁⑲⑳′）。
+- **密钥派生与新增原语纯 JDK**：`kdf` 子包用 JDK 8 自带的 `javax.crypto.Mac` / `java.security` 实现 HKDF（RFC 5869）、PBKDF2（RFC 8018）、HMAC（RFC 4231）三算法，零第三方依赖；`javax.crypto` / `java.security` import 仅出现在 `kdf/internal/`、`crypto/internal/`、`random/internal/`（门禁⑲按设计 §11.7 放宽），公共签名零 JDK 加密类型（门禁⑳′及新增四例）。四个新子包互不引用、零新增第三方依赖。
 
 ## 7. 参考
 
-### 公共类型一览（五子包共 20 个，根包零公共类型）
+### 公共类型一览（九子包共 28 个，根包零公共类型）
 
 | 子包 | 公共类型 |
 | --- | --- |
@@ -321,6 +392,10 @@ public class CustomerExportService {
 | `cn.hg.aifei.tools.qr` | `QrKit` / `QrOptions` / `QrErrorCorrection` / `QrException` |
 | `cn.hg.aifei.tools.mask` | `MaskUtil` / `MaskKit` / `MaskException` |
 | `cn.hg.aifei.tools.kdf` | `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException` |
+| `cn.hg.aifei.tools.crypto` | `CryptoUtil` / `CryptoException` |
+| `cn.hg.aifei.tools.random` | `RandomUtil` / `RandomException` |
+| `cn.hg.aifei.tools.xml` | `XmlUtil` / `XmlException` |
+| `cn.hg.aifei.tools.codec` | `CodecUtil` / `CodecException` |
 
 ### 依赖坐标
 
@@ -336,7 +411,7 @@ public class CustomerExportService {
 
 ### 异常对照
 
-五个工具各有统一异常，均为 `RuntimeException`，公共方法不声明 `throws`；业务只 `catch`、不 `new`。
+九个工具各有统一异常，均为 `RuntimeException`，公共方法不声明 `throws`；业务只 `catch`、不 `new`。
 
 | 异常 | 典型场景 | 备注 |
 | --- | --- | --- |
@@ -345,24 +420,29 @@ public class CustomerExportService {
 | `QrException` | 内核缺失 / null 或空输入 / 编解码失败 | 消息前缀 `qr: `，失败保留 cause、不返回 null |
 | `MaskException` | 规则重复注册 / 替换或取用未注册规则 / 名称或函数 null / 保留位为负 | 消息前缀 `mask: `；文本内容非法不抛异常 |
 | `KdfException` | spec/ikm 为 null / algorithm 非法 / keyLen 非正 / PBKDF2 salt 为 null 或 iterations 非正 / HKDF 超 RFC5869 上限 / 底层 JDK 算法不可用 / 派生失败 | 消息前缀 `kdf: `，保留 cause |
+| `CryptoException` | 摘要文本 / 认证码密钥或消息为 null / 底层算法不可用 / 认证码计算失败 | 消息前缀 `crypto: `，保留 cause；常量时间比较遇 null 返回 false 不抛异常 |
+| `RandomException` | 随机串长度为负数 | 消息前缀 `random: ` |
+| `XmlException` | 内容为 null 或全空白 / 解析失败（含文档类型声明与外部实体命中）/ 缺少根节点 / 硬化特性不可用 / 待转义文本为 null | 消息前缀 `xml: `，保留 cause |
+| `CodecException` | gzip 字节非法 / 流截断 / 校验失败 | 消息前缀 `codec: `，保留 cause；null 与空数组原样返回不抛异常 |
 
-精确消息措辞见 `docs/design.md` §7.2。
+既有五子包精确消息措辞见 `docs/design.md` §7.2；四个新子包见 `docs/design.md` §11.4。
 
 ### 文档索引
 
 | 文档 | 内容 |
 | --- | --- |
 | `docs/design.md` | 契约事实来源：公共面逐字签名、异常语义、已定档决策、架构门禁 |
-| `docs/testing.md` | 测试策略与用例清单（178 例构成、样本策略、覆盖映射） |
+| `docs/testing.md` | 测试策略与用例清单（235 例构成、样本策略、覆盖映射） |
 | `THIRD_PARTY_NOTICES.md` | 第三方运行内核的版权与许可署名声明 |
 
 ### 构建与验证
 
 ```bash
 cd aifei-tools
-mvn clean verify                 # 0 failure / 0 error（178 例：门禁 21 + 功能 157）
-mvn test -Dtest=ArchitectureBoundaryTest   # 仅跑架构门禁（21 例）
-mvn dependency:tree              # 核对：仅 aifei-all(provided) + 三个 optional 内核 + junit(test)，kdf 无新增第三方
+mvn clean verify                 # 0 failure / 0 error（235 例：门禁 33 + 功能 202）
+mvn test -Dtest=ArchitectureBoundaryTest   # 仅跑架构门禁（33 例）
+mvn dependency:tree              # 核对：仅 aifei-all(provided) + 三个 optional 内核 + junit(test)，四个新子包无新增第三方
 javap -verbose target/classes/cn/hg/aifei/tools/ipdb/IpSearcher.class | findstr "major version"   # 期望 52
 javap -verbose target/classes/cn/hg/aifei/tools/kdf/KdfKit.class | findstr "major version"        # 期望 52
+javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findstr "major version"  # 期望 52
 ```

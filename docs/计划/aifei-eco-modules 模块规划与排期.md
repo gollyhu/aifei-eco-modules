@@ -34,7 +34,7 @@
 | `aifei-excel` | 1.0.0 | 2026-11-18 | Excel 注解映射与流式读写，EasyExcel 为 `optional` |
 | `aifei-audit` | 1.0.0 | 2026-11-18 | 注解式操作审计：结构化事件 + `AuditSink` SPI，零生态依赖 |
 | `aifei-i18n` | 1.0.0 | 2026-11-19 | 国际化：开放来源扩展 + 3 默认来源 + 单条取文案/整包导出 + Enjoy 三条模板指令 |
-| `aifei-tools` | 1.0.0 | 2026-11-20 | 极简工具集：IP 归属地（`ipdb`）/ 验证码 / 二维码 / 脱敏，子包隔离、内核 `optional` |
+| `aifei-tools` | 1.0.0 | 2026-11-20 | 极简工具集：9 子包（`ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec`），子包隔离、内核 `optional` |
 | `aifei-sms` | 1.0.0 | 2026-11-26 | 短信通道：sms4j-core 二次封装，模板发送 + 回执验签，`optional` 内核 |
 | `aifei-pay` | 1.0.0 | 2026-11-26 | 支付宝支付：IJPay V3 内核 `optional`，下单 / 查单 / 退款 / 回调验签 |
 
@@ -64,7 +64,7 @@
 | 认证鉴权 | `aifei-sa-token` | 已覆盖 |
 | 操作审计 | `aifei-audit` 1.0.0 已交付（注解式事件 + `AuditSink` SPI） | 已覆盖 |
 | 多语言 | `aifei-i18n` 1.0.0 已交付（开放来源 + 3 默认来源 + 整包导出 + Enjoy 三条指令） | 已覆盖 |
-| 运维小工具 | `aifei-tools` 1.0.0 已交付（ipdb / captcha / qr / mask 四子包） | 已覆盖 |
+| 运维小工具 | `aifei-tools` 1.0.0 已交付（ipdb / captcha / qr / mask / kdf / crypto / random / xml / codec 九子包，kdf 为纠错补入、后四个为本次新增） | 已覆盖 |
 
 ## 三、建设结论与模块清单
 
@@ -79,7 +79,7 @@
 | `aifei-job` | `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` | 应用内定时任务 | 根包 7 类 | quartz + slf4j-api `compile`（已登记例外） |
 | `aifei-audit` | `io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT` | 注解式操作审计：结构化事件 + 落点 SPI | 根包 + `spi` 3 类 + `aifei` 插件 | 零第三方 compile/runtime（junit 仅 test） |
 | `aifei-i18n` | `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` | 多语言：后端取文案 + 前端语言包下发 + Enjoy 三指令 | 根包 7 + `web` 2 + `aifei` 1 = 精确 10 类 | 零第三方；`aifei-cache` 为 `optional`（KV 来源） |
-| `aifei-tools` | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：IP 归属地 / 验证码 / 二维码 / 脱敏 | 根包零类型，公共 API 全在 `ipdb`/`captcha`/`qr`/`mask` 子包 | ip2region `3.3.7` / ZXing core `3.5.3` / aifei-cache 均 `optional` |
+| `aifei-tools` | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：IP 归属地 / 验证码 / 二维码 / 脱敏 | 根包零类型，公共 API 全在 `ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec` 九个子包 | ip2region `3.3.7` / ZXing core `3.5.3` / aifei-cache 均 `optional` |
 | `aifei-sms` | `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` | 短信通道：模板化发送 + 回执接收验签 | 根包 5 类 + `spi` 2 类 | sms4j-core `3.3.6` 为 `optional`；同步发送、零存储 |
 | `aifei-pay` | `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT` | 支付宝支付：扫码 / H5 / PC 下单 + 查单 / 退款 + 回调验签 | 根包 4 类 + `model` 4 类 | IJPay AliPay V3 等 4 项均 `optional`；零存储、不做幂等 |
 
@@ -173,7 +173,7 @@ graph TD
 | `aifei-audit` | 11-18 | 库模块 + demo + 设计文档 + 门禁测试 |
 | `aifei-excel` | 11-18 | 库模块 + demo + 设计文档 + 门禁测试 |
 | `aifei-i18n` | 11-19 | 库模块 + demo（指令 3 条）+ 设计文档 + 门禁测试 |
-| `aifei-tools` | 11-20 | 库模块（ipdb/captcha/qr/mask 四子包）+ 设计文档 + 门禁测试 |
+| `aifei-tools` | 11-20 | 库模块（ipdb / captcha / qr / mask / kdf / crypto / random / xml / codec 九子包）+ 设计文档 + 门禁测试 |
 | `aifei-sms` | 11-26 | 库模块 + demo（六场景，零外网）+ 设计文档 + 门禁测试 |
 | `aifei-pay` | 11-26 | 库模块 + 设计文档 + 门禁测试 + 发布文档（无 demo） |
 

@@ -149,3 +149,81 @@ mvn dependency:tree                               # 依赖口径核对（kdf 无
 | kdf HKDF/PBKDF2/HMAC 对标 RFC 测试向量逐字比对、三算法门面分派、参数非法、任意 keyLen | `HkdfTest` / `Pbkdf2Test` / `HmacTest` / `KdfKitTest` | PASS |
 
 > 全部 178 例 0 failure / 0 error；无已知遗留问题（kdf PBKDF2 实现手法偏离已记录于 design §8-F，待主理人回写）。任何门禁断言不得放宽；冻结契约的判定规则与异常消息变更须先更新断言（根 `AGENTS.md`）。
+
+## 3.7 crypto（建议 14 例）
+
+对应 `docs/design.md` §11.3.1 / §11.10，验证五个原语的向量一致性、null/空串语义与公共面。全部测试零联网，向量以 JDK 独立参考实现 + 公开 RFC 向量表达，**不复制来源模块源码 / 协议串 / 字段名**。
+
+- **`CryptoTest`（10）**：
+  1. `sha1Hex_knownVector`：`"abc"` → `a9993e364706816aba3e25717850c26c9cd0d89d`（40 位小写十六进制），与 `Sha1Util.sha1` 同口径。
+  2. `sha1Hex_matchesJdkReference`：多组 ASCII / UTF-8 中文入参，断言结果与 JDK `MessageDigest.getInstance("SHA-1")` 逐字节推导的 40 位小写 hex 逐字符相等（独立参考，不依赖来源模块）。
+  3. `sha1Base64_matchesJdkReference`：`Base64.getEncoder().encodeToString(SHA1(UTF8(text)))` 独立参考逐字节比对；含空串 `""` 输入。
+  4. `sha1Base64_rfc6455Vector`：以 RFC 6455 公开向量 `Sec-WebSocket-Key=dGhlIHNhbXBsZSBub25jZQ==` 与公开 accept 值验证 `sha1Base64(key + GUID)` 与 `acceptFor(key)` 等价（GUID 由测试以 RFC 字面量拼接，不进入被测源码，不迁入 aifei-tools 依赖）。
+  5. `hmacSha1_rfc4231AndJdkReference`：RFC 4231 HMAC-SHA1 向量 + JDK `Mac("HmacSHA1")`+`Base64` 独立参考逐字节比对。
+  6. `hmacSha256_rfc4231AndJdkReference`：RFC 4231 HMAC-SHA256 官方向量 + JDK `Mac("HmacSHA256")`+`Base64` 独立参考比对。
+  7. `hmac_keyDataOrder`：调 key/data 顺序，断言结果不同（证明 `HMAC(K, text)` 参数顺序正确）。
+  8. `constantTimeEquals_trueAndFalse`：相等串 → true；不同串、不同长度串 → false；两个空串 → true。
+  9. `constantTimeEquals_nullReturnsFalse`：expected/actual 任一为 null → false（不抛异常）。
+  10. `nullAndInvalidParams_readableException`：`sha1Hex(null)` / `sha1Base64(null)` → `crypto: text must not be null`；`hmacSha1(null,"x")` / `hmacSha256(null,"x")` → `crypto: key must not be null`；`hmacSha1("k",null)` → `crypto: data must not be null`（逐字断言，不用常量拼期望）。
+- **`PublicApiContractCryptoTest`（4）**：`CryptoUtil` / `CryptoException` 均 `final`；`CryptoUtil` 私有构造且 5 个公共方法 static、逐字签名（`String`/`boolean` 白名单）；`CryptoException` 仅两个公共构造、无 `throws`；公共层零 JDK 加密 / 第三方字面量（门禁 ⑳′ 同款断言）；class major 52。
+
+## 3.8 random（建议 8 例）
+
+- **`RandomUtilTest`（4）**：`randomString(0)` → `""`，`randomString(1/16/64)` 长度精确且每个字符 ∈ `[A-Za-z0-9]`；多次调用不重复（统计抽样）；`token()` 结果恰为 43 字符、字符集为 Base64URL（`[A-Za-z0-9-_]`）、无 `=` 填充；多线程并发调用无异常、无重复（抽样）。
+- **`PublicApiContractRandomTest`（4）**：`RandomUtil` / `RandomException` 均 `final`、私有构造 / 逐字签名 / 异常两构造 / 无 `throws`；公共层零 `java.security.` / 第三方字面量（且不出现 `Captcha`/`TokenGenerator`）；class major 52；负长度 `randomString(-1)` → `random: length must not be negative, but was: -1`（逐字断言）。
+
+## 3.9 xml（建议 12 例）
+
+- **`XmlUtilTest`（8）**：
+  1. `parse_directChildrenOrdered`：通用 XML（**不使用 `<xml>` 根节点 / 微信字段名**）解析为保序 `LinkedHashMap`，值为 `getTextContent()`。
+  2. `parse_duplicateNameKeepsFirst`：同名子元素保留首个。
+  3. `parse_nonElementNodesSkipped`：文本 / 注释节点不进 map。
+  4. `parse_nullOrEmpty_readableException`：null / `""` / 全空白 → `xml: content must not be null or empty`。
+  5. `parse_doctypeRejected`：含 `<!DOCTYPE ...>` 输入**抛异常不展开**，断言 `xml: failed to parse content, cause: {msg}` 前缀且不含被声明实体内容。
+  6. `parse_externalEntityNotExpanded`：声明外部普通 / 参数实体与外部 DTD 均不展开（用 `file://` 指向临时占位路径，断言不读取 / 原样失败，零联网）。
+  7. `escape_fiveEntities`：`& < > " '` 五字符 → `&amp; &lt; &gt; &quot; &apos;`，与来源 `XmlBuilder.escape` 通用规则逐字符一致；`""` → `""`；null → `xml: text must not be null`。
+  8. `escape_noDoubleEscaping`：`&amp;` 输入 → `&amp;amp;`（先转 `&` 再转其余，不二次转义）。
+- **`PublicApiContractXmlTest`（4）**：`XmlUtil` / `XmlException` 均 `final`、私有构造 / 逐字签名（`Map<String,String>` 返回类型写全）/ 异常两构造 / 无 `throws`；公共层零第三方字面量且不出现 `"<xml>"` / `ToUserName` / `FromUserName`；class major 52。
+
+## 3.10 codec（建议 8 例）
+
+- **`CodecUtilTest`（4）**：`gunzip_roundTrip` 用 `GZIPOutputStream` 内存生成压缩字节，解压后与原文逐字节相等（零外链样本）；`gunzip_nullAndEmptyPassthrough`：null → null、空数组 → 同一空数组（原样返回）；`gunzip_invalidBytes_readableException`：非 gzip 字节 / 截断流 → `codec: gunzip failed, cause: {msg}` 且保留 cause、不返回 null；`gunzip_largePayload`：大字节流跨缓冲区边界正确。
+- **`PublicApiContractCodecTest`（4）**：`CodecUtil` / `CodecException` 均 `final`、私有构造 / 逐字签名 / 异常两构造 / 无 `throws`；公共层零第三方字面量且不出现 `HttpConfig` / `http.gzip` / `Accept-Encoding`；class major 52。
+
+## 3.11 授权 / 版权静态合规（`SourceReuseComplianceTest`，建议 3 例）
+
+静态扫描四个新子包（含 internal）与对应测试的全部 `.java` 源码文本（`stripComments` 后）：
+
+1. `allNewFilesCarryOriginalCopyrightHeader`：每个新 `.java` 首部含 `Copyright 2014-2026 糊搞 (3722711@qq.com)` 与 `https://gitee.com/gollyhu`。
+2. `noAifeiVipLicenseNotice`：不出现 `aifei vip 订阅用户` / `詹波` / `aifei.cn` / `Copyright 2011-2035`（逐字面量断言）。
+3. `noProtocolStringsLeaked`：不出现 `sortedSign` / `258EAFA5-E914-47DA-95CA-C5AB0DC85B11` / `canonical` / `"signature"` / `"<xml>"` / `ToUserName` / `FromUserName` / `http.gzip` / `Accept-Encoding` / `HttpConfig` / `Captcha` / `TokenGenerator` / `ImageGenerator`（测试以 RFC 字面量表达向量时，把该字面量放测试内独立常量并在扫描白名单中按文件排除；被测源码零例外）。
+
+> 静态检查是**授权复核结论的落地 guard**（设计 §11.2）：本轮只按公开算法 / 规范自行重写，任何来源源码注释、协议串、字段名进入新子包即失败。
+
+## 3.12 门禁扩充（`ArchitectureBoundaryTest`，21 → 33 例）
+
+对应 `docs/design.md` §11.7。原 21 例断言**逐字不改**，唯一放宽是 `cryptoOnlyInKdfInternal`（原 ⑲）的 import 允许路径。
+
+| 类别 | 方法（新增 12） | 判定口径 |
+| --- | --- | --- |
+| 公共面（+4） | `cryptoPublicSurfaceExact` / `randomPublicSurfaceExact` / `xmlPublicSurfaceExact` / `codecPublicSurfaceExact` | `assertPublicSurface(..., 2, label)`：精确 2 且集合 = {`XxxUtil.java`,`XxxException.java`} |
+| 前缀唯一（+4） | `cryptoPrefixOnlyInErrors` / `randomPrefixOnlyInErrors` / `xmlPrefixOnlyInErrors` / `codecPrefixOnlyInErrors` | `crypto: `/`random: `/`xml: `/`codec: ` 仅对应 `*Errors.java`，口径同 ⑳ |
+| 公共层零字面量（+4） | `publicSignaturesNoThirdPartyCrypto` / `...Random` / `...Xml` / `...Codec` | 公共层零 `javax.crypto.`/`java.security.`/第三方 / 框架字面量 + 各子包协议串禁用（§11.7） |
+| import 边界（修改 1，不新增方法） | `cryptoOnlyInKdfInternal` | 放宽为允许 `kdf/internal` / `captcha/internal` / `crypto/internal` / `random/internal` 使用 `javax.crypto.`/`java.security.`；既有断言文本与集合不改 |
+
+**例数口径**：门禁 21 → **33**（+12 新 `@Test`）；功能例新增 45（crypto 14 + random 8 + xml 12 + codec 8 + 合规 3）；全量回归 = 178（原）+ 12（门禁新增）+ 45（功能新增）= **235 例**，0 failure / 0 error 为准入线（实际以磁盘 `@Test` 与 surefire 报告为准）。`rootPackageEmpty`（①）继续断言根包精确 0，不创建 `package-info.java`。
+
+## 4.1 新增子包运行方法（补充）
+
+在 `aifei-tools/` 模块目录执行（门禁依赖相对路径 `src/main/java`）：
+
+```bash
+mvn clean verify                                              # 全量（期望 235 例，0 failure / 0 error）
+mvn test -Dtest=ArchitectureBoundaryTest                       # 门禁 33 例
+mvn test -Dtest="CryptoTest,PublicApiContractCryptoTest"        # crypto
+mvn test -Dtest="RandomUtilTest,PublicApiContractRandomTest"    # random
+mvn test -Dtest="XmlUtilTest,PublicApiContractXmlTest"          # xml
+mvn test -Dtest="CodecUtilTest,PublicApiContractCodecTest"      # codec
+mvn test -Dtest=SourceReuseComplianceTest                       # 授权 / 版权静态合规
+javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findstr "major version"  # 52
+```

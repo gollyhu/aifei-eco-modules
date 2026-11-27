@@ -6,13 +6,13 @@
 
 ## 开发前提
 
-- **改代码前必读 `docs/design.md`**（尤其 §1.1 模块划分、§2 文件清单、§3 公共类型逐字签名、§6 依赖与 17 例门禁、§7 约定/异常语义/唯一定义点、§8 已定档决策）。需求与设计冲突时，**先改设计决策再改代码**。
+- **改代码前必读 `docs/design.md`**（尤其 §1.1 模块划分、§2 文件清单、§3 公共类型逐字签名、§6 依赖与 21 例门禁、§7 约定/异常语义/唯一定义点、§8 已定档决策，以及 §11 通用原语增量设计 / §11.7 的 33 例门禁）。需求与设计冲突时，**先改设计决策再改代码**。
 - 未经设计决策，不得自行确定契约类行为：空值语义、异常类型与消息、默认值（TTL/capacity/maxFailures/查询模式）、并发策略、哨兵与退化口径等；也不得新增或扩大公共 API 面。
 - 发现设计问题只回报主理人，**不在实现期自行扩张或改写 `docs/design.md`**。公共面签名不可行时先回写 `docs/design.md` §3，不得先斩后奏。
 
 ## 交付性质（库模块，非业务应用）
 
-`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，五个工具按子包隔离、各自独立可用、无跨工具抽象。
+`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，九个工具按子包隔离、各自独立可用、无跨工具抽象。
 
 **不适用章节（不得据此模块约束要求）**：
 
@@ -52,7 +52,7 @@ pom 只允许下列五项，属性 `<ip2region.version>3.3.7</ip2region.version>
 ### 公共面收敛（不得放宽）
 
 - **根包 `cn.hg.aifei.tools` 精确 0 公共类型**（门禁①）；不创建 `package-info.java`。
-- 五子包共**精确 20 个公共类型**，签名逐字见 `docs/design.md` §3：
+- 九子包共**精确 28 个公共类型**（既有 20 + 新增 8），签名逐字见 `docs/design.md` §3 与 §11.3：
 
 | 子包 | 公共类型（N） |
 | --- | --- |
@@ -61,6 +61,10 @@ pom 只允许下列五项，属性 `<ip2region.version>3.3.7</ip2region.version>
 | `qr` | `QrKit` / `QrOptions` / `QrErrorCorrection` / `QrException`（4） |
 | `mask` | `MaskUtil` / `MaskKit` / `MaskException`（3） |
 | `kdf` | `KdfKit` / `KdfSpec` / `KdfHash` / `KdfException`（4） |
+| `crypto` | `CryptoUtil` / `CryptoException`（2） |
+| `random` | `RandomUtil` / `RandomException`（2） |
+| `xml` | `XmlUtil` / `XmlException`（2） |
+| `codec` | `CodecUtil` / `CodecException`（2） |
 
 - **不得增删、不得改名**；新增公共类型或改签名须先回写 `docs/design.md` §3 过设计决策再改门禁期望集合。**唯一已定档方法级例外**：`IpRegion.of(String,String,String,String,String)` 静态工厂（design §8-E1），供 `ipdb.internal` 构造公共值对象，五个 getter 与「字段永不为 null」契约冻结不变。
 - 公共签名**零第三方类型、零框架类型**：只含 JDK 类型（`InputStream` / `String` / `UnaryOperator` / 基本类型等）+ 本模块类型；不出现 `org.lionsoul.*` / `com.google.zxing.*` / `cn.aifei.*` / `cn.hg.aifei.cache.*`（门禁⑧）。
@@ -75,14 +79,18 @@ cn.hg.aifei.tools.captcha      captcha：4 公共类型 + internal（非承诺�
 cn.hg.aifei.tools.qr           qr：4 公共类型 + internal（非承诺）
 cn.hg.aifei.tools.mask         mask：3 公共类型 + internal（非承诺）
 cn.hg.aifei.tools.kdf          kdf：4 公共类型 + internal（非承诺）
+cn.hg.aifei.tools.crypto      crypto：2 公共类型 + internal（非承诺）
+cn.hg.aifei.tools.random      random：2 公共类型 + internal（非承诺）
+cn.hg.aifei.tools.xml         xml：2 公共类型 + internal（非承诺）
+cn.hg.aifei.tools.codec       codec：2 公共类型 + internal（非承诺）
 ```
 
-- `org.lionsoul.*` 只允许在 `ipdb/internal/`（门禁④）；`cn.hg.aifei.cache.*` 只允许在 `captcha/internal/`（门禁⑤）；`com.google.zxing.*` 只允许在 `qr/internal/`（门禁⑯）；`javax.crypto.*` / `java.security.*` 只允许在 `kdf/internal/`（kdf 是纯 JDK 工具，captcha/internal 既有 `java.security.SecureRandom` 用法保留，门禁⑲口径见下）。
+- `org.lionsoul.*` 只允许在 `ipdb/internal/`（门禁④）；`cn.hg.aifei.cache.*` 只允许在 `captcha/internal/`（门禁⑤）；`com.google.zxing.*` 只允许在 `qr/internal/`（门禁⑯）；`javax.crypto.*` / `java.security.*` 只允许在 `kdf/internal/`、`captcha/internal`（既有）、`crypto/internal/`、`random/internal/`，其余位置一律禁止（门禁⑲，设计 §11.5 / §11.7 定档放宽）；`javax.xml.parsers.*` / `org.w3c.dom.*` 只在 `xml/internal/`，`java.util.zip.*` 只在 `codec/internal/`。
 - 公共层（非 internal）→ 纯 JDK + 本模块类型；internal → 各自 optional 内核 + JDK。工具之间互不引用、无跨工具抽象层。
 
 ## 包边界与门禁
 
-`ArchitectureBoundaryTest`（**21 例**：原 17 + kdf 追加 4，扫描 `src/main/java`；⑭ 扫 `src/test/java`）判定口径与 `docs/design.md` §6.2 **逐字一致**：
+`ArchitectureBoundaryTest`（**33 例**：原 21 + 通用原语追加 12，扫描 `src/main/java`；⑭ 扫 `src/test/java`）判定口径与 `docs/design.md` §6.2 与 §11.7 **逐字一致**：
 
 | # | 测试方法 | 判定口径 |
 | --- | --- | --- |
@@ -104,11 +112,23 @@ cn.hg.aifei.tools.kdf          kdf：4 公共类型 + internal（非承诺）
 | ⑯ | `zxingOnlyInQrInternal` | `import com.google.zxing.` 仅允许 `qr/internal/` 下文件 |
 | ⑰ | `maskPublicSurfaceExact` | `mask/` 直接子 `.java` 精确 3 且集合 = {MaskUtil,MaskKit,MaskException} |
 | ⑱ | `kdfPublicSurfaceExact` | `kdf/` 直接子 `.java` 精确 4 且集合 = {KdfKit,KdfSpec,KdfHash,KdfException}（口径对齐门禁②③⑮⑰） |
-| ⑲ | `cryptoOnlyInKdfInternal` | `import javax.crypto.` 仅允许 `kdf/internal/`；`import java.security.` 仅允许 `kdf/internal/` 与 `captcha/internal/`（captcha 既有 `SecureRandom` 用法保留；设计 §6.2 原口径未覆盖此既有用法，实现期偏离已记录） |
+| ⑲ | `cryptoOnlyInKdfInternal` | `import javax.crypto.` / `import java.security.` 允许 `kdf/internal/`、`captcha/internal/`（既有）、`crypto/internal/`、`random/internal/`，其余位置一律禁止（设计 §11.7 定档放宽；方法名与断言文本不变） |
 | ⑳ | `kdfPrefixOnlyInErrors` | `kdf: ` 消息前缀仅允许 `KdfErrors.java`（测试断言与公共 javadoc 除外）——扩充门禁⑪覆盖 `kdf: ` 前缀 |
 | ⑳′ | `publicSignaturesNoThirdPartyKdf` | `kdf/` 公共层（非 internal）源码不得出现 `javax.crypto.`/`java.security.`/`org.lionsoul.`/`com.google.zxing.`/`cn.aifei.`/`cn.hg.aifei.cache.` 字面量——kdf 公共签名零 JDK 加密类型、零第三方 |
+| ㉑ | `cryptoPublicSurfaceExact` | `crypto/` 直接子 `.java` 精确 2 且集合 = {CryptoUtil,CryptoException} |
+| ㉒ | `randomPublicSurfaceExact` | `random/` 直接子 `.java` 精确 2 且集合 = {RandomUtil,RandomException} |
+| ㉓ | `xmlPublicSurfaceExact` | `xml/` 直接子 `.java` 精确 2 且集合 = {XmlUtil,XmlException} |
+| ㉔ | `codecPublicSurfaceExact` | `codec/` 直接子 `.java` 精确 2 且集合 = {CodecUtil,CodecException} |
+| ㉕ | `cryptoPrefixOnlyInErrors` | `crypto: ` 前缀仅允许 `CryptoErrors.java`（口径同⑳） |
+| ㉖ | `randomPrefixOnlyInErrors` | `random: ` 前缀仅允许 `RandomErrors.java` |
+| ㉗ | `xmlPrefixOnlyInErrors` | `xml: ` 前缀仅允许 `XmlErrors.java` |
+| ㉘ | `codecPrefixOnlyInErrors` | `codec: ` 前缀仅允许 `CodecErrors.java` |
+| ㉙ | `publicSignaturesNoThirdPartyCrypto` | `crypto/` 公共层零 JDK 加密 / 第三方 / 框架字面量，并禁握手常量串 / `sortedSign` / `canonical` / 签名字段名 |
+| ㉚ | `publicSignaturesNoThirdPartyRandom` | `random/` 公共层零 JDK 加密 / 第三方 / 框架字面量，并禁来源类型名（Captcha/TokenGenerator/ImageGenerator） |
+| ㉛ | `publicSignaturesNoThirdPartyXml` | `xml/` 公共层零 JDK 加密 / 第三方 / 框架字面量，并禁协议根节点与来源字段名 |
+| ㉜ | `publicSignaturesNoThirdPartyCodec` | `codec/` 公共层零 JDK 加密 / 第三方 / 框架字面量，并禁来源配置键与传输头 |
 
-门禁**不得删除、放宽或绕过**，也不得为兼容错误用法而调整；新增例外必须先改 `docs/design.md` 再改断言并过主理人登记。构建期断言（门禁外）：主 JAR 全 class major=52（`javap` 抽查 `IpSearcher`/`IpKit`/`IpSession`/`CaptchaKit`/`QrKit`/`QrDeps`/`MaskKit`/`KdfKit`）；`mvn dependency:tree` 仅出现上述依赖清单（含 zxing 且无 javese/jcommander/jai-imageio，kdf 无新增第三方）。
+门禁**不得删除、放宽或绕过**，也不得为兼容错误用法而调整；新增例外必须先改 `docs/design.md` 再改断言并过主理人登记。构建期断言（门禁外）：主 JAR 全 class major=52（`javap` 抽查 `IpSearcher`/`IpKit`/`IpSession`/`CaptchaKit`/`QrKit`/`QrDeps`/`MaskKit`/`KdfKit`/`CryptoUtil`/`RandomUtil`/`XmlUtil`/`CodecUtil`）；`mvn dependency:tree` 仅出现上述依赖清单（含 zxing 且无 javese/jcommander/jai-imageio，四个新子包零新增第三方）。
 
 ## 唯一定义点清单（实现类不得复制）
 
@@ -132,9 +152,19 @@ cn.hg.aifei.tools.kdf          kdf：4 公共类型 + internal（非承诺）
 | HKDF extract+expand（RFC 5869） | `kdf.internal.HkdfEngine` |
 | PBKDF2（RFC 8018 §5.2，手动 HMAC PRF 循环） | `kdf.internal.Pbkdf2Engine` |
 | HMAC 派生原语（RFC 4231，`HMAC(ikm, ikm)`） | `kdf.internal.HmacEngine` |
+| `CryptoException` 构造与全部 `crypto: ` 消息 | `crypto.internal.CryptoErrors` |
+| SHA-1 摘要（十六进制 / 标准 Base64） | `crypto.internal.Sha1Engine` |
+| HMAC-SHA1 / HMAC-SHA256 | `crypto.internal.HmacEngine` |
+| 常量时间比较 | `crypto.internal.ConstantTimeEngine` |
+| `RandomException` 构造与全部 `random: ` 消息 | `random.internal.RandomErrors` |
+| 安全随机取样与 Base64URL 令牌 | `random.internal.RandomEngine` |
+| `XmlException` 构造与全部 `xml: ` 消息 | `xml.internal.XmlErrors` |
+| DOM 解析与 XXE 硬化（六项特性） | `xml.internal.XmlParser` |
+| `CodecException` 构造与全部 `codec: ` 消息 | `codec.internal.CodecErrors` |
+| gzip 解压 | `codec.internal.GzipEngine` |
 
 - **命名后缀**：`XxxUtil` 无状态工具（全 static、结果只由入参决定）；`XxxKit` 有状态门面（操作有生命周期的会话/注册表，全 static）；会话对象/值对象用名词（`IpSearcher`/`Captcha`/`IpRegion`/`QrOptions` 等命名例外，已登记 design §7.1）；`internal` 用 `Deps/Errors/Session/Parser/Store/Generator/Registry/Codec/Masks`。
-- **消息前缀唯一定义点**：`ip: ` 仅在 `IpErrors`、`captcha: ` 仅在 `CaptchaErrors`、`qr: ` 仅在 `QrErrors`、`mask: ` 仅在 `MaskErrors`、`kdf: ` 仅在 `KdfErrors`（门禁⑪ + 测试断言与公共 javadoc 除外）。
+- **消息前缀唯一定义点**：`ip: ` 仅在 `IpErrors`、`captcha: ` 仅在 `CaptchaErrors`、`qr: ` 仅在 `QrErrors`、`mask: ` 仅在 `MaskErrors`、`kdf: ` 仅在 `KdfErrors`、`crypto: ` 仅在 `CryptoErrors`、`random: ` 仅在 `RandomErrors`、`xml: ` 仅在 `XmlErrors`、`codec: ` 仅在 `CodecErrors`（门禁⑪及新增四例 + 测试断言与公共 javadoc 除外）。
 
 ## 已定档行为契约红线（QA 与后续改动的依据）
 
@@ -146,6 +176,10 @@ cn.hg.aifei.tools.kdf          kdf：4 公共类型 + internal（非承诺）
 - **qr**：`encode`/`decode` 均保留；`encode(null)`/`decode(null)`/`decode(空 byte[])` 抛 `QrException`；空串 `""` 合法且可往返（实现用私有区单字符 `\uE000` 哨兵）；**单个 U+E000 字符往返被误归一为空串属已知限制、不列入验收、QA 不落断言**；decode 失败抛 `QrException` 保留 cause、不返回 null；`decode(InputStream)` 不关闭调用方流；`QrOptions` 冻结为 size/margin/EC 三项 + `defaults()`/`of()`（默认 300/4/M、UTF-8 内部固定）；不加流式输出。
 - **mask**：通用 `mask` + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）初始在册不可删，`maskXxx(x)≡use("xxx").apply(x)`、`replace` 后跟随；value 为 null 返回 null、空串返回空串；`keepLeft`/`keepRight` 负数抛 `MaskException`；`maskIp` 按分隔符特征打码——含 `.` 按 `.` 分段，含 `:` 视为 IPv6 且 `::` 先展开为完整 8 段再打码（首段 + 其余每段一个 `*`，示例 IPv6 为 7 个 `*`），等价写法结果一致、畸形输入健壮不抛异常，无分隔符退化为保留首字符 + 等长 `*`；内容文本非法一律不抛 `MaskException`，`MaskException` 仅用于规则注册与负数 keep。
 - **kdf**：`KdfKit.derive(spec, ikm)` 按 `spec.getAlgorithm()` 分派到 `HkdfEngine` / `Pbkdf2Engine` / `HmacEngine`；algorithm 合法值集合 {HKDF, PBKDF2, HMAC} 在 `KdfSpec` 工厂内校验、非法抛 `KdfException`；`KdfSpec` 三静态工厂是构造唯一入口、值对象不可变（私有构造器、salt/info 防御性拷贝）；HKDF salt 可空（默认全 0 HashLen 字节）、info 可空；PBKDF2 salt 不可空、iterations > 0；HMAC 无 salt/iterations（getSalt 返回 null、getIterations 返回 0）；HMAC 派生原语为 `HMAC(ikm, ikm)`（自 HMAC，输出 HashLen 字节，spec.keyLen 仅校验合法性、不影响输出长度）；`javax.crypto.*` / `java.security.*` import 仅 `kdf/internal/`（captcha/internal 既有 `SecureRandom` 保留，门禁⑲偏离已记录）；公共签名零 JDK 加密类型、零第三方（门禁⑳′）；PBKDF2 实现偏离原设计 `SecretKeyFactory` 手法，改用手动 HMAC PRF 循环（见 design §8-F 实现期偏离记录）。
+- **crypto**：文本编码固定 UTF-8；SHA-1 输出 40 位小写十六进制或标准 Base64；HMAC 遵循 RFC 2104 参数顺序（key 在前、data 在后）并输出标准 Base64；`expected` / `actual` 任一为 null 时常量时间比较返回 false 不抛异常；算法不可用保留底层 cause。
+- **random**：`randomString(length)` 字符集固定 62 个 ASCII 字母数字，`length >= 0`、0 返回空串、负数抛 `RandomException`；`token()` 为 32 字节安全随机源转无填充 Base64URL（43 字符）；唯一共享状态为 JDK 线程安全的 `SecureRandom`；不与 captcha 互引。
+- **xml**：`parse` 返回 JDK 保序映射、只取根节点直接子元素、同名取首、非元素节点跳过；六项 XXE 硬化在 `XmlParser` 单点定义，文档类型声明命中即抛异常不展开；`escape` 只做五实体单次替换；不硬编码协议根节点与字段名。
+- **codec**：`gunzip(null)` 返回 null、`gunzip(空数组)` 返回该数组；解压失败抛 `CodecException` 保留 cause、不静默返回 null；不读取配置键、不干涉传输层协商。
 
 ## 测试纪律
 
@@ -165,18 +199,19 @@ cn.hg.aifei.tools.kdf          kdf：4 公共类型 + internal（非承诺）
 **命令在 `aifei-tools/` 根目录执行**（门禁依赖相对路径 `src/main/java`；仓库根无聚合 pom）：
 
 ```bash
-mvn clean verify                                  # 必须 178 例 0 failure / 0 error（含架构门禁 21 例）
-mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（21 例）
-mvn dependency:tree                                # 断言：aifei-all(provided) + ip2region/zxing/aifei-cache(optional) + junit(test)，无 javese/jcommander/jai-imageio，kdf 无新增第三方
+mvn clean verify                                  # 必须 235 例 0 failure / 0 error（含架构门禁 33 例）
+mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（33 例）
+mvn dependency:tree                                # 断言：aifei-all(provided) + ip2region/zxing/aifei-cache(optional) + junit(test)，无 javese/jcommander/jai-imageio，四个新子包零新增第三方
 javap -verbose target/classes/cn/hg/aifei/tools/ipdb/IpSearcher.class | findstr "major version"   # 期望 52
 javap -verbose target/classes/cn/hg/aifei/tools/kdf/KdfKit.class | findstr "major version"        # 期望 52
+javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findstr "major version" # 期望 52
 ```
 
 > **零联网纪律**：全部单测离线可重复；xdb 样本内嵌 base64、不提交二进制、不外链生产数据。
 
 ## 冻结契约 vs 可演进
 
-- **冻结契约（改动须先过设计决策并更新测试断言）**：20 个公共类型与 §3 逐字签名；五类异常消息措辞与前缀唯一定义点；region 五段解析与 `"0"`→空串语义；依赖坐标/scope（含 zxing 不引 javase，kdf 无新增第三方）；默认模式 VECTOR_INDEX 与并发策略；`IpRegion.of` null 归一口径；maskIp IPv6 展开与退化口径；qr 空串哨兵契约；21 例门禁判定口径（含 kdf 追加 4 例 ⑱⑲⑳⑳′与 ⑪⑧扩充覆盖）。
+- **冻结契约（改动须先过设计决策并更新测试断言）**：28 个公共类型与 §3 / §11.3 逐字签名；九类异常消息措辞与前缀唯一定义点；region 五段解析与 `"0"`→空串语义；依赖坐标/scope（含 zxing 不引 javase，四个新子包无新增第三方）；默认模式 VECTOR_INDEX 与并发策略；`IpRegion.of` null 归一口径；maskIp IPv6 展开与退化口径；qr 空串哨兵契约；四个新子包的 null / 空串 / Base64 / 保序 / 五实体 / 原样返回语义与零协议语义；33 例门禁判定口径（原 21 例逐字保留，唯一放宽为⑲ import 边界，新增 12 例）。
 - **可自主演进（不破坏门禁与冻结契约前提下）**：`internal/*` 实现细节与私有工具类；测试样本的具体字节与桩实现；文档措辞与 javadoc 细化；demo（本轮不配，后续可选立项）。
 - 本模块为 Java 8 / class major 52 硬基线；若将来拟放宽 Java 基线（如 ip2region 3.3.8），须重走设计决策并同步 design §0 实证记录。
 
@@ -190,9 +225,9 @@ javap -verbose target/classes/cn/hg/aifei/tools/kdf/KdfKit.class | findstr "majo
 > 详版约定见 `docs/design.md` §10。追加工具**不是放开既有契约**——下列四条是不可省的硬动作：
 
 1. **新增子包**：落 `cn.hg.aifei.tools.<新工具>`；公共类型放子包直接子级、internal 实现放 `<子包>/internal/`；根包精确 0 公共类型恒定，不创建 `package-info.java`。同构骨架参照 design §10.1。
-2. **门禁纯追加**：在 `ArchitectureBoundaryTest.java` 追加「新子包公共面精确 N + 集合相等」断言；引入新内核则追加「该 import 仅允许在新子包 internal」边界断言；新消息前缀纳入门禁⑪、公共签名零第三方扩充门禁⑧覆盖。**原 17 例逐字不删改、不放宽**，只做追加（例数 17 → N，验证命令期望数同步改写）。
-3. **不改既有签名**：四子包 16 公共类型与 §3 逐字签名、§8 决策全部冻结；新工具公共签名只含 JDK + 本模块类型、零第三方/框架类型、公共方法无 `throws`、javadoc 写全；后缀 `XxxUtil`（无状态）/ `XxxKit`（有状态门面），不另立 `XxxHelper`/`XxxSupport`/`XxxTool`。
-4. **文档四同步**：先回写 `docs/design.md`（§1.1 / §2 / §3 / §5 / §6.2 / §9）过设计决策，再同步 `README.md`、本文件（公共面清单/门禁表/唯一定义点）与 `docs/testing.md`；测试按四子包同构（`PublicApiContract` + 功能测试 + internal 单测）。
+2. **门禁纯追加**：在 `ArchitectureBoundaryTest.java` 追加「新子包公共面精确 N + 集合相等」断言；引入新内核则追加「该 import 仅允许在新子包 internal」边界断言；新消息前缀纳入门禁⑪、公共签名零第三方扩充门禁⑧覆盖。**原 21 例逐字不删改、不放宽**（已定档例外仅 §11.7 的⑲ import 边界放宽），只做追加（例数 21 → N，验证命令期望数同步改写）。
+3. **不改既有签名**：既有九子包 28 个公共类型与 §3 / §11.3 逐字签名、§8 决策全部冻结；新工具公共签名只含 JDK + 本模块类型、零第三方/框架类型、公共方法无 `throws`、javadoc 写全；后缀 `XxxUtil`（无状态）/ `XxxKit`（有状态门面），不另立 `XxxHelper`/`XxxSupport`/`XxxTool`。
+4. **文档四同步**：先回写 `docs/design.md`（§1.1 / §2 / §3 / §5 / §6.2 / §9）过设计决策，再同步 `README.md`、本文件（公共面清单/门禁表/唯一定义点）与 `docs/testing.md`；测试按各子包同构（`PublicApiContract` + 功能测试 + internal 单测）。
 
 - **依赖**：新内核一律 `optional` 阻断传递、缺失首次调用抛可读模块异常；`aifei-all` 仍 provided；零日志绑定。
 - **不做跨工具抽象**：不引入统一 `Tool` 接口、公共基类或 `common/` 层，工具之间零依赖、零互相引用。
