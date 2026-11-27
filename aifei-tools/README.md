@@ -4,7 +4,7 @@
 
 把“几十行就能写完、却每个应用都要抄一遍”的极简能力收拢到一个 JAR：**图形验证码、离线 IP 归属地、二维码、通用脱敏、KDF 密钥派生、摘要与消息认证码、安全随机、XML 安全解析、gzip 解压**，九个工具互不相关、各用一个子包，取用哪个就只用哪个，互不牵连。
 
-- 坐标：`io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`）
+- 坐标：`io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`（`packaging=jar`）
 - 包名：`cn.hg.aifei.tools`；Java 8（class major 52）；根包零公共类型
 - 九个工具：`captcha` 验证码 / `ipdb` IP 归属地 / `qr` 二维码 / `mask` 脱敏 / `kdf` 密钥派生 / `crypto` 摘要与认证码 / `random` 安全随机 / `xml` 解析与转义 / `codec` gzip 解压
 
@@ -18,7 +18,7 @@
 <dependency>
     <groupId>io.github.gollyhu</groupId>
     <artifactId>aifei-tools</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.0-SNAPSHOT</version>
 </dependency>
 ```
 

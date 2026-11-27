@@ -12,7 +12,7 @@
 
 ## 交付性质（库模块，非业务应用）
 
-`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，九个工具按子包隔离、各自独立可用、无跨工具抽象。
+`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，九个工具按子包隔离、各自独立可用、无跨工具抽象。
 
 **不适用章节（不得据此模块约束要求）**：
 

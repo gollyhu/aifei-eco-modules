@@ -39,6 +39,8 @@ public final class XmlParser {
             throw XmlErrors.nullOrEmptyContent();
         }
         DocumentBuilder builder = newBuilder();
+        // 与来源模块语义一致：DOM 解析错误静默，由 XmlException 统一表达，不向 stderr 打印
+        builder.setErrorHandler(null);
         try {
             Document document = builder.parse(new InputSource(new StringReader(xml)));
             Element root = document.getDocumentElement();

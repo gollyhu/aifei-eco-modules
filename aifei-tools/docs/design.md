@@ -1080,3 +1080,128 @@ internal（非承诺）：`CodecErrors`（`codec: ` 消息与异常构造唯一�
 | `gunzip` | `HttpGzip.decode`（仅通用算法） | 同压缩字节解压结果**逐字节相等**；null/空原样返回；失败抛可读异常 |
 
 > 来源模块的公共 API / 协议串 / 字段名**不进入 aifei-tools 依赖与源码**；向量一致性由测试内 JDK 独立参考实现与公开 RFC 向量保证，而非复制来源代码。
+## 12. 增量设计：跨模块原语复用与版本口径统一（2026-11-27）
+
+> 本章是本次「把上一轮抽到 aifei-tools 的通用原语接入四个来源模块、消除重复实现」的**设计事实来源**，优先级高于 §1–§11 中与本章冲突的表述。§11 定义「工具怎么造」，本章定义「来源模块怎么用、依赖怎么摆、版本怎么统一、两项咨询怎么定档」。
+> 本章不新增 aifei-tools 公共类型、不改任何既有公共签名、不放宽任何门禁、不改来源版权头、不复制来源源码、不迁移任何协议语义。
+> 关联：芬西施《跨模块复用增量 PRD》P0-1～P0-5；交付负责人裁决 1–5（§12.4 / §12.5 / §12.6 / §12.7 / §12.10）；§11.10 向量一致性口径。
+
+### 12.1 事实基线（改造前，已逐文件核对源码）
+
+| 项 | 改造前事实 |
+| --- | --- |
+| 来源文件（8 个） | `aifei-weixin/.../core/encrypt/Sha1Util.java`、`RandomUtil.java`；`aifei-weixin/.../core/util/XmlUtil.java`、`XmlBuilder.java`；`aifei-websocket/.../internal/jdk/Rfc6455Handshake.java`；`aifei-sms/.../internal/sms4j/AliyunReceiptVerifier.java`；`aifei-http/.../internal/HttpGzip.java`（包名前缀为 `cn.aifei.weixin` / `cn.hg.aifei.*`，**不是** `cn.hg` 全前缀） |
+| 来源包公共面 | 四来源模块公共类型集合逐字冻结（weixin `core.*` / websocket 根包 15 / sms 根包 5+spi 2 / http 根包 6）；本次只改方法体与 private 助手，不改类/方法签名 |
+| 版权头 | weixin 四文件为 `Copyright 2011-2035 詹波 (aifei.cn)` + `https://aifei.cn` + `授权：aifei vip 订阅用户`；其余四文件为 `Copyright 2014-2026 糊搞 (3722711@qq.com)` + `https://gitee.com/gollyhu`。**逐字保留，不改写、不替换** |
+| 版本现状 | `aifei-tools/pom.xml` = `1.0.0-SNAPSHOT`；`aifei-tools/CHANGELOG.md` 最新条目 = `[1.1.0] - 2026-11-27`（两处不一致） |
+| 依赖现状 | 四个来源模块 pom **均未声明** `aifei-tools`；`aifei-tools` 自身依赖清单见 §6.1（本轮不变） |
+| 门禁基线 | aifei-tools `ArchitectureBoundaryTest` 33 例 + 功能 202 例（合计 235）；来源模块门禁：weixin `KernelBindingTest` 4 例、websocket `ArchitectureBoundaryTest` 5 例（116 用例）、sms 14 例、http 10 例 |
+
+### 12.2 P0-1 逐文件委托改造点（协议语义全部留在来源模块）
+
+> 统一动作：在来源方法体内调用 aifei-tools 公共原语，异常经**来源模块内部私有助手**适配（§12.3）；tools 侧不新增兼容方法、不扩大公共面（Q3）。下表「保留」列即行为向量冻结清单，逐项由来源模块既有测试钉住。
+
+| 来源文件 / 方法 | 委托到 aifei-tools | 必须原样保留（协议串 / 拼接 / 行为向量） |
+| --- | --- | --- |
+| `aifei-weixin/.../encrypt/Sha1Util.java` `sha1(String)`（`Sha1Util.java:41`） | `cn.hg.aifei.tools.crypto.CryptoUtil.sha1Hex(text)` 取代 `MessageDigest("SHA-1")` + 逐字节 `Character.forDigit` 十六进制拼装 | `sortedSign(String...)` 的 `Arrays.copyOf` → `Arrays.sort` → `StringBuilder` 直接拼接（微信字典序签名串）整段不动；40 位小写十六进制输出；`sha1` 的 `throws` 面（无受检异常）与 null / 算法不可用语义（§12.3） |
+| `aifei-weixin/.../encrypt/RandomUtil.java` `randomStr(int)`（`RandomUtil.java:30`） | `cn.hg.aifei.tools.random.RandomUtil.randomString(length)` 取代本地 62 字符表 + `SecureRandom.nextInt` 取样 | `randomStr()` 仍 `return randomStr(16)`（默认 16 不变）；`StringBuilder(length)` 形态的负长度语义（§12.3）；来源文件不再声明 `CHARS` / `RANDOM` 字段（tools `random` 为唯一随机源定义点） |
+| `aifei-weixin/.../util/XmlUtil.java` `parse(String)`（`XmlUtil.java:40`） | `cn.hg.aifei.tools.xml.XmlUtil.parse(xml)` 取代本地 `DocumentBuilderFactory` + XXE 硬化 + DOM 遍历 | null / 空白拒绝、DOCTYPE 拒绝且不展开、JDK `LinkedHashMap` 保序、同名子元素取首、非元素节点跳过——由 tools `xml` 对齐（§11.3.3 / §11.10），来源侧只做异常适配；`<xml>` 根节点与 `ToUserName` 等微信字段名不进入 tools |
+| `aifei-weixin/.../util/XmlBuilder.java` `escape(String)`（`XmlBuilder.java:76`） | `cn.hg.aifei.tools.xml.XmlUtil.escape(str)` 取代本地逐字符 `switch` 五实体替换 | `<xml>` 根节点拼装（`new XmlBuilder()` / `build()`）、`text` / `cdata` / `open` / `close` / `raw` 全部逐字不动；`]]>` → `]]]]><![CDATA[>` 的 CDATA 拆分留在来源；`text()` 继续调用本类 `escape`（链路不变）；五实体结果与改前逐字符相等 |
+| `aifei-websocket/.../jdk/Rfc6455Handshake.java` `acceptFor(String)`（`Rfc6455Handshake.java:95`） | `cn.hg.aifei.tools.crypto.CryptoUtil.sha1Base64(key + GUID)` 取代 `MessageDigest("SHA-1")` + `Base64` | `GUID` 字面量、`HEADER_KEY` / `HEADER_ACCEPT` 头名、`VERSION = "13"` 全部留在来源；`newKey()` / `writeRequest` / `readRequest` / `requireKey` / `writeResponse` / `writeBadRequest` / `readResponse` / `verifyResponse` 与 `Request` / `Response` 嵌套类型逐字不动；`throws IOException`、null 前置检查与算法不可用语义（§12.3）不变；US-ASCII 编码差异由 tools `sha1Base64` 的 UTF-8 覆盖（GUID 与 key 均为 ASCII，输出逐字节相等） |
+| `aifei-sms/.../sms4j/AliyunReceiptVerifier.java` `verify(...)`（`AliyunReceiptVerifier.java:38`） | `cn.hg.aifei.tools.crypto.CryptoUtil.hmacSha1(accessKeySecret, canonical.toString())` 与 `CryptoUtil.constantTimeEquals(expected, provided)` 取代本地 `Mac` + `SecretKeySpec` + `Base64` + `MessageDigest.isEqual` | `SIGNATURE_KEY = "signature"` / `SIGNATURE_KEY_ALT = "Signature"` 键名与取值顺序、`ALGORITHM = "HmacSHA1"` 字面量（保留声明，不因委托而删）、剔除两个签名字段后 `Collections.sort(keys)` 再 `key+value` 拼 canonical 串、参数 / 密钥 / 签名缺失返回 `false`、异常返回 `false` 的流程逐字不动；`verify` 仍为实例方法且签名不变 |
+| `aifei-http/.../internal/HttpGzip.java` `decode(byte[])`（`HttpGzip.java:52`） | `cn.hg.aifei.tools.codec.CodecUtil.gunzip(raw)` 取代 `GZIPInputStream` + 8192 缓冲循环；**以全限定名调用、不写 import**（理由见 §12.8 第 6 条） | `acceptEncoding(HttpConfig)`、`http.gzip` 开关、`Accept-Encoding` 决策、`BUFFER_SIZE = 8192`、null / 空原样返回、`HttpException` 对外类型与消息「gzip 解压失败」逐字不动 |
+
+**本轮明确不做**（与 §11.1「本期不做」一致，逐项不得越界）：不迁移字典序拼接 / RFC6455 GUID / 阿里云 canonical 串与 `signature` 字段名 / `<xml>` 根节点与微信字段名 / `http.gzip` 配置键 / `Accept-Encoding` 头名；不改既有公共 API 签名；不复制来源源码；不把 `kdf` 并入 `crypto`；不重命名任何公共类型；不新增第三方依赖 / 配置键 / Plugin / SPI / 日志绑定；不调整 aifei-tools 既有五子包公共面；不执行 deploy / 正式发布。
+
+### 12.3 适配层异常转换口径（Q3 定档）
+
+**总口径**：异常适配逻辑一律放在**来源模块内部的私有静态助手方法**（如 `private static String sha1ViaTools(String text)`），来源公共方法签名与 `throws` 声明零变化；aifei-tools 不新增任何兼容方法、不扩展公共面。下表「对外语义」列即改造前语义，必须逐字保持；`cause` 一律保留 tools 异常的底层 cause（若存在），不裸抛 `CryptoException` / `XmlException` / `RandomException` / `CodecException` 到来源模块公共边界。
+
+| 来源方法 | 改造前对外语义（冻结） | tools 异常 | 私有助手映射 |
+| --- | --- | --- | --- |
+| `Sha1Util.sha1(text)` | `text == null` → `NullPointerException`（`getBytes`）；SHA-1 不可用 → `IllegalStateException("JDK 不支持 SHA-1", NoSuchAlgorithmException)` | `CryptoException`：`crypto: text must not be null` / `crypto: algorithm "SHA-1" not available in this JDK, cause: {msg}` | null 由助手前置触发 NPE（无消息，同改前）；捕获 `CryptoException` → `new IllegalStateException("JDK 不支持 SHA-1", ce.getCause() != null ? ce.getCause() : ce)` |
+| `RandomUtil.randomStr(int)` | `length < 0` → `NegativeArraySizeException`（`new StringBuilder(negative)`，无消息）；正常返回 62 字符集随机串 | `RandomException`：`random: length must not be negative, but was: {n}` | 捕获 `RandomException` → `new NegativeArraySizeException()`（无消息，同改前）；非负数直接返回 tools 结果 |
+| `XmlUtil.parse(xml)` | null / 空白 → `IllegalArgumentException("XML 内容为空")`；解析失败 / DOCTYPE → `IllegalArgumentException("XML 解析失败", e)`；根节点缺失 → `IllegalArgumentException("XML 缺少根节点")`；硬化特性不可用 → `IllegalStateException("XML 解析器不支持 XXE 防护特性", e)` | `XmlException` 四条前缀消息（§11.4） | 按消息前缀分流：`content must not be null or empty` → `IllegalArgumentException("XML 内容为空")`；`failed to parse content` → `IllegalArgumentException("XML 解析失败", xe.getCause())`；`missing root element` → `IllegalArgumentException("XML 缺少根节点")`；`XXE protection feature not supported` → `IllegalStateException("XML 解析器不支持 XXE 防护特性", xe.getCause())` |
+| `XmlBuilder.escape(str)` | `str == null` → `NullPointerException`（`str.length()`）；其余逐字符五实体替换 | `XmlException`：`xml: text must not be null` | null 由助手前置触发 NPE（无消息）；其余返回 tools `escape` 结果，逐字符相等 |
+| `Rfc6455Handshake.acceptFor(key)` | `key == null` → `IllegalArgumentException("key can not be null")`；SHA-1 不可用 → `IOException("SHA-1 is not available", NoSuchAlgorithmException)`；返回标准 Base64 | `CryptoException`（算法不可用；null 分支不会触发，因来源先做 null 检查并拼 GUID） | null 检查保留在调用前；捕获 `CryptoException` → `new IOException("SHA-1 is not available", ce.getCause() != null ? ce.getCause() : ce)` |
+| `AliyunReceiptVerifier.verify(...)` | 参数 / 密钥 / 签名缺失 → `false`；`GeneralSecurityException` → `false`；验签用常量时间比较 | `CryptoException`（key/data null、算法不可用）；`constantTimeEquals` 自身 null → `false` 不抛 | 将 `hmacSha1` 与 `constantTimeEquals` 一并置于既有 `try` 块内，捕获 `CryptoException` → `return false`（对齐改前 `GeneralSecurityException → false` 口径）；canonical 串构造与缺失判断不改动 |
+| `HttpGzip.decode(raw)` | null / 空 → 原样返回；解压失败 → `HttpException("gzip 解压失败", IOException)` | `CodecException`：`codec: gunzip failed, cause: {msg}` | 捕获 `CodecException` → `new HttpException("gzip 解压失败", ce.getCause() != null ? ce.getCause() : ce)`；null / 空可前置判断或由 tools 原样返回，结果一致 |
+
+**可选依赖缺失的新失败路径（Q1 配套）**：私有助手统一捕获 `NoClassDefFoundError`（消费方未显式声明 aifei-tools 导致 tools 类不可加载）→ 转换为**来源模块自身异常族**的可读错误，消息固定含 `缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明`，保留原 cause。各模块落点：weixin → `IllegalStateException`；websocket → `IOException`（与 `acceptFor` 签名一致）；sms → `return false`（与既有「异常即验签失败」一致）；http → `HttpException`。该映射只覆盖「依赖缺失」这一新路径，**不改写上表任何既有正常路径的异常类型与消息**；实现不得因此给 aifei-tools 增加兼容方法。
+
+### 12.4 optional 依赖与消费方声明（Q1 定档）
+
+1. **G2-a 依赖声明**：四个来源模块 pom 各**仅新增一条**依赖：`io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`，`<optional>true</optional>`（无 `scope`，即模块自身 compile 期可见）。沿用仓库 `aifei-lock → aifei-cache` 等既有可选同仓模块先例。`mvn dependency:tree` 中该依赖标 `optional`、**不向下游传递**；来源模块自身编译正常。
+2. **G2-b 零新增**：除上述一条依赖外，四个来源模块零新增依赖；`aifei-tools` 自身依赖清单（§6.1：`aifei-all` provided + `ip2region` / `aifei-cache` / `zxing` optional + `junit` test）逐字不变；不新增配置键、Plugin、SPI、日志绑定、第三方库。
+3. **G2-c 消费方契约**：未显式声明 aifei-tools 的下游**构建不因 optional 不传递而失败**；其未触及受影响能力的运行路径不失败。消费方**使用任一受影响能力时必须显式声明** `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`；缺失时按 §12.3 末段给可读错误（不裸抛 `NoClassDefFoundError`），或按仓库既有 optional 契约处理。**不得改为强依赖，不得复制 tools 源码到来源模块。**
+4. **门禁适配例外（唯一）**：`aifei-http` 门禁① `noThirdPartyReference` 的 import 白名单为 `java.` / `javax.` / `cn.aifei.` / `cn.hg.aifei.http.`，不含 `cn.hg.aifei.tools.`。为保证「既有门禁逐字不改、不放宽、来源模块既有测试不删改」，`HttpGzip.decode` 对 tools 采用**全限定名调用且不写 import**；该写法不触碰任何断言文本、不触碰公共面、不引入第三方类型（aifei-tools 为同仓一手模块，非第三方）。其它三个来源模块的门禁均不禁止 `cn.hg.aifei.tools.*`，按常规 `import` 书写即可。
+
+### 12.5 版本统一口径（Q2 定档）
+
+统一为 **`io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`**，保持 `-SNAPSHOT`，**不执行 deploy / 正式发布**。为使 G4-a「`pom.xml` 与 `CHANGELOG.md` 表示同一版本」成立且 G4-b 保持 `-SNAPSHOT`，CHANGELOG 最新条目标题由 `## [1.1.0] - 2026-11-27` 同步为 `## [1.1.0-SNAPSHOT] - 2026-11-27`（不新增条目、不升为正式版本号）；该最新条目正文中的 aifei-tools 坐标示例统一写为 `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`。`[1.0.0]` 历史段落（含 `:43` 的坐标示例 `1.0.0-SNAPSHOT`）属历史记录，**不改**。
+
+| 文件 | 位置 | 动作 |
+| --- | --- | --- |
+| `aifei-tools/pom.xml` | `:9` `<version>` | `1.0.0-SNAPSHOT` → `1.1.0-SNAPSHOT`；其它属性 / 依赖 / 插件（含 javadoc `excludePackageNames`）不动 |
+| `aifei-tools/README.md` | `:7` 坐标说明、`:21` Maven 坐标示例 | 两处 `1.0.0-SNAPSHOT` → `1.1.0-SNAPSHOT`；`aifei-cache:1.1.0` 等其它坐标不动 |
+| 仓库根 `README.md` | `:36` 模块表 `aifei-tools` 坐标列 | `1.0.0-SNAPSHOT` → `1.1.0-SNAPSHOT`；该行「9 子包」描述不动 |
+| 四个来源模块 `pom.xml` | 新增的 aifei-tools 依赖 `<version>` | 一律写 `1.1.0-SNAPSHOT`；模块自身 `<version>1.0.0-SNAPSHOT</version>` 不动 |
+| `aifei-tools/CHANGELOG.md` | 最新条目标题 `## [1.1.0] - 2026-11-27`；该条目正文坐标示例 | 标题改为 `## [1.1.0-SNAPSHOT] - 2026-11-27`；正文坐标示例改为 `io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`；不新增条目、不升正式版本号；`[1.0.0]` 历史段（含 `:43`）不动 |
+| 四个来源模块 `CHANGELOG.md` | — | **本轮不更新**（Q4，见 §12.10） |
+
+### 12.6 咨询结论一：`kdf` 不并入 `cn.hg.aifei.tools.crypto`
+
+**结论：本轮不并入，且不得在 `crypto` 中新增任何 kdf 转发 / 别名 / 兼容类型。** 未来如需整合，只能作为**破坏性 major 变更**并附完整迁移方案，不在本轮范围。
+
+理由（四条，均为硬约束）：
+
+1. **门禁与计数破坏**：§11.1 / §11.6 定档九子包、28 公共类型；`ArchitectureBoundaryTest#cryptoPublicSurfaceExact` 断言 `crypto` 直接子级**精确 2**（`CryptoUtil.java` / `CryptoException.java`），`kdfPublicSurfaceExact` 断言 `kdf` **精确 4**。并入后 crypto 变 6、子包数变 8，必须改门禁期望集合——直接违反「门禁不得放宽 / 既有断言逐字不改」与 §10「纯追加纪律」。
+2. **语义不同族**：`crypto` 是无状态消息摘要 / MAC / 常量时间比较（入参 `String`，出参 `String` / `boolean`）；`kdf` 是 HKDF / PBKDF2 / HMAC 密钥派生，带 `KdfSpec` / `KdfHash` / `KdfKit` 公共协作模型与 `byte[]` 出参，属「带 Spec/Hash 协作类型的门面」语义。§12.7 的命名约定明确区分二者。
+3. **公共 API 破坏**：移动包名会破坏既有 `cn.hg.aifei.tools.kdf.*` 公共 API（§3.5 逐字签名冻结），造成下游源码与二进制双重不兼容；本轮硬约束是「公共 API 零变化」。
+4. **门禁与构建配置绑定**：`cryptoOnlyInKdfInternal`（原⑲）的 import 白名单与 `aifei-tools/pom.xml` 的 javadoc `excludePackageNames` 排除清单均绑定 `kdf.internal`；移动需同步改多处断言与排除清单，代价与风险都超出本期。
+
+约束：本轮 `kdf` 四个公共类型、`kdf/internal` 全部实现与 §3.5 签名原样保留；`crypto` 公共面精确 2 不变；跨子包零引用（§11.6）继续成立。
+
+### 12.7 咨询结论二：`XxxUtil` 与 `XxxKit` 均合规，且已是仓库既定惯例，本期不改名
+
+**结论：两种后缀均合规，按职责二选一；本期任何既有公共类型都不改名，新增四子包用 `Util` 正确。** 该约定自本章起作为 aifei-tools 及本仓各库模块的**后续扩展命名约定**：
+
+| 后缀 | 定义 | 仓库既有示例 | 判定要点 |
+| --- | --- | --- | --- |
+| `XxxUtil` | **无状态静态函数集合**：公共静态方法、无实例字段、私有构造；失败抛本子包统一异常 | `CryptoUtil` / `RandomUtil` / `XmlUtil` / `CodecUtil` / `MaskUtil` | 本轮新增四子包全部命中此类，用 `Util` 正确 |
+| `XxxKit` | **带 `Options` / `Spec` / `Hash` 等协作类型，或实例风格 / 有状态门面 API** 的门面 | `KdfKit`（`KdfSpec` / `KdfHash`）、`QrKit`（`QrOptions` / `QrErrorCorrection`）、`HttpKit` / `SmsKit`（有状态门面） | 存在协作类型或装配生命周期时用 `Kit`，不用 `Util` |
+
+约束：不新增 `XxxHelper` / `XxxSupport` / `XxxTool` 等第三类后缀；不把 `Util` 改名为 `Kit` 或反之（会破坏公共 API 冻结）；`internal` 下的 `Errors` / `Engine` / `Parser` 命名沿用 §11.9；任何新增公共类型必须先在设计文档登记职责与后缀归属再实现。
+
+### 12.8 跨文件约定（供实现与测试共同遵守）
+
+1. **来源版权头逐字保留**：8 个来源 `.java` 的头部注释块（含 `Copyright 2011-2035 詹波 (aifei.cn)` / `授权：aifei vip 订阅用户` 与统一原创版权头）一字不改，不因委托改造而替换；aifei-tools 四新子包仍按 §11.2 用统一原创版权头、不得出现来源声明。
+2. **协议串隔离**：所有协议串 / 业务语义留在来源模块：`sortedSign` 字典序拼接、RFC6455 GUID 与头名、阿里云 `signature` 字段名与 canonical 串、`<xml>` 根节点与微信字段名、`http.gzip` / `Accept-Encoding` / `HttpConfig`。tools 侧源码（公共层与 internal）不得出现这些字面量（§11.9 第 5 条继续有效）。
+3. **公共 API 冻结**：四个来源模块的公共类型集合、逐字签名、`throws` 声明与 `aifei-tools` 九子包 28 公共类型全部冻结；适配只发生在方法体与 private 助手；不得新增公共类 / 公共方法 / 公共字段（含常量提升）；`ALGORITHM` 等既有私有常量即使委托后不再参与计算也保留声明。
+4. **门禁不得放宽**：aifei-tools 33 例、weixin 4 例、websocket 5 例、sms 14 例、http 10 例的方法体 / 断言消息 / 期望集合逐字不改；本轮**零门禁改动**（含 http 门禁①——见第 6 条用 FQN 规避 import，不是改门禁）。任何实现若发现门禁失败，先回写本章再改代码，严禁改断言放行。
+5. **测试与回归策略**：来源模块既有测试**不删改**（尤其 `HttpGzipTest` 的「gzip 解压失败」消息断言、`XmlUtilTest` 的「XML 解析失败」断言、`Rfc6455HandshakeTest` 的 RFC 向量断言）；不复制来源实现做参考实现。回归准入：aifei-tools `mvn clean verify` 235 例（门禁 33 + 功能 202）0 failure / 0 error；weixin / websocket / sms / http 各自 `mvn clean verify` 0 failure / 0 error，用例数与改前一致；`javap` 抽查 tools 公共类 major = 52；四个来源模块 `mvn dependency:tree` 仅比改前多一条 optional 的 aifei-tools；全部离线。
+6. **aifei-http 引用写法**：仅 `HttpGzip.java` 的 `decode` 内使用 `cn.hg.aifei.tools.codec.CodecUtil.gunzip(raw)` 全限定名调用，**不新增 import**，以保持门禁①白名单与断言文本逐字不变；其它三个模块按常规 import 书写。禁止为图省事改门禁①白名单。
+7. **零新增依赖 / Java 8 / 行尾**：依赖清单按 §12.4；Java 8 双约束（语法 + API，class major 52），禁 `var` / `record` / `List.of` / text block 等；`.md` 一律 CRLF，源码 UTF-8、4 空格缩进、简体中文注释；不新增配置键 / Plugin / SPI / 日志绑定。
+8. **异常映射唯一口径**：§12.3 表是来源侧异常转换的**唯一事实来源**；实现不得在多个方法重复写映射（用 private 助手收敛），不得让 tools 异常穿透到来源公共边界；测试逐字断言改前的异常类型与消息（消息前缀/措辞不得用 tools 的 `crypto: ` / `xml: ` / `codec: ` / `random: ` 替代）。
+
+### 12.9 文件清单与有序任务列表
+
+> 任务号 T32–T39 接续 §11.8 的 T31；T32 为架构师本轮已完成的设计落盘。每文件恰好归属一个任务。实现方按任务号顺序推进；**T33–T37 均由交付负责人已裁决口径驱动，不再回问用户**。
+
+| 任务 | 内容（文件） | 依赖 | 验收要点 |
+| --- | --- | --- | --- |
+| **T32 架构设计（贾苟思，已完成）** | `aifei-tools/docs/design.md`（本章 §12） | — | 源模块改造点 / 异常映射 / optional 契约 / 版本口径 / 两项咨询结论 / 任务列表全部落盘；不写产品代码 |
+| **T33 版本统一 + 四模块依赖声明** | `aifei-tools/pom.xml`（`:9` 版本）· `aifei-tools/README.md`（`:7`、`:21` 坐标）· 仓库根 `README.md`（`:36` 坐标列）· `aifei-weixin/pom.xml` · `aifei-websocket/pom.xml` · `aifei-sms/pom.xml` · `aifei-http/pom.xml`（各新增 1 条 optional aifei-tools:1.1.0-SNAPSHOT） | T32 | §12.4 / §12.5 逐字一致；两处版本统一且保持 SNAPSHOT；CHANGELOG 最新条目标题按 §12.5 改为 `[1.1.0-SNAPSHOT]`、正文坐标同步；历史段不动；四模块零其它新增依赖；不执行 deploy |
+| **T34 weixin 委托改造** | `aifei-weixin/src/main/java/cn/aifei/weixin/core/encrypt/Sha1Util.java` · `.../encrypt/RandomUtil.java` · `.../core/util/XmlUtil.java` · `.../core/util/XmlBuilder.java` | T33 | §12.2 前四行 + §12.3；sortedSign / randomStr() 默认16 / XML 根节点与字段名 / Builder 标签与 CDATA 拆分逐字保留；版权头逐字保留；`KernelBindingTest` 4 例全绿 |
+| **T35 websocket 委托改造** | `aifei-websocket/src/main/java/cn/hg/aifei/websocket/internal/jdk/Rfc6455Handshake.java` | T33 | §12.2 第五行 + §12.3；GUID / 头名 / VERSION / newKey / 请求响应读写不动；`throws IOException` 与 RFC 向量断言全绿；门禁 5 例全绿 |
+| **T36 sms 委托改造** | `aifei-sms/src/main/java/cn/hg/aifei/sms/internal/sms4j/AliyunReceiptVerifier.java` | T33 | §12.2 第六行 + §12.3；signature 键名 / ALGORITHM 字面量 / canonical 串 / 缺失返回 false 不动；门禁 14 例全绿 |
+| **T37 http 委托改造** | `aifei-http/src/main/java/cn/hg/aifei/http/internal/HttpGzip.java` | T33 | §12.2 第七行 + §12.3 + §12.8 第 6 条；**FQN 调用、不写 import**；http.gzip / Accept-Encoding / HttpException 消息不动；门禁 10 例（含①）逐字不改且全绿 |
+| **T38 跨模块全量回归** | 无新增文件（仅验证） | T34–T37 | §12.8 第 5 条全部准入项：235 + 四模块门禁与功能用例全绿、用例数不减、dependency:tree 仅多一条 optional、javap major=52、零联网 |
+| **T39 遗留事项登记（非本期承诺）** | 仅本章 §12.10 记录 | T38 | 四个来源模块 CHANGELOG、来源 README 依赖段与 AGENTS.md「唯一依赖 / 无 optional」口径的后续同步已登记，不在本期改动 |
+
+### 12.10 待明确事项（P1，已登记，非本期承诺）
+
+1. **四个来源模块 CHANGELOG（Q4）**：本轮**不更新**；下一版本窗口按各模块规范补记「委托 aifei-tools 消除重复实现 + optional 依赖」条目。
+2. **来源模块文档口径漂移**：`aifei-weixin/AGENTS.md:25`「唯一编译依赖是 aifei-all」、`aifei-http/AGENTS.md:24`「pom 只允许 aifei-all + junit，不得新增 optional/compile 第三方依赖」、仓库根 `README.md:303`「aifei-http 无 optional」在 T33 后将与事实不符。建议后续窗口补一句「aifei-tools 为同仓一手可选模块，非第三方；消费方按需显式声明」，**不改任何门禁断言**，本轮不改动。
+3. **消费方文档**：Q1 要求的「使用受影响能力须显式声明 aifei-tools」已落本章 §12.4 与 §12.3；来源模块 README 依赖段的对应提示列入下一版本窗口，本轮不新增文档改动。
+4. **未来 major 整合**：`kdf` 并入 `crypto` 只能作为破坏性 major 变更立项，届时须附迁移方案与下游公告；本轮不预留任何转发层。

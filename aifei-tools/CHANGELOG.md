@@ -2,7 +2,7 @@
 
 本文件记录 `aifei-tools` 模块的版本变更，按时间倒序。版本号遵循语义化版本（capability 扩展走 minor 递增、缺陷修复走 patch、破坏性变更走 major）。
 
-## [1.1.0] - 2026-11-27
+## [1.1.0-SNAPSHOT] - 2026-11-27
 
 ### 概述
 
@@ -31,6 +31,7 @@
 
 ### 依赖与测试口径
 
+- 模块坐标：`io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT`
 - 依赖清单不变：`aifei-all`(provided) + `ip2region` / `zxing` / `aifei-cache`(optional) + `junit`(test)；四个新子包纯 JDK
 - 全量回归期望 235 例（门禁 33 + 功能 202），0 failure / 0 error 为准入线；用例按 `docs/testing.md` §3.7–§3.12 执行，全部离线
 

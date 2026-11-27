@@ -8,21 +8,11 @@
 
 package cn.aifei.weixin.core.util;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
+import cn.hg.aifei.tools.xml.XmlException;
 import java.util.Map;
-import javax.xml.XMLConstants;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
- * 安全 XML 解析（零依赖，仅用 JDK DOM）。
+ * 安全 XML 解析（委托 aifei-tools xml，XXE 硬化与遍历规则由 tools 唯一定义）。
  *
  * <pre>
  * 安全约束（XXE 防护，jfinal-weixin 曾为此发布 NO-XXE 分支）：
@@ -33,63 +23,49 @@ import org.w3c.dom.NodeList;
  */
 public class XmlUtil {
 
+    private static final String MISSING_TOOLS =
+            "缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明";
+
     /**
      * 解析微信 XML 报文，返回根节点下「直接子节点名 → 文本」的有序映射。
      * 节点不存在时不出现在 map 中；XML 非法（含 DOCTYPE）时抛 IllegalArgumentException。
      */
     public static Map<String, String> parse(String xml) {
-        if (xml == null || xml.trim().isEmpty()) {
-            throw new IllegalArgumentException("XML 内容为空");
-        }
-
-        Document document;
-        try {
-            DocumentBuilder builder = newDocumentBuilderFactory().newDocumentBuilder();
-            builder.setErrorHandler(null);
-            document = builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new IllegalArgumentException("XML 解析失败", e);
-        }
-
-        Element root = document.getDocumentElement();
-        if (root == null) {
-            throw new IllegalArgumentException("XML 缺少根节点");
-        }
-
-        Map<String, String> ret = new LinkedHashMap<>();
-        NodeList children = root.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            Node node = children.item(i);
-            if (node.getNodeType() != Node.ELEMENT_NODE) {
-                continue;
-            }
-            String name = node.getNodeName();
-            if (!ret.containsKey(name)) {     // 同名节点保留首个
-                ret.put(name, node.getTextContent());
-            }
-        }
-        return ret;
+        return parseViaTools(xml);
     }
 
-    private static DocumentBuilderFactory newDocumentBuilderFactory() {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    private static Map<String, String> parseViaTools(String xml) {
         try {
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-        } catch (ParserConfigurationException e) {
-            throw new IllegalStateException("XML 解析器不支持 XXE 防护特性", e);
+            return XmlHolder.parse(xml);
+        } catch (NoClassDefFoundError e) {
+            throw new IllegalStateException(MISSING_TOOLS, e);
         }
-        factory.setXIncludeAware(false);
-        factory.setExpandEntityReferences(false);
-        try {
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
-            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
-        } catch (IllegalArgumentException ignore) {
-            // 老版本 JDK 未实现这两个属性，前面的实体禁用在 JDK 8+ 已足够
+    }
+
+    /**
+     * 隔离 tools 异常类型引用；按消息前缀将 tools 异常逐字映射回来源模块既有异常口径。
+     */
+    private static final class XmlHolder {
+        private static Map<String, String> parse(String xml) {
+            try {
+                return cn.hg.aifei.tools.xml.XmlUtil.parse(xml);
+            } catch (XmlException xe) {
+                String message = xe.getMessage() == null ? "" : xe.getMessage();
+                if (message.contains("content must not be null or empty")) {
+                    throw new IllegalArgumentException("XML 内容为空");
+                }
+                if (message.contains("failed to parse content")) {
+                    throw new IllegalArgumentException("XML 解析失败", xe.getCause());
+                }
+                if (message.contains("missing root element")) {
+                    throw new IllegalArgumentException("XML 缺少根节点");
+                }
+                if (message.contains("XXE protection feature not supported")) {
+                    throw new IllegalStateException("XML 解析器不支持 XXE 防护特性", xe.getCause());
+                }
+                throw new IllegalArgumentException("XML 解析失败", xe);
+            }
         }
-        return factory;
     }
 
     private XmlUtil() {

@@ -6,16 +6,13 @@
 
 package cn.hg.aifei.sms.internal.sms4j;
 
-import java.nio.charset.StandardCharsets;
+import cn.hg.aifei.tools.crypto.CryptoException;
+import cn.hg.aifei.tools.crypto.CryptoUtil;
 import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  * 阿里云短信状态报告回调验签唯一实现（设计 §8.3）：HMAC-SHA1，纯 JDK，常量时间比较。
@@ -56,14 +53,26 @@ public final class AliyunReceiptVerifier {
                 String value = params.get(key);
                 canonical.append(key).append(value == null ? "" : value);
             }
-            Mac mac = Mac.getInstance(ALGORITHM);
-            mac.init(new SecretKeySpec(accessKeySecret.getBytes(StandardCharsets.UTF_8), ALGORITHM));
-            byte[] signature = mac.doFinal(canonical.toString().getBytes(StandardCharsets.UTF_8));
-            String expected = Base64.getEncoder().encodeToString(signature);
-            return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
-                    provided.getBytes(StandardCharsets.UTF_8));
+            return SignHolder.verify(accessKeySecret, canonical.toString(), provided);
         } catch (GeneralSecurityException e) {
             return false;
+        } catch (NoClassDefFoundError e) {
+            return false;
+        }
+    }
+
+    /**
+     * 隔离 tools 异常类型引用：可选依赖缺失或验签异常一律收敛为「验签失败」。
+     */
+    private static final class SignHolder {
+        private static boolean verify(String secret, String data, String provided)
+                throws GeneralSecurityException {
+            try {
+                String expected = CryptoUtil.hmacSha1(secret, data);
+                return CryptoUtil.constantTimeEquals(expected, provided);
+            } catch (CryptoException e) {
+                return false;
+            }
         }
     }
 }

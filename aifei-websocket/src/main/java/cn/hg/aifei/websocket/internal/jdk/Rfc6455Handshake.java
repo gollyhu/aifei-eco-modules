@@ -6,13 +6,13 @@
 
 package cn.hg.aifei.websocket.internal.jdk;
 
+import cn.hg.aifei.tools.crypto.CryptoException;
+import cn.hg.aifei.tools.crypto.CryptoUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Collections;
@@ -67,6 +67,9 @@ public final class Rfc6455Handshake {
      */
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    private static final String MISSING_TOOLS =
+            "缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明";
+
     /**
      * 禁止创建工具类实例。
      */
@@ -96,14 +99,29 @@ public final class Rfc6455Handshake {
         if (key == null) {
             throw new IllegalArgumentException("key can not be null");
         }
-        byte[] digest;
+        return acceptViaTools(key);
+    }
+
+    private static String acceptViaTools(String key) throws IOException {
         try {
-            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
-            digest = sha1.digest((key + GUID).getBytes(StandardCharsets.US_ASCII));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IOException("SHA-1 is not available", e);
+            return AcceptHolder.accept(key + GUID);
+        } catch (NoClassDefFoundError e) {
+            throw new IOException(MISSING_TOOLS, e);
         }
-        return Base64.getEncoder().encodeToString(digest);
+    }
+
+    /**
+     * 隔离 tools 异常类型引用：可选依赖缺失时本类仍可加载，缺失错误由上层助手收敛。
+     */
+    private static final class AcceptHolder {
+        private static String accept(String text) throws IOException {
+            try {
+                return CryptoUtil.sha1Base64(text);
+            } catch (CryptoException e) {
+                throw new IOException("SHA-1 is not available",
+                        e.getCause() != null ? e.getCause() : e);
+            }
+        }
     }
 
     /**

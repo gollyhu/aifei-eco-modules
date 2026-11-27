@@ -16,6 +16,9 @@ package cn.aifei.weixin.core.util;
  */
 public class XmlBuilder {
 
+    private static final String MISSING_TOOLS =
+            "缺少可选依赖 io.github.gollyhu:aifei-tools:1.1.0-SNAPSHOT；使用本能力时消费方须显式声明";
+
     private final StringBuilder sb = new StringBuilder(160);
 
     public XmlBuilder() {
@@ -74,29 +77,17 @@ public class XmlBuilder {
      * XML 文本节点实体转义
      */
     public static String escape(String str) {
-        StringBuilder ret = new StringBuilder(str.length() + 16);
-        for (int i = 0; i < str.length(); i++) {
-            char c = str.charAt(i);
-            switch (c) {
-                case '&':
-                    ret.append("&amp;");
-                    break;
-                case '<':
-                    ret.append("&lt;");
-                    break;
-                case '>':
-                    ret.append("&gt;");
-                    break;
-                case '"':
-                    ret.append("&quot;");
-                    break;
-                case '\'':
-                    ret.append("&apos;");
-                    break;
-                default:
-                    ret.append(c);
-            }
+        return escapeViaTools(str);
+    }
+
+    private static String escapeViaTools(String str) {
+        if (str == null) {
+            throw new NullPointerException();
         }
-        return ret.toString();
+        try {
+            return cn.hg.aifei.tools.xml.XmlUtil.escape(str);
+        } catch (NoClassDefFoundError e) {
+            throw new IllegalStateException(MISSING_TOOLS, e);
+        }
     }
 }

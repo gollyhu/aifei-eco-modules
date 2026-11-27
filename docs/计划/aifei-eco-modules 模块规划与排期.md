@@ -79,7 +79,7 @@
 | `aifei-job` | `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` | 应用内定时任务 | 根包 7 类 | quartz + slf4j-api `compile`（已登记例外） |
 | `aifei-audit` | `io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT` | 注解式操作审计：结构化事件 + 落点 SPI | 根包 + `spi` 3 类 + `aifei` 插件 | 零第三方 compile/runtime（junit 仅 test） |
 | `aifei-i18n` | `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` | 多语言：后端取文案 + 前端语言包下发 + Enjoy 三指令 | 根包 7 + `web` 2 + `aifei` 1 = 精确 10 类 | 零第三方；`aifei-cache` 为 `optional`（KV 来源） |
-| `aifei-tools` | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：IP 归属地 / 验证码 / 二维码 / 脱敏 | 根包零类型，公共 API 全在 `ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec` 九个子包 | ip2region `3.3.7` / ZXing core `3.5.3` / aifei-cache 均 `optional` |
+| `aifei-tools` | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：IP 归属地 / 验证码 / 二维码 / 脱敏 / 密钥派生 / 摘要与认证码 / 安全随机 / XML 解析 / gzip 解压（九子包 ipdb / captcha / qr / mask / kdf / crypto / random / xml / codec） | 根包零类型，公共 API 全在 `ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec` 九个子包 | ip2region `3.3.7` / ZXing core `3.5.3` / aifei-cache 均 `optional` |
 | `aifei-sms` | `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` | 短信通道：模板化发送 + 回执接收验签 | 根包 5 类 + `spi` 2 类 | sms4j-core `3.3.6` 为 `optional`；同步发送、零存储 |
 | `aifei-pay` | `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT` | 支付宝支付：扫码 / H5 / PC 下单 + 查单 / 退款 + 回调验签 | 根包 4 类 + `model` 4 类 | IJPay AliPay V3 等 4 项均 `optional`；零存储、不做幂等 |
 
