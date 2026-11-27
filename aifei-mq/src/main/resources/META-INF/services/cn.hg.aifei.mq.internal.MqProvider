@@ -1,0 +1,7 @@
+cn.hg.aifei.mq.memory.MemoryMqProvider
+cn.hg.aifei.mq.rocketmq.RocketMqProvider
+cn.hg.aifei.mq.mqtt.MqttProvider
+cn.hg.aifei.mq.mqtt5.Mqtt5Provider
+cn.hg.aifei.mq.rabbitmq.RabbitMqProvider
+cn.hg.aifei.mq.kafka.KafkaProvider
+cn.hg.aifei.mq.redisstream.RedisStreamProvider
