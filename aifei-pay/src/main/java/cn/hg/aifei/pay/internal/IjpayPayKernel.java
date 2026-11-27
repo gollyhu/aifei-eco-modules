@@ -18,7 +18,7 @@ import java.util.Map;
  * 内核边界的唯一实现：全模块唯一出现 IJPay 交易接口与开放平台 SDK 交易模型的位置。
  *
  * <p>页面类下单**必须**走实例化的 {@code GenericExecuteApi}，不得走 {@code AliPayApi} 的静态方法——
- * 后者共用进程级默认客户端，多应用会互相覆盖（`docs/design.md` §2.4.5 实测结论）。</p>
+ * 后者共用进程级默认客户端，多应用会互相覆盖。</p>
  *
  * <p>本类不收敛异常：内核异常原样上抛，由 {@link PayErrors} 在调用边界统一转换。</p>
  */

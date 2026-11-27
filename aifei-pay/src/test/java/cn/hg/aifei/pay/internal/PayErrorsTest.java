@@ -20,7 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 异常收敛（AC-18）与敏感值脱敏（AC-05）：调用方只收到 {@link PayException}，
+ * 异常收敛与敏感值脱敏：调用方只收到 {@link PayException}，
  * {@code code()} 与 {@code cause} 可见但原始异常类型不进入消息；凭据值在消息中一律 {@code ***}。
  */
 public class PayErrorsTest {
@@ -57,7 +57,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-18：内核异常携带 {@code getCode()} 时，错误码与 cause 都应保留，且消息含动作语义与错误码。
+     * 内核异常携带 {@code getCode()} 时，错误码与 cause 都应保留，且消息含动作语义与错误码。
      */
     @Test
     public void shouldExposeCodeAndCauseFromKernelFailure() {
@@ -74,7 +74,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-18：内核异常无 {@code getCode()} 时，从响应体 JSON 抽取错误码。
+     * 内核异常无 {@code getCode()} 时，从响应体 JSON 抽取错误码。
      */
     @Test
     public void shouldExtractCodeFromResponseBody() {
@@ -88,7 +88,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-18：响应体不可用而消息文本内嵌 JSON 时，仍能抽取错误码（SDK 把响应体拼进 message）。
+     * 响应体不可用而消息文本内嵌 JSON 时，仍能抽取错误码（SDK 把响应体拼进 message）。
      */
     @Test
     public void shouldExtractCodeFromExceptionMessage() {
@@ -101,7 +101,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-18：无可提取的错误码时 {@code code()} 为 {@code null}，不编造。
+     * 无可提取的错误码时 {@code code()} 为 {@code null}，不编造。
      */
     @Test
     public void shouldLeaveCodeNullWhenNothingToExtract() {
@@ -112,7 +112,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-18：超长内核消息被截断，避免整段响应体进入异常消息。
+     * 超长内核消息被截断，避免整段响应体进入异常消息。
      */
     @Test
     public void shouldTruncateOverlongKernelMessage() {
@@ -127,7 +127,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-18：任何原始异常都被收敛为 {@link PayException}，且消息不含原始异常类名。
+     * 任何原始异常都被收敛为 {@link PayException}，且消息不含原始异常类名。
      */
     @Test
     public void shouldHideOriginalExceptionTypeInMessage() {
@@ -142,7 +142,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-01 支撑：未装配消息是固定文案，不含键名与凭据。
+     * 未装配消息是固定文案，不含键名与凭据。
      */
     @Test
     public void shouldUseFixedMessageForNotInstalled() {
@@ -153,7 +153,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05：凭据类键值一律完全不显示（附长度），私钥 / 证书不会经由消息外泄。
+     * 凭据类键值一律完全不显示（附长度），私钥 / 证书不会经由消息外泄。
      */
     @Test
     public void shouldMaskCredentialValuesCompletely() {
@@ -165,7 +165,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05：标识类键值原样显示（不构成凭据泄漏），便于定位配置问题。
+     * 标识类键值原样显示（不构成凭据泄漏），便于定位配置问题。
      */
     @Test
     public void shouldShowIdentifierValues() {
@@ -179,7 +179,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05：证书序列号只显示前 8 位，便于比对轮换又不泄漏完整值。
+     * 证书序列号只显示前 8 位，便于比对轮换又不泄漏完整值。
      */
     @Test
     public void shouldShowOnlyPrefixOfCertSn() {
@@ -191,7 +191,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05：未知键默认保守处理为 {@code ***}。
+     * 未知键默认保守处理为 {@code ***}。
      */
     @Test
     public void shouldMaskUnknownKeysByDefault() {
@@ -200,7 +200,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05：配置非法消息由「键名 + 脱敏值 + 原因」组成，凭据值不出现。
+     * 配置非法消息由「键名 + 脱敏值 + 原因」组成，凭据值不出现。
      */
     @Test
     public void shouldComposeInvalidConfigMessageWithMaskedValue() {
@@ -212,7 +212,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05 / AC-15：其余消息模板逐条核对（配置缺失 / 未知应用 / 网关不一致 / 验签失败）。
+     * 其余消息模板逐条核对（配置缺失 / 未知应用 / 网关不一致 / 验签失败）。
      */
     @Test
     public void shouldComposeDocumentedMessageTemplates() {
@@ -226,7 +226,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05：依赖缺失消息含坐标但不含堆栈信息。
+     * 依赖缺失消息含坐标但不含堆栈信息。
      */
     @Test
     public void shouldComposeMissingDependencyMessageWithoutStackTrace() {
@@ -238,7 +238,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-18：真实内核异常的 {@code getCode()} 返回 HTTP 状态码（{@code int}），提取口径必须跳过它并回落到
+     * 真实内核异常的 {@code getCode()} 返回 HTTP 状态码（{@code int}），提取口径必须跳过它并回落到
      * 响应体 JSON 的 {@code code} 字段——否则错误码会被 HTTP 状态码污染。
      */
     @Test
@@ -250,7 +250,7 @@ public class PayErrorsTest {
     }
 
     /**
-     * AC-05：{@code errorCodeOf} 对 {@code null} 与无相关方法的异常保持健壮，内核消息缺失时有占位文案。
+     * {@code errorCodeOf} 对 {@code null} 与无相关方法的异常保持健壮，内核消息缺失时有占位文案。
      */
     @Test
     public void shouldBeRobustWhenExtractingCodeFromNull() {

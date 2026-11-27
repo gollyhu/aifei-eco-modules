@@ -24,7 +24,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * IP 查询会话功能测试（设计 §3.1 / §7.2 / §7.3 / §9）。
+ * IP 查询会话功能测试。
  *
  * <p>覆盖：三模式一致、v4/v6 命中、境内中文/境外英文/保留段/未知段语义、close 幂等、
  * 关闭后查询、非法参数、xdb 不可读、依赖缺失可读异常、并发无串扰。样本全离线内嵌。</p>

@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 装配生命周期（AC-04 / AC-05）：启动即可用、停止后一律拒绝、启动与停止幂等、失败无残留且可重装配、
+ * 装配生命周期：启动即可用、停止后一律拒绝、启动与停止幂等、失败无残留且可重装配、
  * 停止后重装配对注入客户端的即时刷新。
  */
 public class PluginLifecycleTest {
@@ -68,7 +68,7 @@ public class PluginLifecycleTest {
         MailProviderRegistry.reset();
     }
 
-    /** AC-04：启动后门面可用。 */
+    /** 启动后门面可用。 */
     @Test
     public void startExposesClients() {
         plugin.start();
@@ -80,7 +80,7 @@ public class PluginLifecycleTest {
         assertEquals("两个通道各构建一次客户端", 2, factory.receivedConfigs().size());
     }
 
-    /** AC-04：停止后门面调用与已注入客户端一律抛「插件未启动或已停止」。 */
+    /** 停止后门面调用与已注入客户端一律抛「插件未启动或已停止」。 */
     @Test
     public void stopRejectsFacadeAndInjectedClient() {
         plugin.start();
@@ -127,7 +127,7 @@ public class PluginLifecycleTest {
         assertEquals("停止后不应再触发发送", 0, factory.requireClientFor(QQ_SERVER).count());
     }
 
-    /** AC-04：启动幂等——重复启动不重建客户端、不叠加状态。 */
+    /** 启动幂等——重复启动不重建客户端、不叠加状态。 */
     @Test
     public void startIsIdempotent() {
         plugin.start();
@@ -138,7 +138,7 @@ public class PluginLifecycleTest {
         assertEquals("qq", MailKit.defaultClient().channelName());
     }
 
-    /** AC-04：停止幂等——重复停止无副作用。 */
+    /** 停止幂等——重复停止无副作用。 */
     @Test
     public void stopIsIdempotent() {
         plugin.start();
@@ -155,7 +155,7 @@ public class PluginLifecycleTest {
         });
     }
 
-    /** AC-05：启动失败无残留，修正配置后可用同一装配入口重新装配。 */
+    /** 启动失败无残留，修正配置后可用同一装配入口重新装配。 */
     @Test
     public void failedStartLeavesNoResidueAndCanRecover() {
         TestProps.remove(prop, "email.qq.password");
@@ -185,7 +185,7 @@ public class PluginLifecycleTest {
         assertEquals(1, factory.requireClientFor(QQ_SERVER).count());
     }
 
-    /** AC-05 / P1 #10：停止后重装配，动态委托代理自动指向新装配的实例（配置变更即时生效）。 */
+    /** 停止后重装配，动态委托代理自动指向新装配的实例（配置变更即时生效）。 */
     @Test
     public void stopThenStartRefreshesDynamicProxy() {
         plugin.start();
@@ -211,7 +211,7 @@ public class PluginLifecycleTest {
                 factory.requireClientFor(QQ_SERVER).count());
     }
 
-    /** AC-04 / P1 #10：框架注入的单例同样随重装配刷新（若框架可取到单例则断言刷新语义）。 */
+    /** 框架注入的单例同样随重装配刷新（若框架可取到单例则断言刷新语义）。 */
     @Test
     public void injectedSingletonFollowsCurrentDefaultChannel() {
         plugin.start();

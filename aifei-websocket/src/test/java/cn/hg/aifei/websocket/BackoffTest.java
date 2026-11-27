@@ -13,7 +13,7 @@ import cn.hg.aifei.websocket.internal.Backoff;
 import org.junit.Test;
 
 /**
- * {@link Backoff} 纯函数的上下界、抖动、默认参数序列与溢出保护（设计 §6.3）。
+ * {@link Backoff} 纯函数的上下界、抖动、默认参数序列与溢出保护。
  *
  * <p>随机数由调用方以 {@code r} 注入，因此全部断言可确定性复现，不依赖时钟与随机源。</p>
  */
@@ -32,7 +32,7 @@ public class BackoffTest {
     }
 
     /**
-     * 默认参数下 {@code r} 取中值时，延迟序列约为设计给出的 {@code 500 / 1000 / 2000 / 4000 / 8000}。
+     * 默认参数下 {@code r} 取中值时，延迟序列约为 {@code 500 / 1000 / 2000 / 4000 / 8000}。
      */
     @Test
     public void shouldMatchDefaultSequenceAtMidRandom() {

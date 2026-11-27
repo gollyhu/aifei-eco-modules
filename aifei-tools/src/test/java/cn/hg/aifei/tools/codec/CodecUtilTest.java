@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * codec gunzip 的往返、null/空透传、异常语义与并发测试（设计 §11.3.4，测试策略 §3.10）。
+ * codec gunzip 的往返、null/空透传、异常语义与并发测试。
  *
  * <p>压缩样本全部由内存中的 GZIPOutputStream 生成，零外链样本、零联网。</p>
  */

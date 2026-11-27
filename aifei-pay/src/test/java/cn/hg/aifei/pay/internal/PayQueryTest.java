@@ -24,7 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 查单动作（AC-08）：交易字段透出，以及「订单不存在」的唯一口径——抛 {@link PayException} 且
+ * 查单动作：交易字段透出，以及「订单不存在」的唯一口径——抛 {@link PayException} 且
  * {@code code() = ACQ.TRADE_NOT_EXIST}（不返回空结果形态）。
  */
 public class PayQueryTest {
@@ -78,7 +78,7 @@ public class PayQueryTest {
     }
 
     /**
-     * AC-08：存在订单 → 返回含交易状态 / 金额 / 交易号的公共值对象。
+     * 存在订单 → 返回含交易状态 / 金额 / 交易号的公共值对象。
      */
     @Test
     public void shouldReturnTradeFieldsForExistingOrder() {
@@ -94,7 +94,7 @@ public class PayQueryTest {
     }
 
     /**
-     * AC-08：订单不存在 → 抛 {@link PayException}，{@code code()} 为内核错误码，且保留 cause。
+     * 订单不存在 → 抛 {@link PayException}，{@code code()} 为内核错误码，且保留 cause。
      */
     @Test
     public void shouldThrowWithTradeNotExistCodeWhenOrderMissing() {
@@ -114,7 +114,7 @@ public class PayQueryTest {
     }
 
     /**
-     * AC-08：无法从内核异常提取错误码时 {@code code()} 为 {@code null}，不编造错误码。
+     * 无法从内核异常提取错误码时 {@code code()} 为 {@code null}，不编造错误码。
      */
     @Test
     public void shouldLeaveCodeNullWhenKernelProvidesNoCode() {
@@ -127,7 +127,7 @@ public class PayQueryTest {
     }
 
     /**
-     * AC-08 / AC-18：内核抛受检异常时也被收敛为 {@link PayException}，不外泄原始类型。
+     * 内核抛受检异常时也被收敛为 {@link PayException}，不外泄原始类型。
      */
     @Test
     public void shouldWrapCheckedKernelException() {
@@ -139,7 +139,7 @@ public class PayQueryTest {
     }
 
     /**
-     * AC-08：响应缺字段时归一为空串，便于调用方直接比较。
+     * 响应缺字段时归一为空串，便于调用方直接比较。
      */
     @Test
     public void shouldNormalizeAbsentFieldsToEmptyString() {

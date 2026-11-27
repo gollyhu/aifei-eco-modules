@@ -28,8 +28,8 @@ import org.junit.Before;
  * 避免与历史残留消息、并行实例互相干扰；{@link #closeBus()} 兜底关闭总线（基类用例内已关闭，关闭幂等）。
  * broker 侧被自动创建的主题无法经客户端删除，故主题名带随机前缀以便识别与运维清理。</p>
  *
- * <p>后端差异行为（投递模型、有序性、投递保证、{@code messageId} 语义、取消订阅的尽力语义等）见
- * {@code docs/design.md} §5.6 (C)，不属本基类用例。</p>
+ * <p>后端差异行为（投递模型、有序性、投递保证、{@code messageId} 语义、取消订阅的尽力语义等）
+ * 不属本基类用例。</p>
  */
 public class RocketMqMessageBusContractTest extends MessageBusContractTest {
 

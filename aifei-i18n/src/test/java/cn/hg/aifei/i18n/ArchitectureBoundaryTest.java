@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * 架构门禁（设计 §11.1）：以源码文本扫描 + 反射断言包边界、公共面精确集合与零自建规则数据，不得放宽。
+ * 架构门禁：以源码文本扫描 + 反射断言包边界、公共面精确集合与零自建规则数据，不得放宽。
  *
  * <pre>
  *  ① noThirdPartyReference          import 只能来自 JDK / aifei / 本模块（cache 仅 KvSource）
@@ -60,7 +60,7 @@ public class ArchitectureBoundaryTest {
     private static final String AIFEI_PACKAGE = "cn/hg/aifei/i18n/aifei/";
     private static final String INTERNAL_PACKAGE = "cn/hg/aifei/i18n/internal/";
     private static final String DEFAULT_SRC = "cn/hg/aifei/i18n/defaultSource/";
-    /** 唯一新增门禁例外：Enjoy 类型仅允许出现在指令实现包（design.md §16.8.1）。 */
+    /** 门禁例外：Enjoy 类型仅允许出现在指令实现包。 */
     private static final String DIRECTIVE_PACKAGE = "cn/hg/aifei/i18n/enjoy/directive/";
 
     private static final int EXPECTED_PUBLIC_TYPES = 7;
@@ -143,7 +143,7 @@ public class ArchitectureBoundaryTest {
                         || fqn.startsWith("cn.aifei.plugin.Plugin") || fqn.startsWith("cn.aifei.aop.");
                 boolean webOnly = fqn.startsWith("cn.aifei.core.");
                 boolean logOnly = fqn.startsWith("cn.aifei.log.");
-                // 唯一新增例外：Enjoy 类型仅允许 enjoy/directive/（design.md §16.8.1）
+                // 门禁例外：Enjoy 类型仅允许 enjoy/directive/
                 boolean enjoyOnly = fqn.startsWith("cn.aifei.enjoy.");
                 boolean allowed = (aifeiOnly && path.contains(AIFEI_PACKAGE))
                         || (webOnly && path.contains(WEB_PACKAGE))

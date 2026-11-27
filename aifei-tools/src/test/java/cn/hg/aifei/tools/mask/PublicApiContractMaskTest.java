@@ -23,7 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * mask 公共面形态测试（设计 §3.4 / §6.2）：精确 3 类型、逐字签名、公共方法无 throws、
+ * mask 公共面形态测试：精确 3 类型、逐字签名、公共方法无 throws、
  * 签名零第三方类型、class major 52。
  */
 public class PublicApiContractMaskTest {

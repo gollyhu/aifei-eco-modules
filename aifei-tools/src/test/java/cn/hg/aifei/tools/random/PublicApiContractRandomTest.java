@@ -28,7 +28,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * random 公共面形态测试（设计 §11.3.2，测试策略 §3.8）：逐字签名、异常两构造、
+ * random 公共面形态测试：逐字签名、异常两构造、
  * serialVersionUID=1L、负长度逐字消息、无 throws、签名白名单、公共层零 JDK 加密/来源类型字面量、major 52。
  */
 public class PublicApiContractRandomTest {

@@ -104,8 +104,8 @@ public class I18nKitTest {
 
     @Test
     public void ttlExpiryReloads() {
-        // QA 自修：原实现用 Thread.sleep(80L) 等待 TTL 到期，违反「零 Thread.sleep」纪律。
-        // 改为极小 TTL + 有界轮询（nanoTime 截止时间），时间自然推进后即触发回源，语义不变且无 sleep。
+        // TTL 到期由时间自然推进触发，用例不使用 Thread.sleep。
+        // 采用极小 TTL + 有界轮询（nanoTime 截止时间），时间推进后即触发回源。
         FakeMessageSource source = new FakeMessageSource("properties").put("zh-CN", "k", "v");
         install("en", 1L, source);
         I18nKit.local("zh-CN").message("k"); // 首次加载并写入缓存

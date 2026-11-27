@@ -20,7 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 静态门面（AC-R-17 的门面侧）：未装配即失败、取到的实例与注入一致、五个便捷方法只做转发。
+ * 静态门面：未装配即失败、取到的实例与注入一致、五个便捷方法只做转发。
  */
 public class HttpKitTest {
 

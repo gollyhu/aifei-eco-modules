@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * 架构门禁（设计 §11）：以源码文本扫描断言包边界、公共面大小与离线纪律，不得为兼容错误用法而放宽。
+ * 架构门禁：以源码文本扫描断言包边界、公共面大小与离线纪律，不得为兼容错误用法而放宽。
  *
  * <pre>
  * ① noThirdPartyReference                    import 只能来自 JDK / aifei / 本模块

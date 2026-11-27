@@ -17,8 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * {@code ApiClient} 与 {@code GenericExecuteApi} 的构建与缓存：每个 appId 独立一套实例。
  *
- * <p>不使用进程级默认客户端，也不使用静态多应用注册表——否则多应用会互相覆盖网关与凭据
- * （`docs/design.md` §2.4.5）。缓存是「装配期一次建成、调用期只读」的形态，因此网关与凭据在同一
+ * <p>不使用进程级默认客户端，也不使用静态多应用注册表——否则多应用会互相覆盖网关与凭据。
+ * 缓存是「装配期一次建成、调用期只读」的形态，因此网关与凭据在同一
  * 进程内不可变。</p>
  */
 public final class PayClients {

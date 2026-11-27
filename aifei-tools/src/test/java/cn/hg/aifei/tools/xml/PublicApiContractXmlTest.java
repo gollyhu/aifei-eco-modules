@@ -31,7 +31,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * xml 公共面形态测试（设计 §11.3.3，测试策略 §3.9）：逐字签名（含 Map&lt;String,String&gt; 泛型）、
+ * xml 公共面形态测试：逐字签名（含 Map&lt;String,String&gt; 泛型）、
  * 异常两构造、serialVersionUID=1L、无 throws、公共层零第三方/来源协议串字面量、major 52。
  */
 public class PublicApiContractXmlTest {

@@ -26,7 +26,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 同步与异步两类回调报文（AC-12）：同步 {@code return_url} 的 query string 与异步 {@code notify_url} 的
+ * 同步与异步两类回调报文：同步 {@code return_url} 的 query string 与异步 {@code notify_url} 的
  * form body 都是 {@code application/x-www-form-urlencoded}，在模块内收敛为同一个解析点。
  */
 public class PayVerifyFormTest {
@@ -60,7 +60,7 @@ public class PayVerifyFormTest {
     }
 
     /**
-     * AC-12：同步 {@code return_url} 的 GET query string → 验签通过并解析出幂等键。
+     * 同步 {@code return_url} 的 GET query string → 验签通过并解析出幂等键。
      *
      * @throws UnsupportedEncodingException 编码失败
      */
@@ -77,7 +77,7 @@ public class PayVerifyFormTest {
     }
 
     /**
-     * AC-12：异步 {@code notify_url} 的 POST form body → 验签通过并解析出幂等键。
+     * 异步 {@code notify_url} 的 POST form body → 验签通过并解析出幂等键。
      *
      * @throws UnsupportedEncodingException 编码失败
      */
@@ -91,7 +91,7 @@ public class PayVerifyFormTest {
     }
 
     /**
-     * AC-12：同一份报文以 query string 与 form body 两种形态提交，解析结果完全一致（解析路径唯一）。
+     * 同一份报文以 query string 与 form body 两种形态提交，解析结果完全一致（解析路径唯一）。
      *
      * @throws UnsupportedEncodingException 编码失败
      */
@@ -111,7 +111,7 @@ public class PayVerifyFormTest {
     }
 
     /**
-     * AC-12：报文先按 UTF-8 解码再验签（含中文与需要转义的字符）。
+     * 报文先按 UTF-8 解码再验签（含中文与需要转义的字符）。
      *
      * @throws UnsupportedEncodingException 编码失败
      */
@@ -129,7 +129,7 @@ public class PayVerifyFormTest {
     }
 
     /**
-     * AC-12：表单报文被篡改 → 验签失败（失败不静默）。
+     * 表单报文被篡改 → 验签失败（失败不静默）。
      *
      * @throws UnsupportedEncodingException 编码失败
      */
@@ -142,7 +142,7 @@ public class PayVerifyFormTest {
     }
 
     /**
-     * AC-12：非法转义序列的报文属调用方写错（不是验签结论），抛 {@link IllegalArgumentException}。
+     * 非法转义序列的报文属调用方写错（不是验签结论），抛 {@link IllegalArgumentException}。
      */
     @Test
     public void shouldRejectMalformedFormBody() {
@@ -151,7 +151,7 @@ public class PayVerifyFormTest {
     }
 
     /**
-     * AC-12：报文为 {@code null} → 抛 {@link PayException}（不误判为验签通过）。
+     * 报文为 {@code null} → 抛 {@link PayException}（不误判为验签通过）。
      */
     @Test
     public void shouldThrowWhenFormBodyNull() {

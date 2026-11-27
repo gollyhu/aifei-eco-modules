@@ -148,7 +148,7 @@ public final class JobScheduler {
     /**
      * 停机收敛：停止新触发 → 等待在途任务 → 超时中断并记账 → 兜底清理唤醒层。
      *
-     * <p>顺序固定（决策 9）：{@code stopping = true} → 唤醒层置「不执行已排队延迟任务」策略后 {@code shutdown()}
+     * <p>顺序固定：{@code stopping = true} → 唤醒层置「不执行已排队延迟任务」策略后 {@code shutdown()}
      * → 执行层 {@code shutdown()}（拒绝新提交、已提交任务继续执行）→ {@code awaitTermination} →
      * 超时则 {@code shutdownNow()} 并把返回的未执行任务逐个记 {@code SKIPPED}（事件时间取其原计划触发时刻）→
      * 唤醒层 {@code shutdownNow()} 兜底。唤醒层里<b>未到点</b>的待触发实例直接丢弃、不记账：它们的计划点尚未
@@ -162,7 +162,7 @@ public final class JobScheduler {
         }
         stopping = true;
         // 必须先置策略再 shutdown：ScheduledThreadPoolExecutor#shutdown() 默认仍会执行已排队的延迟任务，
-        // 那样「停止新触发」就无法达成（实现口径见决策 9）。
+        // 那样「停止新触发」就无法达成。
         wake.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
         wake.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
         wake.shutdown();

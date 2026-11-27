@@ -30,7 +30,7 @@ import static org.junit.Assert.assertEquals;
  *
  * <p>采用 H2 内存库（本地 Driver，零外网、零外部服务）：开启后建表 / 写入走真实 JDBC，
  * 异常不吞即失败。断言真实建表 + 写入 + 单条取命中 + 整包列举 + refresh 后缓存失效。
- * 表结构与 {@code DbSource} 查询契约一致（design §9.5），仅测试可见。</p>
+ * 表结构与 {@code DbSource} 查询契约一致，仅测试可见。</p>
  */
 public class DbSourceIntegrationTest {
 

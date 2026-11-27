@@ -10,7 +10,7 @@ import cn.hg.aifei.email.internal.smtp.MailMockBridge;
 import java.util.function.Function;
 
 /**
- * 安装 mock 内核客户端：经同包桥接调用适配层注入点（D11 / §7.6），使 demo 全程零外网。
+ * 安装 mock 内核客户端：经同包桥接调用适配层注入点，使 demo 全程零外网。
  *
  * <p>必须在 {@code EmailPlugin.start()} 之前调用（装配期按通道构建客户端时生效）。</p>
  */

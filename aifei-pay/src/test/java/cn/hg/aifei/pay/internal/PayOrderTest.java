@@ -22,7 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 下单动作（AC-06 扫码 / AC-07 H5 与 PC）：动作语义、参数校验、金额换算与载荷类型规则。
+ * 下单动作（扫码 / H5 与 PC）：动作语义、参数校验、金额换算与载荷类型规则。
  *
  * <p>内核调用以 {@link PayKernelStub} 替身注入，用例断言「交给内核的报文」与「返回给调用方的值对象」，
  * 全程零联网。</p>
@@ -74,7 +74,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-06：扫码下单返回二维码载荷，类型为 {@code QRCODE}，回显商户订单号。
+     * 扫码下单返回二维码载荷，类型为 {@code QRCODE}，回显商户订单号。
      */
     @Test
     public void shouldReturnQrcodePayloadForPrecreate() {
@@ -87,7 +87,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-06：金额按「分 → 元」换算后交给内核，回调地址用全局默认值。
+     * 金额按「分 → 元」换算后交给内核，回调地址用全局默认值。
      */
     @Test
     public void shouldConvertAmountAndUseGlobalNotifyUrlForPrecreate() {
@@ -104,7 +104,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-06：显式传入的回调地址优先于全局默认值。
+     * 显式传入的回调地址优先于全局默认值。
      */
     @Test
     public void shouldPreferExplicitNotifyUrlForPrecreate() {
@@ -116,7 +116,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：金额必须大于 0，0 与负数属调用方写错。
+     * 金额必须大于 0，0 与负数属调用方写错。
      */
     @Test
     public void shouldRejectNonPositiveAmount() {
@@ -132,7 +132,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：商户订单号与标题必填且有长度上限。
+     * 商户订单号与标题必填且有长度上限。
      */
     @Test
     public void shouldRejectBlankOrOverlongTextParameters() {
@@ -146,7 +146,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-06：{@code precreate} 缺少异步回调地址（入参与全局配置都没有）→ 抛 {@link PayException}。
+     * {@code precreate} 缺少异步回调地址（入参与全局配置都没有）→ 抛 {@link PayException}。
      */
     @Test
     public void shouldFailWhenNotifyUrlMissingForPrecreate() {
@@ -160,7 +160,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：默认 {@code pay.page-http-method=POST} → 载荷类型为自提交表单。
+     * 默认 {@code pay.page-http-method=POST} → 载荷类型为自提交表单。
      */
     @Test
     public void shouldReturnFormPayloadWhenPageHttpMethodIsPost() {
@@ -173,7 +173,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：{@code pay.page-http-method=GET} → 载荷类型为可跳转 URL。
+     * {@code pay.page-http-method=GET} → 载荷类型为可跳转 URL。
      */
     @Test
     public void shouldReturnUrlPayloadWhenPageHttpMethodIsGet() {
@@ -191,7 +191,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：PC 下单渠道为 {@code PAGE}，接口方法名为 {@code alipay.trade.page.pay}。
+     * PC 下单渠道为 {@code PAGE}，接口方法名为 {@code alipay.trade.page.pay}。
      */
     @Test
     public void shouldReturnPageChannelForPagePay() {
@@ -203,7 +203,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：H5 下单的接口方法名为 {@code alipay.trade.wap.pay}。
+     * H5 下单的接口方法名为 {@code alipay.trade.wap.pay}。
      */
     @Test
     public void shouldUseWapMethodForWapPay() {
@@ -213,7 +213,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：页面下单把业务参数放进 {@code biz_content}，回调地址作为公共参数平铺，并带退出地址。
+     * 页面下单把业务参数放进 {@code biz_content}，回调地址作为公共参数平铺，并带退出地址。
      */
     @Test
     public void shouldPassBizContentAndCallbacksForPagePay() {
@@ -230,7 +230,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-07：H5 缺少同步回调地址（入参与全局配置都没有）→ 抛 {@link PayException}。
+     * H5 缺少同步回调地址（入参与全局配置都没有）→ 抛 {@link PayException}。
      */
     @Test
     public void shouldFailWhenReturnUrlMissingForWapPay() {
@@ -245,7 +245,7 @@ public class PayOrderTest {
     }
 
     /**
-     * AC-06 / AC-07：内核响应缺字段时载荷归一为空串而非 {@code null}（值对象契约）。
+     * 内核响应缺字段时载荷归一为空串而非 {@code null}（值对象契约）。
      */
     @Test
     public void shouldNormalizeMissingPayloadToEmptyString() {

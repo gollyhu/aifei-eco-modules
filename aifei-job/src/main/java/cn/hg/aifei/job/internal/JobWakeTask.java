@@ -60,7 +60,7 @@ final class JobWakeTask implements Runnable {
     /**
      * 到点：把执行单元提交给执行层；被拒时就地记账并重排。
      *
-     * <p>被拒路径的固定口径（决策 7）：① 记 {@code SKIPPED}，事件时间取<b>本次原计划触发时刻</b>
+     * <p>被拒路径的固定口径：① 记 {@code SKIPPED}，事件时间取<b>本次原计划触发时刻</b>
      * {@code plannedTime}（不能取重置基准的 {@code now}——事件描述的是「本该在那一刻触发却没触发」）；
      * ② 采样一次 {@code now}，把节拍基准重置为它：{@code lastStart} 与 {@code lastEnd} 同置该 {@code now}、
      * {@code scheduleNow} 也是它（一次读时钟，不得两次）；③ {@code isFirst} 写死 {@code false}，不重复消费

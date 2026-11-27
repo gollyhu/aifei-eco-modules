@@ -30,7 +30,7 @@ import java.util.function.Supplier;
  * 测试装配助手：构造与 routes.scan 同形的 {@link Invocation}、构造配置与运行期快照。
  *
  * <p>注解路径不经 HTTP：按框架真实形态 {@code new Action(...) + new Invocation(action, target, null, null)}
- * 驱动拦截器（与 PV-01 / PV-02 的实证装配一致）。</p>
+ * 驱动拦截器（与前序探针用例使用相同装配）。</p>
  */
 public final class AuditTestSupport {
 

@@ -29,7 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 幂等职责边界（AC-14）：验签是纯函数——N 次结果一致、不修改入参、不保存「已处理」状态；
+ * 幂等职责边界：验签是纯函数——N 次结果一致、不修改入参、不保存「已处理」状态；
  * 幂等键只透出，去重由业务负责。
  */
 public class PayIdempotencyTest {
@@ -95,7 +95,7 @@ public class PayIdempotencyTest {
     }
 
     /**
-     * AC-14：同一报文连续验签 N 次，结果恒为通过，解析出的幂等键完全一致。
+     * 同一报文连续验签 N 次，结果恒为通过，解析出的幂等键完全一致。
      */
     @Test
     public void shouldReturnStableResultAcrossRepeatedCalls() {
@@ -109,7 +109,7 @@ public class PayIdempotencyTest {
     }
 
     /**
-     * AC-14：验签不修改入参 {@code Map}（内核的待签串拼接会原地删除 {@code sign} / {@code sign_type}，
+     * 验签不修改入参 {@code Map}（内核的待签串拼接会原地删除 {@code sign} / {@code sign_type}，
      * 模块必须先做防御性拷贝）。
      */
     @Test
@@ -127,7 +127,7 @@ public class PayIdempotencyTest {
     }
 
     /**
-     * AC-14：交易类通知透出 {@code out_trade_no}，退款类通知透出 {@code out_request_no}。
+     * 交易类通知透出 {@code out_trade_no}，退款类通知透出 {@code out_request_no}。
      */
     @Test
     public void shouldExposeTradeAndRefundIdempotencyKeys() {
@@ -146,7 +146,7 @@ public class PayIdempotencyTest {
     }
 
     /**
-     * AC-14：{@code params()} 是只读拷贝，业务不能就地改动验签结果。
+     * {@code params()} 是只读拷贝，业务不能就地改动验签结果。
      */
     @Test
     public void shouldReturnUnmodifiableParamsCopy() {
@@ -156,7 +156,7 @@ public class PayIdempotencyTest {
     }
 
     /**
-     * AC-14：验签路径的源码不含去重缓存 / 已处理标记 / 进程级可变静态状态（模块不做幂等）。
+     * 验签路径的源码不含去重缓存 / 已处理标记 / 进程级可变静态状态（模块不做幂等）。
      *
      * @throws IOException 读取源码失败
      */

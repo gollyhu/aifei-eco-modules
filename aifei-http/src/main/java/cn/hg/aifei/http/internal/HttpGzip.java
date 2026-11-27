@@ -63,7 +63,7 @@ public final class HttpGzip {
     }
 
     /**
-     * 全限定名调用且不写 import：保持门禁①白名单与断言文本逐字不变；同时隔离 tools 异常类型引用。
+     * 全限定名调用且不写 import：保持白名单与断言文本逐字不变；同时隔离 tools 异常类型引用。
      */
     private static final class GzipHolder {
         private static byte[] gunzip(byte[] raw) {

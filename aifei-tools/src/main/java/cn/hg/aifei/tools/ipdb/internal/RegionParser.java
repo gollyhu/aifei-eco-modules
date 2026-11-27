@@ -8,7 +8,7 @@ package cn.hg.aifei.tools.ipdb.internal;
 import cn.hg.aifei.tools.ipdb.IpRegion;
 
 /**
- * region 五段解析的唯一定义点（设计 §7.2：「0」/「Reserved」→ 空串）。
+ * region 五段解析的唯一定义点（「0」/「Reserved」→ 空串）。
  *
  * <p>内核 region 格式为「国家|省份|城市|ISP|ISO 码」；保留段与全空结果统一归一为
  * 五字段均为空串的非 null {@link IpRegion}，调用方无需识别内核哨兵值。</p>

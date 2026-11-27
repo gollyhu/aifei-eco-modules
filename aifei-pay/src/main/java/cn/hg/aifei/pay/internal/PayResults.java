@@ -16,8 +16,8 @@ import java.util.Map;
  * 内核响应 → 公共值对象的唯一转换点。
  *
  * <p>响应对象由 {@link PayKernel} 以 {@code Object} 交付，本类按「getter 方法名」读取字段，
- * 因此不需要 import 任何内核类型（`docs/design.md` §10 G-04 只允许 4 个 internal 文件出现
- * `com.alipay.*`），同时让内核小版本升级不会波及本转换点（同文档风险 R-6）。若响应是
+ * 因此不需要 import 任何内核类型（只允许 4 个 internal 文件出现
+ * `com.alipay.*`），同时让内核小版本升级不会波及本转换点。若响应是
  * {@code Map}（伪内核的便捷形态），按属性名或下划线键名读取。</p>
  */
 public final class PayResults {

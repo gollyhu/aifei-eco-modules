@@ -19,7 +19,7 @@ public final class ExcelDeps {
     }
 
     /**
-     * 探测 EasyExcel 内核是否可用；不可用即抛可读异常（设计 §7.5 场景 12）。
+     * 探测 EasyExcel 内核是否可用；不可用即抛可读异常。
      *
      * @throws cn.hg.aifei.excel.ExcelException 依赖缺失时抛出，消息提示如何补齐依赖
      */

@@ -27,7 +27,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 架构门禁（设计 §9，14 例）：按源码文本断言分层边界、公共面收敛、唯一定义点与 Java 8 底线。
+ * 架构门禁（14 例）：按源码文本断言分层边界、公共面收敛、唯一定义点与 Java 8 底线。
  *
  * <p>依赖相对路径，必须在模块根目录执行（surefire workingDirectory 固定为 ${project.basedir}）。</p>
  */

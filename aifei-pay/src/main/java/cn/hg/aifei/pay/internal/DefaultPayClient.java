@@ -268,8 +268,7 @@ public final class DefaultPayClient implements PayClient {
      * 页面类下单的共用编排。
      *
      * <p>业务参数放在 {@code biz_content} 里、回调地址作为公共参数平铺——这是内核
-     * {@code GenericExecuteApi} 的参数约定：{@code biz_content} 会被序列化为 JSON，其余键进入公共参数
-     * （`docs/design.md` §2.4.5）。</p>
+     * {@code GenericExecuteApi} 的参数约定：{@code biz_content} 会被序列化为 JSON，其余键进入公共参数。</p>
      *
      * @param appId      应用编号
      * @param outTradeNo 商户订单号

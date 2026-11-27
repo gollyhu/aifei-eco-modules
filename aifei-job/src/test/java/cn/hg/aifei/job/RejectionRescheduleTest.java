@@ -35,7 +35,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 执行层提交被拒语义（设计决策 7 / §6 契约表「执行池队列满」行 / A08、A19）：{@code pool.size = 1} + {@code pool.queue = 1}
+ * 执行层提交被拒语义（执行池队列满）：{@code pool.size = 1} + {@code pool.queue = 1}
  * + 一个阻塞任务占满唯一工作线程与队列后，第三个任务的提交必然被拒。
  *
  * <p><b>拒绝信号如何被断言</b>：执行层固定 {@code AbortPolicy}，{@code RejectedExecutionException} 只能在
@@ -202,8 +202,8 @@ public class RejectionRescheduleTest {
     /**
      * {@code SKIPPED} 的事件时间是<b>原计划触发时刻</b>，不是「提交 / 记账时刻」。
      *
-     * <p>放大手法：监听器在首个 {@code SKIPPED} 回调内阻塞唤醒线程 {@link #WAKE_PAUSE_MILLIS}ms（同步回调，
-     * 见设计决策 14），于是「暂停之后才轮到投递的那个任务」的提交被推迟到计划时刻之后约 400ms 才发生。
+     * <p>放大手法：监听器在首个 {@code SKIPPED} 回调内阻塞唤醒线程 {@link #WAKE_PAUSE_MILLIS}ms，
+     * 于是「暂停之后才轮到投递的那个任务」的提交被推迟到计划时刻之后约 400ms 才发生。
      * 若实现用当前时刻当事件时间，差值为 0；取原计划触发时刻才有本用例断言的差值。</p>
      *
      * <p><b>任务顺序由任务名（方法名）排序决定</b>：{@code alpha → beta → delta → gamma}。故先被拒的是

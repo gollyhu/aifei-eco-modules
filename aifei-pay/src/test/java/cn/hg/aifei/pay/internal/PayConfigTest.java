@@ -26,7 +26,7 @@ import org.junit.After;
 import org.junit.Test;
 
 /**
- * 配置解析与校验（AC-05 / AC-15）：设计 §7.2 的九条启动期校验逐条落用例，外加全局键的取值与默认值。
+ * 配置解析与校验：九条启动期校验逐条落用例，外加全局键的取值与默认值。
  *
  * <p>判定口径：任一校验失败即抛 {@link PayException}，消息含**键名**且凭据值被脱敏为 {@code ***}；
  * 失败不留半装配态（由 {@code PayPluginTest} 从装配侧再断言一次）。</p>
@@ -128,7 +128,7 @@ public class PayConfigTest {
     }
 
     /**
-     * 校验 3（AC-15）：{@code env=sandbox} 却显式配置生产网关 → 启动失败，消息同时给出环境与期望 host。
+     * 校验 3：{@code env=sandbox} 却显式配置生产网关 → 启动失败，消息同时给出环境与期望 host。
      */
     @Test
     public void shouldFailWhenGatewayHostMismatchesEnv() {
@@ -415,7 +415,7 @@ public class PayConfigTest {
     }
 
     /**
-     * 默认值：超时、页面方式、字符集、签名类型、签名方式按设计 §7 的默认值生效。
+     * 默认值：超时、页面方式、字符集、签名类型、签名方式按默认值生效。
      */
     @Test
     public void shouldApplyDocumentedDefaults() {
@@ -433,7 +433,7 @@ public class PayConfigTest {
     }
 
     /**
-     * 默认签名方式是公钥证书（2026-11-26 用户裁决）：未写 {@code sign-mode} 时按证书模式校验。
+     * 默认签名方式是公钥证书：未写 {@code sign-mode} 时按证书模式校验。
      */
     @Test
     public void shouldDefaultToCertModeWhenSignModeMissing() {
@@ -446,7 +446,7 @@ public class PayConfigTest {
     }
 
     /**
-     * AC-05：配置非法时消息含键名，但**不得**出现私钥明文。
+     * 配置非法时消息含键名，但**不得**出现私钥明文。
      */
     @Test
     public void shouldNotLeakCredentialValueInConfigError() {

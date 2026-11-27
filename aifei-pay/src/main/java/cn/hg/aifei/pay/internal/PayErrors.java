@@ -15,13 +15,13 @@ import java.util.regex.Pattern;
 /**
  * 异常构造与消息格式的唯一入口：全模块对外抛出的 {@link PayException} 都必须经本类创建。
  *
- * <p>消息模板见设计 §6.6；拼接配置值只允许经 {@link PayMask}。内核异常在收敛前 warn 一次，
+ * <p>消息模板统一定义；拼接配置值只允许经 {@link PayMask}。内核异常在收敛前 warn 一次，
  * 日志内容只含接口语义与错误码，不含报文与凭据。</p>
  */
 public final class PayErrors {
 
     /**
-     * 未装配 / 已停止的固定消息（设计 §6.2）。
+     * 未装配 / 已停止的固定消息。
      */
     public static final String NOT_INSTALLED = "支付客户端未装配或已停止";
 
@@ -187,7 +187,7 @@ public final class PayErrors {
     /**
      * 从内核异常中提取业务错误码。
      *
-     * <p>本类不得 import 内核类型（`docs/design.md` §10 G-04），故按「方法名 + 返回类型」反射提取：
+     * <p>本类不得 import 内核类型，故按「方法名 + 返回类型」反射提取：
      * ① 优先取返回 {@code String} 的 {@code getCode()}（自检型桩可据此携带业务码）；
      * ② 否则从 {@code getResponseBody()} 的 JSON 中取 {@code "code"}；
      * ③ 最后从异常消息文本中取同名 JSON 字段（SDK 的 {@code getMessage()} 会带上响应体）。</p>

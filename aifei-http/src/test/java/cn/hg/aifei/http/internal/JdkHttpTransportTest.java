@@ -34,8 +34,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 真传输集成用例（AC-R-04 / R-05 / R-06 / R-07 / R-08 / R-09 / R-11 / R-14 / R-15 / R-16 / R-21 / R-22 /
- * R-23 / R-24 / R-25）：只访问本机回环端点，断网环境可全绿。
+ * 真传输集成用例（覆盖重试、超时、拦截、资源名、编码、gzip、体上限等）：
+ * 只访问本机回环端点，断网环境可全绿。
  */
 public class JdkHttpTransportTest {
 
@@ -87,7 +87,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-04：未开启重试时端点计数为 1。
+     * 未开启重试时端点计数为 1。
      */
     @Test
     public void shouldNotRetryByDefault() {
@@ -99,7 +99,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-05：GET + {@code retry(2)}，前 2 次 503、第 3 次 200 → 计数 3、尝试 3。
+     * GET + {@code retry(2)}，前 2 次 503、第 3 次 200 → 计数 3、尝试 3。
      */
     @Test
     public void shouldRetryServerErrorForIdempotentMethod() {
@@ -112,7 +112,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-06：POST 无法开启重试（当场拒绝），未开启时端点计数为 1。
+     * POST 无法开启重试（当场拒绝），未开启时端点计数为 1。
      */
     @Test
     public void shouldRejectRetryForPost() {
@@ -127,7 +127,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-07：连接未监听端口 → {@link HttpException}，cause 为底层 IO 异常，耗时受限。
+     * 连接未监听端口 → {@link HttpException}，cause 为底层 IO 异常，耗时受限。
      */
     @Test
     public void shouldFailWhenConnectRefused() {
@@ -144,7 +144,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-08：读超时 → {@link HttpException}，耗时至少达到读超时。
+     * 读超时 → {@link HttpException}，耗时至少达到读超时。
      */
     @Test
     public void shouldFailOnReadTimeout() {
@@ -159,7 +159,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-09：全局读超时 5000、逐请求 100 → 按 100 触发。
+     * 全局读超时 5000、逐请求 100 → 按 100 触发。
      */
     @Test
     public void shouldPreferRequestReadTimeout() {
@@ -174,7 +174,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-11：拦截器抛异常 → 真实发送未发生（端点计数 0）。
+     * 拦截器抛异常 → 真实发送未发生（端点计数 0）。
      */
     @Test
     public void shouldNotSendWhenInterceptorThrows() {
@@ -189,7 +189,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-14：重试各次读到的资源名完全相同。
+     * 重试各次读到的资源名完全相同。
      */
     @Test
     public void shouldKeepResourceStableOnRetry() {
@@ -210,7 +210,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-16：5xx 正常返回且响应体可读；404 即便开启重试也不重试。
+     * 5xx 正常返回且响应体可读；404 即便开启重试也不重试。
      */
     @Test
     public void shouldReturnNonSuccessResponses() {
@@ -228,7 +228,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-15：非法 URL → {@link HttpException}，cause 为 {@link MalformedURLException}。
+     * 非法 URL → {@link HttpException}，cause 为 {@link MalformedURLException}。
      */
     @Test
     public void shouldFailOnIllegalUrl() {
@@ -240,7 +240,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-21：中文 + emoji 往返一致；GBK 响应按 GBK 解码；二进制字节级相等。
+     * 中文 + emoji 往返一致；GBK 响应按 GBK 解码；二进制字节级相等。
      */
     @Test
     public void shouldRoundTripTextAndBinary() {
@@ -261,7 +261,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-22：状态码 / 头（大小写不敏感 + 多值）/ 体 / 耗时 / 尝试次数均可读。
+     * 状态码 / 头（大小写不敏感 + 多值）/ 体 / 耗时 / 尝试次数均可读。
      */
     @Test
     public void shouldExposeResponseMetrics() {
@@ -276,7 +276,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-23：query 中文 / 空格 / {@code &} 编码正确；自定义头可达；{@code byte[]} 体字节级到达。
+     * query 中文 / 空格 / {@code &} 编码正确；自定义头可达；{@code byte[]} 体字节级到达。
      */
     @Test
     public void shouldEncodeQueryAndDeliverHeadersAndBody() throws IOException {
@@ -299,7 +299,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-24：默认不发送 {@code Accept-Encoding}；302 不跟随；关闭 gzip 时原样返回压缩字节。
+     * 默认不发送 {@code Accept-Encoding}；302 不跟随；关闭 gzip 时原样返回压缩字节。
      */
     @Test
     public void shouldNotAcceptGzipByDefaultNorFollowRedirect() {
@@ -314,7 +314,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-24：显式开启 gzip 后自动发送协商头并解压。
+     * 显式开启 gzip 后自动发送协商头并解压。
      */
     @Test
     public void shouldDecompressGzipWhenEnabled() {
@@ -325,7 +325,7 @@ public class JdkHttpTransportTest {
     }
 
     /**
-     * AC-R-25：超限 → {@link HttpException}（消息含上限值）；未超限正常返回。
+     * 超限 → {@link HttpException}（消息含上限值）；未超限正常返回。
      */
     @Test
     public void shouldFailWhenResponseExceedsLimit() {

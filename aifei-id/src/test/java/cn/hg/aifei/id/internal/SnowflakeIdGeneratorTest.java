@@ -28,7 +28,7 @@ import org.junit.Test;
  * 时钟全部由 {@link FakeClock} 编排，因此「等下一毫秒」与「等时钟追上」两条等待路径无需真实等待即可覆盖，
  * 序列耗尽用例也不需要 {@code Thread.sleep} 堆叠。</p>
  *
- * <p>覆盖设计文档 §7.5 场景 2 / 3 / 4 / 5 / 6 / 7 / 8；消息断言照抄 §7.6 的措辞。</p>
+ * <p>覆盖时钟回拨、序列耗尽等场景；消息断言按固定文案逐字比对。</p>
  */
 public class SnowflakeIdGeneratorTest {
 

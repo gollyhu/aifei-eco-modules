@@ -17,7 +17,7 @@ import java.nio.charset.Charset;
 import org.junit.Test;
 
 /**
- * 编解码（AC-R-21 / AC-R-15 的解码失败分支）：charset 解析、往返一致、非法 charset 失败。
+ * 编解码（含解码失败分支）：charset 解析、往返一致、非法 charset 失败。
  */
 public class HttpCodecTest {
 
@@ -42,7 +42,7 @@ public class HttpCodecTest {
     }
 
     /**
-     * AC-R-21：中文 + emoji 经 UTF-8 往返一致。
+     * 中文 + emoji 经 UTF-8 往返一致。
      */
     @Test
     public void shouldRoundTripUtf8Text() {
@@ -55,7 +55,7 @@ public class HttpCodecTest {
     }
 
     /**
-     * AC-R-21：GBK 响应按 GBK 解码，与 UTF-8 结果不同。
+     * GBK 响应按 GBK 解码，与 UTF-8 结果不同。
      */
     @Test
     public void shouldDecodeGbk() {
@@ -67,7 +67,7 @@ public class HttpCodecTest {
     }
 
     /**
-     * AC-R-21：二进制字节原样进出。
+     * 二进制字节原样进出。
      */
     @Test
     public void shouldKeepBinaryBytes() {
@@ -78,7 +78,7 @@ public class HttpCodecTest {
     }
 
     /**
-     * AC-R-15：charset 不可识别 → {@link HttpException}，不静默返回半截字符串。
+     * charset 不可识别 → {@link HttpException}，不静默返回半截字符串。
      */
     @Test
     public void shouldFailOnUnknownCharset() {

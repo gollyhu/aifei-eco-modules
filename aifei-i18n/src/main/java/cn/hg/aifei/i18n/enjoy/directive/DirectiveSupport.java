@@ -18,7 +18,7 @@ import java.util.List;
  * 三条指令的共享工具（非承诺 API，非规则定义点）。
  *
  * <p>本类只做「选语言层 + 参数切分 + 取值」，规则本身（规范化、回退、插值、dir 判定）一律委派
- * 原唯一定义点 {@link LocaleNormalizer} / {@link LocaleResolver} / {@code I18nKit} / {@code LocaleMeta}，
+ * 唯一定义点 {@link LocaleNormalizer} / {@link LocaleResolver} / {@code I18nKit} / {@code LocaleMeta}，
  * 零复制。语言取值优先级链（局部 &gt; 页面级 &gt; 当前生效 locale）在 {@link #effectivePageLang()} 单点落地。</p>
  */
 public final class DirectiveSupport {
@@ -44,7 +44,7 @@ public final class DirectiveSupport {
     }
 
     /**
-     * 把具名参数 eval 结果转为规范化 locale tag；非法走 {@link LocaleNormalizer} 的 IAE（§8.3 逐字消息）。
+     * 把具名参数 eval 结果转为规范化 locale tag；非法走 {@link LocaleNormalizer} 的 IAE（逐字消息）。
      *
      * @param raw 具名参数右值 eval 结果，可 null
      * @return 规范化 BCP 47 tag

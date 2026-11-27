@@ -21,7 +21,7 @@ import java.util.Map;
 import org.junit.Test;
 
 /**
- * 响应值对象（AC-R-21 的解码与 AC-R-22 的可读性）：不可变、防御性拷贝、头查找大小写不敏感。
+ * 响应值对象（解码与可读性）：不可变、防御性拷贝、头查找大小写不敏感。
  */
 public class HttpResponseTest {
 
@@ -62,7 +62,7 @@ public class HttpResponseTest {
     }
 
     /**
-     * AC-R-22：头查找大小写不敏感，多值可枚举；缺失时返回 {@code null} / 空列表。
+     * 头查找大小写不敏感，多值可枚举；缺失时返回 {@code null} / 空列表。
      */
     @Test
     public void shouldLookUpHeadersCaseInsensitively() {
@@ -84,7 +84,7 @@ public class HttpResponseTest {
     }
 
     /**
-     * AC-R-21：响应体按响应头 charset 解码（GBK 与 UTF-8 结果不同）。
+     * 响应体按响应头 charset 解码（GBK 与 UTF-8 结果不同）。
      */
     @Test
     public void shouldDecodeBodyByResponseCharset() {

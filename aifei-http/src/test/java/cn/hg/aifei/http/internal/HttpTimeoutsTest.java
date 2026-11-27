@@ -12,7 +12,7 @@ import java.util.Properties;
 import org.junit.Test;
 
 /**
- * 超时装配（AC-R-09）：逐请求值优先，未设置（{@code <= 0}）时取全局默认。
+ * 超时装配：逐请求值优先，未设置（{@code <= 0}）时取全局默认。
  */
 public class HttpTimeoutsTest {
 

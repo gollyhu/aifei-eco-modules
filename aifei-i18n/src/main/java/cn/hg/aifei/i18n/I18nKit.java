@@ -16,7 +16,7 @@ import cn.hg.aifei.i18n.internal.LocaleNormalizer;
  * <p>有状态门面：{@code final} + 私有构造、零实例字段；全部方法经 {@link I18nHolder} 取当前引擎，
  * 未装配 / 已停止 → {@link I18nException}，不静默返回 {@code null}。</p>
  *
- * <p>门面转发，{@code key} 校验与规则均在 engine/规则类唯一定义点（设计 §6.3），本类不重复实现。</p>
+ * <p>门面转发，{@code key} 校验与规则均在 engine/规则类唯一定义点，本类不重复实现。</p>
  */
 public final class I18nKit {
 
@@ -28,7 +28,7 @@ public final class I18nKit {
      *
      * @param localeTag BCP 47 locale（可下划线写法，先规范化）
      * @return 绑定已规范化 tag 的链式载体
-     * @throws IllegalArgumentException {@code localeTag} 为 {@code null} / 空白 / 非法 BCP 47（§8.3 逐字）
+     * @throws IllegalArgumentException {@code localeTag} 为 {@code null} / 空白 / 非法 BCP 47（逐字）
      */
     public static Localizer local(String localeTag) {
         return new Localizer(LocaleNormalizer.normalize(localeTag));

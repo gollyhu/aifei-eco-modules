@@ -27,7 +27,7 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * 架构门禁（设计 §12）：以源码文本扫描断言包边界与公共面大小，不得为兼容错误用法而放宽。
+ * 架构门禁：以源码文本扫描断言包边界与公共面大小，不得为兼容错误用法而放宽。
  *
  * <pre>
  * ① 第三方 / 其它模块 import 只允许出现在实现包（根包 / internal / aifei 包均禁止）
@@ -65,7 +65,7 @@ public class ArchitectureBoundaryTest {
             "src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider");
 
     /**
-     * 根包公共类型的期望个数（设计 §3.8）。
+     * 根包公共类型的期望个数。
      */
     private static final int EXPECTED_PUBLIC_TYPES = 8;
 

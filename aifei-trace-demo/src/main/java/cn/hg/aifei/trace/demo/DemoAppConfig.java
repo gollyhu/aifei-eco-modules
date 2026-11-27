@@ -87,7 +87,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
     }
 
     /**
-     * 插件配置：aifei-trace 无 Plugin（纯静态门面 + 使用方显式构造接入构件，设计决策 6），
+     * 插件配置：aifei-trace 无 Plugin（纯静态门面 + 使用方显式构造接入构件），
      * 全部装配动作已在 {@link #config(Settings)} 内完成，故此处不登记任何插件。
      *
      * @param plugins 插件注册入口

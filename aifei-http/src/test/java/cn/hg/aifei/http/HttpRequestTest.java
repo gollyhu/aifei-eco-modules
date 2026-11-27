@@ -19,7 +19,7 @@ import java.util.Map;
 import org.junit.Test;
 
 /**
- * 请求构建器（AC-R-01 / AC-R-06 的拒绝路径 / AC-R-23 的编码规则）：纯对象行为，不联网。
+ * 请求构建器（含拒绝路径与编码规则）：纯对象行为，不联网。
  */
 public class HttpRequestTest {
 
@@ -51,7 +51,7 @@ public class HttpRequestTest {
     }
 
     /**
-     * AC-R-23：query 按 UTF-8 编码，多个参数用 {@code &} 连接。
+     * query 按 UTF-8 编码，多个参数用 {@code &} 连接。
      *
      * @throws Exception 编码异常
      */
@@ -208,7 +208,7 @@ public class HttpRequestTest {
     }
 
     /**
-     * AC-R-06：非幂等方法无法开启重试，当场拒绝而非静默忽略。
+     * 非幂等方法无法开启重试，当场拒绝而非静默忽略。
      */
     @Test
     public void shouldRejectRetryForNonIdempotentMethod() {
@@ -227,7 +227,7 @@ public class HttpRequestTest {
     }
 
     /**
-     * AC-R-13：显式资源名可设、可读；空白属调用方写错。
+     * 显式资源名可设、可读；空白属调用方写错。
      */
     @Test
     public void shouldRecordExplicitResource() {

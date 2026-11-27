@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * writer 会话实现：唯一持有 EasyExcel {@code ExcelWriter} 的类型（设计 §7.2 / §7.4）。
+ * writer 会话实现：唯一持有 EasyExcel {@code ExcelWriter} 的类型。
  *
  * <p>构建时不写表头；首次 write 写一次表头，同一会话可多次追加数据行；finish 幂等，
  * flush 并关闭底层 writer 但不关闭调用方输出流（流所有权归调用方）。</p>

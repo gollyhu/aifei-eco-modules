@@ -23,7 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * kdf 公共面形态测试（设计 §3.5 / §6.2）：精确 4 类型、逐字签名、KdfHash SHA256/SHA512、
+ * kdf 公共面形态测试：精确 4 类型、逐字签名、KdfHash SHA256/SHA512、
  * 公共方法无 throws、签名零第三方类型、KdfSpec 不可变、class major 52。
  */
 public class PublicApiContractKdfTest {

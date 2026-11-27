@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>所有端点均为 GET，返回 {@link Out}（HTTP 恒 200，业务语义由 code 承载，0 为成功）。</p>
  *
- * <p>场景与端点对照（设计文档 §13）：</p>
+ * <p>场景与端点对照：</p>
  * <ul>
  *   <li>场景① {@code /trace/demo/current}：当前请求 traceId / spanId 实时展示（TraceHandler 绑定 + finally 清理）</li>
  *   <li>场景② {@code /trace/demo/log}：页面触发业务日志，验证 {@code [traceId] } 前缀贯通（TraceLogFactory 装配）</li>
@@ -172,7 +172,7 @@ public class TraceDemoService {
             Map<String, Object> r = new LinkedHashMap<String, Object>();
             String childThreadId;
             try {
-                // 手动传递：请求线程捕获的 traceId 以变量捕获方式随 lambda 进入任务（§8.3 指引）
+                // 手动传递：请求线程捕获的 traceId 以变量捕获方式随 lambda 进入任务
                 TraceKit.init(parentTraceId);
                 childThreadId = TraceKit.getTraceId();
                 log.info("子线程日志：TraceKit.init(parentTraceId) 后前缀贯通，与父线程同链路");

@@ -21,10 +21,10 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * 依赖内核不复制（AC-21）：IJPay 只以 Maven 构件引入，本模块源码不含其包声明、不重新定义其核心类型，
+ * 依赖内核不复制：IJPay 只以 Maven 构件引入，本模块源码不含其包声明、不重新定义其核心类型，
  * 且 README / 设计文档保留了上游署名与 Apache-2.0 许可声明。
  *
- * <p>设计 §1.5 与本类共同承担 AC-21 的机械可验证部分；「是否存在整段复制的口语化判断」仍属人工审查，
+ * <p>本类承担依赖内核不复制的机械可验证部分；「是否存在整段复制的口语化判断」仍属人工审查，
  * 这里用「内核包声明 + 核心类型定义」两类硬痕迹做客观拦截。</p>
  */
 public class PayKernelAttributionTest {
@@ -55,7 +55,7 @@ public class PayKernelAttributionTest {
     };
 
     /**
-     * AC-21：主源码不得出现内核包的 {@code package} 声明（排除源码复制）。
+     * 主源码不得出现内核包的 {@code package} 声明（排除源码复制）。
      *
      * @throws IOException 读取源码失败
      */
@@ -74,7 +74,7 @@ public class PayKernelAttributionTest {
     }
 
     /**
-     * AC-21：主源码不得重新定义内核核心类型（只允许以字符串常量等方式引用其全限定名做依赖探测）。
+     * 主源码不得重新定义内核核心类型（只允许以字符串常量等方式引用其全限定名做依赖探测）。
      *
      * @throws IOException 读取源码失败
      */
@@ -93,7 +93,7 @@ public class PayKernelAttributionTest {
     }
 
     /**
-     * AC-21：IJPay 以 Maven 构件引入（而非把源码拷进仓库）。
+     * IJPay 以 Maven 构件引入（而非把源码拷进仓库）。
      *
      * @throws IOException 读取构建文件失败
      */
@@ -108,7 +108,7 @@ public class PayKernelAttributionTest {
     }
 
     /**
-     * AC-21：README 与设计文档保留上游署名与 Apache-2.0 许可声明。
+     * README 与设计文档保留上游署名与 Apache-2.0 许可声明。
      *
      * @throws IOException 读取文档失败
      */

@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * demo 演示服务（设计 §12.2 端点）：发送全链路真实走 {@code MailKit} → {@code SmtpMailSender} → mock 内核客户端；
+ * demo 演示服务：发送全链路真实走 {@code MailKit} → {@code SmtpMailSender} → mock 内核客户端；
  * 错误消息由库内 {@code MailErrors} 真实构造（配置错误态只做校验、不进装配，避免污染运行中的注册表）。
  */
 @Path("/email/demo")
@@ -118,7 +118,7 @@ public class EmailDemoService {
         sendBody.put("bodyType", "template");
         sendBody.put("templateName", templateName);
         sendBody.put("variables", variables);
-        // 该端点只要求模板名 + 变量（§12.2），主题与收件人缺失时用演示默认值兜底
+        // 该端点只要求模板名 + 变量，主题与收件人缺失时用演示默认值兜底
         if (isBlank(text(sendBody.get("subject")))) {
             sendBody.put("subject", "模板邮件：" + templateName);
         }

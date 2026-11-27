@@ -20,7 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 装配生命周期测试（AC-04 / AC-05）：start/stop 幂等、失败回滚、stop 后门面调用失败。
+ * 装配生命周期测试：start/stop 幂等、失败回滚、stop 后门面调用失败。
  */
 public class PluginLifecycleTest {
 

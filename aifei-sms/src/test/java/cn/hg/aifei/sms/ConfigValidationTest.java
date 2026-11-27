@@ -17,7 +17,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 配置校验测试（AC-05）：无通道、必填项缺失、类型未知、默认通道非法，消息均含键名与原值。
+ * 配置校验测试：无通道、必填项缺失、类型未知、默认通道非法，消息均含键名与原值。
  */
 public class ConfigValidationTest {
 

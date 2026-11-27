@@ -23,7 +23,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 注解表头映射测试（设计 §6 / §7.5 场景 7-11）：
+ * 注解表头映射测试：
  * 默认全字段、按名原样匹配、value 表头、index 优先、ExcelIgnore 优先、
  * 重复表头/缺列/大小写敏感、重复 index、无字段、不支持类型、xls 可读。
  */

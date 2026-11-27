@@ -9,7 +9,7 @@ package cn.hg.aifei.email.internal.smtp;
 import cn.hg.aifei.email.internal.MailErrors;
 
 /**
- * 邮件内核依赖探测唯一 {@code Class.forName} 点（设计 §7.4，门禁锁定全模块仅此一处）。
+ * 邮件内核依赖探测唯一 {@code Class.forName} 点（门禁锁定全模块仅此一处）。
  *
  * <p>第二参 {@code false} 表示只加载不初始化；缺失时包装为可读异常，不裸抛
  * {@code NoClassDefFoundError}。探测在装配期执行，启动即失败优于延迟到首次发送。</p>

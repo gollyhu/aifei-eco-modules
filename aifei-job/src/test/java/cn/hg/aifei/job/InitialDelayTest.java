@@ -29,7 +29,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * {@code initialDelay} 语义（设计决策 7 的「{@code initialDelay} 只在首次分支读取一次」/ A06、A19）：
+ * {@code initialDelay} 语义（{@code initialDelay} 只在首次分支读取一次）：
  * 只影响首次触发；第二次起的间隔由 {@code period} 决定；<b>连续被拒不累加</b> {@code initialDelay}。
  *
  * <p>两处断言都<b>不断言精确毫秒</b>：①「首次不早于 {@code initialDelay}」用宽松下界（{@code initialDelay} − 容差）；

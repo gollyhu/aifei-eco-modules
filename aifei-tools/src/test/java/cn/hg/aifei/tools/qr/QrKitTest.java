@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 二维码门面功能测试（设计 §3.3 / §7.2 / §8-C / §9）。
+ * 二维码门面功能测试。
  *
  * <p>覆盖：encode→decode 闭环、中文 UTF-8 往返、空串往返、四档 EC 与 size/margin 生效、
  * decode(InputStream) 不关闭调用方流、null/空输入抛可读 QrException、decode 失败保留 cause、

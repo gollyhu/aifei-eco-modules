@@ -9,7 +9,7 @@ package cn.hg.aifei.i18n.internal;
 import cn.hg.aifei.i18n.I18nException;
 
 /**
- * 运行期引擎持有的唯一定义点（设计 §6.2 / §5.1）。
+ * 运行期引擎持有的唯一定义点。
  *
  * <p>{@code I18nKit} / {@code FormatKit} 经本类取引擎；未装配 / 已停止 → {@link I18nException}
  * （消息逐字：{@code i18n 未装配或已停止，请先注册 I18nPlugin}）。</p>

@@ -37,7 +37,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 监听器契约（设计决策 14 / §5.4 线程归属 / A16、A18）：{@code STARTED} 先于任务体开始、同任务事件顺序
+ * 监听器契约（线程归属）：{@code STARTED} 先于任务体开始、同任务事件顺序
  * {@code STARTED → 终态}、终态<b>先记账再回调</b>、{@code STARTED} 回调内看到的是<b>上一次终态</b>、
  * 回调异常不影响 {@code state()} 与后续触发、回调跑在产生事件的线程上。
  *

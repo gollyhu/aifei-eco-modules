@@ -7,7 +7,7 @@
 package cn.hg.aifei.i18n.enjoy.directive;
 
 /**
- * 页面级 lang / dir 覆盖的 ThreadLocal 唯一持有点（非承诺 API，设计 §4.1）。
+ * 页面级 lang / dir 覆盖的 ThreadLocal 唯一持有点（非承诺 API）。
  *
  * <p>与普通 {@code internal.LocaleContext}（请求级上下文 locale）刻意分离：本类承载「一次模板渲染期」的
  * 页面级默认值，由 {@code #lang('xxx')} / {@code #dir('xxx')} 设置，生命周期是一次 render。

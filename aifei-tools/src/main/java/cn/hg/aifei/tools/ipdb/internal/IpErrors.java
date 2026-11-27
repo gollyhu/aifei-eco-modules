@@ -8,7 +8,7 @@ package cn.hg.aifei.tools.ipdb.internal;
 import cn.hg.aifei.tools.ipdb.IpException;
 
 /**
- * ip 异常消息与构造的唯一定义点（设计 §7.2 措辞唯一来源）。
+ * ip 异常消息与构造的唯一定义点（措辞唯一来源）。
  */
 public final class IpErrors {
 

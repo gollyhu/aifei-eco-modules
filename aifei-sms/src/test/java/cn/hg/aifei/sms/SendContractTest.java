@@ -25,7 +25,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 发送契约测试（AC-01 / AC-02 / AC-03 / Q-08）：模板化发送、多通道独立实例、
+ * 发送契约测试：模板化发送、多通道独立实例、
  * 换厂商业务代码零改动、并发无状态污染；全部经 mock 注入，零外网。
  */
 public class SendContractTest {

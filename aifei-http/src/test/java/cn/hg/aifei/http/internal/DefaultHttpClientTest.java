@@ -57,7 +57,7 @@ public class DefaultHttpClientTest {
     }
 
     /**
-     * AC-R-10：进入正序、收尾逆序，各恰好一次。
+     * 进入正序、收尾逆序，各恰好一次。
      */
     @Test
     public void shouldEnterInOrderAndExitInReverse() {
@@ -73,7 +73,7 @@ public class DefaultHttpClientTest {
     }
 
     /**
-     * AC-R-11：B 的 {@code before} 抛异常 → C 未进入、真实发送未发生、异常原样传播且不重试。
+     * B 的 {@code before} 抛异常 → C 未进入、真实发送未发生、异常原样传播且不重试。
      */
     @Test
     public void shouldAbortWhenBeforeThrows() {
@@ -92,7 +92,7 @@ public class DefaultHttpClientTest {
     }
 
     /**
-     * AC-R-12：拦截器读到的默认资源名 = 方法大写 + 去 query 的 host 与 path。
+     * 拦截器读到的默认资源名 = 方法大写 + 去 query 的 host 与 path。
      */
     @Test
     public void shouldDeriveDefaultResource() {
@@ -107,7 +107,7 @@ public class DefaultHttpClientTest {
     }
 
     /**
-     * AC-R-13：显式资源名完全替代推导，拦截器读到该值。
+     * 显式资源名完全替代推导，拦截器读到该值。
      */
     @Test
     public void shouldUseExplicitResource() {
@@ -121,7 +121,7 @@ public class DefaultHttpClientTest {
     }
 
     /**
-     * AC-R-05 + AC-R-14：GET + {@code retry(2)}，前两次 503、第三次 200 → 3 次尝试，资源名三次完全相同。
+     * GET + {@code retry(2)}，前两次 503、第三次 200 → 3 次尝试，资源名三次完全相同。
      */
     @Test
     public void shouldKeepResourceStableAcrossRetries() {
@@ -142,7 +142,7 @@ public class DefaultHttpClientTest {
     }
 
     /**
-     * AC-R-04：未开启重试时只尝试 1 次，5xx 也照常返回（非 2xx 不抛）。
+     * 未开启重试时只尝试 1 次，5xx 也照常返回（非 2xx 不抛）。
      */
     @Test
     public void shouldAttemptOnceWithoutRetry() {
@@ -158,7 +158,7 @@ public class DefaultHttpClientTest {
     }
 
     /**
-     * AC-R-16：4xx 属确定性失败，即便开启了重试也只尝试 1 次。
+     * 4xx 属确定性失败，即便开启了重试也只尝试 1 次。
      */
     @Test
     public void shouldNotRetryClientError() {

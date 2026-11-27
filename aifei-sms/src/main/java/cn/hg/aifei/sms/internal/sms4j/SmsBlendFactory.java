@@ -17,7 +17,7 @@ import org.dromara.sms4j.api.universal.SupplierConfig;
 import org.dromara.sms4j.core.factory.SmsFactory;
 
 /**
- * sms4j {@link SmsBlend} 构建唯一装配点（设计 §7.1 / D11）。
+ * sms4j {@link SmsBlend} 构建唯一装配点。
  *
  * <p>默认经 {@code SmsFactory.createSmsBlend(config)} 编程式构建并按 configId 取回实例；
  * 包级注入点 {@link #setBlendFactory(Function)} 供测试与 demo 注入返回预设响应的 mock，

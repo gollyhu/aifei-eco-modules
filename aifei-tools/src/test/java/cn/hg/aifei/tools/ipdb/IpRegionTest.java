@@ -12,7 +12,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 /**
- * IP 五段值对象与 region 解析测试（设计 §3.1 / §7.2 / §8-E1）。
+ * IP 五段值对象与 region 解析测试。
  *
  * <p>覆盖：五段解析、"0"/"Reserved" 归空串、未命中全空、of 工厂 null 归一与空白串原样保留。</p>
  */

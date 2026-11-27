@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * 消费方唯一装配入口：启动加载规则、关闭释放资源。业务不直调 sentinel 类型。
- * 两种互斥模式由 sentinel.dashboard.server 决定（详见方案 §12）：
+ * 两种互斥模式由 sentinel.dashboard.server 决定：
  *  - 未配：本地模式，规则文件热读（M1/M2 行为）；
  *  - 已配：Dashboard 模式，注入 Dashboard 属性 + 一次性初始加载 + 回写本地文件（关热读，避免回环）。
  */

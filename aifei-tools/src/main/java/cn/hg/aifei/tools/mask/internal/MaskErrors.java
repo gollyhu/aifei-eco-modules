@@ -8,7 +8,7 @@ package cn.hg.aifei.tools.mask.internal;
 import cn.hg.aifei.tools.mask.MaskException;
 
 /**
- * mask 异常消息与构造的唯一定义点（设计 §7.2 措辞唯一来源）。
+ * mask 异常消息与构造的唯一定义点（措辞唯一来源）。
  */
 public final class MaskErrors {
 

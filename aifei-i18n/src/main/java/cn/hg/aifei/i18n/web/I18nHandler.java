@@ -13,7 +13,7 @@ import cn.hg.aifei.i18n.internal.LocaleContext;
 import cn.hg.aifei.i18n.internal.LocaleResolver;
 
 /**
- * Web 入口 Locale 绑定处理器（设计 §5.7，形态对齐 aifei-trace 的 TraceHandler）。
+ * Web 入口 Locale 绑定处理器（形态对齐 aifei-trace 的 TraceHandler）。
  *
  * <p>执行序：extractor 取原始头（异常吞掉，不绑定）→ {@code LocaleResolver.parseAcceptLanguage} 解析
  * 首个受支持语种 → 成功则 {@code LocaleContext.set} → next 透传 → <b>finally 无条件清理</b>。</p>

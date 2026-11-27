@@ -20,7 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 构建约束：主 JAR 内全部 class 的 major version 必须为 52（Java 8 字节码，设计 §11.2）。
+ * 构建约束：主 JAR 内全部 class 的 major version 必须为 52（Java 8 字节码）。
  */
 public class ClassFileVersionTest {
 

@@ -27,7 +27,7 @@ import org.junit.Test;
 /**
  * 取用门面单元测试：未装配显式失败、转发语义、十进制字符串精度，以及装配入口对门面的生命周期驱动。
  *
- * <p>覆盖设计文档 §7.5 场景 1（装配入口入参校验）、17（未装配 / 已停机调用）、18（重复启动幂等）、
+ * <p>覆盖装配入口入参校验、未装配 / 已停机调用、重复启动幂等、
  * 19（重复或未启动停机幂等）的门面部分。装配层更完整的用例（依赖缺失、租约释放等）
  * 由装配测试承担。</p>
  *
@@ -37,7 +37,7 @@ import org.junit.Test;
 public class IdKitTest {
 
     /**
-     * 未装配时的异常消息（设计文档 §7.6 消息 O）。
+     * 未装配时的异常消息。
      */
     private static final String NOT_INSTALLED_MESSAGE =
             "IdGenerator not installed, add IdPlugin to AppConfig.config(Plugins) before using IdKit";

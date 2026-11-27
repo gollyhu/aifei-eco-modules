@@ -361,7 +361,7 @@ public final class OssStorageFactory {
     /**
      * 固化「平台类型 → 平台族字段 / 配置类」映射表。
      *
-     * <p>类型名由 {@link FileStorageProperties} 平台族字段名 camel→kebab 机械派生，与 2.3.0 版实测一致；
+     * <p>类型名由 {@link FileStorageProperties} 平台族字段名 camel→kebab 机械派生，与 2.3.0 版行为一致；
      * 注意火山引擎的正确类型键是 {@code volcengine-tos}。</p>
      *
      * @return 有序映射表

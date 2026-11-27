@@ -24,7 +24,7 @@ import org.junit.Test;
 
 /**
  * {@link MessageBus} 的行为契约基类：由各后端实现继承运行，只覆盖跨后端的<b>共同底线</b>——生产订阅闭环、
- * 无订阅者时 {@code send} 仍成功返回 {@link SendResult}（§5.6 A5）、关闭语义、监听器异常隔离与订阅取消。
+ * 无订阅者时 {@code send} 仍成功返回 {@link SendResult}、关闭语义、监听器异常隔离与订阅取消。
  *
  * <p>真实后端投递异步，故投递类断言一律经 {@link #awaitTrue(BooleanSupplier)} 等待条件成立（带超时），
  * 断言使用的收集容器为线程安全的 {@link CopyOnWriteArrayList}；同步后端（如内存后端）在同一钩子下首轮即
@@ -127,8 +127,8 @@ public abstract class MessageBusContractTest {
     /**
      * 订阅后发送，订阅者收到同主题、同载荷的消息，并拿到带消息标识的发送结果。
      *
-     * <p>投递强度只断言「<b>至少</b>收到该主题、该载荷的消息」——真实后端为 at-least-once、可能重复消费
-     * （§5.6 B4），故此处不断言「恰好一次」；「恰好一次」的强度由内存后端（§5.6 B4 精确一次派发）另有断言。</p>
+     * <p>投递强度只断言「<b>至少</b>收到该主题、该载荷的消息」——真实后端为 at-least-once、可能重复消费，
+     * 故此处不断言「恰好一次」；「恰好一次」的强度由内存后端另有断言。</p>
      */
     @Test
     public void shouldDeliverToSubscriber() {
@@ -150,10 +150,10 @@ public abstract class MessageBusContractTest {
     }
 
     /**
-     * 无订阅者时 {@code send} 仍成功返回带 {@code messageId} 的 {@link SendResult}——属共同底线（§5.6 A5）。
+     * 无订阅者时 {@code send} 仍成功返回带 {@code messageId} 的 {@link SendResult}——属共同底线。
      *
-     * <p>本用例<b>只断言</b>上述「发送成功并返回带标识的结果」；而「消息被丢弃还是留存」随后端而变
-     * （§5.6 B6：内存后端丢弃、broker 独立存储待消费者上线），<b>不属</b>共同底线，故此处不断言。</p>
+     * <p>本用例<b>只断言</b>上述「发送成功并返回带标识的结果」；而「消息被丢弃还是留存」随后端而变：
+     * 内存后端丢弃、broker 独立存储待消费者上线，<b>不属</b>共同底线，故此处不断言。</p>
      */
     @Test
     public void shouldSucceedWithoutSubscribers() {

@@ -24,7 +24,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * ipdb 公共面形态测试（设计 §3.1 / §6.2）：精确 5 类型、逐字签名、公共方法无 throws、
+ * ipdb 公共面形态测试：精确 5 类型、逐字签名、公共方法无 throws、
  * 签名零第三方类型、class major 52。基于运行时反射与 class 字节实测。
  */
 public class PublicApiContractIpTest {

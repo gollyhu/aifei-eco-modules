@@ -14,14 +14,14 @@ import java.util.concurrent.RejectedExecutionException;
 /**
  * 执行单元：一次触发在执行层线程上跑完「事件 → 任务体 → 记账 → 跳过判定 → 续排」全过程。
  *
- * <p><b>顺序不可交换</b>（决策 14 与 §8.1）：进入执行 → 采样 {@code STARTED} 的事件时间 → 装配并同步分发
+ * <p><b>顺序不可交换</b>：进入执行 → 采样 {@code STARTED} 的事件时间 → 装配并同步分发
  * {@code STARTED} → <b>回调返回后</b>才采样 {@code lastStart} → 调任务体 → 记终态 → fixedRate 超时跳过 →
  * {@code finally} 采样 {@code lastEnd} 并续排。{@code STARTED} 在 {@code lastStart} 之前发出，是为了让「慢监听器」
  * 不计入 {@code lastEnd - lastStart}、不参与 fixedRate 的耗时判定，从而不改变调度行为（监听器属观测设施）。</p>
  *
- * <p><b>异常隔离</b>（决策 6）：任务体抛出的任何 {@link Throwable}（含 {@link Error}，否则会杀死池线程使该任务链
+ * <p><b>异常隔离</b>：任务体抛出的任何 {@link Throwable}（含 {@link Error}，否则会杀死池线程使该任务链
  * 断裂）都被就地捕获，解包 {@link InvocationTargetException#getTargetException()} 作为事件原因，记 {@code FAILED}
- * 并留堆栈；本轮不重试，续排照常。异常绝不被重新抛出。</p>
+ * 并留堆栈；不做重试，续排照常。异常绝不被重新抛出。</p>
  *
  * <p><b>终态先记账再回调</b>：{@code record(终态)} 之后才 {@code dispatch(终态)}，故回调内调用 {@code JobKit.state()}
  * 已能看到本次终态；{@code STARTED} 本就不记账（回调内看到的是上一次终态）。</p>

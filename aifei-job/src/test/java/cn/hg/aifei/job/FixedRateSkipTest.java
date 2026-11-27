@@ -29,7 +29,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 固定频率超时跳过语义（设计 §6 契约表第 1 行 / 决策 7 的事件时间口径）：
+ * 固定频率超时跳过语义（事件时间口径）：
  * 任务耗时超过 {@code period} 时记一条 {@code SKIPPED}，其<b>事件时间 = {@code lastStart + period}</b>（原计划触发时刻），
  * 再以当前时刻为新基准立即重排，<b>已过触发点不补跑</b>。
  *

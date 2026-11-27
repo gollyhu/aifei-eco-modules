@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * 门面后端编排器：持有 config / sources / cache，把取文案 / 导出 / 刷新转发给规则类，
- * 自身不实现任何规则（设计 §6.2）。
+ * 自身不实现任何规则。
  */
 public final class I18nEngine {
 

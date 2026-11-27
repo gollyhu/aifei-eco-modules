@@ -27,7 +27,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 /**
- * 验证码存储测试（设计 §3.2 / §8-E2 / §9）。
+ * 验证码存储测试。
  *
  * <p>覆盖：Lru 容量淘汰、TTL、失败计数；三态（成功删 / 失败只计数 / 超限删）；
  * Cluster 存储用内存 Mock Cache 驱动，不连真实 Redis。</p>

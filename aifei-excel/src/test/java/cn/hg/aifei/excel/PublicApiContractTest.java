@@ -34,7 +34,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 公共 API 契约测试（设计 §5 / §9 / §10）：
+ * 公共 API 契约测试：
  * 精确 5 顶层公共类型、逐字方法签名、公共面零第三方/框架类型、class major 52、
  * 依赖 scope/optional、无 SPI 文件。全部基于运行时反射 / class 字节 / pom 文本实测。
  */

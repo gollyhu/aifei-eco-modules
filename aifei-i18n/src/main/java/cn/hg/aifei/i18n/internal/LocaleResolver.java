@@ -9,7 +9,7 @@ package cn.hg.aifei.i18n.internal;
 import java.util.List;
 
 /**
- * 生效 locale 四级优先级 + Accept-Language 解析的唯一定义点（设计 §5.5 / §6.2）。
+ * 生效 locale 四级优先级 + Accept-Language 解析的唯一定义点。
  *
  * <p>优先级：显式传参 &gt; 上下文 Locale &gt; 请求头 Accept-Language &gt; {@code i18n.defaultLocale}。
  * 取文案与格式化路径共用本类的同一实现，不得另写一套解析。</p>

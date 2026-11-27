@@ -21,7 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 表达式用例清单（{@code docs/testing.md} §4）：合法 22 条 + 非法 9 条，共 31 条。
+ * 表达式用例清单：合法 22 条 + 非法 9 条，共 31 条。
  *
  * <p><b>期望值纪律</b>：一律写死时刻字面量（{@code yyyy-MM-dd HH:mm:ss}），经固定时区
  * {@code Asia/Shanghai} 转 epoch 毫秒；用例内<b>不得</b>用被测实现或任何 {@code CronExpression} 调用推导期望值，

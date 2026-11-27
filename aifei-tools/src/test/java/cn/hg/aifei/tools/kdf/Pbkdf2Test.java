@@ -16,7 +16,7 @@ import static org.junit.Assert.fail;
  *
  * <p>SHA-256 档照抄 RFC 7914 §B.1 两组官方向量（passwd/salt/1/64、Password/NaCl/80000/64），
  * 逐字比对输出字节；SHA-512 档输入同 RFC 7914 §B.1 第一组，输出按 RFC 8018 §5.2 算法用
- * HmacSHA512 独立计算的参考值（RFC 7914 §B.1 仅提供 SHA-256 向量，F9-b：硬编码常量、不联网）。</p>
+ * HmacSHA512 独立计算的参考值（RFC 7914 §B.1 仅提供 SHA-256 向量，硬编码常量、不联网）。</p>
  */
 public class Pbkdf2Test {
 

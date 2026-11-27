@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 /**
- * 连接状态机的合法迁移表与非法迁移处理（设计 §4.6 / §6.1 / §6.4）。
+ * 连接状态机的合法迁移表与非法迁移处理。
  *
  * <p>状态迁移由 {@code internal.AbstractWebSocketClient} 驱动，本测试经公共 API（{@link WebSocketUtil}）在
  * 本地回环上驱动真实迁移，不依赖内部类型。</p>

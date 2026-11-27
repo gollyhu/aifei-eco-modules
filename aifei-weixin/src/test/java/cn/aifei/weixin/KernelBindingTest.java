@@ -22,7 +22,7 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * 架构门禁 G3：内核绑定收敛。
+ * 架构门禁：内核绑定收敛。
  *
  * <pre>
  * ① 不存在 cn.aifei.vip.* 与 io.undertow.* 的 import（对 arch / undertow 零依赖）

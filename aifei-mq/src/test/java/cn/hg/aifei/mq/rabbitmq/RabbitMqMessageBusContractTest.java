@@ -30,7 +30,7 @@ import org.junit.Before;
  * {@code topic} 即队列名，队列由首次订阅按 {@code durable} 声明。</p>
  *
  * <p>本类<b>只</b>继承运行共同底线用例，不写任何后端差异断言（投递模型、有序性、投递保证、
- * {@code messageId} 语义、取消订阅的尽力语义等差异见 {@code docs/design.md} §5.6 (B) / (C)）。</p>
+ * {@code messageId} 语义、取消订阅的尽力语义等差异不在本基类断言。</p>
  */
 public class RabbitMqMessageBusContractTest extends MessageBusContractTest {
 

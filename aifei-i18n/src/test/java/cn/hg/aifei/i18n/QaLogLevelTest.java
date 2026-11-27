@@ -32,9 +32,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * QA 独立复验补充用例：日志分级口径。
+ * 日志分级口径。
  *
- * <p>开发现有用例只断言「返回值 / 不抛 / 跳过」等行为，未断言日志**级别**。本类注入可插拔日志工厂，
+ * <p>本类注入可插拔日志工厂，
  * 直接断言：未命中=DEBUG 且无 WARN/ERROR；来源故障=WARN 含稳定名+key；
  * 不可列举来源跳过=WARN；dir 判定降级=WARN；故障 WARN 区别于未命中 DEBUG。</p>
  */
@@ -171,7 +171,7 @@ public class QaLogLevelTest {
         assertTrue("故障后命中应有 WARN", recorder.ofLevel("WARN").size() >= 1);
     }
 
-    /** 本轮优化：来源 refresh 抛 RuntimeException → WARN 含稳定名，不中断其它来源，未命中仍 DEBUG。 */
+    /** 来源 refresh 抛 RuntimeException → WARN 含稳定名，不中断其它来源，未命中仍 DEBUG。 */
     @Test
     public void refreshFailureLogsWarnAndContinuesOtherSources() {
         FakeMessageSource broken = new FakeMessageSource("db").refreshFailing(true);
@@ -198,7 +198,7 @@ public class QaLogLevelTest {
                 recorder.ofLevel("WARN").isEmpty());
     }
 
-    /** 本轮优化：properties 资源读取 IOException → WARN 含资源名，返回空来源，不启动失败、不抛。 */
+    /** properties 资源读取 IOException → WARN 含资源名，返回空来源，不启动失败、不抛。 */
     @Test
     public void propertiesReadFailureLogsWarnAndYieldsEmptySource() {
         final String resource = "qa-broken-i18n.properties";

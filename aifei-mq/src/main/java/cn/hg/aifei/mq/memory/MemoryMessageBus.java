@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 进程内发布-订阅总线：同步投递、单主题保序，是「监听器异常就地隔离」等共同底线的参考实现。
  *
  * <p>投递在调用线程内按登记顺序回调；取消按<b>实例身份</b>移除；关闭幂等，关闭后发送、订阅与取消均非法。
- * 各后端允许差异见 {@code docs/design.md} §5.6。</p>
+ * 各后端在共同底线之上允许差异。</p>
  */
 public class MemoryMessageBus implements MessageBus {
 

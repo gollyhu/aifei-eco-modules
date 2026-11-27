@@ -17,7 +17,7 @@ import org.junit.After;
 import org.junit.Test;
 
 /**
- * TraceKit 单元测试：覆盖设计 §7.2 场景 1–3 / 7 / 11–13（生成器替换用例在 @After 恢复默认）。
+ * TraceKit 单元测试（生成器替换用例在 @After 恢复默认）。
  */
 public class TraceKitTest {
 
@@ -29,7 +29,7 @@ public class TraceKitTest {
     }
 
     /**
-     * 场景 1：setTraceIdGenerator(null) 拒绝，消息逐字对齐 §7.3。
+     * setTraceIdGenerator(null) 拒绝，消息逐字对齐固定文案。
      */
     @Test
     public void setNullGeneratorShouldReject() {

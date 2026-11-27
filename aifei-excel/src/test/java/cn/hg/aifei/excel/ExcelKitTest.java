@@ -22,7 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 /**
- * 一次性便捷门面测试（设计 §5.2 / §7.5 场景 1）：
+ * 一次性便捷门面测试：
  * readAll 空结果空 List / 小文件全量 / write 语法糖读回一致 / 指定 sheetName / null 参数 / 不关流。
  */
 public class ExcelKitTest {

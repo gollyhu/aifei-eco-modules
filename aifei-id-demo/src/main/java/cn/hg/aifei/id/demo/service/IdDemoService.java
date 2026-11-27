@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>所有端点均为 GET，HTTP 状态恒 200，业务语义由 {@code code} 承载（{@code 0} 为成功），
  * 信封为 {@code { code, message, data }}。</p>
  *
- * <p>场景与端点对照（设计文档 §13）：</p>
+ * <p>场景与端点对照：</p>
  * <ul>
  *   <li>场景① {@code /id/demo/next}：单号生成（{@code IdKit.nextIdStr()}，<b>字符串</b>，
  *       19 位 long 在 JS 中会丢精度）</li>
@@ -39,18 +39,18 @@ import java.util.concurrent.atomic.AtomicInteger;
  * </ul>
  *
  * <p><b>边界</b>：workerId / 段边界 / 策略等展示值一律由 demo <b>自算或取自自身配置</b>，
- * 不是模块能力（aifei-id 无状态查询 API，设计决策 D1）。</p>
+ * 不是模块能力（aifei-id 无状态查询 API）。</p>
  */
 @Path("/id/demo")
 public class IdDemoService {
 
     /**
-     * 批量端点缺省生成数量（设计文档 §13 示例值）。
+     * 批量端点缺省生成数量（示例值）。
      */
     private static final int DEFAULT_BATCH_SIZE = 2000;
 
     /**
-     * 号段端点缺省生成数量（设计文档 §13 示例值）。
+     * 号段端点缺省生成数量（示例值）。
      */
     private static final int DEFAULT_SEGMENT_SIZE = 450;
 
@@ -200,7 +200,7 @@ public class IdDemoService {
             counts.put(index, count == null ? Integer.valueOf(1) : Integer.valueOf(count.intValue() + 1));
         }
 
-        // 段序号与段边界都是 ID 值：一律以字符串下发，19 位 long 在 JS 中会丢精度（设计 §13「ID 全程以字符串展示」）
+        // 段序号与段边界都是 ID 值：一律以字符串下发，19 位 long 在 JS 中会丢精度（ID 全程以字符串展示）
         List<Map<String, Object>> segments = new ArrayList<Map<String, Object>>(counts.size());
         for (Map.Entry<Long, Integer> entry : counts.entrySet()) {
             long index = entry.getKey().longValue();

@@ -111,7 +111,7 @@ public class MemoryMessageBusContractTest extends MessageBusContractTest {
     }
 
     /**
-     * 内存后端为进程内同步、<b>恰好一次</b>派发（§5.6 B4）：一次 {@code send} 只回调订阅者一次，且主题与
+     * 内存后端为进程内同步、<b>恰好一次</b>派发：一次 {@code send} 只回调订阅者一次，且主题与
      * 载荷正确——即契约基类放宽为「至少收到」的基本投递闭环，在内存后端仍保持「恰好一次」强度。
      */
     @Test
@@ -131,7 +131,7 @@ public class MemoryMessageBusContractTest extends MessageBusContractTest {
     }
 
     /**
-     * 监听器异常隔离后，其余订阅者在内存后端仍<b>恰好一次</b>收到该载荷（§5.6 A4 + B4）：契约基类放宽为
+     * 监听器异常隔离后，其余订阅者在内存后端仍<b>恰好一次</b>收到该载荷：契约基类放宽为
      * 「至少收到」，内存后端补回「恰好一次」强度。
      */
     @Test
@@ -154,7 +154,7 @@ public class MemoryMessageBusContractTest extends MessageBusContractTest {
 
     /**
      * 取消后，已取消的监听器在内存后端<b>恰好不再收到</b>、其余监听器仍<b>恰好一次</b>收到该载荷
-     * （§5.6 A3 取消语义 + B4 精确一次）。
+     * （取消语义与精确一次）。
      */
     @Test
     public void shouldStopDeliveringExactlyOnceAfterUnsubscribe() {
@@ -178,7 +178,7 @@ public class MemoryMessageBusContractTest extends MessageBusContractTest {
 
     /**
      * 按实例身份取消后，被取消的实例在内存后端<b>恰好不再收到</b>、另一实例仍<b>恰好一次</b>收到
-     * （§5.6 A3 取消语义 + B4 精确一次）：契约基类放宽为「至少收到 / 不含被取消者」，内存后端补回集合精确相等。
+     * （取消语义与精确一次）：契约基类放宽为「至少收到 / 不含被取消者」，内存后端补回集合精确相等。
      */
     @Test
     public void shouldRemoveByInstanceIdentityExactlyOnce() {

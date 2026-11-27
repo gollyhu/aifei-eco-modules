@@ -47,7 +47,7 @@ import redis.clients.jedis.resps.StreamEntryBinary;
  *
  * <p>投递保证 at-least-once：确认失败 / 断连使消息留在 pending，{@code start-mode=pending} 与空闲回收（{@code claim}）
  * 都会<b>扩大重复面</b>，故监听器必须幂等。{@code unsubscribe} 只解除本地登记（不删消费者、不删流 / 消费组）。
- * 共同底线与允许差异见 {@code docs/design.md} §5.6。</p>
+ * 以上为各后端共同底线，差异在允许范围内。</p>
  */
 public class RedisStreamMessageBus implements MessageBus {
 

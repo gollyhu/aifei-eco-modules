@@ -19,7 +19,7 @@ import org.quartz.CronExpression;
  * {@link CronExpression}，下次触发即 {@link CronExpression#getNextValidTimeAfter(Date)}。
  *
  * <p>Quartz 只被当作「表达式解析器 + 时刻计算器」使用，不启用它的调度器、触发器、任务存储与 misfire
- * 策略；调度内核是 JDK 自续排（见设计决策 1）。</p>
+ * 策略；调度内核是 JDK 自续排。</p>
  *
  * <p>{@link CronExpression} 的构造有一次解析开销，故按表达式原文缓存在 {@link ConcurrentHashMap} 中：
  * 命中缓存后只调用 {@code getNextValidTimeAfter}，该调用只读、可被多个执行线程并发共用同一实例。

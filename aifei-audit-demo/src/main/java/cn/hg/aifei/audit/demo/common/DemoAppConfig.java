@@ -42,7 +42,7 @@ import cn.hg.aifei.trace.web.TraceHandler;
  * 装配中心：自写 HIO + trace / sa-token / mq / audit 四个插件。
  *
  * <p>容器内唯一的 {@link AuditSink} 是「可切换委托 sink」，切换落点只改它的内部委托，业务代码零改动
- * （框架不允许同类型二次注册，见 aifei-audit 设计 §9.2）。</p>
+ * （框架不允许同类型二次注册）。</p>
  *
  * <p>审计拦截器必须第一个传入 {@code routes.scan}（拦截器数组下标 0 即最外层）；
  * {@code service} 包（页面端点）不挂审计拦截器，否则页面自身的查询请求也会产事件、干扰计数。</p>

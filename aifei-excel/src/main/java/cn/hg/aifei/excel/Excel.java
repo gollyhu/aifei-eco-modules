@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Excel 流式门面：静态分批读 + 有状态 writer 会话（设计 §5.1）。
+ * Excel 流式门面：静态分批读 + 有状态 writer 会话。
  *
  * <p><b>流式读</b>：{@link #read} 按行 SAX 解析，累积满批大小回调一次，末批不足亦回调；
  * 峰值内存 O(batchSize × 单对象大小)，与文件总行数无关；回调后本模块不再持有该批引用。</p>

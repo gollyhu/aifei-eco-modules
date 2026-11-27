@@ -34,7 +34,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 公共面契约（AC-08 / AC-09）：根包精确 5 类型、spi 精确 1 类型、门面形态、签名零第三方 / 零框架类型、
+ * 公共面契约：根包精确 5 类型、spi 精确 1 类型、门面形态、签名零第三方 / 零框架类型、
  * 值对象不可变与附件字节防御性复制。
  */
 public class PublicApiContractTest {
@@ -44,7 +44,7 @@ public class PublicApiContractTest {
             "MailClient.java", "MailKit.java", "MailMessage.java", "MailResult.java", "MailException.java"));
     private static final Set<String> SPI_TYPES = new LinkedHashSet<String>(Arrays.asList("MailProvider.java"));
 
-    /** AC-09：根包顶层类型精确 5 个（文件名集合精确相等）。 */
+    /** 根包顶层类型精确 5 个（文件名集合精确相等）。 */
     @Test
     public void rootPackageHasExactlyFiveTypes() throws IOException {
         Set<String> names = typeNames("src/main/java/cn/hg/aifei/email");
@@ -52,7 +52,7 @@ public class PublicApiContractTest {
         assertEquals("根包公共类型集合必须精确相等", ROOT_TYPES, names);
     }
 
-    /** AC-09：spi 包顶层类型精确 1 个。 */
+    /** spi 包顶层类型精确 1 个。 */
     @Test
     public void spiPackageHasExactlyOneType() throws IOException {
         Set<String> names = typeNames("src/main/java/cn/hg/aifei/email/spi");
@@ -60,7 +60,7 @@ public class PublicApiContractTest {
         assertEquals("spi 公共类型集合必须精确相等", SPI_TYPES, names);
     }
 
-    /** AC-08：发送门面为接口，仅两个方法且不声明受检异常。 */
+    /** 发送门面为接口，仅两个方法且不声明受检异常。 */
     @Test
     public void mailClientIsMinimalInterface() {
         assertTrue(MailClient.class.isInterface());
@@ -72,7 +72,7 @@ public class PublicApiContractTest {
         assertSameType(MailResult.class, declaredMethod(MailClient.class, "send", MailMessage.class).getReturnType());
     }
 
-    /** AC-08：静态门面为 final + 私有构造 + 全静态方法。 */
+    /** 静态门面为 final + 私有构造 + 全静态方法。 */
     @Test
     public void mailKitIsStatefulStaticFacade() {
         assertTrue("MailKit 必须为 final", Modifier.isFinal(MailKit.class.getModifiers()));
@@ -93,7 +93,7 @@ public class PublicApiContractTest {
                 "defaultClient", "use", "channels", "send")), names);
     }
 
-    /** AC-09：消息值对象为 final，仅可经 Builder 构造（无公共构造器），Builder 为内部类。 */
+    /** 消息值对象为 final，仅可经 Builder 构造（无公共构造器），Builder 为内部类。 */
     @Test
     public void mailMessageIsImmutableWithInternalBuilder() {
         assertTrue(Modifier.isFinal(MailMessage.class.getModifiers()));
@@ -109,7 +109,7 @@ public class PublicApiContractTest {
         assertSameType(nested[0], builderMethod().getReturnType());
     }
 
-    /** AC-09：结果值对象为 final 且字段不可变。 */
+    /** 结果值对象为 final 且字段不可变。 */
     @Test
     public void mailResultIsImmutableValueObject() {
         assertTrue(Modifier.isFinal(MailResult.class.getModifiers()));
@@ -126,7 +126,7 @@ public class PublicApiContractTest {
         }
     }
 
-    /** AC-07：统一异常为 final 且非受检。 */
+    /** 统一异常为 final 且非受检。 */
     @Test
     public void mailExceptionIsUnchecked() {
         assertTrue(Modifier.isFinal(MailException.class.getModifiers()));
@@ -134,7 +134,7 @@ public class PublicApiContractTest {
         assertFalse("不得为受检异常", Exception.class.equals(MailException.class.getSuperclass()));
     }
 
-    /** AC-08 / AC-09：spi 为接口，两个方法且签名只用 JDK 与本模块类型。 */
+    /** spi 为接口，两个方法且签名只用 JDK 与本模块类型。 */
     @Test
     public void mailProviderSpiShape() {
         assertTrue(MailProvider.class.isInterface());
@@ -149,7 +149,7 @@ public class PublicApiContractTest {
         }
     }
 
-    /** AC-08：根包 + spi 全部公共方法（含 Builder）签名零第三方 / 零框架类型、零受检异常。 */
+    /** 根包 + spi 全部公共方法（含 Builder）签名零第三方 / 零框架类型、零受检异常。 */
     @Test
     public void publicSignaturesUseOnlyJdkAndModuleTypes() {
         List<Class<?>> types = new ArrayList<Class<?>>(Arrays.asList(

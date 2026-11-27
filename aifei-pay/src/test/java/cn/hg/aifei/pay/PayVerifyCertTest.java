@@ -27,12 +27,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 公钥证书模式的回调验签（AC-11）与多凭据轮换（AC-13）。
+ * 公钥证书模式的回调验签与多凭据轮换。
  *
  * <p><b>向量来源</b>：证书与密钥由 {@link PayTestCrypto} 在运行期生成（2048 位 RSA、自签、v3），
  * 报文签名由测试侧用 JDK {@code SHA256withRSA} 独立生成，与任何真实商户无关。</p>
  *
- * <p><b>凭据选取口径</b>（{@code docs/design.md} §14.1 A-4）：报文带 {@code alipay_cert_sn} 时只尝试
+ * <p><b>凭据选取口径</b>：报文带 {@code alipay_cert_sn} 时只尝试
  * 序列号相等者；单证书配置可不带序列号；多证书且不带序列号无法确定归属，按失败处理。</p>
  */
 public class PayVerifyCertTest {
@@ -70,7 +70,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-11：报文携带的证书序列号与配置的证书一致，且签名由该证书对应私钥生成 → 验签通过。
+     * 报文携带的证书序列号与配置的证书一致，且签名由该证书对应私钥生成 → 验签通过。
      */
     @Test
     public void shouldVerifyNotifyWhenCertSnMatchesConfiguredCert() {
@@ -90,7 +90,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-11：报文携带的证书序列号在配置中不存在 → 验签失败（不静默）。
+     * 报文携带的证书序列号在配置中不存在 → 验签失败（不静默）。
      */
     @Test
     public void shouldRejectWhenCertSnMatchesNoConfiguredCert() {
@@ -104,7 +104,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-11：序列号匹配但签名并非该证书对应私钥所签 → 验签失败。
+     * 序列号匹配但签名并非该证书对应私钥所签 → 验签失败。
      */
     @Test
     public void shouldRejectWhenSignatureDoesNotMatchCertifiedKey() {
@@ -119,7 +119,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-11：只配置一张证书时，报文不带序列号也可按该证书验签通过。
+     * 只配置一张证书时，报文不带序列号也可按该证书验签通过。
      */
     @Test
     public void shouldVerifyWithSingleCertWhenMessageHasNoCertSn() {
@@ -132,7 +132,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-11 / AC-13：配置两张证书而报文不带序列号时无法确定归属，按失败处理（不放行）。
+     * 配置两张证书而报文不带序列号时无法确定归属，按失败处理（不放行）。
      */
     @Test
     public void shouldRejectWhenMultipleCertsAndMessageHasNoCertSn() {
@@ -145,7 +145,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-13：同一 appId 下新旧两张证书并存，用旧证书签名与用新证书签名的报文均验签通过。
+     * 同一 appId 下新旧两张证书并存，用旧证书签名与用新证书签名的报文均验签通过。
      */
     @Test
     public void shouldVerifyBothOldAndNewCertsDuringRotation() {
@@ -168,7 +168,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-13：只配置新证书时，旧证书签名的报文必须验签失败（移除旧凭据即失效）。
+     * 只配置新证书时，旧证书签名的报文必须验签失败（移除旧凭据即失效）。
      */
     @Test
     public void shouldRejectOldCertSignatureWhenOnlyNewCertConfigured() {
@@ -185,7 +185,7 @@ public class PayVerifyCertTest {
     }
 
     /**
-     * AC-11：证书模式下的验签失败经由 {@code verifyAndParse} 抛 {@link PayException}，且消息不含报文内容。
+     * 证书模式下的验签失败经由 {@code verifyAndParse} 抛 {@link PayException}，且消息不含报文内容。
      */
     @Test
     public void shouldThrowWithoutLeakingMessageContentWhenCertSignatureInvalid() {

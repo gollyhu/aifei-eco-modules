@@ -11,7 +11,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 /**
- * HMAC 派生原语对标 RFC 4231 测试向量（设计 §3.5 / §8-F10）。
+ * HMAC 派生原语对标 RFC 4231 测试向量。
  *
  * <p>{@link HmacEngine} 对齐 RFC 2104 {@code HMAC(K, text)}：secret=ikm（K）、data=message（text）。
  * 两个 derive 重载：两参 {@code derive(spec, ikm)} 等价 data=null（HMAC 视空字节 {@code HMAC(ikm, "")}）；

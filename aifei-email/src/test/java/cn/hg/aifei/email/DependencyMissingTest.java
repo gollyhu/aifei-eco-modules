@@ -20,7 +20,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 依赖缺失（AC-06 / R-04）：内核缺失时可读失败，不裸抛 {@code NoClassDefFoundError} / {@code ClassNotFoundException}。
+ * 依赖缺失：内核缺失时可读失败，不裸抛 {@code NoClassDefFoundError} / {@code ClassNotFoundException}。
  *
  * <p>以真实类加载行为屏蔽内核包触发探测失败，不改任何全局状态。</p>
  */
@@ -39,7 +39,7 @@ public class DependencyMissingTest {
         MailProviderRegistry.reset();
     }
 
-    /** AC-06：内核不可见时抛可读异常，消息含依赖坐标与引入提示。 */
+    /** 内核不可见时抛可读异常，消息含依赖坐标与引入提示。 */
     @Test
     public void reportsMissingMailCoreAsReadableException() {
         try {
@@ -57,14 +57,14 @@ public class DependencyMissingTest {
         }
     }
 
-    /** AC-06：内核可见时探测通过（防「恒失败」假通过）。 */
+    /** 内核可见时探测通过（防「恒失败」假通过）。 */
     @Test
     public void passesWhenMailCoreIsPresent() {
         TestHooks.requireSms4j(DependencyMissingTest.class.getClassLoader());
         assertNotNull("测试类路径上应能加载内核工厂", DependencyMissingTest.class.getClassLoader());
     }
 
-    /** AC-06：屏蔽内核包的类加载器确实无法解析内核类（验证隔离手段本身有效）。 */
+    /** 屏蔽内核包的类加载器确实无法解析内核类（验证隔离手段本身有效）。 */
     @Test
     public void isolatedLoaderReallyHidesMailCore() {
         ClassLoader loader = IsolatedClassLoaders.blockingMailCore();
@@ -76,7 +76,7 @@ public class DependencyMissingTest {
         }
     }
 
-    /** AC-06：内核缺失不会表现为「装配静默成功」。 */
+    /** 内核缺失不会表现为「装配静默成功」。 */
     @Test
     public void missingDependencyIsNeverSilent() {
         boolean failed = false;

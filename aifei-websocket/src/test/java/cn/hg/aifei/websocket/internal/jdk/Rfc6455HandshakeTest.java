@@ -23,7 +23,7 @@ import java.util.Map;
 import org.junit.Test;
 
 /**
- * RFC6455 握手的单元测试（设计 §5.2）：{@code Sec-WebSocket-Accept} 计算、请求头生成与响应 / 请求校验。
+ * RFC6455 握手的单元测试：{@code Sec-WebSocket-Accept} 计算、请求头生成与响应 / 请求校验。
  *
  * <p>用例以 RFC6455 §1.3 给出的示例值为准：密钥 {@code dGhlIHNhbXBsZSBub25jZQ==} 对应的 Accept 为
  * {@code s3pPLMBiTxaQ9kYGzzhZRbK+xOo=}。</p>

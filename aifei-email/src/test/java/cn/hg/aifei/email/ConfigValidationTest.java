@@ -24,9 +24,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 /**
- * 配置校验（AC-05；异常场景 3 / 4 / 7 / 9 / 13）：通道发现、必填项、整数项、默认通道、Provider 缺失。
+ * 配置校验（异常场景 3 / 4 / 7 / 9 / 13）：通道发现、必填项、整数项、默认通道、Provider 缺失。
  *
- * <p>配置解析方法为包内可见，故本类经装配入口间接验证（与设计 §7.1 的可见性约定一致）。</p>
+ * <p>配置解析方法为包内可见，故本类经装配入口间接验证。</p>
  */
 public class ConfigValidationTest {
 

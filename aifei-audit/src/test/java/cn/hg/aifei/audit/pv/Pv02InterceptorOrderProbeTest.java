@@ -20,7 +20,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * PV-02 前置实证：多拦截器时谁在外层，采集构件放最前能否捕获内层失败。
+ * 多拦截器时谁在外层，采集构件放最前能否捕获内层失败。
  *
  * <p>框架 {@code Invocation.invoke()} 的实现是「取 {@code interceptors[index++]} 调 {@code intercept(this)}」，
  * 每层拦截器自行调 {@code invoke()} 推进到下一层，故 <b>数组下标 0 即最外层</b>。本用例两面验证：</p>

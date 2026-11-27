@@ -93,7 +93,7 @@ public final class FakeLockStore implements LockStore {
     }
 
     /**
-     * 记录一次释放；恒成功（释放失败路径不在本轮的覆盖范围）。
+     * 记录一次释放；恒成功（释放失败路径不在覆盖范围）。
      *
      * @param name 锁名
      * @param token 本次持有的标识

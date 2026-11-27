@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 验证码门面功能测试（设计 §3.2 / §7.2 / §9）。
+ * 验证码门面功能测试。
  *
  * <p>覆盖：生成/校验、一次性消费、TTL 到期、错误次数超限失效、token 唯一不可反推、
  * 两类题目、参数校验、集群依赖缺失可读异常。</p>

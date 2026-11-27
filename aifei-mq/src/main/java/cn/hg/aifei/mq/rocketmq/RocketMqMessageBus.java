@@ -38,7 +38,7 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
  * 不校验 nameserver 连通性，故 nameserver 不可达时构造仍成功——「启动成功」≠「后端可达」，故障延迟到首次
  * {@code send} / 拉取才以 {@link MqException} 暴露。消费者因订阅主题启动时未知，延迟到<b>首次订阅</b>才订阅并
  * 启动。{@code unsubscribe} 只解除本地绑定，不调 broker 侧 {@code unsubscribe}，以免影响同主题其它监听器与
- * 消费组一致性。各后端共同底线与允许差异见 {@code docs/design.md} §5.6。</p>
+ * 消费组一致性。以上为各后端共同底线，差异在允许范围内。</p>
  */
 public class RocketMqMessageBus implements MessageBus {
 

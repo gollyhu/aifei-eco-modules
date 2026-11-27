@@ -26,7 +26,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 普通公钥方式的回调验签（AC-10）与凭据轮换（AC-13）。
+ * 普通公钥方式的回调验签与凭据轮换。
  *
  * <p><b>固定向量</b>：报文由 {@link PayTestCrypto} 用测试私钥做 {@code SHA256withRSA} 签名得到，
  * 验签侧使用模块的 {@code PayNotifyUtil}。签名侧是独立实现（不复用被测代码），因此断言有效。</p>
@@ -66,7 +66,7 @@ public class PayVerifyKeyTest {
     }
 
     /**
-     * AC-10：合法签名的异步通知 → 验签通过，且解析结果透出交易幂等键。
+     * 合法签名的异步通知 → 验签通过，且解析结果透出交易幂等键。
      */
     @Test
     public void shouldVerifyValidSignedNotify() {
@@ -85,7 +85,7 @@ public class PayVerifyKeyTest {
     }
 
     /**
-     * AC-10：签名后篡改任一字段 → 验签失败；{@code verifyAndParse} 抛异常（失败不静默）。
+     * 签名后篡改任一字段 → 验签失败；{@code verifyAndParse} 抛异常（失败不静默）。
      */
     @Test
     public void shouldRejectTamperedField() {
@@ -106,7 +106,7 @@ public class PayVerifyKeyTest {
     }
 
     /**
-     * AC-10：报文缺 {@code sign} → 视为验签失败（不静默放过）。
+     * 报文缺 {@code sign} → 视为验签失败（不静默放过）。
      */
     @Test
     public void shouldRejectMissingSign() {
@@ -118,7 +118,7 @@ public class PayVerifyKeyTest {
     }
 
     /**
-     * AC-10：{@code sign_type} 只支持 RSA2，其它取值一律失败（内核限制，不得静默放过）。
+     * {@code sign_type} 只支持 RSA2，其它取值一律失败（内核限制，不得静默放过）。
      */
     @Test
     public void shouldRejectUnsupportedSignType() {
@@ -131,7 +131,7 @@ public class PayVerifyKeyTest {
     }
 
     /**
-     * AC-16 支撑：未配置的 appId 验签 → 抛 {@link PayException}（消息含该 appId）。
+     * 未配置的 appId 验签 → 抛 {@link PayException}（消息含该 appId）。
      */
     @Test
     public void shouldThrowWhenAppIdUnknown() {
@@ -170,7 +170,7 @@ public class PayVerifyKeyTest {
     }
 
     /**
-     * AC-13：同一 appId 配置新旧两个公钥，用任一私钥签名的报文都能通过（轮换期并存）。
+     * 同一 appId 配置新旧两个公钥，用任一私钥签名的报文都能通过（轮换期并存）。
      */
     @Test
     public void shouldVerifyWithEitherOldOrNewKeyWhenBothConfigured() {
@@ -181,7 +181,7 @@ public class PayVerifyKeyTest {
     }
 
     /**
-     * AC-13：只配置新凭据时，旧凭据签名的报文必须失败（移除旧凭据立即失效）。
+     * 只配置新凭据时，旧凭据签名的报文必须失败（移除旧凭据立即失效）。
      */
     @Test
     public void shouldRejectOldKeySignatureWhenOnlyNewKeyConfigured() {

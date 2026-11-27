@@ -22,7 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 多商户 / 多通道（AC-16）：{@code merchantId} 首参 + 通道 {@code pay.<name>.default-merchant-id} 回退，
+ * 多商户 / 多通道：{@code merchantId} 首参 + 通道 {@code pay.<name>.default-merchant-id} 回退，
  * 不同商户 / 通道的配置与内核实例互不串扰。
  */
 public class PayMultiAppTest {
@@ -65,7 +65,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：两个商户 / 通道各自使用对应配置，结果互不串扰。
+     * 两个商户 / 通道各自使用对应配置，结果互不串扰。
      */
     @Test
     public void shouldResolveEachApplicationIndependently() {
@@ -84,7 +84,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：{@code merchantId} 为 {@code null} / 空白时回退通道默认商户。
+     * {@code merchantId} 为 {@code null} / 空白时回退通道默认商户。
      */
     @Test
     public void shouldFallbackToDefaultAppIdWhenAppIdBlank() {
@@ -101,7 +101,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：显式指定的商户标识优先于通道默认商户。
+     * 显式指定的商户标识优先于通道默认商户。
      */
     @Test
     public void shouldPreferExplicitAppIdOverDefault() {
@@ -113,7 +113,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：未配置的商户标识 → 抛 {@link PayException}，消息含该商户标识。
+     * 未配置的商户标识 → 抛 {@link PayException}，消息含该商户标识。
      */
     @Test
     public void shouldThrowWhenAppIdNotConfigured() {
@@ -127,7 +127,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：既未传商户标识又未配置通道默认商户 → 抛 {@link PayException}，消息含默认商户键名。
+     * 既未传商户标识又未配置通道默认商户 → 抛 {@link PayException}，消息含默认商户键名。
      */
     @Test
     public void shouldThrowWhenNoDefaultAppIdAndAppIdBlank() {
@@ -140,7 +140,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：连续交替调用不同应用不会残留上一个应用的配置。
+     * 连续交替调用不同应用不会残留上一个应用的配置。
      */
     @Test
     public void shouldNotLeakApplicationAcrossSequentialCalls() {
@@ -161,7 +161,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16 / AC-15：每个商户拥有独立的 SDK 客户端实例，且网关与超时按各自配置注入并缓存复用。
+     * 每个商户拥有独立的 SDK 客户端实例，且网关与超时按各自配置注入并缓存复用。
      */
     @Test
     public void shouldBuildIsolatedSdkClientPerApplication() {
@@ -179,7 +179,7 @@ public class PayMultiAppTest {
     }
 
     /**
-     * AC-16：页面下单接口实例同样按商户隔离（不得共用进程级默认客户端）。
+     * 页面下单接口实例同样按商户隔离（不得共用进程级默认客户端）。
      */
     @Test
     public void shouldBuildIsolatedPageApiPerApplication() {

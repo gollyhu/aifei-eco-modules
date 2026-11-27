@@ -23,7 +23,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 流式读测试（设计 §5.1 / §7.3 / §12.1）：
+ * 流式读测试：
  * 分批回调（默认与自定义批大小、末批兜底、批次数/顺序/总量）、回调异常包装、IO 包装、
  * 不关闭入参流、xls/xlsx、12000 行内存边界与批引用释放（弱引用可观测）。
  */

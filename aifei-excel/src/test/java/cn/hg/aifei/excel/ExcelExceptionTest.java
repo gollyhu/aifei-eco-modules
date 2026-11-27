@@ -28,7 +28,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 异常语义测试（设计 §5.3 / §7.5）：
+ * 异常语义测试：
  * 两段构造器、参数 null 逐字消息、batchSize<=0、index<0 非错误、cause 保留、
  * EasyExcel 缺失可读失败（隔离 classloader 实测，禁止裸 NoClassDefFoundError）。
  */

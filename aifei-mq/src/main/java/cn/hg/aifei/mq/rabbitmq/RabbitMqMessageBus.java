@@ -48,7 +48,7 @@ import javax.net.ssl.TrustManagerFactory;
  * <p>未开 {@code publisher-confirms} 时 {@code messageId} 由适配器<b>本地生成</b>，格式
  * {@code rabbitmq:<host>:<port>:<序号>}；开启时改用通道的<b>发布确认序号</b>并同步等待确认。投递以手动确认闭环，
  * 未确认即断开时 broker 会重投（at-least-once，监听器需幂等）。{@code unsubscribe} 只解除本地登记，不发取消投递
- * 指令。共同底线与允许差异见 {@code docs/design.md} §5.6。</p>
+ * 指令。以上为各后端共同底线，差异在允许范围内。</p>
  *
  * <p>{@code ssl.enabled=true} 时在建连之前按 {@code ssl.*} 构建 SSL 上下文：未配置 {@code ssl.trust-store}
  * 用 JVM 默认信任库，配置 {@code ssl.key-store} 则随握手提交客户端证书；构建失败与建连失败同为启动期失败。</p>

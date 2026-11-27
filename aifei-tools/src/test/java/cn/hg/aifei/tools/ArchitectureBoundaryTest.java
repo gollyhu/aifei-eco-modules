@@ -25,7 +25,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 架构门禁（设计 §6.2 与 §11.7，33 例：原 21 + 通用原语追加 12）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
+ * 架构门禁（33 例）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
  *
  * <p>执行位置必须为 aifei-tools 模块根目录（依赖相对路径 src/main/java），
  * 由 surefire workingDirectory 固定为 ${project.basedir} 保证。</p>
@@ -203,7 +203,7 @@ public class ArchitectureBoundaryTest {
         }
     }
 
-    /** ⑪ 四类消息前缀只允许在对应 Errors 类（本轮收紧：覆盖 ip/captcha/qr/mask，kdf 扩充覆盖 kdf）。 */
+    /** ⑪ 四类消息前缀只允许在对应 Errors 类（覆盖 ip/captcha/qr/mask，kdf 扩充覆盖 kdf）。 */
     @Test
     public void errorMessagesOnlyInErrors() throws IOException {
         String[][] rules = {
@@ -312,7 +312,7 @@ public class ArchitectureBoundaryTest {
     /**
      * ⑲ javax.crypto. / java.security. import 仅允许 kdf/internal、captcha/internal、
      * crypto/internal、random/internal（captcha 既有的 SecureRandom 用于 token 随机数，
-     * 设计 §11.5 / §11.7 定档放宽：加入本次新增的 crypto/internal 与 random/internal）。
+     * 加入 crypto/internal 与 random/internal）。
      */
     @Test
     public void cryptoOnlyInKdfInternal() throws IOException {

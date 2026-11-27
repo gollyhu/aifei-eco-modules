@@ -228,7 +228,7 @@ public final class E2DispatchTable {
     }
 
     /**
-     * 命中表快照，与 {@link #rows()} 同义（设计口径亦以 {@code snapshot()} 称呼该读方法）。
+     * 命中表快照，与 {@link #rows()} 同义。
      *
      * @return 行副本；不为 {@code null}
      */

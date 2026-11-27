@@ -33,7 +33,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * demo 演示服务（§12.2 端点）：发送全链路走 SmsKit → SmsSender → mock SmsBlend；
+ * demo 演示服务端点：发送全链路走 SmsKit → SmsSender → mock SmsBlend；
  * 错误消息由 SmsErrors / 真实探测构造；回执签名仅用于辅助模拟，验签由真实 SmsHandler 完成。
  */
 @Path("/sms/demo")

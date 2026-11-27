@@ -22,7 +22,7 @@ import java.util.Set;
 import org.junit.Test;
 
 /**
- * RFC6455 帧编解码的单元测试（设计 §5.3）：掩码、长度字段 7 / 16 / 64 位与边界、部分读取、控制帧约束、
+ * RFC6455 帧编解码的单元测试：掩码、长度字段 7 / 16 / 64 位与边界、部分读取、控制帧约束、
  * 非法 opcode 与关闭帧载荷。
  */
 public class Rfc6455FrameCodecTest {

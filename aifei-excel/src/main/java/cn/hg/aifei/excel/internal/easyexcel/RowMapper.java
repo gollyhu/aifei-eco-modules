@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 字段参与、表头名、列序与类型校验的唯一定义点（设计 §6）。
+ * 字段参与、表头名、列序与类型校验的唯一定义点。
  *
  * <p>读写两侧共用同一映射规则：构建时扫描当前类声明字段（不含父类，跳过 static / transient），
  * {@code ExcelIgnore} 优先排除；读时按「列序优先、表头名原样匹配」定位列，写时按「列序优先、
@@ -241,7 +241,7 @@ public final class RowMapper<T> {
     }
 
     /**
-     * 字段类型是否在内置支持范围内（设计 §6.4）。
+     * 字段类型是否在内置支持范围内。
      *
      * @param type 字段类型
      * @return 支持返回 true，否则 false

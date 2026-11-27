@@ -32,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 异常契约（AC-07；设计 §7.5 场景 1–16 全覆盖）：逐字消息、cause 保留、cause 链判据、消息不含第三方类型名。
+ * 异常契约：逐字消息、cause 保留、cause 链判据、消息不含第三方类型名。
  *
  * <p>场景 10 / 11 的判据只依赖 cause 链类型：链上出现 {@link IOException}（含套接字 / 连接 / 超时异常）判网络错误，
  * 否则判 SMTP 返回错误。</p>
@@ -400,7 +400,7 @@ public class ExceptionContractTest {
         }
     }
 
-    /** AC-07：所有消息统一前缀，且不含第三方 / 框架类名。 */
+    /** 所有消息统一前缀，且不含第三方 / 框架类名。 */
     @Test
     public void allMessagesSharePrefixAndLeakNoTypeNames() {
         String[] messages = new String[] {

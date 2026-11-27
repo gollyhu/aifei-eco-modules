@@ -14,7 +14,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 /**
- * 脱敏注册表门面测试（设计 §3.4 / §7.1 / §7.2 / §8-E / §9）。
+ * 脱敏注册表门面测试。
  *
  * <p>覆盖：register/replace/use 三态、默认规则初始在册且不可删、name/fn 为 null 抛异常、
  * replace 后 MaskUtil 默认方法跟随新规则。</p>

@@ -20,7 +20,7 @@ import org.dromara.sms4j.api.entity.SmsResponse;
 /**
  * 结果 / 回执映射适配：{@code SmsResponse} → {@link SmsResult}，厂商回调参数 → {@link SmsReceipt}。
  *
- * <p>字段来源与缺省处理对齐设计 §5.4 / §8.4；映射只读取 sms4j 结果对象，不反向暴露其类型。</p>
+ * <p>字段来源与缺省处理遵循统一口径；映射只读取 sms4j 结果对象，不反向暴露其类型。</p>
  */
 public final class SmsMappers {
 

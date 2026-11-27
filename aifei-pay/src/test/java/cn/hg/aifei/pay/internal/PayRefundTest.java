@@ -21,7 +21,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 退款动作（AC-09）：退款结果字段、金额换算、退款单号作为幂等键**原样透传**（模块不去重）。
+ * 退款动作：退款结果字段、金额换算、退款单号作为幂等键**原样透传**（模块不去重）。
  */
 public class PayRefundTest {
 
@@ -74,7 +74,7 @@ public class PayRefundTest {
     }
 
     /**
-     * AC-09：退款成功 → 返回退款结果值对象，字段原样透出且回显幂等键。
+     * 退款成功 → 返回退款结果值对象，字段原样透出且回显幂等键。
      */
     @Test
     public void shouldReturnRefundResultFields() {
@@ -89,7 +89,7 @@ public class PayRefundTest {
     }
 
     /**
-     * AC-09：同一退款单号重复提交 → 两次都真实调用内核，且 {@code out_request_no} 完全一致（模块不去重）。
+     * 同一退款单号重复提交 → 两次都真实调用内核，且 {@code out_request_no} 完全一致（模块不去重）。
      */
     @Test
     public void shouldPassIdenticalOutRequestNoOnRepeatedRefund() {
@@ -105,7 +105,7 @@ public class PayRefundTest {
     }
 
     /**
-     * AC-09：退款金额按「分 → 元」换算。
+     * 退款金额按「分 → 元」换算。
      */
     @Test
     public void shouldConvertRefundAmountToYuan() {
@@ -117,7 +117,7 @@ public class PayRefundTest {
     }
 
     /**
-     * AC-09：退款原因可空——空/空白时不提交该字段，非空时去除首尾空白后提交。
+     * 退款原因可空——空/空白时不提交该字段，非空时去除首尾空白后提交。
      */
     @Test
     public void shouldOmitBlankRefundReason() {
@@ -132,7 +132,7 @@ public class PayRefundTest {
     }
 
     /**
-     * AC-09：退款单号必填且不超长，违反属调用方写错。
+     * 退款单号必填且不超长，违反属调用方写错。
      */
     @Test
     public void shouldRejectInvalidOutRequestNo() {
@@ -142,7 +142,7 @@ public class PayRefundTest {
     }
 
     /**
-     * AC-09：退款金额必须大于 0。
+     * 退款金额必须大于 0。
      */
     @Test
     public void shouldRejectNonPositiveRefundAmount() {

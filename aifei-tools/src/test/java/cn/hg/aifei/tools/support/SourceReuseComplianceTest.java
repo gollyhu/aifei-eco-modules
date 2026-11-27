@@ -26,7 +26,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 授权 / 版权静态合规测试（设计 §11.2 / §11.9，测试策略 §3.11）。
+ * 授权 / 版权静态合规测试。
  *
  * <p>扫描四个新增子包的公共层、internal 与对应测试的全部 .java：
  * 统一原创版权头必须存在；来源授权声明、协议串与来源字段名不得泄漏。

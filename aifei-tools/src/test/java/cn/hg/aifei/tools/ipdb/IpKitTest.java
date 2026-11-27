@@ -11,7 +11,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 /**
- * IP 便捷门面测试（设计 §3.1 / §7.3）。
+ * IP 便捷门面测试。
  *
  * <p>覆盖：三参便捷重载默认走 VECTOR_INDEX（与显式 VECTOR_INDEX 结果一致）、即开即关可重复调用。</p>
  */

@@ -113,8 +113,7 @@ public class DemoAppConfig implements AifeiConfig<In, Out> {
      *
      * <p>登记时<b>不保存</b>监听器：装配期订阅由本类持有，页面因此无法取回它、也就无法取消它（接口对这类
      * 主题一律返回 {@code 10001}）。装配期订阅分两类：<b>自由 demo 主题仅主实例</b>（保住 {@code demoA} /
-     * {@code demoB} 消息流从 0 起算）；<b>E2 域 topic 覆盖每个已就绪实例</b>（否则命名实例无法演示 E2 分发，
-     * 见 {@code docs/aifei-mq-demo/design-e2.md} §8.1）。二者均登记为 {@code startup} 槽，页面一律不可取消。</p>
+     * {@code demoB} 消息流从 0 起算）；<b>E2 域 topic 覆盖每个已就绪实例</b>（否则命名实例无法演示 E2 分发）。二者均登记为 {@code startup} 槽，页面一律不可取消。</p>
      */
     @Override
     public void onStart() {

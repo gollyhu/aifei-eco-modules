@@ -23,7 +23,7 @@ import org.junit.Test;
 /**
  * 协议内核加密 / 签名向量（S1 验证标准 ②③④⑤）。
  *
- * <p>向量常量由首次运行固化，用于锁定实现不变；SHA-1 另用 NIST 标准向量（"abc"）独立校验。
+ * <p>向量常量用于锁定实现不变；SHA-1 另用 NIST 标准向量（"abc"）独立校验。
  */
 public class WxCryptTest {
 

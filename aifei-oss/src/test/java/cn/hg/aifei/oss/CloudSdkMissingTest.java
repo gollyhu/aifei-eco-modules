@@ -22,7 +22,7 @@ import org.junit.Test;
 /**
  * 云厂商 SDK 缺失时的装配期行为契约测试（<b>默认关闭</b>）。
  *
- * <p>固化设计 §7 的契约：<b>云 SDK 缺失在装配期即失败</b>——底层构建文件存储服务时会立即实例化该平台的存储客户端，
+ * <p>固化契约：<b>云 SDK 缺失在装配期即失败</b>——底层构建文件存储服务时会立即实例化该平台的存储客户端，
  * 因此 {@code OssPlugin.start()} 即抛 {@link OssException}（底层 {@code Error} 与运行时异常在适配层统一翻译），
  * <b>不</b>会泄漏 {@code NoClassDefFoundError}；失败后不留半装配状态。</p>
  *

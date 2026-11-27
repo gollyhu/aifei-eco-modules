@@ -25,7 +25,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 /**
- * 异常契约测试（AC-08 / R-06）：参数、厂商、网络、状态、验签、解析异常逐字消息与 cause 保留。
+ * 异常契约测试：参数、厂商、网络、状态、验签、解析异常逐字消息与 cause 保留。
  */
 public class ExceptionContractTest {
 

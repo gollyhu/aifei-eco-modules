@@ -17,7 +17,7 @@ import cn.hg.aifei.tools.kdf.KdfSpec;
  * HMAC 派生原语（RFC 2104 / RFC 4231）：{@code HMAC(secret=ikm, data=message) → key}。
  *
  * <p>对齐 RFC 2104 {@code HMAC(K, text)} 两入参：secret=ikm（K）、data=message（text）。
- * data 传 null 视为空字节（{@code HMAC(ikm, "")}）。keyLen 语义（设计 §3.5 / §8-F10）：
+ * data 传 null 视为空字节（{@code HMAC(ikm, "")}）。keyLen 语义：
  * 原始输出 = HashLen（SHA-256=32 / SHA-512=64）；keyLen≤HashLen 截取前 keyLen 字节；
  * keyLen&gt;HashLen 按 RFC 5869 expand 风格循环扩展（HMAC 作 PRF，PRK=原始输出）。</p>
  */

@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 /**
- * 格式化薄封装的唯一定义点（设计 §5.8 / §6.2）。
+ * 格式化薄封装的唯一定义点。
  *
  * <p>把生效 Locale 交给 JDK 的 {@link NumberFormat} / {@link DateFormat} / {@link Currency}，
  * 模块零自建规则数据（无模式串、无货币符号表、无小数位表、无方向表）。locale 解析复用

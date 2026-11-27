@@ -9,7 +9,7 @@ package cn.hg.aifei.i18n;
 import cn.hg.aifei.i18n.internal.I18nHolder;
 
 /**
- * 不可变链式载体：绑定一个已规范化 locale，提供取文案入口（设计 §5.1.1）。
+ * 不可变链式载体：绑定一个已规范化 locale，提供取文案入口。
  *
  * <p>由 {@link I18nKit#local(String)} 当场规范化后经包级构造创建，持有唯一 {@code final} 字段，
  * 可复用、可跨线程共享；两方法均纯转发 {@link cn.hg.aifei.i18n.internal.I18nEngine#message}，

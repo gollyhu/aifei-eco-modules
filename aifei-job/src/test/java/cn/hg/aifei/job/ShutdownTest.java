@@ -30,7 +30,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 优雅停机（设计决策 9 / 决策 8 第 2 条 / A09）：{@code stop()} 后不再有新触发；在途任务的续排在唤醒层已
+ * 优雅停机：{@code stop()} 后不再有新触发；在途任务的续排在唤醒层已
  * {@code shutdown()} 时被拒，<b>静默终止、不外抛、不留未捕获堆栈</b>；{@code stop()} 幂等；停机后观测面为空集合。
  *
  * <p>「不外抛」用 {@link Thread#setDefaultUncaughtExceptionHandler} 收集器断言为空（执行层线程若带未处理异常结束，

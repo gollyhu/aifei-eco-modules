@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * 演示 Service：覆盖 aifei-excel 的 5 个真实端点（设计 §12.2）。
+ * 演示 Service：覆盖 aifei-excel 的 5 个真实端点。
  *
  * <p>所有端点 HTTP 状态恒 200，语义由信封 {@code code} 承载（{@code 0} 成功）。
  * 数据一律来自真实读写：{@code /parse} 真实解析上传文件，{@code /export-*} 真实生成可打开的 xlsx。</p>

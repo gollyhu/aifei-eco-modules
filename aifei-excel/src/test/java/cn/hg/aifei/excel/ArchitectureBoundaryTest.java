@@ -25,7 +25,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 架构门禁（设计 §9，14 例）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
+ * 架构门禁（14 例）：按源码文本断言分层边界、公共面收敛与 Java 8 底线。
  *
  * <p>执行位置必须为 aifei-excel 模块根目录（依赖相对路径 src/main/java），
  * 由 surefire workingDirectory 固定为 ${project.basedir} 保证。</p>

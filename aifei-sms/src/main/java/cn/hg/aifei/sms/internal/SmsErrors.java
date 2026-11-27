@@ -9,7 +9,7 @@ package cn.hg.aifei.sms.internal;
 import cn.hg.aifei.sms.SmsException;
 
 /**
- * {@link SmsException} 唯一构造点与全部异常消息措辞唯一定义点（设计 §7.5）。
+ * {@link SmsException} 唯一构造点与全部异常消息措辞唯一定义点。
  *
  * <p>门禁锁定 {@code sms: } 前缀仅出现在本类；各实现类只调用本类工厂方法，不自拼消息、不泄漏第三方类型名。</p>
  */

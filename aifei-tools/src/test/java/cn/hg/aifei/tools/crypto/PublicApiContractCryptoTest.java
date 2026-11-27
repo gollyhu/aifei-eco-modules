@@ -27,7 +27,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * crypto 公共面形态测试（设计 §11.3.1，测试策略 §3.7）：逐字签名、异常仅两个公共构造、
+ * crypto 公共面形态测试：逐字签名、异常仅两个公共构造、
  * serialVersionUID=1L、公共方法无 throws、签名类型白名单、公共层零 JDK 加密/第三方字面量、major 52。
  */
 public class PublicApiContractCryptoTest {

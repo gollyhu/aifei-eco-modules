@@ -9,7 +9,7 @@ package cn.hg.aifei.sms.internal.sms4j;
 import cn.hg.aifei.sms.internal.SmsErrors;
 
 /**
- * sms4j 依赖探测唯一 {@code Class.forName} 点（设计 §7.4 / 门禁 ⑦）。
+ * sms4j 依赖探测唯一 {@code Class.forName} 点。
  *
  * <p>第二参 {@code false} 表示只加载不初始化；缺失时包装为可读异常，不裸抛 {@code NoClassDefFoundError}。</p>
  */

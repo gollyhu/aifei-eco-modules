@@ -16,7 +16,7 @@ import java.io.OutputStream;
 import java.util.List;
 
 /**
- * Excel 一次性便捷门面：全静态、随取随用，无 Plugin 装配期（设计 §5.2 / D15）。
+ * Excel 一次性便捷门面：全静态、随取随用，无 Plugin 装配期。
  *
  * <p>{@link #readAll} 一次性把全部行读进列表返回，<b>内存 O(行数)，仅定位小文件，大文件请用
  * {@link Excel#read} 分批</b>；{@link #write} 是「writer 会话 + 一批写 + finish」的语法糖。</p>

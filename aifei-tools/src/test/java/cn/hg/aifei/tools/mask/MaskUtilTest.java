@@ -13,7 +13,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 脱敏工具测试（设计 §3.4 / §7.2 / §8-D / §9）。
+ * 脱敏工具测试。
  *
  * <p>覆盖：通用 mask、9 条默认规则全部示例、null/空串统一口径、负数 keep 抛异常、
  * maskIp 四类场景（IPv4 / IPv6 压缩与展开等价 / 非法文本退化）。</p>
@@ -102,7 +102,7 @@ public class MaskUtilTest {
 
     @Test
     public void maskIp_ipv6CompressedAndExpanded_equivalent() {
-        // §8-D14 权威向量：压缩式与两种展开写法结果须逐字相同（首段 + 7 个 *）
+        // 权威向量：压缩式与两种展开写法结果须逐字相同（首段 + 7 个 *）
         String compressed = MaskUtil.maskIp("2001:db8:85a3::8a2e:370:7334");
         String expandedShort = MaskUtil.maskIp("2001:db8:85a3:0:0:8a2e:370:7334");
         String expandedPadded = MaskUtil.maskIp("2001:0db8:85a3:0000:0000:8a2e:0370:7334");
@@ -126,13 +126,13 @@ public class MaskUtilTest {
 
     @Test
     public void maskIp_authoritativeMalformedVectors_zeroException() {
-        // §8-D14 实现期实测向量：以下畸形输入均须正常返回脱敏串、全程零异常
+        // 畸形输入向量：以下畸形输入均须正常返回脱敏串、全程零异常
         String[] vectors = {"::", ":::", ":a::b", "1:2:3:4:5:6:7:8:9::a", "garbage", "a.b.c"};
         for (String v : vectors) {
             String out = MaskUtil.maskIp(v);
             assertTrue("畸形输入[" + v + "]须返回非空串", out != null && out.length() > 0);
         }
-        // 无分隔符特征者按 §8-D14 宽松退化：保留首字符 + 其余等长 *
+        // 无分隔符特征者按宽松退化：保留首字符 + 其余等长 *
         assertEquals("g******", MaskUtil.maskIp("garbage"));
     }
 

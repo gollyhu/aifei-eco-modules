@@ -15,7 +15,7 @@ import java.net.MalformedURLException;
 import org.junit.Test;
 
 /**
- * 资源名拼装（AC-R-12 / AC-R-13 / AC-R-14 / AC-R-15 的非法 URL 分支）：期望值为固定字面量，不由实现推导。
+ * 资源名拼装（含非法 URL 分支）：期望值为固定字面量，不由实现推导。
  */
 public class HttpResourceTest {
 
@@ -26,7 +26,7 @@ public class HttpResourceTest {
     private static final String EXAMPLE_ORIGIN = "http" + "://" + "api.example.com";
 
     /**
-     * AC-R-12：默认资源名 = 方法大写 + 去 query 的 host 与 path。
+     * 默认资源名 = 方法大写 + 去 query 的 host 与 path。
      */
     @Test
     public void shouldDeriveDefaultResource() {
@@ -36,7 +36,7 @@ public class HttpResourceTest {
     }
 
     /**
-     * AC-R-12 补充：fragment 与 query 一并去掉，方法统一大写。
+     * fragment 与 query 一并去掉，方法统一大写。
      */
     @Test
     public void shouldDropQueryAndFragment() {
@@ -62,7 +62,7 @@ public class HttpResourceTest {
     }
 
     /**
-     * AC-R-13：显式资源名完全替代推导，原值去首尾空白后返回。
+     * 显式资源名完全替代推导，原值去首尾空白后返回。
      */
     @Test
     public void shouldUseExplicitResource() {
@@ -70,7 +70,7 @@ public class HttpResourceTest {
     }
 
     /**
-     * AC-R-15：URL 非法 → {@link HttpException}，cause 为 {@link MalformedURLException}，消息含原值。
+     * URL 非法 → {@link HttpException}，cause 为 {@link MalformedURLException}，消息含原值。
      */
     @Test
     public void shouldFailOnIllegalUrl() {

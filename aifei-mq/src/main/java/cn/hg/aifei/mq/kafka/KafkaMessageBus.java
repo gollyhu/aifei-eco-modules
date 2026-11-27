@@ -47,7 +47,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
  * {@code <topic>-<partition>@<offset>}，位点由 {@code group-id} 维护。</p>
  *
  * <p>投递保证 at-least-once：位点自动提交，故障 / 重试下可能重复消费，监听器需幂等。{@code unsubscribe} 只解除本地
- * 登记（不离开消费组、不撤销 broker 侧订阅）。共同底线与允许差异见 {@code docs/design.md} §5.6。</p>
+ * 登记（不离开消费组、不撤销 broker 侧订阅）。以上为各后端共同底线，差异在允许范围内。</p>
  */
 public class KafkaMessageBus implements MessageBus {
 

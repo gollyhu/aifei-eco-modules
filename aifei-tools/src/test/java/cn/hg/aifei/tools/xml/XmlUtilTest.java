@@ -27,7 +27,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * xml 解析与转义测试（设计 §11.3.3，测试策略 §3.9）：保序、同名取首、非元素节点跳过、
+ * xml 解析与转义测试：保序、同名取首、非元素节点跳过、
  * DOCTYPE/外部实体拒绝、null/空语义、五实体转义与并发无串扰。样本均为内嵌字符串，零联网。
  */
 public class XmlUtilTest {

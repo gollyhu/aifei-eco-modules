@@ -18,7 +18,7 @@ import cn.hg.aifei.tools.kdf.internal.Pbkdf2Engine;
  * HMAC 走 {@link HmacEngine}（RFC 2104 {@code HMAC(K, text)} 派生原语）；
  * ikm = 输入密钥材料（HKDF 的 IKM / PBKDF2 的 password / HMAC 的 secret=K）。</p>
  *
- * <p>两个 derive 重载（设计 §3.5 / §8-F10）：两参 {@code derive(spec, ikm)} 等价
+ * <p>两个 derive 重载：两参 {@code derive(spec, ikm)} 等价
  * {@code data=null}——HMAC 视空字节 {@code HMAC(ikm, "")}、HKDF/PBKDF2 忽略 data；
  * 三参 {@code derive(spec, ikm, data)} 的 data 是 HMAC 的 message（RFC 2104 text），
  * HKDF/PBKDF2 忽略 data，层B {@code KDF(sn, challenge)} 传入 {@code ikm=sn}（secret）、

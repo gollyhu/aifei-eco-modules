@@ -27,7 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 演示 Service：用真实装配的 {@code @Inject HttpClient} 请求本机 {@code /demo/echo}，覆盖需求 §八 的全部场景。
+ * 演示 Service：用真实装配的 {@code @Inject HttpClient} 请求本机 {@code /demo/echo}，覆盖全部演示场景。
  *
  * <p>所有端点均为 GET，返回 {@link Out}（HTTP 恒 200，业务语义由 {@code code} 承载，{@code 0} 为成功）。
  * 「预期会失败」的演示（读超时、连接被拒）同样返回 {@code code=0}，失败细节放在 {@code error} 字段里，

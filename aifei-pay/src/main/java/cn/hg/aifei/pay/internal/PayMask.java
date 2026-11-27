@@ -66,7 +66,7 @@ public final class PayMask {
     }
 
     /**
-     * 按设计 §6.6 的分类规则脱敏一个键值对。
+     * 按分类规则脱敏一个键值对。
      *
      * @param key   配置键名（或语义等价的标识名）
      * @param value 原始值，可为 {@code null}

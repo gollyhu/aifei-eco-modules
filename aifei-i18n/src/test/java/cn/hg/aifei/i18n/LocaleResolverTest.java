@@ -22,7 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 /**
- * locale 解析单测（§5.5 四级优先级与规范化唯一定义点）。
+ * locale 解析单测（四级优先级与规范化唯一定义点）。
  */
 public class LocaleResolverTest {
 

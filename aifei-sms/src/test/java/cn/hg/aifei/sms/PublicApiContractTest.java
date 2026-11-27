@@ -27,7 +27,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 公共面契约测试（AC-09 / AC-10 / Q-01）：根包精确 5、spi 精确 2、形态与签名零第三方 / 零框架类型。
+ * 公共面契约测试：根包精确 5、spi 精确 2、形态与签名零第三方 / 零框架类型。
  */
 public class PublicApiContractTest {
 

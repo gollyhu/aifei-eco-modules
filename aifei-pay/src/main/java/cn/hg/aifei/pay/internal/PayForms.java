@@ -68,7 +68,7 @@ public final class PayForms {
 
     /**
      * 防御性拷贝：内核的 {@code getSignCheckContentV1} 会原地 {@code remove("sign")} /
-     * {@code remove("sign_type")}，故每次验签前都必须用新的可变副本（`docs/design.md` §2.4.4）。
+     * {@code remove("sign_type")}，故每次验签前都必须用新的可变副本。
      *
      * @param params 原始参数，可为 {@code null}
      * @return 新的可变 Map；{@code null} 键跳过、空值保留

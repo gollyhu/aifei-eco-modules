@@ -17,7 +17,7 @@ import org.dromara.sms4j.aliyun.config.AlibabaConfig;
 import org.dromara.sms4j.api.universal.SupplierConfig;
 
 /**
- * 厂商类型映射唯一定义点（设计 §6.2 / §6.3 / 门禁 ⑪）：合法值集合、必填键集合、
+ * 厂商类型映射唯一定义点：合法值集合、必填键集合、
  * 配置项到 sms4j 配置对象 setter 的填充全部集中在本类。
  *
  * <p>首期白名单仅 {@code alibaba}；其余厂商按通道追加任务逐个登记（加映射 + 必填键 + 单测）。</p>

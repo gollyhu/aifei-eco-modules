@@ -21,7 +21,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 可选依赖缺失的可读异常（AC-17）：任一内核依赖不在 classpath 时，首次调用抛 {@link PayException}
+ * 可选依赖缺失的可读异常：任一内核依赖不在 classpath 时，首次调用抛 {@link PayException}
  * 并给出缺失坐标，不裸抛 {@code NoClassDefFoundError} / {@code ClassNotFoundException}。
  *
  * <p><b>手法</b>：不改 pom、不启新进程，而是把线程上下文类加载器换成「对指定包前缀不可见」的加载器——
@@ -66,7 +66,7 @@ public class PayDepsTest {
     }
 
     /**
-     * AC-17：IJPay 不可见 → {@link PayException}，消息含缺失坐标，cause 为原始加载失败。
+     * IJPay 不可见 → {@link PayException}，消息含缺失坐标，cause 为原始加载失败。
      */
     @Test
     public void shouldReportMissingIjpayWithCoordinates() {
@@ -82,7 +82,7 @@ public class PayDepsTest {
     }
 
     /**
-     * AC-17：支付宝 SDK 不可见（IJPay 仍在）→ 消息指出 SDK 坐标。
+     * 支付宝 SDK 不可见（IJPay 仍在）→ 消息指出 SDK 坐标。
      */
     @Test
     public void shouldReportMissingSdkWithCoordinates() {
@@ -95,7 +95,7 @@ public class PayDepsTest {
     }
 
     /**
-     * AC-17：证书模式缺 BouncyCastle → 探测期即失败，消息指出 bcprov 坐标。
+     * 证书模式缺 BouncyCastle → 探测期即失败，消息指出 bcprov 坐标。
      */
     @Test
     public void shouldReportMissingBouncyCastle() {
@@ -108,7 +108,7 @@ public class PayDepsTest {
     }
 
     /**
-     * AC-17：交易动作入口把依赖缺失转成可读异常，调用方看不到 {@code NoClassDefFoundError}。
+     * 交易动作入口把依赖缺失转成可读异常，调用方看不到 {@code NoClassDefFoundError}。
      */
     @Test
     public void shouldSurfaceMissingDependencyFromTradeCall() {
@@ -123,7 +123,7 @@ public class PayDepsTest {
     }
 
     /**
-     * AC-17：验签入口同样给出可读异常（而非裸抛加载错误）。
+     * 验签入口同样给出可读异常（而非裸抛加载错误）。
      */
     @Test
     public void shouldSurfaceMissingDependencyFromVerifyCall() {

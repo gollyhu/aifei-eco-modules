@@ -50,7 +50,7 @@ public final class IdNames {
     /**
      * workerId 锁名前缀，完整锁名为 {@code id.worker.<n>}。
      *
-     * <p>模块前缀 {@code id.} 的字面量唯一定义点在 {@link IdConfig}（门禁 ⑬），此处引用该常量拼接，
+     * <p>模块前缀 {@code id.} 的字面量唯一定义点在 {@link IdConfig}，此处引用该常量拼接，
      * 不在本类复制字面量；两者都是编译期常量，被直接内联，不产生类初始化顺序问题。</p>
      */
     private static final String LOCK_NAME_PREFIX = IdConfig.KEY_PREFIX + "worker.";

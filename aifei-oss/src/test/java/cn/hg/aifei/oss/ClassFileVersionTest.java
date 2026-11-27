@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 import org.junit.Test;
 
 /**
- * 构建约束（设计 §8）：主 JAR 内全部 class 的 major version 必须为 52（Java 8 字节码）。
+ * 构建约束：主 JAR 内全部 class 的 major version 必须为 52（Java 8 字节码）。
  */
 public class ClassFileVersionTest {
 

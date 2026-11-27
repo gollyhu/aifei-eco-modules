@@ -12,7 +12,7 @@ import java.util.List;
 import cn.hg.aifei.tools.mask.MaskUtil;
 
 /**
- * 九条默认脱敏规则的唯一初始注册点（设计 §7.1 冻结契约）。
+ * 九条默认脱敏规则的唯一初始注册点（冻结契约）。
  *
  * <p>规则名：phone / idCard / bankCard / email / name / fixedPhone / password / address / ip。
  * 通用打码算法本身不在此复制，一律由 {@link MaskUtil#mask(String, int, int)} 承载。</p>

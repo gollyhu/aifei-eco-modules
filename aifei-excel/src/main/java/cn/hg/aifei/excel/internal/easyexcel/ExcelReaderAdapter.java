@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * 读装配点：{@code EasyExcelFactory.read(...)} builder 配置的唯一落点（设计 §7.2）。
+ * 读装配点：{@code EasyExcelFactory.read(...)} builder 配置的唯一落点。
  *
  * <p>统一关闭底层流自动关闭开关（不关闭调用方入参流），读第 0 个 Sheet；
  * 底层失败收敛为 {@code ExcelException}，不向公共面泄漏内核异常类型。</p>

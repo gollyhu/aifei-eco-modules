@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 
 /**
- * 连接传输体的行为测试（设计 §5.3 / §5.4 / §5.5）：分片聚合、控制帧穿插、自动回 pong、心跳探活超时、
+ * 连接传输体的行为测试：分片聚合、控制帧穿插、自动回 pong、心跳探活超时、
  * 协议错误映射与关闭竞态。
  *
  * <p>对端由 {@link FakeEndpoint} 扮演：它是一条裸 {@link Socket}，手工完成握手后直接收发帧，从而可以精确

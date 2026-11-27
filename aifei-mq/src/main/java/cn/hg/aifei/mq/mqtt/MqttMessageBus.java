@@ -35,7 +35,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
  * <p>broker 不回标识，故 {@code messageId} 由适配器<b>本地生成</b>，格式 {@code mqtt:<生效 client-id>:<序号>}
  * （序号自 1 起递增）；<b>不得</b>以 QoS packet identifier 充当 {@code messageId}。投递保证取决于 {@code qos}
  * （0 = at-most-once，1/2 = at-least-once），重连重投下监听器需幂等；重连由客户端原生 {@code auto-reconnect}
- * 承担。共同底线与允许差异见 {@code docs/design.md} §5.6。</p>
+ * 承担。以上为各后端共同底线，差异在允许范围内。</p>
  */
 public class MqttMessageBus implements MessageBus {
 

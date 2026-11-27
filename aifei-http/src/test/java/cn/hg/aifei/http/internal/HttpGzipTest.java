@@ -20,7 +20,7 @@ import java.util.zip.GZIPOutputStream;
 import org.junit.Test;
 
 /**
- * gzip（AC-R-24）：默认关闭、开启后发送协商头、解压失败即失败。
+ * gzip：默认关闭、开启后发送协商头、解压失败即失败。
  */
 public class HttpGzipTest {
 

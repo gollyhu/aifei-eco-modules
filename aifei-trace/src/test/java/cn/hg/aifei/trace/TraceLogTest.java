@@ -23,7 +23,7 @@ import org.junit.Test;
 import cn.hg.aifei.trace.support.RecordingLog;
 
 /**
- * TraceLog 单元测试：覆盖设计 §7.2 场景 8–9（前缀拼装、TraceId 缺失原样透出、Supplier 打印时刻求值、
+ * TraceLog 单元测试：覆盖前缀拼装、TraceId 缺失原样透出、Supplier 打印时刻求值、
  * isXxxEnabled / getName 透传、30 个打印方法 + 5 个开关全覆盖、null delegate 拒绝）。
  */
 public class TraceLogTest {
@@ -249,7 +249,7 @@ public class TraceLogTest {
     }
 
     /**
-     * 场景 9：new TraceLog(null) 拒绝，消息逐字对齐 §7.3。
+     * new TraceLog(null) 拒绝，消息逐字对齐固定文案。
      */
     @Test
     public void nullDelegateShouldReject() {

@@ -22,7 +22,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * random 两个原语的长度、字符集、唯一性与并发测试（设计 §11.3.2，测试策略 §3.8）。
+ * random 两个原语的长度、字符集、唯一性与并发测试。
  *
  * <p>随机值本身不可预测，用例只断言长度、字符集、无填充与抽样唯一性，不固定具体值。</p>
  */

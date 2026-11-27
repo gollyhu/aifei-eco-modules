@@ -16,7 +16,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * 依赖缺失测试（AC-06 / R-04）：隔离类加载器模拟 sms4j 缺失，断言可读异常而非裸 NoClassDefFoundError。
+ * 依赖缺失测试：隔离类加载器模拟 sms4j 缺失，断言可读异常而非裸 NoClassDefFoundError。
  */
 public class DependencyMissingTest {
 

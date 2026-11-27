@@ -18,7 +18,7 @@ import java.util.Map;
  * <p><b>纯函数</b>：不修改入参、不写缓存、不产生副作用，同一入参重复调用结果恒等。</p>
  *
  * <p><b>内核能力上限</b>（非本模块选择）：{@code sign_type} 仅 {@code RSA2}、{@code charset} 仅
- * {@code UTF-8}、值为空的字段不参与签名串（`docs/design.md` §2.4.4）。</p>
+ * {@code UTF-8}、值为空的字段不参与签名串。</p>
  *
  * <p><b>证书模式禁令</b>：不得把证书**内容**传给只接受**路径**的
  * {@code AlipaySignature.getCertSN/getAlipayPublicKey}，也不得使用已废弃的 {@code rsaCertCheckV1}——
@@ -102,7 +102,7 @@ public final class PayVerifier {
      * 选出本次报文要尝试的凭据。
      *
      * <p>证书模式且报文带 {@code alipay_cert_sn} 时只尝试序列号相等者，无匹配即整体失败
-     * （轮换期精确选证书，`docs/design.md` §14.1 A-4）；报文未带序列号时，仅当只有一张证书可直接使用，
+     * 轮换期精确选证书；报文未带序列号时，仅当只有一张证书可直接使用，
      * 多张证书无法确定归属，交回失败。</p>
      *
      * @param app        应用配置
@@ -143,7 +143,7 @@ public final class PayVerifier {
      * 用单个凭据校验一次。
      *
      * <p>本方法固定使用 {@code rsaCheckV1(params, publicKey, charset, signType)}：上游虽在 3.1.89.ALL
-     * 上把它标记为废弃，但设计 §2.4.4 明确它是普通公钥与证书模式统一的验签入口，且禁止改用
+     * 上把它标记为废弃，但它是普通公钥与证书模式统一的验签入口，且禁止改用
      * {@code rsaCertCheckV1/V2}（两者同样废弃且只接受证书路径）。</p>
      *
      * @param key     凭据

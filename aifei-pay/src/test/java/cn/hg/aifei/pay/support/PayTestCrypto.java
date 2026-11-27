@@ -39,7 +39,7 @@ import org.bouncycastle.asn1.x509.V3TBSCertificateGenerator;
  * 与有效期全部在源码中可读，仓库内不存放任何凭据。</p>
  *
  * <p><b>用途限定</b>：这里的密钥、证书与签名向量**只用于验证验签算法与凭据轮换**，与任何真实商户无关，
- * 不得用于生产（同一声明见 {@code docs/testing.md}）。</p>
+ * 不得用于生产。</p>
  *
  * <p><b>签名侧独立实现</b>：{@link #signContent(Map)} 按支付宝公开的待签串规范独立实现（键名升序、
  * 跳过空键空值、排除 {@code sign} 与 {@code sign_type}），不复用被测模块的代码，因此它是验签用例的

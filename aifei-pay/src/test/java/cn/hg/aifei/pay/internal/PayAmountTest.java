@@ -12,7 +12,7 @@ import static org.junit.Assert.assertThrows;
 import org.junit.Test;
 
 /**
- * 金额换算与校验（支撑 AC-07 / AC-09）：入参用「分」、报文用「元字符串」，且不得出现浮点误差。
+ * 金额换算与校验：入参用「分」、报文用「元字符串」，且不得出现浮点误差。
  */
 public class PayAmountTest {
 

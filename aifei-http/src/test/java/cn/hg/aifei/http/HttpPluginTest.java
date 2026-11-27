@@ -25,7 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * 装配生命周期（AC-R-17 / AC-R-18 / AC-R-19）：容器注册、门面写入、幂等、失败不留半装配、JVM 全局属性不变。
+ * 装配生命周期：容器注册、门面写入、幂等、失败不留半装配、JVM 全局属性不变。
  */
 public class HttpPluginTest {
 
@@ -98,7 +98,7 @@ public class HttpPluginTest {
     }
 
     /**
-     * AC-R-17：启动后 {@code @Inject} 单例非空且与门面取到的是同一个对象，请求确实走到传输层。
+     * 启动后 {@code @Inject} 单例非空且与门面取到的是同一个对象，请求确实走到传输层。
      */
     @Test
     public void shouldRegisterClientSingleton() {
@@ -118,7 +118,7 @@ public class HttpPluginTest {
     }
 
     /**
-     * AC-R-18：配置非法 → 启动失败，且不留半装配（门面仍不可用）。
+     * 配置非法 → 启动失败，且不留半装配（门面仍不可用）。
      */
     @Test
     public void shouldFailFastOnInvalidConfig() {
@@ -131,7 +131,7 @@ public class HttpPluginTest {
     }
 
     /**
-     * AC-R-17：重复 {@code start()} / {@code stop()} 幂等无异常；停止后门面调用失败。
+     * 重复 {@code start()} / {@code stop()} 幂等无异常；停止后门面调用失败。
      */
     @Test
     public void shouldBeIdempotent() {
@@ -149,7 +149,7 @@ public class HttpPluginTest {
     }
 
     /**
-     * AC-R-17：停止后再次启动复用首次装配的客户端，不重复向容器注册（否则容器会抛单例冲突）。
+     * 停止后再次启动复用首次装配的客户端，不重复向容器注册（否则容器会抛单例冲突）。
      */
     @Test
     public void shouldRestartAfterStop() {
@@ -165,7 +165,7 @@ public class HttpPluginTest {
     }
 
     /**
-     * AC-R-19：用例前后 JVM 全局 HTTP 属性取值不变（模块只读不写）。
+     * 用例前后 JVM 全局 HTTP 属性取值不变（模块只读不写）。
      */
     @Test
     public void shouldNotWriteJvmGlobalProperties() {

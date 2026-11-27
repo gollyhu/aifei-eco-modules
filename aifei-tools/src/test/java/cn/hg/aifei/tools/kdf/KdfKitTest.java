@@ -11,7 +11,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
- * KdfKit 门面分派与参数非法路径测试（设计 §3.5 / §7.2）。
+ * KdfKit 门面分派与参数非法路径测试。
  */
 public class KdfKitTest {
 

@@ -9,7 +9,7 @@ package cn.hg.aifei.email.internal;
 import cn.hg.aifei.email.MailException;
 
 /**
- * {@link MailException} 唯一构造点与全部异常消息措辞唯一定义点（设计 §7.5，共 16 个场景）。
+ * {@link MailException} 唯一构造点与全部异常消息措辞唯一定义点。
  *
  * <p>门禁锁定消息前缀只出现在本类；各实现类只调用本类工厂方法，不自拼消息、不泄漏第三方类型名。
  * 消息正文只取被包装原因的 {@code getMessage()}，不含第三方异常类名。</p>
@@ -111,7 +111,7 @@ public final class MailErrors {
                 + causeMessage(cause), cause);
     }
 
-    /** 同一通道类型存在多个 Provider 实现（装配期错误，设计 §7.1）。 */
+    /** 同一通道类型存在多个 Provider 实现（装配期错误）。 */
     public static MailException duplicateProvider(String type) {
         return new MailException("email: multiple MailProvider implementations found for type " + display(type));
     }

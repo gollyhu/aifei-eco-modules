@@ -19,9 +19,9 @@ import java.util.Properties;
 import org.junit.Test;
 
 /**
- * 沙箱 / 生产环境切换（AC-15）：网关由配置显式管理，且与环境标签的 host 一致。
+ * 沙箱 / 生产环境切换：网关由配置显式管理，且与环境标签的 host 一致。
  *
- * <p><b>可机械验证的边界</b>（{@code docs/design.md} §14.1 A-3）：① {@code env} 必填；
+ * <p><b>可机械验证的边界</b>：① {@code env} 必填；
  * ② {@code gateway-url} 的 host 与 {@code env} 一致；③ 不同 appId 的网关互不串扰。
  * 「凭据本身归属哪个环境」不在可验证范围——见 {@link #shouldAcceptSameCredentialForBothEnvironments()}。</p>
  */
@@ -33,7 +33,7 @@ public class PayEnvTest {
     private static final String APP = PayTestProps.APP_MAIN;
 
     /**
-     * AC-15：{@code env=sandbox} 且未显式配置网关 → 使用沙箱官方网关。
+     * {@code env=sandbox} 且未显式配置网关 → 使用沙箱官方网关。
      */
     @Test
     public void shouldUseSandboxGatewayWhenEnvIsSandbox() {
@@ -43,7 +43,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：{@code env=production} 且未显式配置网关 → 使用生产官方网关。
+     * {@code env=production} 且未显式配置网关 → 使用生产官方网关。
      */
     @Test
     public void shouldUseProductionGatewayWhenEnvIsProduction() {
@@ -56,7 +56,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：生产环境下显式配置生产网关 → 校验通过并原样保留。
+     * 生产环境下显式配置生产网关 → 校验通过并原样保留。
      */
     @Test
     public void shouldKeepExplicitOfficialGatewayForProduction() {
@@ -70,7 +70,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：非官方 host 即使 scheme 正确也视为与环境不一致 → 启动失败。
+     * 非官方 host 即使 scheme 正确也视为与环境不一致 → 启动失败。
      */
     @Test
     public void shouldFailWhenGatewayHostIsNotOfficial() {
@@ -85,7 +85,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：下单请求指向的是配置的网关（伪内核断言收到的应用配置）。
+     * 下单请求指向的是配置的网关（伪内核断言收到的应用配置）。
      */
     @Test
     public void shouldRoutePrecreateToConfiguredGateway() {
@@ -100,7 +100,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：生产配置的下单请求指向生产网关。
+     * 生产配置的下单请求指向生产网关。
      */
     @Test
     public void shouldRoutePagePayToProductionGateway() {
@@ -117,7 +117,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：不同 appId 的网关互不串扰（一个沙箱、一个生产）。
+     * 不同 appId 的网关互不串扰（一个沙箱、一个生产）。
      */
     @Test
     public void shouldNotShareGatewayBetweenApps() {
@@ -143,7 +143,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15 的边界声明：模块**无法**判定凭据归属哪个环境——同一套自签凭据可同时配置到沙箱与生产应用，
+     * 边界声明：模块**无法**判定凭据归属哪个环境——同一套自签凭据可同时配置到沙箱与生产应用，
      * 校验只覆盖 {@code env} 与网关 host。该项由配置评审与凭据来源管理兜底（README 声明）。
      */
     @Test
@@ -167,7 +167,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：{@code env} 大小写不敏感（{@code SANDBOX} 归一化为 {@code sandbox}）。
+     * {@code env} 大小写不敏感（{@code SANDBOX} 归一化为 {@code sandbox}）。
      */
     @Test
     public void shouldNormalizeEnvCaseInsensitively() {
@@ -181,7 +181,7 @@ public class PayEnvTest {
     }
 
     /**
-     * AC-15：沙箱与生产两个官方网关的 host 必须是不同值（否则一致性校验失去意义）。
+     * 沙箱与生产两个官方网关的 host 必须是不同值（否则一致性校验失去意义）。
      */
     @Test
     public void shouldHaveDistinctHostsForSandboxAndProduction() {

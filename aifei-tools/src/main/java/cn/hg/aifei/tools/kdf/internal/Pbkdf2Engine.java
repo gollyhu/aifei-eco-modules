@@ -16,13 +16,12 @@ import cn.hg.aifei.tools.kdf.KdfSpec;
 /**
  * PBKDF2（RFC 8018 §5.2）实现，纯 JDK javax.crypto.Mac 手动 PRF 循环。
  *
- * <p><b>实现期偏离（已记录，待主理人回写 design §8-F）</b>：设计 §1.3 / §3.5 原定手法为
+ * <p>实现采用手动 HMAC PRF 循环，纯 JDK、零第三方，遵循 RFC 8018 §5.2。未使用
  * {@code SecretKeyFactory.getInstance("PBKDF2WithHmac"+hash)} + {@code PBEKeySpec} +
- * {@code generateSecret().getEncoded()}。实测（JDK 19 SunJCE）发现
+ * {@code generateSecret().getEncoded()}：在 JDK 19 SunJCE 上
  * {@code PBKDF2SecretKey.getEncoded()} 返回的字节长度由 PBE cipher 约束决定（默认 8 字节），
  * 不等于 {@code PBEKeySpec} 请求的 keyLen，无法满足「任意 keyLen 输出」契约。
- * 故改用手动 HMAC PRF 循环实现 RFC 8018 §5.2，纯 JDK、零第三方，符合门禁⑲
- * （{@code javax.crypto.} / {@code java.security.} 仅 kdf/internal）。</p>
+ * 实现将 {@code javax.crypto.} / {@code java.security.} 收敛在 kdf/internal。</p>
  */
 public final class Pbkdf2Engine {
 

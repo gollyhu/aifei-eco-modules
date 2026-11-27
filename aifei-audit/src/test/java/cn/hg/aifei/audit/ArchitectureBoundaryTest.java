@@ -27,7 +27,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * 架构门禁：G-01 ~ G-15（设计 §10）。
+ * 架构门禁：以源码文本扫描断言包边界与公共面大小。
  *
  * <p>源码文本扫描前先剥离注释，避免版权头与说明文字误报；扫描根为模块根目录下的相对路径，
  * 故必须在模块根目录执行（surefire 的 workingDirectory 已固定）。</p>
@@ -53,7 +53,7 @@ public class ArchitectureBoundaryTest {
             "AuditActorProvider.java", "AuditResultJudge.java", "AuditSink.java");
 
     /**
-     * internal 包内允许引用框架类型的登记表（文件 → 允许的前缀）：设计 §5.5，恒为 1 条。
+     * internal 包内允许引用框架类型的登记表（文件 → 允许的前缀），恒为 1 条。
      */
     private static final Map<String, String> INTERNAL_FRAMEWORK_ALLOWED = new HashMap<String, String>();
 
@@ -314,7 +314,7 @@ public class ArchitectureBoundaryTest {
 
     @Test
     public void g14Java8SourceConstraints() throws Exception {
-        // 设计 §10「门禁实现的两点口径登记」第 2 点：var / record / sealed 用语法模式而非字面量，
+        // var / record / sealed 用语法模式而非字面量，
         // 避免误伤 `for (String record : RECORDS)` 这类合法 Java 8 代码；紧，不放宽。
         Pattern[] patterns = {
                 Pattern.compile("\\bvar\\s+[A-Za-z_$]\\w*\\s*="),
@@ -360,7 +360,7 @@ public class ArchitectureBoundaryTest {
     /**
      * 列出源码文件；门禁用例自身存放了全部被禁字面量，作为被测对象豁免。
      *
-     * <p>此豁免对应设计 §10「门禁实现的两点口径登记」第 1 点：豁免对象是门禁实现（不进交付 JAR），
+     * <p>豁免对象是门禁实现（不进交付 JAR），
      * 其余 {@code src/test/java} 文件仍全量扫描，故不构成对被测代码的放宽。</p>
      */
     private static List<Path> javaFiles(Path root) throws IOException {

@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * QA 独立复验补充用例：单点取文案与整包导出的取值一致性边界。
+ * 单点取文案与整包导出的取值一致性边界。
  *
  * <p>开发现有 {@code BundleExportTest#singleAndBundleConsistent} 覆盖了基础一致性，
  * 但未覆盖「缓存已存在时」与「refresh() 后」两条路径分叉风险。本类构造可列举来源在两种状态下

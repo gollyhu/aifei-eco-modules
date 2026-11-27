@@ -27,7 +27,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * codec 公共面形态测试（设计 §11.3.4，测试策略 §3.10）：逐字签名、异常两构造、
+ * codec 公共面形态测试：逐字签名、异常两构造、
  * serialVersionUID=1L、无 throws、签名白名单、公共层零配置键/传输头/第三方字面量、major 52。
  */
 public class PublicApiContractCodecTest {

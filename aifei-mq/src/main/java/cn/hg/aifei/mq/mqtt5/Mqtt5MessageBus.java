@@ -36,8 +36,7 @@ import org.eclipse.paho.mqttv5.common.MqttSubscription;
  *
  * <p>broker 不回标识，故 {@code messageId} 由适配器<b>本地生成</b>，格式 {@code mqtt5:<生效 client-id>:<序号>}；
  * <b>不得</b>以 QoS packet identifier 充当 {@code messageId}。投递保证取决于 {@code qos}（0 = at-most-once，
- * 1/2 = at-least-once），重投下监听器需幂等；重连走客户端原生退避（起始 / 上限均可配）。共同底线与允许差异见
- * {@code docs/design.md} §5.6。</p>
+ * 1/2 = at-least-once），重投下监听器需幂等；重连走客户端原生退避（起始 / 上限均可配）。以上为各后端共同底线，差异在允许范围内。</p>
  */
 public class Mqtt5MessageBus implements MessageBus {
 

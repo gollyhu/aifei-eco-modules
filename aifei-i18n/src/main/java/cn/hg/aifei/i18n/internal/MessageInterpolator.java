@@ -9,7 +9,7 @@ package cn.hg.aifei.i18n.internal;
 import java.text.MessageFormat;
 
 /**
- * {@code {0}} 位置占位的唯一插值定义点（设计 §6.2）。
+ * {@code {0}} 位置占位的唯一插值定义点。
  *
  * <p>委派 JDK {@link MessageFormat}：缺参占位符原样保留、不抛；整包导出下发原文、不经本类。</p>
  */

@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 import org.junit.Test;
 
 /**
- * {@link Message} 的不可变性、类型判定、防御性拷贝与相等性契约（设计 §4.7）。
+ * {@link Message} 的不可变性、类型判定、防御性拷贝与相等性契约。
  */
 public class MessageTest {
 

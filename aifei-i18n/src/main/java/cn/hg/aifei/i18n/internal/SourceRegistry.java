@@ -18,10 +18,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 稳定名注册与重名判定的唯一定义点（设计 §6.1 / §6.2）。
+ * 稳定名注册与重名判定的唯一定义点。
  *
  * <p>按 {@code i18n.sources} 声明顺序把稳定名解析为实例；三个默认来源按名惰性构造；
- * 未注册名 / 重名 / 已声明来源依赖缺失 → {@link I18nException}（消息含稳定名，逐字表 §8.3）；
+ * 未注册名 / 重名 / 已声明来源依赖缺失 → {@link I18nException}（消息含稳定名）；
  * 未声明的来源一律不实例化、不探测。</p>
  */
 public final class SourceRegistry {

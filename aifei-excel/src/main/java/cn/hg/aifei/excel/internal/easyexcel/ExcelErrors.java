@@ -11,7 +11,7 @@ import cn.hg.aifei.excel.ExcelException;
  * {@link ExcelException} 的唯一构造点与全部异常消息措辞的唯一定义点。
  *
  * <p>本类为非承诺实现层组件，仅供适配层内部调用；所有消息统一带 {@code excel: } 前缀，
- * 逐字对齐设计文档 §7.5 异常语义表。需要异常时使用本类工厂方法，不得在别处自拼消息。</p>
+ * 逐字对齐异常语义表。需要异常时使用本类工厂方法，不得在别处自拼消息。</p>
  */
 public final class ExcelErrors {
 

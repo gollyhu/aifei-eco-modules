@@ -25,7 +25,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * PV-03 前置实证：{@code AuditPlugin.start()} 内能否枚举出全部被标注方法。
+ * {@code AuditPlugin.start()} 内能否枚举出全部被标注方法。
  *
  * <p>验证三点：</p>
  *

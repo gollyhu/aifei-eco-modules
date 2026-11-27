@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * <p>证书序列号的计算与公钥提取只在本类发生。注意 {@code AlipaySignature.getCertSN(path)} /
  * {@code getAlipayPublicKey(path)} 只接受**路径**，本模块的凭据是**内容**，故必须直接调用
  * {@code AntCertificationUtil.getCertSN(content)} / {@code getCertPublicKey(content)}
- * （`docs/design.md` §2.4.4 固化的易踩坑结论）。</p>
+ * （易踩坑点）。</p>
  */
 public final class PayVerifyKey {
 

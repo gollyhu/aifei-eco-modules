@@ -15,7 +15,7 @@ import java.util.Map;
  * 能注入伪内核（模块零第三方 mock 依赖），因此本类型刻意不加 {@code public}——包外不可见。</p>
  *
  * <p>返回 {@code Object} 是刻意的：响应类型不外泄给 {@link DefaultPayClient}，转换由
- * {@link PayResults} 承担（`docs/design.md` §11 T06、风险 R-5）。</p>
+ * {@link PayResults} 承担。</p>
  */
 interface PayKernel {
 

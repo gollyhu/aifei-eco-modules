@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * 分批读回调实现：唯一 {@code invoke} 落点（设计 §7.3）。
+ * 分批读回调实现：唯一 {@code invoke} 落点。
  *
  * <p>只持有当前一批（上限 batchSize），每读满一批同步回调一次并立即丢弃该批引用；
  * 表头行为第 0 行，仅用于定位列、不进入批次；末批不足 batchSize 在分析结束时兜底回调。

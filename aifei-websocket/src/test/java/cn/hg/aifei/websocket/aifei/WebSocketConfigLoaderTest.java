@@ -19,7 +19,7 @@ import java.util.Map;
 import org.junit.Test;
 
 /**
- * {@link WebSocketConfigLoader} 的默认值来源、键覆盖、必填键与越界处理（设计 §4.9 / §4.12）。
+ * {@link WebSocketConfigLoader} 的默认值来源、键覆盖、必填键与越界处理。
  *
  * <p>{@code WebSocketConfigLoader} 是包级私有类型，故本测试与源文件同包。默认值与取值范围校验的唯一
  * 定义点在配置对象与 {@code internal.WebSocketValidator}，本类只断言「未配置沿用默认值、已配置按 setter

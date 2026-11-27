@@ -30,8 +30,8 @@ import org.junit.Before;
  * {@link #closeBus()} 兜底关闭总线（基类用例内已关闭，关闭幂等）。</p>
  *
  * <p>本类<b>只</b>继承运行共同底线用例，不写任何后端差异断言（投递模型、有序性、投递保证、
- * {@code messageId} 语义、消费位点 / 消费组、取消订阅的尽力语义等差异见
- * {@code docs/design.md} §5.6 (B) / (C)）。</p>
+ * {@code messageId} 语义、消费位点 / 消费组、取消订阅的尽力语义等差异
+ * 不在本基类断言。</p>
  */
 public class RedisStreamMessageBusContractTest extends MessageBusContractTest {
 

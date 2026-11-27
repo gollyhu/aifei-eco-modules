@@ -16,7 +16,7 @@ import java.util.Properties;
 import org.junit.Test;
 
 /**
- * 配置域（AC-R-18）：默认值、非法值即启动失败、消息含键名与原值。
+ * 配置域：默认值、非法值即启动失败、消息含键名与原值。
  */
 public class HttpConfigTest {
 
@@ -81,7 +81,7 @@ public class HttpConfigTest {
     }
 
     /**
-     * AC-R-18：超时为 0 启动失败，消息含键名与原值。
+     * 超时为 0 启动失败，消息含键名与原值。
      */
     @Test
     public void shouldRejectZeroConnectTimeout() {
@@ -93,7 +93,7 @@ public class HttpConfigTest {
     }
 
     /**
-     * AC-R-18：超时为负数启动失败。
+     * 超时为负数启动失败。
      */
     @Test
     public void shouldRejectNegativeReadTimeout() {
@@ -105,7 +105,7 @@ public class HttpConfigTest {
     }
 
     /**
-     * AC-R-18：重试次数为负启动失败。
+     * 重试次数为负启动失败。
      */
     @Test
     public void shouldRejectNegativeRetryTimes() {
@@ -117,7 +117,7 @@ public class HttpConfigTest {
     }
 
     /**
-     * AC-R-18：响应体上限为 0 启动失败。
+     * 响应体上限为 0 启动失败。
      */
     @Test
     public void shouldRejectZeroMaxResponseBytes() {

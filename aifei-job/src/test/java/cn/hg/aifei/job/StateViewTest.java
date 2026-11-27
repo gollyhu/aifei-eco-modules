@@ -32,7 +32,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * 观测口径（设计 §6「只读观测面补充」/ A15、A18）：{@code state()} 是「最后已知结果」。
+ * 观测口径：{@code state()} 是「最后已知结果」。
  *
  * <ul>
  *   <li>首次执行中（{@code STARTED} 已发、终态未发）该任务<b>不出现</b>在 {@code state()} 中；</li>

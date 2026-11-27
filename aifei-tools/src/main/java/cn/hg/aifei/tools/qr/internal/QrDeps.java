@@ -8,7 +8,7 @@ package cn.hg.aifei.tools.qr.internal;
 /**
  * ZXing 可选依赖探测（唯一探测点）。
  *
- * <p>按设计 §8-A7 采用「方法内延迟符号解析 + 捕获链接错误」，不使用 Class.forName：
+ * <p>采用「方法内延迟符号解析 + 捕获链接错误」，不使用 Class.forName：
  * 只有首次调用本方法才触发内核类解析，缺失时收敛为可读 {@code QrException}。</p>
  */
 public final class QrDeps {

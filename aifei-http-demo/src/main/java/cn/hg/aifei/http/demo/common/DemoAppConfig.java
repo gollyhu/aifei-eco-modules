@@ -38,7 +38,6 @@ import cn.hg.aifei.http.demo.echo.EchoHandler;
  * <p>回环基址默认按 {@code undertow.port} 推导为 {@code http://127.0.0.1:<port>}（缺失取 80）；
  * 显式配置 {@code demo.self-base-url} 且非空时以配置为准。host 恒为 127.0.0.1，不读 {@code undertow.host}。</p>
  *
- * <p>本类由开发工程师寇戴码产出。</p>
  */
 public class DemoAppConfig implements AifeiConfig<In, Out> {
 

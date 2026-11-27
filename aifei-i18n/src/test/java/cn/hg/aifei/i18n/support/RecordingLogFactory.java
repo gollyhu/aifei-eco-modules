@@ -18,9 +18,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
 /**
- * QA 复验用日志录制替身：实现框架可插拔的 {@link LogFactory}，把每个日志调用按「级别 + 首参消息」录制。
+ * 日志录制替身：实现框架可插拔的 {@link LogFactory}，把每个日志调用按「级别 + 首参消息」录制。
  *
- * <p>用于独立断言日志分级口径（未命中=DEBUG、故障/降级/跳过=WARN，见设计 §8.2）：
+ * <p>用于独立断言日志分级口径（未命中=DEBUG、故障/降级/跳过=WARN）：
  * 产品源码经 {@code Log.get(Xxx.class)} 惰性取 logger，{@code Log.get} 每次实时读 {@code LogKit.logFactory}，
  * 故注入本工厂后所有日志调用均被录制。使用方在 {@code @After} 必须恢复原工厂，避免测试间污染。</p>
  *

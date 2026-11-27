@@ -36,7 +36,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 回执测试（AC-07 / R-05）：真实 SmsHandler 验签分流、回执解析、监听器交付与响应契约。
+ * 回执测试：真实 SmsHandler 验签分流、回执解析、监听器交付与响应契约。
  */
 public class ReceiptTest {
 

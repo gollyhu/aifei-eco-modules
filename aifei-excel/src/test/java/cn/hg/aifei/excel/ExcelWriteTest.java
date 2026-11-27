@@ -22,7 +22,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 流式写测试（设计 §5.1 / §7.4 / §12.1）：
+ * 流式写测试：
  * 同会话多次追加且顺序不变、表头只写一次、finish 前补写表头、finish/close 幂等、
  * 不关闭输出流、finished 后再写报错（场景 3）、flush 失败包装（场景 13）。
  * 说明：写格式由内核按 OutputStream 默认 xlsx；模块公共 API 无 ExcelType 入参，

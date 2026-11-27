@@ -29,9 +29,9 @@ import java.util.zip.ZipFile;
 import org.junit.Test;
 
 /**
- * 依赖侧的 Java 8 基线断言（AC-02）：独立于架构门禁，因为它需要解析 classpath 而不是读源码文本。
+ * 依赖侧的 Java 8 基线断言：独立于架构门禁，因为它需要解析 classpath 而不是读源码文本。
  *
- * <p><b>判定口径</b>（设计 §2.3，含交付裁决 A-1）：对依赖树中每个 JAR，**排除 {@code module-info.class}
+ * <p><b>判定口径</b>：对依赖树中每个 JAR，**排除 {@code module-info.class}
  * 与 {@code META-INF/versions/**} 后的全部 {@code .class}，major ≤ 52**。依据：Java 8 虚拟机不解析 JPMS
  * 模块描述符、也不识别 {@code Multi-Release} 属性，这两类条目对 Java 8 运行期完全不可达。主 JAR 自身的
  * 断言不放宽（由 {@code ArchitectureBoundaryTest#g05Java8AndBytecode} 强制 major == 52）。</p>
@@ -94,7 +94,7 @@ public class PayDepsBytecodeTest {
     };
 
     /**
-     * 依赖 JAR 数量的下限：定稿依赖树为 32 个依赖 JAR，再加测试期 JUnit 与 Hamcrest。
+     * 依赖 JAR 数量的下限：依赖树为 32 个依赖 JAR，再加测试期 JUnit 与 Hamcrest。
      */
     private static final int MINIMUM_DEPENDENCY_JARS = 40;
 

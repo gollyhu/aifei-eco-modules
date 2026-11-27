@@ -40,7 +40,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * 发送契约（AC-01 / AC-02 / AC-03）：纯文本与 HTML 发送、多收件人 / 抄送密送、附件字节转换与临时文件清理、
+ * 发送契约：纯文本与 HTML 发送、多收件人 / 抄送密送、附件字节转换与临时文件清理、
  * 结果字段映射、多通道独立实例、换默认通道与换 SMTP 服务器只改配置。
  *
  * <p>全程零外网：内核客户端由模拟实现替代，"发送成功"即 {@code send} 不抛异常。</p>
@@ -81,7 +81,7 @@ public class SendContractTest {
         MailProviderRegistry.reset();
     }
 
-    /** AC-01：纯文本 + 多收件人 + 抄送 + 密送，返回成功结果与通道标识。 */
+    /** 纯文本 + 多收件人 + 抄送 + 密送，返回成功结果与通道标识。 */
     @Test
     public void sendsPlainTextWithRecipientsAndCopies() {
         MailResult result = MailKit.send(MailMessage.builder()
@@ -107,7 +107,7 @@ public class SendContractTest {
         assertNull("纯文本邮件不应带模板流", sent.message().getHtmlInputStream());
     }
 
-    /** AC-01：HTML 内容串直传内核，不做模板变量替换。 */
+    /** HTML 内容串直传内核，不做模板变量替换。 */
     @Test
     public void sendsHtmlContentDirectly() {
         MailKit.send(MailMessage.builder()
@@ -125,7 +125,7 @@ public class SendContractTest {
                 sent.message().getHtmlValues() == null || sent.message().getHtmlValues().isEmpty());
     }
 
-    /** AC-01：HTML 模板经上下文类加载器从 classpath 模板目录读取，变量映射到内核变量表。 */
+    /** HTML 模板经上下文类加载器从 classpath 模板目录读取，变量映射到内核变量表。 */
     @Test
     public void sendsHtmlTemplateWithVariables() {
         MailKit.send(MailMessage.builder()
@@ -149,7 +149,7 @@ public class SendContractTest {
         assertTrue("模板内容应由上下文类加载器读取到: " + template, template.contains("#{code}"));
     }
 
-    /** AC-01 / D14：附件字节写入临时文件供内核使用，发送返回后临时文件已清理。 */
+    /** 附件字节写入临时文件供内核使用，发送返回后临时文件已清理。 */
     @Test
     public void convertsAttachmentsAndCleansTempFiles() {
         byte[] payload = new byte[] {1, 2, 3, 4, 5};
@@ -170,7 +170,7 @@ public class SendContractTest {
         }
     }
 
-    /** AC-01：空字节 / null 附件被忽略，不产生临时文件。 */
+    /** 空字节 / null 附件被忽略，不产生临时文件。 */
     @Test
     public void ignoresEmptyAttachments() {
         MailKit.send(MailMessage.builder()
@@ -186,7 +186,7 @@ public class SendContractTest {
         assertTrue(sent.message().getFiles() == null || sent.message().getFiles().isEmpty());
     }
 
-    /** AC-02：两通道各自独立实例，命名通道只落到自己的客户端。 */
+    /** 两通道各自独立实例，命名通道只落到自己的客户端。 */
     @Test
     public void namedChannelsUseIndependentClients() {
         MailResult result = MailKit.use("corp").send(plainMessage());
@@ -200,7 +200,7 @@ public class SendContractTest {
         assertNotNull("每通道独立构建一次客户端", factory.clientFor(CORP_SERVER));
     }
 
-    /** AC-02 / AC-03：换默认通道只改配置，业务发送代码零改动。 */
+    /** 换默认通道只改配置，业务发送代码零改动。 */
     @Test
     public void switchingDefaultChannelOnlyChangesConfig() {
         assertEquals("qq", MailKit.defaultClient().channelName());
@@ -216,7 +216,7 @@ public class SendContractTest {
         assertEquals(0, factory.requireClientFor(QQ_SERVER).count());
     }
 
-    /** AC-03：换 SMTP 服务器只改配置，业务发送代码零改动仍能发送。 */
+    /** 换 SMTP 服务器只改配置，业务发送代码零改动仍能发送。 */
     @Test
     public void switchingSmtpServerOnlyChangesConfig() {
         plugin.stop();
@@ -230,7 +230,7 @@ public class SendContractTest {
         assertEquals(1, factory.requireClientFor(newServer).count());
     }
 
-    /** 配置项 → 内核配置映射：必填项直传、缺省项填充默认值（D7 关闭重试）。 */
+    /** 配置项 → 内核配置映射：必填项直传、缺省项填充默认值（关闭重试）。 */
     @Test
     public void mapsConfigToCoreConfigWithDefaults() {
         org.dromara.email.comm.config.MailSmtpConfig qq = factory.configFor(QQ_SERVER);
@@ -251,7 +251,7 @@ public class SendContractTest {
         assertEquals(3, corp.getMaxRetries());
     }
 
-    /** §7.3 并发：多线程同时发送互不串扰，临时文件各自清理、无泄漏。 */
+    /** 并发：多线程同时发送互不串扰，临时文件各自清理、无泄漏。 */
     @Test
     public void sendsConcurrentlyWithoutCrossTalk() throws Exception {
         final int threads = 8;

@@ -21,7 +21,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * crypto 五个原语的功能与异常语义测试（设计 §11.3.1 / §11.10，测试策略 §3.7）。
+ * crypto 五个原语的功能与异常语义测试。
  *
  * <p>向量一律用 JDK 独立参考实现与 RFC 2202 / RFC 4231 / RFC 6455 公开向量表达，
  * 不复制来源模块源码、协议字段或注释；全部用例零联网、可重复执行。</p>

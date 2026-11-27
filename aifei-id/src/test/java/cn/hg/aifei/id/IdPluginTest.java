@@ -43,12 +43,12 @@ import org.junit.Test;
  * 装配入口单元测试：生命周期（幂等、失败回滚、停机收敛）、workerId 三来源的装配分支，以及可选依赖缺失 /
  * 协同模块未装配两类启动期失败。
  *
- * <p>覆盖设计文档 §7.5 场景 1、5、10、12、13、14、15、16、17、18、19、23。全部用例
+ * <p>覆盖装配入口、发号、配置与停机等场景。全部用例
  * 只经由替身与 {@code Prop} 构造：{@code aifei-cache} 的实例用 {@link FakeCache} 注册进 {@code CacheManager}，
  * {@code aifei-lock} 的存储用 {@link FakeLockStore} 注册进 {@code LockHolder}，因此无需真实 Redis、
  * 无需真实锁，也不含任何秒级等待。</p>
  *
- * <p>消息断言全部照抄设计文档 §7.6 的逐字措辞（不使用 {@code IdErrors} 的构造方法拼期望值，否则措辞
+ * <p>消息断言全部按固定文案逐字比对（不使用 {@code IdErrors} 的构造方法拼期望值，否则措辞
  * 漂移无法被发现）；消息 P 的 {@code detail} 来自底层框架，只能动态取用，其前的模块措辞仍是字面量。</p>
  */
 public class IdPluginTest {
@@ -338,7 +338,7 @@ public class IdPluginTest {
      * 场景 5 / 消息 E：运行期租约丢失后必须拒绝发号。
      *
      * <p>真实的「续期失败置不可用」需要等一个续期周期（下限 1000ms），离线单测纪律不允许秒级等待，
-     * 因此按设计文档 §14.2 订正用 {@link FakeWorkerIdSource#breakLease()} 把「租约丢失」做成可控输入；
+     * 因此用 {@link FakeWorkerIdSource#breakLease()} 把「租约丢失」做成可控输入；
      * 装配后 {@code IdKit} 与注入引用都走同一个持有器，本用例经由持有器验证同一条失败路径。</p>
      */
     @Test

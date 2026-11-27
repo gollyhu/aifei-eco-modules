@@ -14,7 +14,7 @@ import java.util.Map;
  * 语言包的不可变值对象：一次整包导出的四字段契约（{@code locale} / {@code localeName} /
  * {@code dir} / {@code messages}）。
  *
- * <p>模块自身不序列化 JSON：消费方 Just Service 把四个访问器拼成 JSON（形状见设计 §9.4 / README）。</p>
+ * <p>模块自身不序列化 JSON：消费方 Just Service 把四个访问器拼成 JSON。</p>
  */
 public final class LanguageBundle {
 

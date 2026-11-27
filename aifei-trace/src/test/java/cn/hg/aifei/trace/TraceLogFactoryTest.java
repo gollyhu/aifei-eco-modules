@@ -90,7 +90,7 @@ public class TraceLogFactoryTest {
     }
 
     /**
-     * 场景 9：new TraceLogFactory(null) 拒绝，消息逐字对齐 §7.3。
+     * new TraceLogFactory(null) 拒绝，消息逐字对齐固定文案。
      */
     @Test
     public void nullDelegateShouldReject() {

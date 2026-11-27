@@ -16,7 +16,7 @@ import java.util.Arrays;
 import org.junit.Test;
 
 /**
- * 重试决策（AC-R-04 / AC-R-06 / AC-R-16 的判定部分）：幂等白名单、尝试次数换算、触发条件。
+ * 重试决策（判定部分）：幂等白名单、尝试次数换算、触发条件。
  */
 public class HttpRetryTest {
 
@@ -30,7 +30,7 @@ public class HttpRetryTest {
     }
 
     /**
-     * AC-R-06：非幂等方法不提供重试入口，当场抛出而非静默忽略。
+     * 非幂等方法不提供重试入口，当场抛出而非静默忽略。
      */
     @Test
     public void shouldRejectNonIdempotentMethod() {
@@ -59,7 +59,7 @@ public class HttpRetryTest {
     }
 
     /**
-     * AC-R-04：未开启重试时只尝试 1 次。
+     * 未开启重试时只尝试 1 次。
      */
     @Test
     public void shouldAttemptOnceByDefault() {
@@ -77,7 +77,7 @@ public class HttpRetryTest {
     }
 
     /**
-     * AC-R-06：非幂等方法的尝试次数恒为 1，与配置无关。
+     * 非幂等方法的尝试次数恒为 1，与配置无关。
      */
     @Test
     public void shouldIgnoreRetryTimesForNonIdempotentMethod() {
@@ -97,7 +97,7 @@ public class HttpRetryTest {
     }
 
     /**
-     * AC-R-16：只有 5xx 状态码可重试。
+     * 只有 5xx 状态码可重试。
      */
     @Test
     public void shouldRetryOnlyOnServerErrorStatus() {
