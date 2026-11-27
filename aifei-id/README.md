@@ -342,7 +342,7 @@ id.segment.key=payment-flow
 
 ### 7.3 文档索引
 
-- **契约与决策（事实来源）**：`docs/design.md`——公共 API 逐字签名、位布局与冻结数据格式、回拨与号段语义、异常消息表、验收标准。
-- **开发代理约束**：本模块 `AGENTS.md`——包边界与架构门禁、唯一定义点清单、验证命令。
+- **公共面与行为契约**：`docs/design.md`——公共 API 签名、位布局与数据格式、回拨与号段语义、异常消息表。
+- **开发约束**：本模块 `AGENTS.md`——包边界与架构门禁、唯一定义点。
 - **坐标与依赖口径**：`io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT`（`packaging=jar`，Java 8）；`cn.aifei:aifei` 为 `provided`，`aifei-cache` / `aifei-lock` 为 `optional`。
 - **示例工程**：`aifei-id-demo/`（平级目录、端口 18140、离线可跑），演示单号生成、并发批量去重、号段换段与 workerId 来源。

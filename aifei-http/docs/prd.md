@@ -1,18 +1,7 @@
-# aifei-http 模块需求（任务输入）
+# PRD：aifei-http（出站 HTTP 客户端 SDK）
 
-> 本文件是任务输入，不是 PRD / 设计。公共 API 与契约细节由 `aifei-http/docs/design.md` 定稿。
-> 关联：`docs/需求/aifei-eco-modules 模块规划与排期.md`（§二 能力缺口、§三 坐标与公共面、§三末依赖定档）；同构范本 `docs/需求/aifei-job.md`。
 > 坐标与基线：`io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT`；包名 `cn.hg.aifei.http`；Java 8（class major 52）。
-
-## 〇、交付物性质声明（先读，门禁口径依赖此节）
-
-**本次交付物是库模块（可被应用依赖的 SDK），不是业务应用工程。** 三份 PRD 常规章节在本模块 **不适用**：
-
-| 章节 | 结论 | 理由 |
-| --- | --- | --- |
-| 表结构草案 | **不适用** | 模块零 DB、零表、零 `Db+Row`、零 `Generator`，运行期不连任何数据源；门禁反向断言全模块禁止 `import java.sql.`。**不得为凑齐模板而编造表。** |
-| Service 方法清单 | **不适用** | 模块本体无 `@Path` / Service（那是应用工程的事）。根包公共 API **精确 6 个类型**由架构师在 `design.md` 定稿，本文只引用并给出能力诉求，**不代写公共面**。 |
-| 低保真 UI 原型 | **不适用** | 已定档跳过 PM 原型与 QA 基线门禁；`aifei-http-demo` 的演示页面由前端直接实装（见第八节），不经原型评审。 |
+> 公共 API 与契约细节由 `aifei-http/docs/design.md` 定稿。
 
 ## 一、缺口与目标
 
@@ -31,7 +20,7 @@
 
 **与 `aifei-sentinel` 的协同诉求**：出站调用的流控 / 熔断需要稳定的**资源名**作为埋点维度。模块必须以统一口径产出资源名（见 §5.1），并在发送前、重试各次、成功与失败路径上取到同一个值，供 sentinel 侧 `HttpInterceptor` 读取后自行埋点。**模块零 `aifei-sentinel` 依赖**，只提供值，不提供埋点。
 
-## 二、非目标（能力边界，已定档，不得推翻）
+## 二、非目标（能力边界）
 
 | # | 边界 | 后果（README 与 `design.md` 必须声明） | 模块责任 |
 | --- | --- | --- | --- |
@@ -39,10 +28,10 @@
 | 2 | **不支持 HTTP/2** | 只能与 HTTP/1.1 端点互通；对仅 HTTP/2 的服务不可用 | 不尝试升级、不做协议协商 |
 | 3 | **连接池受 JVM 全局属性约束、不可按实例调参** | `http.maxConnections` / `http.keepAlive` 是 JVM 级全局值，无法按 `HttpClient` 实例调整；**模块不得改写这些全局属性**（会波及同进程的 `aifei-weixin` 与其余 JDK HTTP 使用方） | 只读不写；门禁断言源码无 `System.setProperty` / `System.getProperties().put` |
 | 4 | **超时仅 connect / read 两段** | 无整体 deadline、**不可取消在途请求**；慢响应只能等 read 超时逐段触发 | 不伪造 deadline、不引入看门狗线程 |
-| 5 | **gzip / Cookie / 重定向需模块自行实现** | 不依赖三方库；默认行为必须显式定档（见 §5.5） | 自行实现或明确不做，二者都要写进 `design.md` |
+| 5 | **gzip / Cookie / 重定向需模块自行实现** | 不依赖三方库；默认行为见 §5.5 | 自行实现或明确不做 |
 | 6 | **不做 provider 扩展点、不做后端切换** | 无 SPI、无「换 okhttp」开关 | 唯一实现；内部注入点只服务单测 |
 
-## 三、已定档前提（需求约束，设计不得推翻）
+## 三、需求约束（设计不得推翻）
 
 | # | 前提 | 需求含义 |
 | --- | --- | --- |
@@ -62,20 +51,20 @@
 | `R-02` | 发送与响应 | 返回 `HttpResponse`：状态码、响应头（大小写不敏感、多值可枚举）、响应体（`String` 按 charset 解码 / `byte[]` 原样）、耗时（毫秒）、本次尝试次数 |
 | `R-03` | 超时 | connect / read 两段，全局默认 + 逐请求覆盖；超时抛 `HttpException`（cause 保留底层异常） |
 | `R-04` | 重试 | 默认 **0** 次；显式开启后按次数重试；触发条件与退避见 §5.3；重试对业务代码透明（业务只看到最终结果与尝试次数） |
-| `R-05` | 拦截器链 | 应用侧注册的 `HttpInterceptor` 链，顺序确定、异常不被吞、可中断（见 §5.2）；随重试按尝试穿链（默认假设，见 §九 Q2） |
+| `R-05` | 拦截器链 | 应用侧注册的 `HttpInterceptor` 链，顺序确定、异常不被吞、可中断（见 §5.2）；每次尝试完整穿链 |
 | `R-06` | 资源名 | 默认推导与显式覆盖，唯一拼装点 `internal.HttpResource`，重试各次恒定（见 §5.1） |
 | `R-07` | 编解码 | 请求 / 响应 charset 与 Content-Type 解析；文本与二进制双向；中文 / emoji 往返一致（见 §5.4） |
 | `R-08` | 装配与门面 | `HttpPlugin`（配置前缀 `http.*`）完成 `@Inject HttpClient` 注册与 `HttpKit` 静态引用写入；`stop()` 清除；重复 start/stop 幂等；配置非法启动即失败 |
-| `R-09` | 响应体保护 | 单次响应体读取上限（防大响应 OOM），超限抛 `HttpException`（默认值见 §九 Q6） |
+| `R-09` | 响应体保护 | 单次响应体读取上限（防大响应 OOM），超限抛 `HttpException`（默认值 `8 MiB`） |
 
-**配置能力诉求**（键名与默认值由 `design.md` 定稿，本表只约束**必须可配**的能力与建议默认）：
+**配置能力诉求**（键名与默认值由 `design.md` 定稿）：
 
 | 能力 | 建议默认 | 约束 |
 | --- | --- | --- |
 | connect 超时（毫秒） | `5000`（对齐 `aifei-weixin` 底稿） | ≥ 1；`0` / 负数启动失败 |
 | read 超时（毫秒） | `10000` | 同上 |
 | 重试次数 | `0` | ≥ 0；非法值启动失败 |
-| 重试间隔（毫秒） | 固定间隔，见 §九 Q5 | ≥ 0 |
+| 重试间隔（毫秒） | 可配固定间隔 | ≥ 0 |
 | 响应体上限（字节） | `8 * 1024 * 1024` | ≥ 1 |
 | 是否接受 gzip 响应 / 是否自动跟随重定向 / 是否保存 Cookie | 全部**默认关闭** | 见 §5.5 |
 | 默认请求头（如 User-Agent） | 可配 | 逐请求可覆盖 |
@@ -103,7 +92,7 @@
 | 可中断 | 任一拦截器抛 `HttpException`（或运行期异常）→ **后续拦截器不再进入**、**真实发送不发生**；异常原样向调用方传播，不被吞、不被替换成别的类型 |
 | 异常安全 | 拦截器内部异常与传输层异常走同一异常口径（`HttpException`）；模块不捕获后静默继续 |
 | 线程 | 同步执行在发起调用的线程上，不引入额外线程 |
-| 短路 | v1 **不支持**「拦截器直接合成响应并跳过发送」（最小面；sentinel 降级用抛异常已够）。如需，先过设计决策（见 §九 Q1） |
+| 短路 | v1 **不支持**「拦截器直接合成响应并跳过发送」（最小面；sentinel 降级用抛异常已够） |
 
 ### 5.3 超时与重试语义
 
@@ -114,9 +103,9 @@
 | 无整体 deadline | 一次请求总耗时上限 = 建连 + 若干段 read，**不做**总时长兜底、**不可**取消在途请求（README 显式声明） |
 | 默认重试 | `0`：一次尝试，失败即抛 |
 | 重试入口 | 仅幂等方法（GET / HEAD）可开启；未显式声明幂等的 POST / PUT / DELETE / PATCH **不提供**重试入口（配置或 API 层拒绝，不得静默忽略） |
-| 重试触发条件（默认假设，见 §九 Q5） | 仅**网络层失败**（连接拒绝 / 超时 / 读流中断）与 **5xx** 重试；**4xx 不重试**（确定性客户端错误，重放无意义） |
+| 重试触发条件 | 仅**网络层失败**（连接拒绝 / 超时 / 读流中断）与 **5xx** 重试；**4xx 不重试**（确定性客户端错误，重放无意义） |
 | 退避（默认假设） | v1 为可配**固定间隔**，不做指数退避与抖动 |
-| 观测 | 最终 `HttpResponse` / `HttpException` 必须能给出「本次共尝试几次」（具体承载位由 `design.md` 定稿） |
+| 观测 | 最终 `HttpResponse` / `HttpException` 必须能给出「本次共尝试几次」 |
 
 ### 5.4 编解码
 
@@ -184,7 +173,7 @@
 | `AC-R-25` | `R-09` 响应体上限 | 端点返回超过上限的响应体 → 抛 `HttpException`，消息含实际上限值；未超限正常返回 | 集成测试 |
 | `AC-R-26` | §六 零 DB | 全模块源码无 `java.sql.`、无 `aifei-db` 依赖；接入包存在 `HttpPlugin` | 门禁源码扫描 + `dependency:tree` |
 
-**AC 与门禁映射**：`AC-R-01` / `AC-R-02` / `AC-R-03` / `AC-R-14`(后半) / `AC-R-19`(后半) / `AC-R-20` / `AC-R-26` 由 `ArchitectureBoundaryTest` 承载；其余由契约 / 集成用例承载，用例清单写入 `docs/testing.md`，G4 门禁按「AC 编号 ↔ 用例 ↔ 结果」三列映射。
+**AC 与门禁映射**：`AC-R-01` / `AC-R-02` / `AC-R-03` / `AC-R-14`(后半) / `AC-R-19`(后半) / `AC-R-20` / `AC-R-26` 由 `ArchitectureBoundaryTest` 承载；其余由契约 / 集成用例承载。
 
 ## 八、`aifei-http-demo` 场景清单
 
@@ -201,32 +190,3 @@
 | 7 | 错误态 | 错误面板：异常类型、消息、`getCause()`、耗时、尝试次数；与成功态视觉可区分 |
 | 8 | 连接池边界（只读展示） | 显示当前 JVM 的 `http.maxConnections` / `http.keepAlive` 取值供观察，页面**只读不改** |
 
-## 九、待确认问题
-
-| # | 问题 | 默认假设（未获否决即按此执行） |
-| --- | --- | --- |
-| Q1 | 拦截器是否允许「短路并合成响应」（不真正发送）？ | **不支持**：只能抛 `HttpException` 中止。理由：最小面，sentinel 降级用抛异常已够；短路要引入响应构造与「谁负责状态码」的语义负担 |
-| Q2 | 重试的每次尝试是否重新穿过整条拦截器链？ | **是**：每次尝试完整穿链（sentinel 才能统计每次尝试），资源名恒定；尝试计数由模块维护，拦截器不自行计数 |
-| Q3 | 资源名的 `host` 是否包含非默认端口？ | **包含**（取 authority 语义，默认端口 80 / 443 省略）。理由：同机多端口服务否则无法区分。AC-R-12 用默认端口例子避开歧义 |
-| Q4 | 非 2xx 是否抛异常？ | **不抛**：返回 `HttpResponse`，由业务读 `statusCode` 判断；异常只覆盖传输层失败（连接 / 超时 / 解码）。理由：4xx / 5xx 的响应体常是业务数据，抛异常会迫使用异常做流程控制 |
-| Q5 | 重试触发条件与退避形态？ | 仅**网络层失败 + 5xx** 重试，4xx 不重试；退避 v1 为**可配固定间隔**，不做指数退避与抖动 |
-| Q6 | 拦截器注册通道与顺序依据？ | **已定档（2026-11-11，随模块交付回写）**：采用**显式有序注册列表**——`HttpPlugin#addInterceptor(HttpInterceptor)` 按 `add` 调用顺序累积、`start()` 快照为不可变 `List` 交给 `DefaultHttpClient`，**不从容器按类型取**（框架无「按类型取全部实现」通道、同类型重复注册抛异常、返序不可复现 → AC-R-10 无法机械断言）。业务若需复用容器内实例，自行 `Aop.get(MyInterceptor.class)` 后 `addInterceptor`。定档位置：`aifei-http/docs/design.md` 决策 7 / §6.3 与 §九 Q6；AC-R-10 已据此闭环 |
-| Q7 | 响应体上限默认值与超限语义？ | 默认 `8 MiB`（作用于解压后字节数），超限抛 `HttpException`（不截断返回半截），消息含实际生效上限值。**端口已定档**：`aifei-http-demo` = **18120**（`aifei-job-demo` 占 18110），见根 `README.md` 与 `aifei-http/docs/design.md` §九 Q7；原「建议 / 待确认」表述作废 |
-
-## 十、参考资产
-
-| 用途 | 位置 |
-| --- | --- |
-| **纯 JDK HTTP 技术底稿**（能力边界可达性依据） | `aifei-weixin/src/main/java/cn/aifei/weixin/core/http/JdkHttpClient.java`（`HttpURLConnection` + `setInstanceFollowRedirects(false)` + connect/read 超时 + 固定长度流式写 + 手写 multipart + `finally disconnect()`）、同模块 `pay/JdkPayHttpClient`（mTLS 已验证） |
-| 装配与门面范式 | `aifei-mq` 的 `MqPlugin`（`Prop` 构造期只持引用、`start()` 内解析校验、失败不留半装配、`AopKit.addSingletonObject` 注册 `@Inject`）、`internal/MqHolder` |
-| 资源名对齐依据 | `aifei-sentinel/src/main/java/cn/hg/aifei/sentinel/aifei/SentinelInterceptor.java` 与 `aifei-sentinel/docs/design.md` §5.1（入站维度「全限定类名#方法名」） |
-| 门禁骨架 | `aifei-websocket` 的 `ArchitectureBoundaryTest` |
-| 任务输入与文档范本 | `docs/需求/aifei-job.md`（AC 编号化、边界与门禁写法） |
-| demo 组织方式 | `aifei-mq-demo` / `aifei-job-demo`（自写 HIO、`start-demo.bat` / `stop-demo.bat`） |
-| 全体底线 | 仓库根 `AGENTS.md`（命名约定、Java 8、公共 API 实现无关、门禁不得放宽） |
-
-## 十一、执行方式
-
-- 本文件为任务输入：**PM 已定档的公共面 6 类型、资源名规则、装配形态、重试默认值不得推翻**；其余契约细节（字段名、方法签名、`HttpInterceptor` 方法形态、异常消息格式、配置键名）由架构师在 `aifei-http/docs/design.md` 定稿，定稿后 AC 的验证通道按定稿位置固化。
-- 建议实施顺序：`internal.HttpResource`（纯函数，可独立测）→ `HttpRequest` / `HttpResponse` 值对象与编解码 → 内部传输接口 + 纯 JDK 实现（回环端点用例）→ 超时 / 重试 / 拦截器链 → `HttpPlugin` 装配与 `HttpKit` 门面 → `ArchitectureBoundaryTest` 门禁 → demo 单页。
-- 每完成一项须回写：`docs/testing.md`（用例清单，与 AC 编号一一对应）、`README.md`（能力边界四条 + 消费方自带 `aifei-all`）、`design.md`（Q1–Q7 的定档结论）。

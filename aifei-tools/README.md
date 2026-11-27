@@ -358,7 +358,7 @@ public class CustomerExportService {
 | XML 解析与转义 | 无（纯 JDK） | 始终可用，无缺失场景 |
 | gzip 解压 | 无（纯 JDK） | 始终可用，无缺失场景 |
 
-- 验证码单机模式、脱敏、密钥派生与新增四个子包（`crypto` / `random` / `xml` / `codec`）不依赖任何内核，引了本模块即可用；本次新增**零依赖、零配置键**。
+- 验证码单机模式、脱敏、密钥派生与 `crypto` / `random` / `xml` / `codec` 四个子包不依赖任何内核，引了本模块即可用，**零依赖、零配置键**。
 - `zxing` 只引 `core`，**不引 `javase`**（后者会额外拖入命令行与图像 IO 库）；二维码 PNG 由模块内部绘制。
 - 缺失内核时抛的是本模块异常、消息里写明需要补齐的坐标，且保留底层 cause——这是“能力按需引入”，不是“功能降级”。
 - 版本口径：`ip2region` / `zxing` 版本由本模块 pom 的属性（`ip2region.version` / `zxing.version`）管理；`aifei-cache` 版本在 pom 中直接写死为 `1.1.0`（无对应属性）。消费方需与上表坐标一致。
@@ -375,11 +375,11 @@ public class CustomerExportService {
 - **IP归属地五段语义**：字段永不为 null；内核的保留值 `0` / `Reserved` 归一为空串 `""`，查不到的地址返回五段全空串的对象（非 null）。调用方无需识别内核哨兵。
 - **IP 会话生命周期**：`close()` 幂等，可重复调用；关闭后再 `search` 抛可读 `IpException`。一个 `IpSearcher` 会话可被多线程并发查询、结果互不串扰，但请用一个会话对应一个内核实例，用完关闭。
 - **xdb 由消费方自备**：显式传路径、不打包、不联网下载；路径不可读会以可读异常报出具体路径。
-- **二维码解码的私有区哨兵边缘**：为让空串能正常往返，内部用一个 Unicode 私有区字符（U+E000）作占位；若待编码文本**恰好是单个 U+E000 字符**，解码会被还原成空串。该字符属私有区、不作为常规文本使用，此边缘行为已知且接受，详见 `docs/design.md` §8-C2。
+- **二维码解码的私有区哨兵边缘**：为让空串能正常往返，内部用一个 Unicode 私有区字符（U+E000）作占位；若待编码文本**恰好是单个 U+E000 字符**，解码会被还原成空串。该字符属私有区、不作为常规文本使用，此边缘行为已知且接受。
 - **二维码解码失败不静默**：无法识别的图片抛 `QrException` 并保留 cause，不返回 null；`decode(InputStream)` 不关闭调用方传入的流，流的开关由调用方负责。
 - **脱敏是宽松文本处理**：`maskIp` 对非法文本不抛异常——按分隔符特征打码，`::` 压缩形式会先展开为完整 8 段再打码（如 `2001:db8:85a3::8a2e:370:7334` → `2001:*:*:*:*:*:*:*`），等价写法结果一致，畸形输入健壮退化。`value` 为 null 返回 null、空串返回空串；`MaskException` 只用于规则注册类错误与负数保留位。
 - **双许可署名**：`ip2region` 采用 **Apache-2.0 OR MIT** 双许可。消费方引入该内核时，须按其许可要求随产品保留相应署名与许可声明；许可文本随依赖自带，本模块不复制。完整署名与许可信息见 `THIRD_PARTY_NOTICES.md`。
-- **密钥派生与新增原语纯 JDK**：`kdf` 子包用 JDK 8 自带的 `javax.crypto.Mac` / `java.security` 实现 HKDF（RFC 5869）、PBKDF2（RFC 8018）、HMAC（RFC 4231）三算法，零第三方依赖；`javax.crypto` / `java.security` import 仅出现在 `kdf/internal/`、`crypto/internal/`、`random/internal/`（门禁⑲按设计 §11.7 放宽），公共签名零 JDK 加密类型（门禁⑳′及新增四例）。四个新子包互不引用、零新增第三方依赖。
+- **密钥派生与新增原语纯 JDK**：`kdf` 子包用 JDK 8 自带的 `javax.crypto.Mac` / `java.security` 实现 HKDF（RFC 5869）、PBKDF2（RFC 8018）、HMAC（RFC 4231）三算法，零第三方依赖；`javax.crypto` / `java.security` import 仅出现在 `kdf/internal/`、`crypto/internal/`、`random/internal/`，公共签名零 JDK 加密类型。四个新子包互不引用、零新增第三方依赖。
 
 ## 7. 参考
 
@@ -425,21 +425,19 @@ public class CustomerExportService {
 | `XmlException` | 内容为 null 或全空白 / 解析失败（含文档类型声明与外部实体命中）/ 缺少根节点 / 硬化特性不可用 / 待转义文本为 null | 消息前缀 `xml: `，保留 cause |
 | `CodecException` | gzip 字节非法 / 流截断 / 校验失败 | 消息前缀 `codec: `，保留 cause；null 与空数组原样返回不抛异常 |
 
-既有五子包精确消息措辞见 `docs/design.md` §7.2；四个新子包见 `docs/design.md` §11.4。
-
 ### 文档索引
 
 | 文档 | 内容 |
 | --- | --- |
-| `docs/design.md` | 契约事实来源：公共面逐字签名、异常语义、已定档决策、架构门禁 |
-| `docs/testing.md` | 测试策略与用例清单（235 例构成、样本策略、覆盖映射） |
+| `docs/design.md` | 公共面签名、异常语义与架构约束 |
+| `docs/testing.md` | 测试策略与用例清单 |
 | `THIRD_PARTY_NOTICES.md` | 第三方运行内核的版权与许可署名声明 |
 
 ### 构建与验证
 
 ```bash
 cd aifei-tools
-mvn clean verify                 # 0 failure / 0 error（235 例：门禁 33 + 功能 202）
+mvn clean verify                 # 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest   # 仅跑架构门禁（33 例）
 mvn dependency:tree              # 核对：仅 aifei(provided) + 三个 optional 内核 + junit(test)，四个新子包无新增第三方
 javap -verbose target/classes/cn/hg/aifei/tools/ipdb/IpSearcher.class | findstr "major version"   # 期望 52

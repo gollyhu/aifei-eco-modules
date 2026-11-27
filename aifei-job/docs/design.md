@@ -2,9 +2,7 @@
 
 本文是 `aifei-job` 的**设计事实来源**：模块定位、公共 API 契约、调度内核的触发与执行语义、装配链路、门禁设计以本文为准。面向使用者的说明见 `README.md`；面向开发代理的约束见模块 `AGENTS.md`；测试策略与用例清单见 `docs/testing.md`。
 
-> **交付性质**：`aifei-job` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。因此**没有** `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator；只有「公共 API 7 类型 + `internal` 实现 + `local` 表达式薄封装 + 一个装配用 `aifei.JobPlugin`」。
 >
-> **文档状态**：`1.0.0` 设计定稿，`src/main` 已按本文实现（`mvn clean compile` 通过），依赖树已实测回填（§10.2 / §10.3，2026-11-10）。文中的类名、方法签名、配置键、门禁常量均为**实现依据**，**不得**另立口径；实现与本文的 4 处口径差异集中在 §12（D3–D5），以实测为准。
 
 ---
 
@@ -20,25 +18,11 @@
 - 调度内核：JDK `ScheduledThreadPoolExecutor` 上的**单飞自续排模型**——每个任务始终至多一个待触发实例，执行结束后于 `finally` 计算下次延迟并重排；**不重叠、不堆叠、不补跑是结构属性**，不是附加守卫
 - cron 解析：委托 Quartz `CronExpression`（**全模块唯一用途**，见 §10）
 
-### 1.2 为什么是「库模块」而非应用工程
-
-本模块提供的是**可被别的应用依赖的能力**，自身不承载任何应用装配。以下 aifei 应用工程要素**一律不提供**：
-
-| 要素 | 归属 |
-| --- | --- |
-| `AppConfig implements AifeiConfig` | **使用方应用**（本模块只提供 `JobPlugin` 供 `plugins.add(...)`） |
-| `Launcher` / `Aifei.start` | 应用入口 |
-| `service/` 包（Just Service） | 业务侧（本模块是基础设施 SDK） |
-| HIO / 路由 / `webapp/` | 无 HTTP 面；演示页面属示例工程 `aifei-job-demo` |
-| 表结构 / Db+Row / Generator | 无持久化（不建表、不连 DB） |
-
-`aifei-job/` 内 `mvn clean verify` 必须 **0 failure / 0 error**（含架构门禁测试）。
-
 ### 1.3 工程结构（单模块）
 
-单模块 `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`：公共 7 类型 + `internal` + `local` + `aifei` 同处一个 JAR。文件清单见 §15。
+单模块 `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`：公共 7 类型 + `internal` + `local` + `aifei` 同处一个 JAR。
 
-### 1.4 v1 不做清单（边界，防范围蔓延）
+### 1.4 v1 不做清单（能力边界）
 
 1. 工作流 / DAG 编排：任务之间不建立依赖与编排关系。
 2. 分布式调度：不做选主、分片、任务分发；v1 也不做执行互斥（v1.1 经 `aifei-lock` 增补）。
@@ -76,168 +60,9 @@
 | **唤醒层** | `ScheduledThreadPoolExecutor`，**固定 1 线程**，只做「提交到执行层」，微秒级返回 | `internal.JobScheduler` |
 | **执行层** | `ThreadPoolExecutor`（`job.pool.size` 线程 + `job.pool.queue` 有界队列），跑任务体 | `internal.JobScheduler` |
 | **待触发实例** | 唤醒层队列中的一个 `JobWakeTask`；同一任务**恒至多一个** | `internal.JobWakeTask` |
-| **续排** | 计算下次延迟并重新投递一个待触发实例；全模块**只有两处**（执行结束点、提交被拒点） | §3 决策 7 |
+| **续排** | 计算下次延迟并重新投递一个待触发实例；全模块**只有两处**（执行结束点、提交被拒点） | §5.3 / §6.1 |
 | **终态** | `SUCCESS` / `FAILED` / `SKIPPED` 三者之一；只有终态进入观测面 | `internal.JobState` |
 | **观测面** | `JobKit.state()`（最近一次终态快照）与 `JobKit.names()`（已注册任务名） | 公共 API / `internal.JobHolder` |
-
----
-
-## 3. 设计决策（14 条落定）
-
-本节**不改档**，只把每条决策落成可实现口径。带「实现口径」的补充项为细化，不改变决策结论。
-
-### 3.1 决策 1 —— 调度引擎 = JDK 自续排，Quartz 降级为 cron 计算器
-
-| 项 | 落定 |
-| --- | --- |
-| 唤醒层 | `ScheduledThreadPoolExecutor` **固定 1 线程**（不暴露配置）；线程名 `aifei-job-wake` |
-| 执行层 | `ThreadPoolExecutor`，`job.pool.size` 线程 + `job.pool.queue` 有界队列（`ArrayBlockingQueue`），线程名 `aifei-job-worker-N` |
-| 线程性质 | 两层线程均为 **daemon**（实现口径：插件未被 `stop()` 时不拖住 JVM 退出；停机收敛仍由 `stop()` 负责） |
-| Quartz 用途 | 只用 `CronExpression` 的构造（校验）与 `getNextValidTimeAfter(Date)` |
-| `org.quartz.*` 唯一落点 | `local.QuartzCronSupport`（`CronExpression` 实例按**表达式字符串**缓存，构造有解析开销，计算只读且线程安全；口径见 §12 D3） |
-| 传递依赖 | 排除 `c3p0` 变体、`HikariCP-java7`、全部日志绑定；**保留 `slf4j-api`** 并在 `pom.xml` 显式声明为 `compile` 直接依赖（版本 `1.7.30`）；该门面**只供 Quartz 内部使用**，模块代码零 `org.slf4j.*` 引用（§11 门禁③） |
-| 模块自身记录 | 统一经 `cn.aifei.log.Log`（`Log.get(本类.class)`），随 `cn.aifei:aifei`（provided）提供；**不新增依赖**、**不引入任何日志绑定**、禁止 `System.err` 与自建记录通道 |
-| 日志获取时机 | **一律惰性**：静态工具类在**方法内**取用，实例类在**构造内 / 字段初始化期**取用；**禁止** `static` 字段持有 `Log`（理由见 §5.4） |
-| provided 不传递 | 消费方必须自带 `aifei`；只引核心 `cn.aifei:aifei` 时 `cn.aifei.log` 不在 classpath，运行期 `NoClassDefFoundError: cn/aifei/log/Log`（早于任何可读错误）。README 与本文 §10 双处声明 |
-| 依赖实测 | 排除清单与 `dependency:tree` 允许清单见 §10.2 / §10.3，**已实测回填**（2026-11-10）：3 条 exclusion 均有效、零日志绑定、`c3p0:c3p0` 旧变体不存在 |
-
-### 3.2 决策 2 —— 注解声明式，公共类型定 7 个
-
-- 根包公共类型**精确 7**：`JobKit` / `JobEvent` / `JobListener` / `JobException` + `@Cron` / `@FixedRate` / `@FixedDelay`（契约见 §4）。
-- **任务名 = `类全名#方法名`**，由 `internal.JobNames` 唯一生成；注解**不提供**「任务名」属性；同一方法被扫到两次即按任务名判重并启动失败（判重点 `internal.JobRegistry`）。
-- **不设 `JobScheduler` 公共接口**：唯一引擎、无 provider 扩展点、生命周期归 `JobPlugin`，接口无承载方法。
-- **`JobException` 构造器为 `public`** —— 这是对需求原文「构造器包私有」的**唯一偏离**，缘由与拍板结论见 §12（D1）。
-
-### 3.3 决策 3 —— cron 语义 = Quartz 表达式
-
-6 段含秒，可选第 7 段年；字段与特殊字符 `* , - / ? L W #` 全按 Quartz 语义。校验与下次触发计算**一律委托 `CronExpression`**，不自实现解析器，**不做 5 段兼容写法**（Quartz 不接受，写错即启动失败）。
-
-实现口径：`local.QuartzCronSupport` 构造 `CronExpression` 即校验（`ParseException` → `JobException`，原异常作 `cause`）。
-
-### 3.4 决策 4 —— 同一任务恒串行
-
-自续排结构保证同任务不重叠、不排队、不堆叠；不提供「允许重叠」开关。结构依据：同一任务只有一个待触发实例，下一个实例只在「上一个执行结束」或「上一个提交被拒」时投递。
-
-### 3.5 决策 5 —— 错过触发不补跑
-
-- 停机期间未触发的计划点一律跳过，不做补偿执行。
-- 唤醒线程因 GC / 系统调度延迟取到已到期任务属**延迟执行**（任务不丢、不记 `SKIPPED`、`lastStart` 取实际开始时刻使节拍随之后移），**不是补跑**。
-- fixedRate 执行结束时已过去的计划点按跳过规则记 `SKIPPED`（决策 7）。
-
-### 3.6 决策 6 —— 任务异常就地隔离
-
-单个任务抛异常不影响其他任务与后续触发；异常捕获并记堆栈；本轮不重试；续排在 `finally`，异常不断链。
-
-实现口径：`internal.JobRunner` 捕获 `Throwable`（含 `Error`，避免 Error 杀死池线程导致该任务链断裂），解包 `InvocationTargetException#getTargetException()` 作为 `JobEvent#error()`，并 `log.error(任务名, 原因)` 留堆栈。
-
-### 3.7 决策 7 —— 触发与执行分离，调度内核不阻塞唤醒线程（**本模块最重的一条**）
-
-| 项 | 落定 |
-| --- | --- |
-| 执行层拒绝策略 | **固定 `AbortPolicy`**（「不执行 + 抛 `RejectedExecutionException`」）；禁 `CallerRunsPolicy`、禁任何**不抛异常**的静默丢弃 handler、禁 `BlockingQueue.put` 等阻塞提交方的调用 |
-| 拒绝记账 | **唯一入口** = `internal.JobWakeTask.run()` 的 `catch (RejectedExecutionException)`；**不另设**自定义 handler 记一次账再抛 |
-| 续排位置 | **只有两处**：① 执行结束点（`internal.JobRunner` 的 `finally`，正常路径）；② 提交被拒点（`JobWakeTask` 的 `catch` 内就地重排）。被拒任务进不了执行层，那个 `finally` 永远不执行，缺 ② 该任务永久停摆 |
-| 被拒重排入参 | `isFirst` **写死 `false`**；`lastStart` 与 `lastEnd` 同置当次采样的**同一个 `now`**（一次取时刻，不得两次读时钟）；随后走同一个 `JobSchedule#nextDelay` |
-| 三类 `SKIPPED` 的事件时间 | ① 提交被拒 → **原计划触发时刻**（`JobWakeTask#plannedTime`）；② fixedRate 超时跳过 → `lastStart + period`（`JobSchedule#overduePlanTime` 返回值）；③ 停机 `shutdownNow()` 剩余任务 → 其**原计划触发时刻**（`JobRunner#plannedTime`） |
-| 倒挂防护 | 三类事件时间**一律不晚于**新基准 `now`（该保证只覆盖调度内核自身，不含监听器回调耗时） |
-| 三种触发方式的差异 | 全部收敛到 `JobSchedule#nextDelay` 一个纯函数（入参含 `isFirst`：为真返回 `initialDelay`，为假**完全不读**该值） |
-
-**时刻采样纪律**：`JobSchedule` 的两个方法**都是纯函数，不读时钟**；`System.currentTimeMillis()` 只在 `JobRunner` / `JobWakeTask` / `JobScheduler#start` 的明确采样点调用，且同一语义需要的时刻**只取一次**。
-
-### 3.8 决策 8 —— 三处细节
-
-1. `lastStart` = 任务体**实际开始执行**的时刻（队列等待不计入；`STARTED` 回调在其之前，见决策 14）。**唯一例外**是决策 7 的被拒重置——此时它只是节拍起点，该任务本轮并未执行。
-2. 停机时在途任务 `finally` 续排必须捕获 `RejectedExecutionException` 并静默终止（`log.warn` 记「停机续排终止」，**不得外抛**覆盖任务自身异常）。被拒点（`JobWakeTask` 的 `catch`）内的就地重排在停机竞态下同样可能被拒，同一处静默终止、**不新增记账点**。
-3. 执行层 `shutdown()` 后已提交任务继续执行属预期。
-
-### 3.9 决策 9 —— 优雅停机
-
-`internal.JobScheduler#stop()` 的**固定顺序**：
-
-```
-stopping = true
-wake.setExecuteExistingDelayedTasksAfterShutdownPolicy(false)   // 见下方实现口径
-wake.shutdown()                  // 停止新触发
-pool.shutdown()                  // 拒绝新提交，已提交任务继续执行
-awaitTermination(job.shutdown.timeoutMillis)
-  ├─ 正常结束 → 完成
-  └─ 超时      → pool.shutdownNow()，返回的未执行 Runnable 逐个记 SKIPPED（事件时间 = 其 plannedTime）并留日志
-wake.shutdownNow()               // 兜底清理唤醒层剩余延迟实例（不记账，理由见下）
-```
-
-**实现口径（必读）**：`ScheduledThreadPoolExecutor#shutdown()` 默认仍会执行**已排队的延迟任务**（`executeExistingDelayedTasksAfterShutdownPolicy` 默认 `true`），因此必须先置 `false` 才能达成「停止新触发」。
-
-**丢弃口径区分**：
-
-- 执行层队列中**已到点、未执行**的 `JobRunner` → 记 `SKIPPED`（计划点已到，属「停机中断」）。
-- 唤醒层队列中**未到点**的 `JobWakeTask` → 直接丢弃、**不记账**（计划点尚未发生，属「停机期间错过」，见决策 5）。
-
-**超时等待范围**：只 `awaitTermination` 执行层（在途任务的主体），唤醒层线程只做微秒级提交、不阻塞，`shutdownNow()` 兜底即可。
-
-任务须自行响应中断，模块**不保证强制终止**（README 声明）。
-
-### 3.10 决策 10 —— 任务实例与方法校验
-
-- 任务所在类**一律从 aifei 容器按类型取**（`Aop.get(类型.class)`，取出的是代理对象，事务 / 日志生效），**不做**反射 `new` + 手工注入兜底；`Aop.get` 抛异常即「取不到」→ 启动失败。
-- **多例（prototype）Bean 视为配置错误**并启动失败。判定通道 = 容器提供的单例 / 多例标记：`类型上的 @Singleton#value()`，缺省取全局默认 `AopKit.get().isSingleton()`（与 `AopFactory#doGet` 的判定规则一致）。
-- 判定点**唯一**：`internal.JobInstances`（任务实例与监听器共用同一判定实现，两个入口语义不同），不在任务扫描与监听器解析两处各写一套。
-- 注解方法必须为 `public` 实例方法、非 `static`、返回 `void`、参数为 `()` 或 `(JobEvent)`，否则启动失败并指出方法全名。
-- `job.scan.packages` 内多个包存在包含关系时同一方法可能被扫到多次 → **按任务名判重，重复即启动失败**（不静默去重，避免掩盖配置冗余）。
-
-实现口径：
-
-1. 方法发现用 `Class#getDeclaredMethods()`（只扫**被扫到类自身声明**的方法）：继承而来的注解方法不注册，且避免子类与父类各自注册导致的任务名判重误报。
-2. 跳过 `Method#isSynthetic()` / `isBridge()` 的编译器生成方法。
-3. `Method#getParameterCount()` 只允许 `0` 或 `1`；为 `1` 时参数类型必须是 `JobEvent`。
-4. 候选类发现（类路径扫描）必须使用框架 `cn.aifei.scanner.Scanner`（`scan(String packageName)`），**只能**出现在 `aifei` 包内（门禁②）→ 落在 `JobPlugin` 的私有方法；规则识别仍在 `internal.JobScanner`。
-5. 扫描结果为空 → `JobException`（消息列出全部扫描包）。
-
-### 3.11 决策 11 —— v1 不支持任务传参
-
-注解无「任务入参」属性；`JobEvent` 无参数字段；README 声明参数由业务经自身注入的 Service / 配置获取。
-
-### 3.12 决策 12 —— 集群互斥（v1.1，本次不做）
-
-多实例部署时同一任务由各实例竞争一把执行锁（依赖 `aifei-lock`，scope `optional`）。**v1 不留桩代码与占位配置**（见 §1.4）：不声明 `job.cluster.*` 键、不做 `Class.forName` 探测、不改 `JobPlugin.start()`。
-
-v1.1 待定档两项（本次**不设计、不落地**）：超时任务的租约与续期责任（含 `job.cluster.*` 的 `lease` 配置键）、失败语义（抢锁失败记 `SKIPPED`；`LockException` 结果未知记 `FAILED` 留堆栈）。
-
-### 3.13 决策 13 —— `JobListener` 为可选的单监听器，按类型从容器取
-
-| 项 | 落定 |
-| --- | --- |
-| 解析时机与次数 | `JobPlugin.start()` 按 `JobListener.class` 从容器取**一次**并持有引用（与任务实例同一通道）；`stop()` 释放引用 |
-| 取不到 | **视为「无监听器」**：不启动失败、不升级为配置错误（观测属可选设施）。事件仍正常装配与记账，只是 `dispatch` 直接返回 |
-| 多例 Bean | **配置错误**、启动失败（`start()` 只取一次并长期持有，多例会让事件散落到不同实例、监听器自身状态也不可依赖）。判定通道与任务实例同一实现（`internal.JobInstances`） |
-| 与任务实例的语义差 | 任务实例缺失 → **配置错误**（启动失败）；监听器缺失 → **正常**（无观测）。两条语义不同，但**判定实现同一处** |
-| 多监听器 | **v1 不支持**：框架按类型注册，同类型重复注册抛 `Singleton object already exists`；无 `@Order` / 按名通道。需要多路分发的业务自行实现一个 `JobListener` 做组合转发 |
-| `JobKit` 影响 | **不新增注册方法**，仍只有 `state()` / `names()` |
-
-### 3.14 决策 14 —— `JobEvent` 不可变 + 监听器同步回调
-
-**不可变**：`final` 类、字段全 `final`、无 setter、无懒加载 / 缓存字段，构造期一次赋值；触发时间用 `long`。不承诺深度不可变（唯一可变引用是 `Throwable`）。`JobKit.state()` 每次构建新的不可变 `Map` 与**新 `JobEvent` 值**，不返回内部记录实例、不返回活视图（§4.4）。
-
-**同步回调与线程归属**：`JobListener#onEvent` 同步调用、运行在产生该事件的线程上；无异步派发、无监听队列与监听线程池（线程归属表见 §5.4）。监听器必须快速返回、无阻塞 IO / 长计算、线程安全（不同任务的事件可并发到达同一实例）、不依赖线程局部变量；同一任务的阶段事件按 `STARTED → 终态` 顺序串行到达。
-
-**`STARTED` 在 `lastStart` 采样之前**（顺序不可交换）：
-
-```
-进入执行
-  → now1 = currentTimeMillis()
-  → assemble(STARTED, 任务名, now1, null) → dispatch   // 该时刻即事件触发时间；同步回调
-  → lastStart = currentTimeMillis()                      // 回调返回后才采样，任务体随即开始
-  → 调用任务体
-```
-
-- 监听器耗时因此**不计入** `lastEnd - lastStart`，不参与 fixedRate 的「耗时超过间隔」判定，也不改变 fixedDelay 的结束基准。
-- **两个时刻不要求复用同一个 `now`**：事件时间只服务观测，`lastStart` 只服务节拍计算，二者差值即监听器耗时（属预期，不是实现偏差）。
-- 顺序取此而非「采样后发事件」，因为 `lastStart` 的语义是「任务体开始」，反过来会让慢监听器间接改变跳过行为，违背「监听器不得影响调度」。
-
-**回调异常完全隔离于状态机**：异常被捕获并记录（`log.error`），不影响任务执行、终态记账与续排，不改变 `state()` 观测结果。
-
-**终态一律「先记账再回调」**：`record(终态)` 之后才 `dispatch(终态)`，故回调内调用 `JobKit.state()` 已能看到本次终态；`STARTED` 本就不记账（回调内看到的是**上一次终态**，首次执行时该任务不在 `state()` 中）。
-
-**耗时由使用方承担**：模块不做回调超时中断；README 显式警告「慢监听器会拖慢全部任务的到点触发」。
 
 ---
 
@@ -286,10 +111,10 @@ public interface JobListener {
 }
 ```
 
-- **同步调用、运行在产生该事件的线程上**（线程归属见决策 14 落定表）；不提供异步派发，无监听队列与监听线程池。
-- 监听器为**可选单例**：`JobPlugin.start()` 从容器按类型取一次并持有（§3.13）——**取不到即无监听器**，不启动失败；`stop()` 释放引用。
+- **同步调用、运行在产生该事件的线程上**（线程归属见 §5.4）；不提供异步派发，无监听队列与监听线程池。
+- 监听器为**可选单例**：`JobPlugin.start()` 从容器按类型取一次并持有——**取不到即无监听器**，不启动失败；`stop()` 释放引用。
 - 多例 Bean → 启动失败；**v1 不支持多个监听器**（框架按类型注册、同类型重复注册抛 `Singleton object already exists`，且无 `@Order` / 按名通道）。
-- 须快速返回、无阻塞 IO / 长计算、线程安全；回调异常被捕获，不影响调度（§3.14）。
+- 须快速返回、无阻塞 IO / 长计算、线程安全；回调异常被捕获，不影响调度。
 
 ### 4.3 `JobException`（唯一启动期异常）
 
@@ -322,7 +147,7 @@ public final class JobKit {
 
 - **只有这两个只读方法**，不对外暴露 setter、不新增注册方法。
 - 静态引用由 `JobPlugin.start()` 写入、`stop()` 清除，通道为 `internal.JobHolder`（对齐 `aifei-mq` 的 `MqHolder` 范式）。
-- **未启动（或已停机）时两个方法返回空集合，不抛异常**——与仓库根 `AGENTS.md`「`XxxKit` 未装配即失败」的表面冲突见 §12（D2）。
+- **未启动（或已停机）时两个方法返回空集合，不抛异常**（该让步仅覆盖 `JobKit` 两个只读方法；`XxxKit` 未装配即失败对写入 / 触发类门面仍适用）。
 - `state()`：`Value` 为该任务**最近一次终态**（`SUCCESS` / `FAILED` / `SKIPPED`）快照；`STARTED` **既不作结果也不清除记录**；**每次调用构建新的不可变 `Map` 与新 `JobEvent` 值**，不返回内部记录实例、不返回活视图；从未执行过的任务不出现。
 
 ### 4.5 三个触发注解
@@ -378,19 +203,19 @@ JobKit.java  JobEvent.java  JobListener.java  JobException.java  Cron.java  Fixe
 | `JobHolder` | final + 静态方法 | **`JobKit` 的唯一写入通道**：`install(JobRegistry, JobState)` / `clear()` / `names()` / `state()`（未安装 → 空集合，**不抛**） |
 | `JobSchedule` | final（构造注入 `CronCalculator`） | **下次触发延迟纯函数唯一定义点**：`nextDelay(task, lastStart, lastEnd, scheduleNow, isFirst)`（三触发方式的唯一分叉点，`initialDelay` 只在此读取一次；返回 `-1` 表示「无下次触发」）、`overduePlanTime(task, lastStart, scheduleNow)`（fixedRate 超时跳过判定，返回跳过事件时间或 `-1`）；两个方法**都不读时钟** |
 | `CronCalculator` | interface | cron 计算契约（隔离 `org.quartz.*`）：`validate(expression, taskName)` / `nextAfter(expression, epochMillis, taskName)`（返回 `-1` = 无下次） |
-| `JobScheduler` | final | 调度内核装配与生命周期：构造唤醒层 / 执行层、`start()`（为每个任务排首个待触发实例）、`stop()`（决策 9 全流程）、`reschedule(task, delay)`（唯一续排投递实现，返回是否成功）；`volatile boolean stopping` |
-| `JobWakeTask` | final（包级，`implements Runnable`） | 待触发实例：持 `JobTask` 与 **`plannedTime`**（计划触发时刻）；`run()` 提交执行层，`catch (RejectedExecutionException)` 内完成**拒绝记账 + 就地重排**（决策 7） |
+| `JobScheduler` | final | 调度内核装配与生命周期：构造唤醒层 / 执行层、`start()`（为每个任务排首个待触发实例）、`stop()`（优雅停机全流程，见 §6.1）、`reschedule(task, delay)`（唯一续排投递实现，返回是否成功）；`volatile boolean stopping` |
+| `JobWakeTask` | final（包级，`implements Runnable`） | 待触发实例：持 `JobTask` 与 **`plannedTime`**（计划触发时刻）；`run()` 提交执行层，`catch (RejectedExecutionException)` 内完成**拒绝记账 + 就地重排** |
 | `JobRunner` | final（包级，`implements Runnable`） | 执行单元：持 `JobTask` 与 **`plannedTime`**；`run()` 完成 `STARTED` → 采样 `lastStart` → 调任务体 → 终态记账与回调 → fixedRate 跳过记账 → `finally` 续排（被拒静默） |
 
 ### 5.2 `local` 与 `aifei` 包
 
 | 类型 | 形态 | 职责 |
 | --- | --- | --- |
-| `local.QuartzCronSupport` | final `implements CronCalculator` | **全模块唯一出现 `org.quartz.*` 的类**：校验（构造 `CronExpression`）+ 下次触发计算（`getNextValidTimeAfter`）；`CronExpression` 按**表达式字符串**缓存在 `ConcurrentHashMap`，命中失败时构造并缓存（同一构造点，见 §12 D3） |
+| `local.QuartzCronSupport` | final `implements CronCalculator` | **全模块唯一出现 `org.quartz.*` 的类**：校验（构造 `CronExpression`）+ 下次触发计算（`getNextValidTimeAfter`）；`CronExpression` 按**表达式字符串**缓存在 `ConcurrentHashMap`，命中失败时构造并缓存（同一构造点） |
 | `aifei.JobPlugin` | `implements cn.aifei.plugin.Plugin` | **唯一 import aifei 插件 / 容器 / 扫描器类型的类**（`Prop` / `Aop` / `AopKit` / `Singleton` / `Scanner`）；构造只持 `Prop`，`start()` 全量解析校验装配，`stop()` 收敛；另含候选类发现的私有方法 |
-| `aifei.AifeiJobContainer` | final `implements internal.JobContainer` | **容器语义映射唯一定义点**：`get(type)` → `Aop.get(type)`；`isSingleton(type)` → 先 `AopKit.get().getAopFactory().getMappingClass(type)` 解析出实际类型，再取其上的 `@Singleton#value()`，未声明则回落 `AopKit.get().isSingleton()`（比原字面多一步映射解析，见 §12 D5） |
+| `aifei.AifeiJobContainer` | final `implements internal.JobContainer` | **容器语义映射唯一定义点**：`get(type)` → `Aop.get(type)`；`isSingleton(type)` → 先 `AopKit.get().getAopFactory().getMappingClass(type)` 解析出实际类型，再取其上的 `@Singleton#value()`，未声明则回落 `AopKit.get().isSingleton()` |
 
-> **命名口径说明**：`QuartzCronSupport` 是 **`CronCalculator` 的实现类**（实现类按 Java 习惯名词化并冠以实现前缀「Quartz」），不属仓库根 `AGENTS.md`「无状态工具类用 `Util`」的适用范围；该名称由需求定档，保持不变。
+> **命名口径说明**：`QuartzCronSupport` 是 **`CronCalculator` 的实现类**（实现类按 Java 习惯名词化并冠以实现前缀「Quartz」），不属仓库根 `AGENTS.md`「无状态工具类用 `Util`」的适用范围；该名称保持不变。
 
 ### 5.3 每类规则的唯一定义点（实现类不得复制）
 
@@ -401,7 +226,7 @@ JobKit.java  JobEvent.java  JobListener.java  JobException.java  Cron.java  Fixe
 | 3 | 下次触发延迟纯函数（三触发方式的唯一分叉点，`initialDelay` 只读一次） | `internal.JobSchedule#nextDelay` | `JobRunner` / `JobWakeTask` 各自算 `period - elapsed` |
 | 4 | 跳过判定与三类 `SKIPPED` 事件时间口径 | 判定：`JobSchedule#overduePlanTime`（fixedRate）；事件时间：被拒 / 停机取 `plannedTime`、超时取 `overduePlanTime` 返回值；记账入口：`JobState#record` | 任一 `catch` 里自行 `now` 当事件时间 |
 | 5 | 拒绝记账（`RejectedExecutionException` → `SKIPPED`） | `internal.JobWakeTask#run` 的 `catch` 块 | 自定义 `RejectedExecutionHandler` 再记一次 |
-| 6 | 节拍基准重置（`isFirst=false` + 同一 `now` 采样） | `internal.JobWakeTask` 的 `catch` 块（决策 7 唯一入口） | `JobRunner` 里也重置一次 |
+| 6 | 节拍基准重置（`isFirst=false` + 同一 `now` 采样） | `internal.JobWakeTask` 的 `catch` 块（唯一入口） | `JobRunner` 里也重置一次 |
 | 7 | 状态记录顺序（终态**先记账再回调**，`STARTED` 不记账） | `internal.JobRunner`（调用顺序）+ `internal.JobState#record`（只收终态） | 监听器分发后再 `record` |
 | 8 | `JobEvent` 构造（不可变装配点） | `internal.JobEvents#assemble`（内部只经 `JobEvent#of`） | 各调用点直接 `JobEvent.of(...)` |
 | 9 | 监听器解析（单例、按类型取一次、缺失即无监听器、多例即失败） | `internal.JobInstances#optionalSingle`（由 `JobPlugin#start` 调用一次） | `JobScheduler` / `JobEvents` 各自回容器取 |
@@ -414,7 +239,7 @@ JobKit.java  JobEvent.java  JobListener.java  JobException.java  Cron.java  Fixe
 
 ### 5.4 线程模型与日志纪律
 
-**线程归属（与决策 14 一致）**：
+**线程归属**：
 
 | 事件 | 产生线程 |
 | --- | --- |
@@ -446,7 +271,7 @@ JobKit.java  JobEvent.java  JobListener.java  JobException.java  Cron.java  Fixe
 | 任务抛异常 | 捕获 + 记录（含堆栈）；不影响其他任务与后续触发；本轮不重试；续排不受影响 | `JobRunner` `catch Throwable` + `finally` 续排 |
 | 执行池队列满（提交被拒） | 唤醒层捕获 `RejectedExecutionException` → 记 `SKIPPED` → 重置节拍基准 → **唤醒层就地重排**；唤醒线程不阻塞，异常仅在内部流转、不向调用方外抛 | `JobWakeTask#run` |
 | 任务在队列等待 | 等待**不计入** `lastStart` | `lastStart` 在 `JobRunner` 内采样 |
-| 应用停机 | 停止新触发，等待在途任务；超时后中断并记录未完成 | `JobScheduler#stop` 固定顺序（§3.9） |
+| 应用停机 | 停止新触发，等待在途任务；超时后中断并记录未完成 | `JobScheduler#stop` 固定顺序（§6.1） |
 | 同一方法多个触发注解 | 配置错误，启动即失败（避免语义歧义） | `JobScanner` + `JobErrors#multipleTriggers` |
 | 非法 cron 表达式 | 启动即失败，指出方法全名与表达式原文 | `QuartzCronSupport#validate` + `JobErrors#illegalCron` |
 
@@ -454,6 +279,43 @@ JobKit.java  JobEvent.java  JobListener.java  JobException.java  Cron.java  Fixe
 
 - `state()`：`STARTED` 已发、终态未发时**保留上一次终态**，观测口径是「最后已知结果」，执行中的任务不会暂时消失；首次执行且尚无终态的任务在执行中**仍不出现**；因此 `state()` **无法区分**「正在执行」与「空闲等待」——执行中视图只能由监听器事件流提供（demo 据此实现，§13）。
 - `names()`：区分「已注册未执行」与「未注册」。
+
+### 6.1 调度内核实现口径
+
+**双层线程模型**：唤醒层为 `ScheduledThreadPoolExecutor` 固定 **1 线程**（不暴露配置，线程名 `aifei-job-wake`）；执行层为 `ThreadPoolExecutor`（`job.pool.size` 线程 + `job.pool.queue` 有界 `ArrayBlockingQueue`，线程名 `aifei-job-worker-N`）。两层线程均为 **daemon**（插件未被 `stop()` 时不拖住 JVM 退出；停机收敛仍由 `stop()` 负责）。
+
+**cron 语义**：6 段含秒、可选第 7 段年；字段与特殊字符 `* , - / ? L W #` 全按 Quartz 语义；校验与下次触发计算一律委托 `CronExpression`，不自实现解析器，不做 5 段兼容写法（写错即启动失败）。`local.QuartzCronSupport` 构造 `CronExpression` 即校验（`ParseException` → `JobException`，原异常作 `cause`）。
+
+**同一任务恒串行**：自续排结构保证同任务不重叠、不排队、不堆叠；不提供「允许重叠」开关。同一任务只有一个待触发实例，下一个实例只在「上一个执行结束」或「上一个提交被拒」时投递。
+
+**任务异常就地隔离**：`internal.JobRunner` 捕获 `Throwable`（含 `Error`，避免 Error 杀死池线程导致该任务链断裂），解包 `InvocationTargetException#getTargetException()` 作为 `JobEvent#error()`，并 `log.error(任务名, 原因)` 留堆栈；本轮不重试，续排在 `finally`，异常不断链。
+
+**拒绝策略与续排**：执行层拒绝策略固定 `AbortPolicy`（不执行 + 抛 `RejectedExecutionException`）；禁用 `CallerRunsPolicy`、静默丢弃 handler 与阻塞提交方的 `BlockingQueue.put`。拒绝记账唯一入口为 `internal.JobWakeTask.run()` 的 `catch (RejectedExecutionException)`；续排只有两处——执行结束点（`JobRunner#finally`）与提交被拒点（`JobWakeTask#catch` 内就地重排）。被拒重排入参 `isFirst` 写死 `false`，`lastStart` 与 `lastEnd` 同置当次采样的同一个 `now`，随后走同一个 `JobSchedule#nextDelay`。三类 `SKIPPED` 的事件时间：提交被拒取 `plannedTime`、fixedRate 超时取 `overduePlanTime` 返回值、停机 `shutdownNow()` 剩余任务取其 `plannedTime`；一律不晚于新基准 `now`。三种触发方式的差异全部收敛到 `JobSchedule#nextDelay` 一个纯函数（入参 `isFirst`：为真返回 `initialDelay`，为假完全不读该值）。
+
+**时刻采样纪律**：`JobSchedule` 的两个方法均为纯函数、不读时钟；`System.currentTimeMillis()` 只在 `JobRunner` / `JobWakeTask` / `JobScheduler#start` 的明确采样点调用，同一语义需要的时刻只取一次。
+
+**`lastStart` 语义**：`lastStart` = 任务体实际开始执行的时刻（队列等待不计入；`STARTED` 回调在其之前）；唯一例外是提交被拒重置——此时它只是节拍起点，该任务本轮并未执行。停机时在途任务 `finally` 续排必须捕获 `RejectedExecutionException` 并静默终止（`log.warn` 记「停机续排终止」，不得外抛覆盖任务自身异常）；被拒点内的就地重排在停机竞态下同样可能被拒，同一处静默终止、不新增记账点。执行层 `shutdown()` 后已提交任务继续执行属预期。
+
+**优雅停机固定顺序**（`internal.JobScheduler#stop()`）：
+
+```
+stopping = true
+wake.setExecuteExistingDelayedTasksAfterShutdownPolicy(false)
+wake.shutdown()
+pool.shutdown()
+awaitTermination(job.shutdown.timeoutMillis)
+  ├─ 正常结束 → 完成
+  └─ 超时      → pool.shutdownNow()，返回的未执行 Runnable 逐个记 SKIPPED（事件时间 = 其 plannedTime）并留日志
+wake.shutdownNow()
+```
+
+`ScheduledThreadPoolExecutor#shutdown()` 默认仍会执行已排队的延迟任务（`executeExistingDelayedTasksAfterShutdownPolicy` 默认 `true`），故必须先置 `false` 才能达成「停止新触发」。丢弃口径：执行层队列中已到点、未执行的 `JobRunner` 记 `SKIPPED`；唤醒层队列中未到点的 `JobWakeTask` 直接丢弃、不记账。超时等待只 `awaitTermination` 执行层（唤醒层线程只做微秒级提交、不阻塞，`shutdownNow()` 兜底）。任务须自行响应中断，模块不保证强制终止。
+
+**任务实例与方法校验**：任务所在类一律从 aifei 容器按类型取（`Aop.get(类型.class)`，取出的是代理对象，事务 / 日志生效），不做反射 `new` + 手工注入兜底；`Aop.get` 抛异常即「取不到」→ 启动失败。多例（prototype）Bean 视为配置错误并启动失败，判定通道为类型上的 `@Singleton#value()`、缺省取全局默认 `AopKit.get().isSingleton()`（与 `AopFactory#doGet` 判定规则一致），唯一判定点为 `internal.JobInstances`。注解方法必须为 `public` 实例方法、非 `static`、返回 `void`、参数为 `()` 或 `(JobEvent)`；方法发现用 `Class#getDeclaredMethods()`（只扫类自身声明，继承而来的注解方法不注册），跳过 `Method#isSynthetic()` / `isBridge()` 的编译器生成方法；`getParameterCount()` 为 `1` 时参数类型必须是 `JobEvent`。候选类发现必须使用框架 `cn.aifei.scanner.Scanner#scan(String)`，只出现在 `aifei` 包（`JobPlugin` 私有方法）；规则识别仍在 `internal.JobScanner`。扫描结果为空 → `JobException`（消息列出全部扫描包）。`job.scan.packages` 内多个包存在包含关系导致同一方法被扫到多次时，按任务名判重、重复即启动失败。
+
+**监听器回调时序**：`STARTED` 在 `lastStart` 采样之前发出（`assemble(STARTED,...) → dispatch` 后才采样 `lastStart`），监听器耗时不计入 `lastEnd - lastStart`、不参与 fixedRate「耗时超过间隔」判定、不改变 fixedDelay 结束基准；事件时间与 `lastStart` 是两个独立采样点，不要求复用同一 `now`。终态一律「先记账再回调」（`record(终态)` 后才 `dispatch(终态)`），`STARTED` 不记账。模块不做回调超时中断，慢监听器拖慢全部任务到点触发的风险由使用方承担。
+
+**参数与集群边界**：注解无「任务入参」属性，`JobEvent` 无参数字段，参数由业务经自身注入的 Service / 配置获取。集群互斥属 v1.1，v1 不留桩代码与占位配置：不声明 `job.cluster.*` 键、不做 `Class.forName` 探测、不改 `JobPlugin.start()`；v1.1 待定两项为租约与续期责任（含 `lease` 键）、抢锁失败记 `SKIPPED` 与 `LockException` 记 `FAILED` 的失败语义。
 
 ---
 
@@ -782,7 +644,7 @@ sequenceDiagram
         Pool-->>WT: 接受（本轮结束，无续排动作）
     else 队列已满或执行层已 shutdown
         Pool-->>WT: 抛 RejectedExecutionException
-        Note over WT: 拒绝记账唯一定义点（决策 7）
+        Note over WT: 拒绝记账唯一定义点
         WT->>Ev: assemble(SKIPPED, 任务名, plannedTime, null)
         Note right of WT: 事件时间 = 原计划触发时刻，不是重置基准的 now
         WT->>St: record(SKIPPED)
@@ -818,7 +680,7 @@ sequenceDiagram
     Sched->>Wake: setExecuteExistingDelayedTasksAfterShutdownPolicy(false) 后 shutdown()
     Note right of Wake: 未到点的待触发实例直接丢弃、不记账（属「停机期间错过」）
     Sched->>Pool: shutdown()
-    Note right of Pool: 已提交任务继续执行（决策 8 第 3 点）
+    Note right of Pool: 已提交任务继续执行
     Sched->>Pool: awaitTermination(job.shutdown.timeoutMillis)
     alt 在途任务及时结束
         Pool-->>Sched: true
@@ -901,30 +763,24 @@ sequenceDiagram
 - **不引入任何日志绑定**（`slf4j-simple` / `logback` / `log4j` 等一律禁止）。
 - 除上述两项外**无其它第三方运行时依赖**；不再新增直接依赖（需先过设计决策）。
 
-### 10.2 传递依赖排除清单（**实测结论**）
+### 10.2 传递依赖排除清单
 
-**实测环境**：Apache Maven `3.9.16` / JDK `21.0.11`（`source`/`target` = `1.8`，主 JAR class major 仍为 52）/ Windows 11；执行目录 `aifei-job/`；执行日期 **2026-11-10**。命令原文：
+Quartz 2.3.2 官方 POM 声明的依赖**全部为 `compile` 且均未标 `optional`**，共 4 项，全部真实出现在依赖树中：
 
-```bash
-mvn dependency:tree -Dverbose
-```
-
-Quartz 2.3.2 官方 POM 声明的依赖**全部为 `compile` 且均未标 `optional`**，共 4 项；实测（在仓库外的临时工程中先**去掉全部 `<exclusions>`**跑同一命令）确认这 4 项全部真实出现在依赖树中：
-
-| 传递项 | 来源 | 处置 | 实测结论 |
+| 传递项 | 来源 | 处置 | 结论 |
 | --- | --- | --- | --- |
 | `com.mchange:c3p0:0.9.5.4` | quartz 直接声明 | **排除**（本模块无连接池需求） | 未加 exclusion 时出现，排除后消失 → **有效排除** |
 | `com.mchange:mchange-commons-java:0.2.15` | quartz 直接声明 | **排除**（与 c3p0 一并排空） | 同上 → **有效排除** |
 | `com.zaxxer:HikariCP-java7:2.4.13` | quartz 直接声明 | **排除** | 同上 → **有效排除** |
 | `org.slf4j:slf4j-api`（quartz 声明 `1.7.7`） | quartz 直接声明 | **保留**；本模块显式声明 `1.7.30`（最近优先） | 树中 `1.7.7` 行标注 `omitted for conflict with 1.7.30`，最终解析为 `1.7.30` |
-| `c3p0:c3p0`（旧 groupId 变体） | **2.3.2 未声明** | **不写 `<exclusions>`** | 实测不存在；写进去是空操作、会造成「已排空」的错觉（需求文档列举的「两个变体」以此为准） |
-| 日志绑定（`slf4j-simple` / `logback` / `log4j` / `commons-logging` 系） | **Quartz 2.3.2 未声明任何绑定** | 无需 exclusion | 实测零绑定；由「不得引入日志绑定」纪律 + 门禁③保证 |
+| `c3p0:c3p0`（旧 groupId 变体） | **2.3.2 未声明** | **不写 `<exclusions>`** | 不存在；写进去是空操作、会造成「已排空」的错觉 |
+| 日志绑定（`slf4j-simple` / `logback` / `log4j` / `commons-logging` 系） | **Quartz 2.3.2 未声明任何绑定** | 无需 exclusion | 零绑定；由「不得引入日志绑定」纪律 + 门禁③保证 |
 
-> **纪律**：`pom.xml` 的 `<exclusions>` 只允许写**实测真实存在**的传递项——新增 exclusion 前必须先以 `mvn dependency:tree` 证明该项存在。当前 `pom.xml` 的 3 条 exclusion 经实测**全部有效**，无空操作项，故无需删除。
+> **纪律**：`pom.xml` 的 `<exclusions>` 只允许写依赖树中真实存在的传递项——新增 exclusion 前必须先以 `mvn dependency:tree` 证明该项存在。当前 `pom.xml` 的 3 条 exclusion 均有效，无空操作项。
 
-### 10.3 `dependency:tree` 允许出现的依赖清单（**实测**）
+### 10.3 `dependency:tree` 允许出现的依赖清单
 
-实测输出（`mvn dependency:tree -Dverbose`，2026-11-10，不含 `maven-*` 插件）：
+`mvn dependency:tree -Dverbose` 输出（不含 `maven-*` 插件）：
 
 ```text
 io.github.gollyhu:aifei-job:jar:1.0.0
@@ -951,7 +807,7 @@ io.github.gollyhu:aifei-job:jar:1.0.0
 
 **断言口径**：
 
-1. **零日志绑定**：树中不得出现 `slf4j-simple` / `slf4j-log4j12` / `slf4j-jdk14` / `logback-*` / `log4j*` / `commons-logging` / `spring-jcl` 任一；实测 **0 项**。
+1. **零日志绑定**：树中不得出现 `slf4j-simple` / `slf4j-log4j12` / `slf4j-jdk14` / `logback-*` / `log4j*` / `commons-logging` / `spring-jcl` 任一；当前 **0 项**。
 2. **无 `java.sql` 相关传递项被本模块实际使用**：树中不含任何 JDBC 驱动与连接池（`com.mchange:*` / `com.zaxxer:*` / `*jdbc*` 均 0 项），且门禁④断言全模块零 `import java.sql.`——「不传递」与「不使用」双向成立。
 3. 除上表 6 个构件外出现任何条目即视为依赖失控，须修正 `pom.xml` 后重跑。
 
@@ -962,9 +818,9 @@ io.github.gollyhu:aifei-job:jar:1.0.0
 - 若消费方已有其它 Quartz 版本，请自行 `exclusion` 或对齐版本；
 - 消费方**不得**依赖本模块带来的 slf4j-api 作为自身日志门面（本模块不承诺其日志语义）。
 
-### 10.5 根 `AGENTS.md` 的 `compile` 例外登记（**已完成**）
+### 10.5 根 `AGENTS.md` 的 `compile` 例外登记
 
-仓库根 `AGENTS.md` 规定「第三方依赖一律 `optional` 或 `provided`；新增 `compile` 例外一律须先在该文件登记」。本模块的 Quartz 与 slf4j-api 为 `compile`，两条例外**已在根 `AGENTS.md`「已登记的 `compile` 例外」清单完成登记**（口径照 `aifei-oss` / `aifei-sa-token`；理由指向本文 §10.1 / §3.1）：`org.quartz-scheduler:quartz`（cron 表达式校验与下次触发计算的实现内核）与 `org.slf4j:slf4j-api`（Quartz 内部日志门面）。
+仓库根 `AGENTS.md` 规定「第三方依赖一律 `optional` 或 `provided`；新增 `compile` 例外一律须先在该文件登记」。本模块的 Quartz 与 slf4j-api 为 `compile`，两条例外已登记于根 `AGENTS.md`「已登记的 `compile` 例外」清单：`org.quartz-scheduler:quartz`（cron 表达式校验与下次触发计算的实现内核）与 `org.slf4j:slf4j-api`（Quartz 内部日志门面）。
 
 ### 10.6 构建插件
 
@@ -1002,78 +858,7 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | ⑤ | `publicSurfaceExact` | 根包**直接子文件**（路径含 `ROOT_PACKAGE` 且其后不再含 `/`）的 `.java` 数量**精确等于** `EXPECTED_PUBLIC_TYPES`（= 7），且其文件名集合**精确等于** `EXPECTED_ROOT_TYPES`（防同名替换）。`JobEvent.Phase` 为**嵌套类型**，不单独计数 |
 | ⑥ | `aifeiBridgePackageExists` | `SOURCE_ROOT/BRIDGE_PACKAGE` 必须为目录，且存在以 `BRIDGE_PACKAGE + "JobPlugin.java"` 结尾的源文件；否则失败 |
 
-### 11.2 实现要点
-
-- 复用的私有工具方法：`javaFiles()` / `imports(String)` / `normalize(Path)` / `isDirectRootFile(String)` / `containsSuffix(List<String>, String)`；异常消息须列出违规文件与 FQN（便于定位）。
-- 断言⑤的计数口径**只按文件数 + 文件名集合**，不解析类型修饰符：新增公共类型的唯一合法途径是**过设计决策并同步本表**，而不是改断言。
-- 门禁断言**不得为兼容错误用法而放宽或绕过**；新增包（例如未来 v1.1 的 `cluster`）时，若引入新的第三方类型，必须**先**更新本表并说明理由。
-
----
-
-## 12. 偏离记录
-
-### D1 —— `JobException` 构造器为 `public`（对需求决策 2 的唯一偏离）
-
-| 项 | 内容 |
-| --- | --- |
-| 需求原文 | `JobException` 是「`final class extends RuntimeException`、**构造器包私有**（仅模块内抛出，业务只 `catch` 不 `new`）」 |
-| 实际定档 | 构造器 **`public`**（两个重载：`(String)` / `(String, Throwable)`） |
-| 技术缘由 | 需求同时要求「`internal.JobErrors` 是**唯一构造点**」，而 `internal` 与根包是**不同 Java 包**：包私有构造器在 `cn.hg.aifei.job.internal` 内**不可调用**。二者在 Java 包语义下互斥，必须有一个让步——保留「唯一构造点」（可门禁 / 可评审），放开构造器可见性 |
-| 一致性论证 | 与 `aifei-lock` 的 `LockException`、`aifei-mq` 的 `MqException` 同为 **`public` 构造器**口径，生态内无第二套写法 |
-| 补偿约束 | ① `JobException` 的 javadoc **显著声明**「由模块内部抛出，业务方只 `catch` 不 `new`」；② `internal.JobErrors` 是**唯一构造点**（全模块唯一 `new JobException` 出现处）；③ 门禁口径**不改**：根包顶层公共 `.java` 文件数**精确 = 7**，不放宽；`JobEvent.Phase` 为嵌套类型不单独计数 |
-| 实现落地 | 1.0.0 已按本条落地：两个重载均为 `public`；其**唯一用途**是与 `internal.JobErrors` 的唯一构造点配套——`JobErrors` 仍是全模块唯一 `new JobException(...)` 出现处，`public` 不构成对外构造入口 |
-| 拍板 | 用户拍板（对本条不再列冲突、不再追问） |
-
-### D2 —— `JobKit` 未启动返回空集合、不抛异常
-
-| 项 | 内容 |
-| --- | --- |
-| 表面冲突 | 仓库根 `AGENTS.md` 命名约定：「`XxxKit` 有状态门面……未装配 / 已停止时调用即失败」 |
-| 本模块定档 | `JobKit#state()` / `#names()` 在未启动 / 已停机时**返回空集合，不抛异常**（需求第五节第 3 小节已定档） |
-| 理由 | ① **停机后观测口径不破裂**：管理端点 / 演示页在停机窗口轮询观测面时不应开始抛异常；② `JobKit` 是**纯只读观测门面**，无副作用、无「取到实例才能干活」的语义（判定口径「需要先从注册表 / 容器取到实例才能干活 → `Kit`」在此仅用于**命名**，不构成异常约定）；③ `Job` 的观测面本身就是「空 = 无任务」的自然表达 |
-| 边界 | 该让步**只覆盖 `JobKit` 两个只读方法**；不推广到其它 `XxxKit`，也不改变「未装配即失败」对**写入 / 触发类**门面的适用性 |
-| 拍板 | 用户拍板（不再列冲突） |
-
-### D3 —— `CronExpression` 缓存键为**表达式字符串**（非「按任务名」）
-
-| 项 | 内容 |
-| --- | --- |
-| 原文口径 | §3.1 / §5.2 曾写「`CronExpression` 实例按**任务名**缓存」 |
-| 实现实际 | `local.QuartzCronSupport` 的缓存 `Map<String, CronExpression>` 以**表达式原文**为 key，命中失败时构造并缓存（解析失败不写缓存） |
-| 理由 | `CronExpression` 的解析结果只由表达式决定，与任务名无关：按表达式缓存让**同表达式跨任务共享一次解析**，语义等价且缓存量更小；按任务名缓存会让同一表达式在 N 个任务下重复解析 N 次 |
-| 影响 | 无行为差异：错误消息仍带任务名（`compile(expression, taskName)` 每次传入），校验与下次触发计算的结果完全一致 |
-| 定档 | 以**实测为准**，实现不改；本文 §3.1 / §5.2 已同步为「按表达式字符串」 |
-
-### D4 —— `JobPlugin` 构造期 `prop == null` 抛 `IllegalArgumentException`
-
-| 项 | 内容 |
-| --- | --- |
-| 原文口径 | §9.3 与 §10 只说明「`job.*` 校验全走 `JobException`」，未提及构造期参数检查 |
-| 实现实际 | `JobPlugin(Prop prop)` 在 `prop == null` 时抛 `IllegalArgumentException("prop can not be null")` |
-| 理由 | 与 `MqPlugin` / `WebSocketServerPlugin` 的构造期口径一致：**调用方编程错误**（漏传参数）在装配前就暴露，不属于「应用启动期配置非法」；`IllegalArgumentException` 在 `plugins.add(...)` 处即抛出，早于 `start()` |
-| 边界 | `job.*` 配置缺失 / 越界、扫描与注解校验、cron 非法等**仍全部走 `JobException`**，语义不变（§4.3） |
-| 定档 | 以实测为准，实现不改 |
-
-### D5 —— `AifeiJobContainer#isSingleton` 比原字面多一步映射解析
-
-| 项 | 内容 |
-| --- | --- |
-| 原文口径 | §5.2 曾写 `isSingleton(type)` → 「`type` 上的 `@Singleton#value()`，缺省 `AopKit.get().isSingleton()`」 |
-| 实现实际 | 先经 `AopKit.get().getAopFactory().getMappingClass(type)` 把**声明类型**解析成**实际类型**（接口→实现类 / 父类→子类），再取该类型上的 `@Singleton`；未声明时回落 `AopKit.get().isSingleton()` |
-| 理由 | 与框架 `AopFactory#doGet` 的判定规则**逐条一致**：任务类可能以接口类型被扫描到，若直接读声明类型上的注解会漏判映射后的实现类声明，导致多例判定与容器实际语义不一致 |
-| 影响 | 判定结果更准确，是「容器语义映射唯一定义点」的应有之义；不影响公共面与门禁 |
-| 定档 | 以实测为准，实现不改；本文 §5.2 已同步 |
-
----
-
 ## 13. demo 工程（`aifei-job-demo`，示例工程，不属本模块发布件）
-
-### 13.1 路线与原型确认时点
-
-- **静态原型路线**：前端**直接出功能体验完整的单页 HTML（假数据）**，不走「产品文档 + QA 基线门禁」流程。
-- **原型确认时点**：**在 demo 后端开工前**，由**用户**确认原型（未确认不得开始 demo 后端实现）。
-- 前端栈：**Aifei 静态层**（`src/main/webapp/`，无构建工具、无 npm / TS）；页面 `view/job/index.html`，请求用原生 `fetch`。
-- 完整 demo：`aifei-job-demo` 位于**仓库根、与本模块平级**；自写 HIO（对齐 `aifei-mq-demo` 的 `common/arch`），`start-demo.bat` / `stop-demo.bat`。
 
 ### 13.2 端口与端点契约
 
@@ -1096,8 +881,8 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 | 1 | **任务列表** | 名称（`类全名#方法名`）/ 触发方式 / 最近触发时间 / 阶段；`STARTED` 显示「执行中」 | `state()` 只给终态，执行中视图取**监听器事件流** |
 | 2 | **到点触发** | 触发瞬间高亮（新事件插入动画 / 行闪烁），并显示距下次触发的倒计时 | 事件流 `STARTED`；倒计时由 demo 自算 |
 | 3 | **跳过 `SKIPPED`** | `SKIPPED` 与 `SUCCESS` 视觉可区分；展示其事件时间（原计划触发时刻）与当前时间的差 | fixedRate 超时跳过 / 队列拒绝 |
-| 4 | **异常隔离** | 一个任务 `FAILED`（红色 + 异常摘要）时，其他任务的触发时间点**照常推进** | 决策 6 |
-| 5 | **停机收敛** | 「等待中（在途任务数）」与「已中断（超时 `shutdownNow` 后的 `SKIPPED` 计数）」两个状态可见 | 决策 9；`stop()` 期间由 demo 主动调用 `Plugin.stop()` / 重新 `start()` 演示 |
+| 4 | **异常隔离** | 一个任务 `FAILED`（红色 + 异常摘要）时，其他任务的触发时间点**照常推进** | §6 任务异常就地隔离 |
+| 5 | **停机收敛** | 「等待中（在途任务数）」与「已中断（超时 `shutdownNow` 后的 `SKIPPED` 计数）」两个状态可见 | §6.1 优雅停机；`stop()` 期间由 demo 主动调用 `Plugin.stop()` / 重新 `start()` 演示 |
 
 ### 13.4 硬约束：「触发方式」与「下次触发时间」由 demo 自算
 
@@ -1117,63 +902,3 @@ private static final Set<String> EXPECTED_ROOT_TYPES = new LinkedHashSet<>(Array
 > demo 的日志工厂按框架既有语义处理（`aifei` 由 demo 自带）。
 
 ---
-
-## 14. 待明确事项与假设
-
-| # | 事项 | 处理 / 假设 |
-| --- | --- | --- |
-| 1 | **`JobException` 构造器可见性** | 已拍板 `public`（§12 D1）；门禁口径不变 |
-| 2 | **`JobKit` 未启动语义** | 已拍板返回空集合（§12 D2） |
-| 3 | **Quartz 传递依赖实测** | **已实测回填**（§10.2 / §10.3，2026-11-10）：3 条 exclusion（`c3p0` / `mchange-commons-java` / `HikariCP-java7`）均为有效排除，零日志绑定；`c3p0:c3p0` 旧变体实测不存在，故未写 exclusion |
-| 4 | **根 `AGENTS.md` 的 `compile` 例外登记** | **已完成**：本模块的 Quartz / slf4j-api 两条例外已在根 `AGENTS.md`「已登记的 `compile` 例外」清单登记（§10.5），理由指向本文 §10.1 / §3.1 |
-| 5 | **表达式「无下次触发时刻」** | 极端表达式（如年份已过）`getNextValidTimeAfter` 返回 `null`。实现口径：`CronCalculator#nextAfter` 返回 `-1`，`JobSchedule#nextDelay` 返回 `-1`，`JobScheduler#reschedule` **放弃续排并 `log.warn` 一次**（不抛、不记账）。需求未覆盖此场景，故列为实现期口径 |
-| 6 | **daemon 线程** | 两层线程设为 daemon（§3.1 实现口径）。若不设，插件未 `stop()` 会拖住 JVM 退出；设为 daemon 后「进程退出即停」符合「不保证强制终止」声明。**属实现口径，可评审但不改契约** |
-| 7 | **方法发现范围** | 只扫被扫到类**自身声明**的方法（`getDeclaredMethods()`）；继承而来的注解方法不注册（避免父子类各自注册触发任务名判重误报）。需求未明确，按此实现并写入 README 注意事项 |
-| 8 | **`Scanner.scan` 的过滤条件** | 候选类发现用 `scan(package)` 全量取类，注解识别在 `internal.JobScanner` 内完成（保持规则在 `internal`、框架调用在 `aifei`）。包很大时会有一次性扫描开销，属启动期成本 |
-| 9 | **一次 `stop()` 后能否再 `start()`** | v1 未定档。实现取**保守口径**：`stop()` 后 `start()` **允许**（每次都新建线程池与容器引用，无 `AopKit` 单例残留问题——本模块不向容器注册任何对象）。若实现期发现副作用，须回填本节 |
-| 10 | **测试替身 `NoopLogFactory` 的来源** | 复制 `aifei-weixin` 的 `support/NoopLog` / `NoopLogFactory` 到 `src/test/java/cn/hg/aifei/job/support/`（保留原版权头、只改 `package`），`@BeforeClass` 装配。框架另自带 `cn.aifei.log.NoLogFactory`（默认即抛异常，不可用于测试），故测试须自带空实现 |
-| 11 | **demo 端点与原型细节** | 端点契约（§13.2）与观测点（§13.3）为定稿；页面视觉与交互由前端成员出原型后经用户确认，**不得**回头要求模块新增公共 API |
-| 12 | **v1.1 集群互斥** | 不在本次范围；`JobPlugin.start()` 将被修改（非纯新增），故 v1 不留任何桩代码与占位配置（§1.4） |
-
----
-
-## 15. 文件清单（1.0.0 目标态）
-
-```text
-aifei-job/                                  io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                 # Java 8；aifei provided；quartz + slf4j-api compile；传递依赖排空
-├── README.md                               # 用法 / 语义声明 / 依赖声明（面向使用者）
-├── AGENTS.md                               # 开发约束（面向开发代理）
-├── docs/
-│   ├── design.md                           # ★ 本文（契约事实来源）
-│   └── testing.md                          # 测试策略与用例清单
-└── src/
-    ├── main/java/cn/hg/aifei/job/
-    │   ├── JobKit.java                     ┐
-    │   ├── JobEvent.java                   │ 公共面 7 类型（门禁⑤ EXPECTED_ROOT_TYPES）
-    │   ├── JobListener.java                │
-    │   ├── JobException.java               │
-    │   ├── Cron.java / FixedRate.java / FixedDelay.java
-    │   ├── internal/                       # 17 类（§5.1）
-    │   │   ├── JobConfig.java · JobErrors.java · JobNames.java
-    │   │   ├── JobTrigger.java · JobTask.java · JobScanner.java · JobRegistry.java
-    │   │   ├── JobContainer.java · JobInstances.java
-    │   │   ├── JobState.java · JobEvents.java · JobHolder.java
-    │   │   ├── JobSchedule.java · CronCalculator.java
-    │   │   └── JobScheduler.java · JobWakeTask.java · JobRunner.java
-    │   ├── local/QuartzCronSupport.java    # 唯一 org.quartz.* 出现点（门禁①）
-    │   └── aifei/
-    │       ├── JobPlugin.java              # 唯一框架装配入口（门禁⑥）
-    │       └── AifeiJobContainer.java      # 容器语义映射（Aop.get / @Singleton / AopKit）
-    └── test/java/cn/hg/aifei/job/
-        ├── ArchitectureBoundaryTest.java    # 门禁 6 例（§11）
-        ├── support/                         # NoopLog / NoopLogFactory / TestJobContainer / 测试任务类
-        └── ...                              # 用例类清单见 docs/testing.md
-```
-
-- **不计入本清单**：`aifei-job-demo/` 位于**仓库根、与本模块平级**（示例工程，不随模块发布）。
-- 依赖方向：`local` / `aifei` → `internal` 契约；`internal` 不依赖 `local` / `aifei`；契约层零第三方类型。
-
----
-
-> **一句话总览**：`io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT` 单模块 —— 根包 **7 个公共类型**（`JobKit` / `JobEvent` / `JobListener` / `JobException` + 3 注解）+ `internal` 非承诺实现（配置 / 错误 / 任务名 / 触发方式 / 扫描 / 注册表 / 容器实例 / 记账 / 事件 / holder / 纯函数节拍 / 调度内核与两层 Runnable）+ `local.QuartzCronSupport`（唯一 Quartz 触点）+ `aifei.JobPlugin` 单一装配入口。调度模型 = 唤醒层固定 1 线程的自续排单飞；不重叠、不堆叠、不补跑是结构属性；拒绝、跳过、异常、停机四类语义各有唯一记账点。

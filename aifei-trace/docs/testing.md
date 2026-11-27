@@ -1,8 +1,7 @@
-# aifei-trace 测试策略与用例清单
+# aifei-trace 测试文档
 
-> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
 
-本文面向**测试维护者**：说明测试分类、用例与设计契约场景的对照关系、验证命令与离线纪律。行为契约与异常语义的完整定义见 `docs/design.md`（§5 公共 API 契约 / §7.2 异常语义表 / §7.3 消息措辞 / §10 门禁清单 / §15 验收标准），本文不复制契约细节，仅用指针引用。
+本文说明测试分类、用例与场景的对照关系、验证命令与离线纪律。
 
 ---
 
@@ -10,8 +9,8 @@
 
 | 分类 | 文件 | 用例数 | 职责 |
 | --- | --- | --- | --- |
-| **架构门禁** | `ArchitectureBoundaryTest` | 10 例门禁 + 5 例自证 = 15 | 以源码文本扫描断言包边界 / 公共面大小 / Java 8 / 无 SPI / 测试离线（design.md §10 十例清单）；另 5 例自证用例验证门禁⑩剥注释状态机自身的判定正确性（外部 URL 命中 / 注释豁免 / 字面量内 `//` 不误判 / 协议大小写 / 普通斜杠不误报） |
-| **单测（门面与生成）** | `TraceKitTest` | 9 | 覆盖 design.md §7.2 场景 1–3 / 7 / 11–13 + startSpan 覆盖语义 + 生成器替换生效 |
+| **架构门禁** | `ArchitectureBoundaryTest` | 10 例门禁 + 5 例自证 = 15 | 以源码文本扫描断言包边界 / 公共面大小 / Java 8 / 无 SPI / 测试离线；另 5 例自证用例验证门禁⑩剥注释状态机自身的判定正确性（外部 URL 命中 / 注释豁免 / 字面量内 `//` 不误判 / 协议大小写 / 普通斜杠不误报） |
+| **单测（门面与生成）** | `TraceKitTest` | 9 | 覆盖场景 1–3 / 7 / 11–13 + startSpan 覆盖语义 + 生成器替换生效 |
 | **单测（上下文）** | `TraceContextTest` | 4 | null = 移除、clear 幂等、两个 ThreadLocal 独立存取 |
 | **单测（生成器）** | `DefaultTraceIdGeneratorTest` | 3 | 格式契约固定断言（非空 / 32 位 / `[0-9a-f]`）、千次唯一、单例形态 |
 | **单测（日志装饰）** | `TraceLogTest` | 7 | 覆盖 §7.2 场景 8–9 与 AC-09：30 打印方法 + 5 开关全覆盖、前缀拼装、TraceId 缺失原样透出、Supplier 打印时刻求值（正反两个时序 + 求值计数器） |
@@ -29,7 +28,7 @@
 
 ---
 
-## 2. 场景 ↔ 用例对照表（design.md §7.2）
+## 2. 场景 ↔ 用例对照表
 
 | §7.2 场景 | 行为 | 覆盖用例 |
 | --- | --- | --- |
@@ -42,7 +41,7 @@
 | 7 | `getTraceId()` / `getSpanId()` 未绑定返回 null | `TraceKitTest.gettersShouldReturnNullWhenUnbound`、`TraceContextTest.gettersShouldReturnNullWhenUnbound` |
 | 8 | TraceId 缺失时消息原样透出 | `TraceLogTest.missingTraceIdShouldPassThroughRaw`；Supplier 反向时序 `supplierShouldNotPrefixWhenTraceIdClearedBeforeFlush` |
 | 9 | `new TraceLog(null)` / `new TraceLogFactory(null)` 拒绝（§7.3 措辞） | `TraceLogTest.nullDelegateShouldReject`、`TraceLogFactoryTest.nullDelegateShouldReject` |
-| 10 | 替换生成器产出违例不校验、按原值绑定 | **间接覆盖**：`web.TraceHandlerTest.extractedValueShouldBeBound` 证明非契约格式值（`"upstream-trace-id"`）按原值绑定不拦截；「生成器产出违例」路径无直接用例（见 §4 余量说明） |
+| 10 | 替换生成器产出违例不校验、按原值绑定 | **间接覆盖**：`web.TraceHandlerTest.extractedValueShouldBeBound` 证明非契约格式值（`"upstream-trace-id"`）按原值绑定不拦截；「生成器产出违例」路径无直接用例 |
 | 11 | 未做任何配置直接调用即正常工作 | `TraceKitTest.shouldWorkWithoutAnyConfiguration` |
 | 12 | `next == null` 安全结束 | `web.TraceHandlerTest.nextNullShouldEndSafely` |
 | 13 | 重复 / 对未绑定线程 clear 幂等 | `TraceKitTest.clearShouldBeIdempotent`、`TraceContextTest.clearShouldBeIdempotent` |
@@ -70,13 +69,13 @@ javap -verbose target/classes/cn/hg/aifei/trace/TraceKit.class | grep "major ver
 
 ---
 
-## 4. 离线纪律与宽容余量
+## 4. 离线纪律与未覆盖项
 
 - **离线纪律**：全部测试零网络请求。门禁⑩（`testSourcesOfflineOnly`）剥注释后扫描测试源码，代码字面量里的 URL host 只允许 `127.0.0.1` / `localhost`；版权头 gitee 地址在注释中被剥离，不参与判定。断网环境 `mvn clean verify` 全绿（仅 Maven 自身可能查仓库，可配合 `-o` 离线模式）。
 - **无等待**：测试无 `Thread.sleep`、无锁等待；生成器唯一性断言用 1000 次 UUID 采样，毫秒级完成。
-- **宽容余量（已知缺口，均有兜底）**：
+- **已知缺口（均有兜底）**：
   1. **§7.2 场景 10 的「生成器路径」**：未单独构造「自定义生成器返回非 32 位格式 → 模块原样绑定」用例；已由 extractor 路径（`extractedValueShouldBeBound` 绑定非契约格式值）间接证明「绑定不校验格式」。若未来需要直接覆盖，可在 `TraceKitTest` 增加一个返回任意字符串的桩生成器用例。
-  2. **门禁⑧的「instanceof 模式匹配」片段**：design.md §10 ⑧文本提及，实现断言清单未含该片段（属 Java 16+ 语法，`javac -source 1.8` 本身会拒编，双保险少一层文本断言，不构成放宽）。
-  3. 门禁②的「禁止其余 `cn.aifei.*` 框架包」按前缀枚举（core / log 之外的 `cn.aifei.*` 一律失败），与 §10 ② 口径一致。
+  2. **门禁⑧的「instanceof 模式匹配」片段**：门禁⑧文本提及，实现断言清单未含该片段（属 Java 16+ 语法，`javac -source 1.8` 本身会拒编，双保险少一层文本断言，不构成放宽）。
+  3. 门禁②的「禁止其余 `cn.aifei.*` 框架包」按前缀枚举（core / log 之外的 `cn.aifei.*` 一律失败），与门禁②口径一致。
 
-> 以上余量均**不改变**契约语义，列为维护者知悉项；新增公共类型 / 放宽门禁须先改 `docs/design.md` §5 / §10。
+> 以上缺口均**不改变**契约语义，列为维护者知悉项。

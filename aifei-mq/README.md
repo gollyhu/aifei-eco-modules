@@ -626,13 +626,13 @@ mq.rocketmq.consumer-group = ORDER_CONSUMER
 2. `XxxMessageBus implements MessageBus`——实现 `publish` / `subscribe` / `unsubscribe` / `close` 四个方法，订阅登记与派发由本后端负责。
 3. 在 `src/main/resources/META-INF/services/cn.hg.aifei.mq.internal.MqProvider` 追加一行 provider 全限定类名，并重新发布本 JAR。
 
-约束：`Producer` / `Consumer` 视图已统一提供，后端**不要**再写视图类；配置一律经 `MqConfig.get(relativeKey)` 读取，**不要手写** `"mq.<type>."` 前缀；后端行为差异须在 `docs/design.md` 的差异清单中逐项列明。
+约束：`Producer` / `Consumer` 视图已统一提供，后端**不要**再写视图类；配置一律经 `MqConfig.get(relativeKey)` 读取，**不要手写** `"mq.<type>."` 前缀。
 
 ### 7.2 topic 使用模式
 
-推荐用法（设计事实来源：`docs/design.md` §5.8）：**topic 表达稳定业务域，事件类型放 payload 业务字段，订阅侧本地分发**。
+推荐用法：**topic 表达稳定业务域，事件类型放 payload 业务字段，订阅侧本地分发**。
 
-- **为什么不在运行期增减 topic**：7 个后端中仅 MQTT（`+` / `#`）与 RabbitMQ（配置交换机后）有 topic 级通配；「只 send 从未订阅的 topic」在 RabbitMQ 下会被 broker 静默丢弃。固定 topic 集合是唯一跨后端一致的模式。
+- **topic 集合固定、不在运行期增减**：7 个后端中仅 MQTT（`+` / `#`）与 RabbitMQ（配置交换机后）有 topic 级通配；「只 send 从未订阅的 topic」在 RabbitMQ 下会被 broker 静默丢弃。固定 topic 集合是唯一跨后端一致的模式。
 - **命名与载荷**：小写 kebab-case 领域名；单进程 topic 个位数到低两位数（消费方集合与保序 / 权限需求相同的才合并）；payload 用 JSON（`type` + `version` + 业务字段），模块不解析。
 - **订阅即契约**：启动期一次性 `subscribe` 完毕，运行期不增减 topic。
 
@@ -679,6 +679,6 @@ mvn test "-Dtest=RedisStreamMessageBusContractTest" "-Dredisstream.integration=t
 
 ### 8.3 文档
 
-- 设计契约（事实来源）：`docs/design.md`
+- 公共面与行为契约：`docs/design.md`
 - 开发约束：`AGENTS.md`
 - 测试策略：`docs/testing.md`

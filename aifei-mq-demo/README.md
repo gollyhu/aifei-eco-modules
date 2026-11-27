@@ -1,6 +1,6 @@
 # aifei-mq-demo
 
-`aifei-mq` 的多后端演示工程（**示例工程，不发布**）：在同一个进程内装配**多个**消息实例（主实例 `memory` + 三个命名实例），用 HTTP 端点与两个浏览器页面演示 **装配 → 发送 → 订阅消费** 的完整闭环，并按 **E2 定档**（固定 topic + payload 内 `type` 路由键）演示「事件类型由消费侧分发」。
+`aifei-mq` 的多后端演示工程（**示例工程，不发布**）：在同一个进程内装配**多个**消息实例（主实例 `memory` + 三个命名实例），用 HTTP 端点与两个浏览器页面演示 **装配 → 发送 → 订阅消费** 的完整闭环，并以固定 topic + payload 内 `type` 路由键的方式演示「事件类型由消费侧分发」。
 
 - 结构对齐 `aifei-sentinel-demo` / `aifei-websocket-demo`：`DemoApp` → `Aifei.start(DemoAppConfig)`，HIO 逐字同步自官方 `jfinal/aifei-eco`（保留官方包名 `cn.aifei.demo.common.arch` 与版权块）+ 两个 Just Service（`service` 包）。
 - 生产者 / 消费者由 `MqPlugin` 注册为 `@Inject` 单例，Service 里 `@Inject Producer` / `@Inject Consumer` 取用；订阅则用静态门面 `ConsumerKit.use().subscribe(...)` —— 两种取用方式都被演示。
@@ -115,9 +115,9 @@ HTTP 端口不在配置文件里，由 `start-demo.bat` 的 `-Dundertow.port=181
 
 ---
 
-## 5. E2 事件演示
+## 5. 事件类型分发演示
 
-按 `aifei-mq` 的 **E2 定档**（`aifei-mq/docs/design.md` §5.8）：topic 表达**稳定业务域**，事件类型放 payload 的 `type` 字段，由**订阅侧本地分发**——broker 不需要知道事件类型，运行期不增减 topic。
+topic 表达**稳定业务域**，事件类型放 payload 的 `type` 字段，由**订阅侧本地分发**——broker 不需要知道事件类型，运行期不增减 topic。
 
 - 业务域（固定常量，不进配置）：`order-events`（`created` / `paid` / `cancelled`）、`pay-events`（`paid` / `refunded` / `failed`）。
 - 装配期为**每个实例**订阅这两个业务域（`source=startup`，页面不可取消）；payload 形如 `{"type":"paid","version":1,"bizId":"A1001"}`。

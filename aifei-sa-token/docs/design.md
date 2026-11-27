@@ -1,7 +1,5 @@
 # aifei-sa-token 设计文档
 
-> 版本：1.0.0 ｜ 关联：`README.md`（定位与用法）、`docs/testing.md`（测试）
-
 ## 1. 背景与目标
 
 Sa-Token 是一站式 Java 认证鉴权框架（认证、权限、会话、注解鉴权等）。它通过 `SaTokenContext` 抽象屏蔽 Web 框架差异，但官方 starter 全部面向 Servlet 或 Spring 生态（`sa-token-servlet`、`sa-token-spring-boot-starter`、`sa-token-solon-plugin` 等），**没有 aifei 的现成实现**。
@@ -16,42 +14,6 @@ aifei 的两个特征使常见接法都不成立：
 - 消费方**不必改造自有 HIO**，也不必为 Sa-Token 编写模型适配类；
 - 消费方只写鉴权规则与失败响应，不接触上下文桥接细节；
 - 与 Sa-Token 官方配置、注解、`StpUtil` 用法保持一致，降低迁移成本。
-
-## 2. 选型与技术决策
-
-| 决策 | 结论 | 理由 |
-|---|---|---|
-| 引入方式 | 引入 `sa-token-core`（compile），**不引任何 starter / servlet 插件** | 只用核心的认证鉴权与会话能力；starter 会把 Servlet 依赖与 Spring 生态带入 |
-| 上下文挂载点 | **装饰 `cn.aifei.server.Dispatcher`** | 见 §2.1，这是本设计最关键的决策 |
-| 装配入口 | 实现 `cn.aifei.plugin.Plugin`，构造期只持 `Prop` | 对齐仓库根 `CODEBUDDY.md` 的框架集成共性：配置解析发生在 `start()`，不留半装配状态 |
-| 路由匹配 | 自研 `PathPatternMatcher`（Ant 风格），**不覆盖** `SaStrategy.instance.routeMatcher` | aifei 的 `cn.aifei.router.Router` 只做精确匹配、`cn.aifei.util.PathUtil` 是文件系统工具，无 URL 通配匹配可复用；自研后无需污染 Sa-Token 全局策略 |
-| 鉴权失败响应 | 默认置 HTTP 401（未登录）/ 403（其余），可经 SPI 换成业务码 | 挂载点在 Dispatcher 层，拿到 `HttpServerExchange` 后状态码可直接写；同时保留"HTTP 恒 200 + 业务码"这一本仓库既有语义的替换通道 |
-| 会话持久层 | 默认用 Sa-Token 内置内存实现；多实例或需落库时换用 `SaTokenDaoForCache`（纯缓存 / 缓存加速 + 权威委托两种形态） | 单机零依赖即可跑通；换实现只改装配一处，业务代码不变 |
-| Java 版本 | 1.8 | 仓库硬约束；Sa-Token 1.46.0 本身即以 `maven.compiler.release=8` 发布 |
-
-### 2.1 为什么挂载在 Dispatcher 层
-
-最初的方案是把上下文装配放在 aifei 拦截器（`cn.aifei.aop.Interceptor`）里，但拦截器是**方法级 AOP**，其 `Invocation` 只能拿到 `Input` / `Output`，而：
-
-- `cn.aifei.core.Input` 只提供参数取值，**没有 Header / Cookie / 请求方法 / 请求路径**；
-- aifei 的 `Output` 实现（应用自写）通常**不持有** `HttpServerExchange`，无法写响应头与 Cookie。
-
-要让 Sa-Token 工作，必须补齐「请求元信息读取」与「响应写回」两件事。这两个能力都只有 `HttpServerExchange` 提供，而 `Dispatcher` 的入参恰好就是它：
-
-```java
-public interface Dispatcher<P1, P2, I extends Input, O extends Output> {
-    void init(Handler<I, O> handler);
-    void dispatch(P1 p1, P2 p2);
-}
-```
-
-装饰 `Dispatcher` 后同时获得三项收益：
-
-1. 请求元信息与响应写能力全部可得，**无需任何 In/Out 适配代码**；
-2. 上下文生命周期与请求完全对齐，比方法级拦截器覆盖更完整；
-3. 消费方改动仅一行（替换 `setServer` 的第二个参数）。
-
-代价是**绑定 Undertow**：本 SDK 的定位即为「aifei + Undertow 的 Sa-Token 接入」，该绑定是显式设计决策，由门禁测试约束其边界（见 §3.2）。
 
 ## 3. 总体架构
 

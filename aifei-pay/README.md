@@ -119,7 +119,7 @@ PayNotifyUtil.verifyAndParse("alipay-main", null, PayNotifyRequest.of(params));
 
 1. **不要**再显式引入 `bcprov-jdk15on`（会与 `bcprov-jdk18on` 同名类冲突）。
 2. `dom4j` 必须锁 `2.1.5`（2.2.0 起字节码为 55，超出 Java 8 基线）。
-3. 上述三个 exclusion 不要移除；其中 `jackson-databind-nullable` 的排除基于「该 SDK 版本被引用 0 次」的实测结论，
+3. 上述三个 exclusion 不要移除；`jackson-databind-nullable` 在该 SDK 版本中被引用 0 次，
    **升级 `alipay-sdk-java-v3` 时必须重新验证**。
 4. 缺失内核依赖时，模块会在装配期或调用入口抛 `PayException`，消息含缺失坐标与补齐提示，
    不会让 `NoClassDefFoundError` 冒到业务代码。
@@ -322,7 +322,7 @@ PayNotify sync = PayNotifyUtil.verifyAndParse(appId, request.getQueryString());
 | **凭据与环境无法机械绑定** | 模块只能校验 `gateway-url` 的 host 与 `env` 一致；「这把私钥属于沙箱还是生产」需靠配置评审与凭据来源管理兜底 |
 | **`stop()` 后已注入字段仍持旧实例** | 框架无注销 API；`PayKit.defaultClient()` 会立即失败，但已注入的字段不会自动置空 |
 | **不做收银台页面 / Servlet 适配** | 模块只产出支付参数与跳转载荷，回调报文以 `String` / `Map` 入参 |
-| **微信支付本期不实现** | `wxpay` 仅登记类型，交易会报「适配器未落地」；微信支付能力见 `aifei-weixin`，两者并存、用户二选一。其它七渠道已落地 |
+| **微信支付不实现** | `wxpay` 仅登记类型，交易会报「适配器未落地」；微信支付能力见 `aifei-weixin`，两者并存、用户二选一。其它七渠道已落地 |
 | **同步跳转报文也可能为空** | 用户中途放弃支付时不会带回参数，业务需容错 |
 
 异常分类边界：调用方参数写错（空白单号、`amountFen <= 0`、超长）抛 `IllegalArgumentException`；

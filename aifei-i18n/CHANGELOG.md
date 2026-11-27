@@ -25,28 +25,14 @@
 ### 已知问题 / 限制
 
 - `properties` 来源为启动期全量快照，改值须重启应用才生效；需热更新请放 `db` / `kv` 来源并调用 `I18nKit.refresh()`。
-- 模块不提供 HTTP 端点，前端语言包下发由消费方 Just Service 一行写成 JSON（契约见 README §二.5）。
+- 模块不提供 HTTP 端点，前端语言包下发由消费方应用写成 JSON。
 - 跨 JDK 格式化结果由 JDK 自带 locale 数据决定，不承诺字节级一致；建议统一指定 `-Djava.locale.providers=CLDR`。
 - `dir` 判定依赖 `java.awt.ComponentOrientation`（`java.desktop`）；jlink 裁剪运行时镜像须保留该模块，否则降级为 `ltr` + WARN，不阻断导出（Java 8 无模块系统，不受影响）。
 - `i18n.locales` 白名单**仅用于请求头过滤**，不阻断显式 locale 的整包导出；导出合法性只要求显式 locale 为合法 BCP 47。
 
-## 构建与交付产物
+## 环境要求
 
-- **构建命令**：`cd aifei-i18n && mvn clean verify`。实测输出关键行：`Tests run: 126, Failures: 0, Errors: 0, Skipped: 0`、`BUILD SUCCESS`。
-- **产物**：`target/aifei-i18n-1.0.0.jar`。内含 32 个主源文件编译产物及 Maven 元数据（`pom.xml` / `pom.properties`）。
-- **版本核对**：`javap -verbose` 抽验 `cn.hg.aifei.i18n.I18nKit` → `major version: 52`；`pom.xml` 为 `1.0.0`，与坐标 `io.github.gollyhu:aifei-i18n:1.0.0-SNAPSHOT` 一致。
-- **环境要求**：JDK 8+（class major 52）、Maven 3.6+；`cn.aifei:aifei:1.1.2` 由消费方提供（`provided`）；仅用 `kv` 来源时才需 `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT`。
-
-## 交付物清单
-
-| 类别 | 文件 |
-| --- | --- |
-| 文档 | `README.md`（面向使用者）、`AGENTS.md`（模块开发约束）、`docs/design.md`（设计事实来源）、`docs/需求/aifei-i18n.md`（需求与 16 条 P0 / 75 条 AC 矩阵）、`docs/testing.md`（QA 独立复验报告）、`CHANGELOG.md`（本文件） |
-| 构建 | `pom.xml`（坐标 1.0.0，Java 8 编译目标，门禁 surefire 配置） |
-| 主源（32） | 根包 7：`I18nKit` / `Localizer` / `FormatKit` / `MessageSource` / `LanguageBundle` / `DateStyle` / `I18nException`；`web` 2：`I18nHandler` / `LocaleExtractor`；`aifei` 1：`I18nPlugin`；`internal` 13：`I18nConfig` / `LocaleNormalizer` / `LocaleResolver` / `LocaleContext` / `FallbackChain` / `CacheLayer` / `MessageInterpolator` / `BundleExporter` / `LocaleMeta` / `FormatSupport` / `SourceRegistry` / `I18nHolder` / `I18nEngine`；`defaultSource` 3：`PropertiesSource` / `DbSource` / `KvSource`；`enjoy/directive` 6（非承诺）：`I18nDirective` / `LangDirective` / `DirDirective` / `DirectivePageState` / `DirectiveSupport` / `DirectiveRegistrar` |
-| 测试（14：11 个测试类 + 3 个测试替身） | `I18nKitTest` / `FormatKitTest` / `LocaleResolverTest` / `BundleExportTest` / `I18nPluginTest` / `I18nHandlerTest` / `ArchitectureBoundaryTest` / `ClassFileVersionTest` / `QaConsistencyTest` / `QaLogLevelTest` / `enjoy/directive/DirectiveTest`；`support`：`FakeMessageSource` / `FakeDbAccessor` / `RecordingLogFactory` |
-| 产物 | `target/aifei-i18n-1.0.0.jar` |
-| 仓库根同步 | `README.md`（模块总览表 / 构建清单 / 依赖说明各 1 行）、`AGENTS.md`（适用范围模块清单 1 处 + 公共面框架类型例外 1 处） |
+JDK 8+（class major 52）、Maven 3.6+；`cn.aifei:aifei:1.1.2` 由消费方提供（`provided`）；仅用 `kv` 来源时才需 `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT`。
 
 ## 集成与启动说明
 
@@ -96,7 +82,7 @@ plugins.add(new I18nPlugin(prop));
 
 本模块是库（SDK），无独立进程。按以下顺序验证「起来了」：
 
-1. 在模块根执行 `mvn clean verify`，输出 `BUILD SUCCESS` 且 `Tests run: 126, Failures: 0, Errors: 0`。
+1. 在模块根执行 `mvn clean verify`，输出 `BUILD SUCCESS` 且测试 0 failure / 0 error。
 2. 消费方应用装配 `I18nPlugin` 后，调用 `I18nKit.local("zh-CN").message("login.title")` 返回译文而非 key 原文；`I18nKit.bundle("zh-CN")` 得到四字段齐全的语言包。
 3. Web 场景确认 `I18nHandler` 为链上第一个 Handler，且 `Accept-Language` 能改变文案语种。
 

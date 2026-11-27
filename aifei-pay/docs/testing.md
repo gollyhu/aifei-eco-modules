@@ -1,13 +1,7 @@
-# aifei-pay 测试文档（用例清单 · AC 映射 · 实跑结果）
+# aifei-pay 测试文档
 
 > **文件定位**：本文是 `aifei-pay` 的**测试事实来源**——用例清单、「AC 编号 ↔ 用例 ↔ 实跑结果」三列映射、
-> 未覆盖项与原因、失败反证记录、缺陷路由结论、未验证项收口情况。契约见 `docs/design.md`，
-> 需求事实来源见 `docs/需求/aifei-pay.md`（AC-01~AC-27，V2.0 口径）。
->
-> **验证纪律**：本文所有「通过」结论均来自**实际执行输出**（命令与原始数字见 §2），不含凭代码阅读的推断。
->
-> **本轮范围**：设计 §11 的 T12 / T13 / T14（配置与装配、交易动作、验签与轮换），承载
-> AC-01、AC-05~AC-18、AC-21。AC-02/03/04/19/20 由架构门禁承载、AC-22 由构建承载，本轮只做回归。
+> 内容包含用例清单、AC ↔ 用例 ↔ 实跑结果映射、未覆盖项与未验证项。
 
 ---
 
@@ -19,9 +13,8 @@
 | 通过 | **174** |
 | 失败 / 错误 / 跳过 | **0 / 0 / 0** |
 | 构建 | `mvn clean verify` **BUILD SUCCESS**（AC-22） |
-| 源码缺陷（回流开发工程师） | **0 条** |
-| 测试自身缺陷（本轮自行修正） | **3 条**（见 §7） |
-| 设计文档偏差（建议回写设计） | **3 条**（见 §8） |
+
+
 | 遗留风险 | 5 项未验证项中 1 项本轮闭环、2 项部分闭环、2 项必须实机（见 §6） |
 
 ---
@@ -158,9 +151,9 @@ mvn test -Dtest=PayVerifyCertTest
 
 ---
 
-## 7. 失败反证记录（证明用例有实效，不是恒绿）
+## 7. 失败反证记录
 
-为排除「用例写法本身导致恒绿」，本轮主动制造了两处断点并确认变红后恢复：
+为排除用例恒绿，制造了两处断点并确认变红后恢复：
 
 | # | 反证手法 | 预期 | 实际输出 | 恢复后 |
 | --- | --- | --- | --- | --- |
@@ -171,34 +164,10 @@ mvn test -Dtest=PayVerifyCertTest
 
 ---
 
-## 8. 智能路由结论
-
-### 8.1 源码缺陷（回流开发工程师）
-
-**0 条。** 本轮全部用例在未改动 `src/main/java` 任何字节的前提下通过。
-
-### 8.2 测试自身缺陷（本轮自行修正）
-
-| # | 现象 | 定性 | 处理 |
-| --- | --- | --- | --- |
-| 1 | `PayVerifyCertTest` 4 例报 `IllegalStateException: LogFactory not configured.` | 测试夹具缺失：模块两处 warn 依赖应用侧已装配 `LogFactory`（与出站 HTTP 模块同口径，非模块缺陷） | 用例 `@Before` 换入 `NoOpLogFactory`，`@After` 还原 |
-| 2 | `PayVerifyCertTest#shouldThrowWithoutLeakingMessageContentWhenCertSignatureInvalid` 未抛异常 | 用例写错：先篡改字段再签名，等于签了一个合法报文 | 改为「先签名后篡改」 |
-| 3 | `PayErrorsTest` 长度断言、`PayOrderTest` 回调键名断言、`PayIdempotencyTest` 静态字段扫描各 1 例误判 | 用例写错：字符数算错、`wapPay` 先校验 `notify-url`、正则把 `private static` 方法当成字段 | 逐条修正断言口径 |
-
-### 8.3 观察项（不计缺陷，供设计/发布参考）
+## 8. 观察项
 
 - 模块的两处 `warn`（内核失败、验签失败）依赖应用侧已装配 `LogFactory`；在**完全没有日志绑定**的裸环境中，`Log.get(...)` 会抛 `IllegalStateException`。这与仓库既有出站 HTTP 模块的行为一致，属框架既有契约（应用启动流程负责装配日志工厂），故**不作为缺陷回流**，但发布说明宜提示消费方需配置日志工厂。
 - **真实内核的错误码提取路径与本轮伪内核不同，已专门加用例守护**：`com.alipay.v3.ApiException#getCode()` 返回的是 **HTTP 状态码（`int`）**，不是业务错误码；`PayErrors.errorCodeOf` 的口径是「只取返回 `String` 的 `getCode()`」，因此真实链路上会**跳过**它并回落到响应体 JSON 的 `code` 字段。`PayErrorsTest#shouldIgnoreNonStringCodeAndFallBackToResponseBody` 已用「`int getCode()` + 响应体 JSON」的异常形态固定该行为，防止后人把 HTTP 状态码误当业务错误码。**推论**：若真实内核失败时没有响应体（如网络异常），`code()` 将是 `null`——这与设计 §6.4「本模块自检类失败时为 `null`」的口径一致，调用方不应假定 `code()` 必非空。
-
----
-
-## 9. 与设计文档的三处偏差（建议回写 `docs/design.md`）
-
-| # | 设计原文 | 实际做法 | 原因 |
-| --- | --- | --- | --- |
-| 1 | §5.3 第 11 行把伪内核列在 `src/test/java/cn/hg/aifei/pay/support/PayKernelStub.java` | 放在 `src/test/java/cn/hg/aifei/pay/internal/PayKernelStub.java` | `internal.PayKernel` 是**包级可见**接口（`javap` 断言非 public），`support` 包无法实现它。设计清单的位置不可编译，必须就近放在 `internal`。 |
-| 2 | §5.3 第 20 行要求 `src/test/resources/pay/fixture/` 存放密钥与证书夹具 | **不入库**：由 `support.PayTestCrypto` 在运行期生成 | 夹具来源与有效期可审计、仓库零凭据；生成只用 classpath 上已有的 `bcprov-jdk18on`，未新增依赖。用途限定声明见本文 §3。 |
-| 3 | §5.3 合计「19 个 Java 测试文件」 | 实际 `src/test/java` 共 26 个 `.java` | 多出 7 个：3 个测试支撑件（`PayTestProps` / `PayTestCrypto` / `PayTestEnv`）+ 1 个用例类（`PayKernelAttributionTest`，承载 AC-21 的机械可验证部分）+ 2 个 V2.0 用例类（`PayChannelRegistryTest` / `PayHandlerTest`）+ 1 个 V2.1 用例类（`PayAlipayVersionTest`，承载 AC-28）。夹具类从「1 个 support 伪内核」变为「1 个 internal 伪内核 + 3 个 support 支撑件」，用例总数 166。 |
 
 ---
 

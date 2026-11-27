@@ -37,7 +37,7 @@ Aifei 项目的生态补充，提供多种生态能力模块。
 | [aifei-tools](aifei-tools/README.md) | `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT` | 极简工具集：9 子包（ipdb / captcha / qr / mask / kdf / crypto / random / xml / codec），子包隔离各自独立可用，零强制第三方（内核 optional） |
 | [aifei-sms](aifei-sms/README.md) | `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` | 短信通道统一门面：基于 sms4j 二次封装，模板化发送 + 回执接收 + HMAC-SHA1 验签，换厂商只改配置，唯一内核 optional |
 | [aifei-sms-demo](aifei-sms-demo/README.md) | （示例工程，不发布） | aifei-sms 的完整接入示例：发送 / 多通道 / 配置错误态 / 依赖缺失态 / 回执接收 / 空态六场景单页演示（端口 18180，零外网） |
-| [aifei-pay](aifei-pay/README.md) | `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT` | 支付宝支付统一门面：IJPay V3 内核 `optional`，扫码 / H5 / PC 下单 + 查单 / 退款 + 回调验签，多应用隔离 |
+| [aifei-pay](aifei-pay/README.md) | `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT` | 基于 IJPay 的多支付通道聚合 SDK：扫码 / H5 / PC 下单 + 查单 / 退款 + 回调验签，多通道 / 多应用隔离，内核 `optional` |
 | [aifei-email](aifei-email/README.md) | `io.github.gollyhu:aifei-email:1.0.0-SNAPSHOT` | 出站邮件统一门面：基于 sms4j-Email-core 二次封装，纯文本 / HTML / 模板 / 附件字节，多 SMTP 配置池切换，唯一内核 optional |
 | [aifei-email-demo](aifei-email-demo/README.md) | （示例工程，不发布） | aifei-email 的完整接入示例：发送 / 多通道切换 / 配置错误态 / 依赖缺失态 / HTML 模板渲染 / 空态六场景单页演示（端口 18190，mock 发送，零外网） |
 
@@ -215,12 +215,12 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 
 ### aifei-pay
 
-支付宝支付统一门面：把配置装配、交易动作与回调验签收口为稳定公共契约，与 `aifei-weixin` 支付侧动作语义对齐。
+基于 IJPay 的多支付通道聚合 SDK：把配置装配、交易动作与回调验签收口为稳定公共契约，换通道只改配置、不改业务代码。
 
-- 根包精确 4 个类型：`AliPayClient` / `AliPayKit` / `AliPayNotifyUtil` / `AliPayException`，`model` 包 4 个值对象；零存储、不做幂等与状态机
-- 五个交易动作：扫码预下单 / H5 / PC / 查单 / 退款；入参金额统一「分」（`long ...Fen`），出参为内核元字符串
-- 回调验签支持公钥与证书双模式、多凭据轮换；同一 appId 多应用隔离，`appId` 为交易方法首参
-- 支付宝内核四项构件（`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `bcprov-jdk18on` / `dom4j`）均为 `optional`，消费方须显式声明并锁定版本
+- 根包精确 4 个类型：`PayClient` / `PayKit` / `PayNotifyUtil` / `PayException`，`model` 包 4 个值对象、`spi` 包 2 个回执类型、`aifei` 包 `PayHandler`；零存储、不做幂等与状态机
+- 交易动作：`createOrder` / `query` / `refund` / `channelName`；入参金额统一「分」（`long ...Fen`），出参为内核元字符串
+- 回调验签支持公钥与证书双模式、多凭据轮换；`merchantId` 为交易方法首参，多应用 / 多通道隔离。`wxpay` 与 `aifei-weixin` 二选一、当前未落地
+- 支付内核构件（`IJPay-AliPay-V3` / `alipay-sdk-java-v3` / `bcprov-jdk18on` / `dom4j`，以及各渠道 IJPay 构件）均为 `optional`，消费方须显式声明并锁定版本
 - 详细用法见 [aifei-pay/README.md](aifei-pay/README.md)，设计文档见 [docs/design.md](aifei-pay/docs/design.md)
 
 ### aifei-email
@@ -231,7 +231,7 @@ aifei 生态的出站 HTTP 统一客户端，业务只构造请求、读响应�
 - 纯文本 + HTML 内容 + HTML 模板（classpath `template/` + `#{变量名}`）+ 多收件人 / 抄送密送 + 附件**字节**（适配层转临时文件，发送后清理），只做同步发送
 - 多 SMTP 配置池：`email.<name>.*` 声明通道，`email.default-channel` 定默认，`MailKit.use(name)` 取命名通道；`stop()` → `start()` 改配置后注入的客户端自动指向新实例
 - 唯一内核 `sms4j-Email-core:3.3.6` 为 **`optional`**（缺失时 `EmailPlugin.start()` 启动即失败并给可读 `MailException`）；零存储、零线程池、零日志绑定、禁 starter
-- 内核传递依赖 `com.sun.mail:javax.mail:1.6.2` 许可证为 CDDL 1.1 + GPL 2.0 with CPE（法务已确认可接受），声明见 [aifei-email/NOTICE](aifei-email/NOTICE)
+- 内核传递依赖 `com.sun.mail:javax.mail:1.6.2` 许可证为 CDDL 1.1 + GPL 2.0 with CPE，声明见 [aifei-email/NOTICE](aifei-email/NOTICE)
 - 详细用法见 [aifei-email/README.md](aifei-email/README.md)，设计文档见 [docs/design.md](aifei-email/docs/design.md)
 
 ## 构建
@@ -249,7 +249,7 @@ cd aifei-tools && mvn clean verify   # 或逐模块构建（BOM 已安装后即�
 
 **命令口径**：`mvn clean install` 把模块安装到本地仓库（**运行 demo 前必须先执行**）；`mvn clean verify` / `mvn clean test` 只做本地编译与门禁验证、**不安装到本地仓库**。
 
-**发布能力**：根 BOM 与 19 个库模块均配置了 `central-release` profile 与 `distributionManagement`（仅 snapshotRepository），使用 `mvn -Pcentral-release clean deploy` 提交 Maven Central；13 个 `*-demo` 示例工程不配置发布。具备发布配置 ≠ 已正式发布：`aifei-cache` 已发布版本 `1.1.0` 为冻结基线，源码主线为 **`1.2.0-SNAPSHOT`**；其余模块保持 `1.0.0-SNAPSHOT`，正式发布前不得去掉后缀（见 `.codebuddy/rules/engineering-standards.md` §2）。
+**发布能力**：根 BOM 与 19 个库模块均配置了 `central-release` profile 与 `distributionManagement`（仅 snapshotRepository），使用 `mvn -Pcentral-release clean deploy` 提交 Maven Central；13 个 `*-demo` 示例工程不配置发布。具备发布配置 ≠ 已正式发布：`aifei-cache` 已发布版本 `1.1.0` 为冻结基线，源码主线为 **`1.2.0-SNAPSHOT`**；其余模块保持 `1.0.0-SNAPSHOT`，正式发布前不得去掉后缀。
 
 完整的本地验证步骤、定版流程与 Maven Central 发布顺序见 [docs/本地验证与发布.md](docs/本地验证与发布.md)。
 
@@ -294,7 +294,7 @@ cd aifei-tools && mvn clean verify   # 或逐模块构建（BOM 已安装后即�
 - `aifei-excel`：`aifei:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；唯一内核 `com.alibaba:easyexcel:3.3.2` 为 **`optional`**（**不向下游传递**，消费方要用读写能力必须显式引入，缺失时首次调用抛可读 `ExcelException` 而非裸 `NoClassDefFoundError`），POI 随其传递；零 DB、零 Web 面、无 Plugin、无配置键、不引任何日志绑定
 - `aifei-audit`：`aifei:1.1.2` 为 `provided`，消费方应用自带；**零第三方 compile/runtime**（`junit` 仅 `test`），不引任何日志绑定（只面向 `cn.aifei.log` 接口），零 `java.sql`、零线程创建
 - `aifei-i18n`：`aifei` 为 `provided`，消费方应用自带；`aifei-cache` 为 `provided + optional`（**不向下游传递**，仅 `kv` 来源需要，用到时消费方须显式引入）；**零第三方 compile 依赖**（`junit` 仅 `test`），不引任何日志绑定；Java 8 / class major 52
-- `aifei-tools`：`aifei:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；最终口径为 **9 子包**（`ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec`，其中 kdf 为纠错补入，后四个为本次新增）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机、mask 脱敏与四个新增纯 JDK 子包零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
+- `aifei-tools`：`aifei:1.1.2` 为 `provided`，消费方应用自带（源码零引用）；共 **9 子包**（`ipdb` / `captcha` / `qr` / `mask` / `kdf` / `crypto` / `random` / `xml` / `codec`）；三个能力内核 `org.lionsoul:ip2region:3.3.7`（IP 归属地）/ `com.google.zxing:core:3.5.3`（二维码，零传递、不引 javase）/ `io.github.gollyhu:aifei-cache:1.2.0-SNAPSHOT`（captcha 集群存储）均为 **`optional`**（**不向下游传递**，用到哪个能力就显式引入哪个，缺失时首次调用抛可读模块异常而非裸 `NoClassDefFoundError`）；captcha 单机、mask 脱敏与四个新增纯 JDK 子包零外部依赖；零日志绑定、零 DB、零 Web 面；Java 8 / class major 52
 - `aifei-sms`：`aifei:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `SmsPlugin.start()` 抛可读 `SmsException`）；零日志绑定、零存储、同步发送
 - `aifei-pay`：`aifei:1.1.2` 为 `provided`，消费方应用自带；`IJPay-AliPay-V3:3.0.0` / `alipay-sdk-java-v3:3.1.89.ALL` / `bcprov-jdk18on:1.86` / `dom4j:2.1.5` 均为 **`optional`**，消费方须显式声明，且不要引入 `bcprov-jdk15on`、`dom4j` 不得升到字节码 55 的版本；零存储、不做幂等
 - `aifei-email`：`aifei:1.1.2` 为 `provided`，消费方应用自带；唯一内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6` 为 **`optional`**（**不向下游传递**，缺失时 `EmailPlugin.start()` 抛可读 `MailException`，非 `compile` 例外）；其传递依赖 `com.sun.mail:javax.mail:1.6.2` 许可证为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**（另有 `javax.activation`），法务已确认 CPE 豁免可接受，声明见 `aifei-email/LICENSE` / `aifei-email/NOTICE`；零日志绑定、零存储、同步发送、禁 starter

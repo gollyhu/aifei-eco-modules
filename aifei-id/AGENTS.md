@@ -10,19 +10,6 @@
 - 需求与设计冲突时，**先改设计决策再改代码**；公共面签名不可行时先回写 `docs/design.md` §5，不得先斩后奏。
 - 未经设计决策，不得自行确定契约类行为：空值语义、TTL 语义、位布局与纪元、workerId 分配规则、异常类型与消息、缓存键命名；也不得新增或扩大公共 API 面。
 
-## 交付性质
-
-`aifei-id` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-id:1.0.0-SNAPSHOT`（`packaging=jar`），Java 8，包名 `cn.hg.aifei.id`。
-
-**不适用范围（不得据此模块约束要求）**：
-
-| 常规章节 | 结论 | 原因 |
-| --- | --- | --- |
-| 表结构 / `Db+Row` / `Generator` / `java.sql` | 不适用 | 零 DB，门禁反向断言全模块无 `import java.sql.` |
-| `@Path` Service / HIO / 路由 / 拦截器 | 不适用 | 无入站 HTTP 面；端点只存在于 `aifei-id-demo` |
-| 页面 / 原型 / QA 基线门禁 | 不适用 | 无页面；demo 单页由前端直接实装 |
-| `AppConfig implements AifeiConfig` / `Launcher` | 不适用 | 装配动作发生在**使用方**的 `AppConfig.config(Plugins)` 内；本模块只提供 `aifei.IdPlugin` |
-
 ## 硬性约束
 
 ### 技术基线
@@ -41,7 +28,7 @@
 - 根包 `cn.hg.aifei.id` **精确 3 个公共类型**：`IdGenerator` / `IdKit` / `IdException`；装配包 `cn.hg.aifei.id.aifei` **精确 1 个**：`IdPlugin`。**不得增删、不得改名**。
 - 根包**零框架类型、零第三方类型**（`IdKit` / `IdGenerator` / `IdException` 签名里不出现任何 `cn.aifei.*`）。`IdPlugin` 位于装配包（非承诺 API），暴露 `cn.aifei.plugin.Plugin` / `cn.aifei.util.Prop` / `cn.aifei.aop.AopKit`。
 - **不提供**：`SnowflakeConfig` / `SegmentConfig` 值对象、ID 状态查询 API（`workerId()` / `strategy()`）、命名实例（`id.names`）、provider 扩展点、UUID / 短链 / 业务前缀编码、指标上报。
-- 公共面需要新增类型或方法时，先改 `docs/design.md` §2/§5 过设计决策，再改门禁 ④ 的期望集合。
+- 公共面需要新增类型或方法时，先改 `docs/design.md` §5 过设计决策，再改门禁 ④ 的期望集合。
 
 ### 包结构与依赖方向
 
@@ -77,7 +64,7 @@ cn.hg.aifei.id.internal     实现层（非承诺 API）：配置 / 错误 / 命
 | ⑬ | `configKeysOnlyInIdConfig` | 字面量 `"id.` 只允许出现在 `internal/IdConfig.java` |
 | ⑭ | `testSourcesOfflineOnly` | 测试源码中的 `http://` / `https://` 字面量，host 只能是 `127.0.0.1` 或 `localhost` |
 
-门禁**不得为兼容错误用法而放宽或绕过**；新增例外必须先改 `docs/design.md` §2 再改断言。扫描依赖相对路径 `src/main/java`，**必须在 `aifei-id/` 根目录执行**。
+门禁**不得为兼容错误用法而放宽或绕过**；新增例外必须先改 `docs/design.md` §5 再改断言。扫描依赖相对路径 `src/main/java`，**必须在 `aifei-id/` 根目录执行**。
 
 ## 唯一定义点清单（实现类不得复制）
 

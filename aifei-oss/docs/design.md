@@ -1,7 +1,6 @@
 # aifei-oss 设计文档
 
-> 本文是 `aifei-oss` 的**设计事实来源**：契约、决策与验收以本文为准。
-> 文档分工：`README.md` 面向使用者（安装 / 用法 / 配置）；本文面向设计者与实现者；`AGENTS.md` 面向开发代理与贡献者；`docs/testing.md` 面向测试维护者。
+> 本文是 `aifei-oss` 的设计事实来源：公共契约、配置与验收以本文为准。
 
 ## 1. 模块定位与设计原则
 
@@ -24,7 +23,7 @@
 
 - **公共 API 极简、实现无关**：根包公共类型固定，不暴露 x-file-storage、云厂商 SDK、Spring 等实现类型。
 - **每类规则唯一定义点**：配置键名、字段校验、类型映射、异常翻译各只有一处实现。
-- **设计决策先于代码**：契约类行为未经本文决策不得自定。
+- **契约先行**：公共契约行为以本文为准。
 - **可替换、可测试**：门面依赖适配层，测试可用本地存储或集成环境跑通。
 
 ## 2. 术语表
@@ -38,21 +37,16 @@
 | **接入层**（bridge） | 位于 `aifei` 包，唯一允许引用 `cn.aifei.*` 的层 |
 | **对象路径**（path） | 业务侧用于定位对象的逻辑路径 / key |
 
-## 3. 依赖策略决策（**必须先读**）
+## 3. 依赖策略
 
-### 3.1 X File Storage 版本与 Java 8 兼容性（**已实测通过**）
+### 3.1 X File Storage 版本与 Java 8 兼容性
 
-- **事实澄清**：x-file-storage `2.3.0` 的根 pom 声明 `<java.version>8</java.version>`，`source / target / release` 均为 `8`，即发布产物为 Java 8 字节码（major 52）。官方文档「JDK 11+」指**构建 x-file-storage 自身**的环境要求，不影响下游消费。
-- **定档版本**：`2.3.0`（已实测，2026-10-16）。
-- **P0 门禁（已执行并通过）**：
-  1. `mvn dependency:get -Dartifact=org.dromara.x-file-storage:x-file-storage-core:2.3.0` ✓
-  2. `javap -v` 实测 class `major version = 52` ✓
-  3. 传递依赖（`compile`）：`hutool-core` / `tika-core` / `thumbnailator` / `slf4j-api:1.7.36`，均 Java 8 兼容；无 `org.springframework.*`；云厂商 SDK 为 `provided + optional` ✓
-  4. 测试期：`slf4j-simple:1.7.36`（`test` scope），不随发布 ✓
+- x-file-storage `2.3.0` 的根 pom 声明 `<java.version>8</java.version>`，`source / target / release` 均为 `8`，即发布产物为 Java 8 字节码（major 52）。官方文档「JDK 11+」指构建 x-file-storage 自身所需的环境，不影响下游消费。
+- 使用版本：`2.3.0`。传递依赖（`compile`）为 `hutool-core` / `tika-core` / `thumbnailator` / `slf4j-api:1.7.36`，均 Java 8 兼容；无 `org.springframework.*`；云厂商 SDK 为 `provided + optional`。测试期使用 `slf4j-simple:1.7.36`（`test` scope），不随发布。
 
-### 3.2 依赖范围：`compile` 例外（**设计决策**）
+### 3.2 依赖范围：`compile` 例外
 
-- `x-file-storage-core` 作为 **`compile`** 依赖（仓库「第三方一律 `optional` / `provided`」的显式例外，理由：门面能力完全建立在其上）。
+- `x-file-storage-core` 作为 **`compile`** 依赖（仓库「第三方一律 `optional` / `provided`」的显式例外：门面能力完全建立在其上）。
 
 ### 3.3 仅依赖 `core`，排除 `spring` / `solon`
 
@@ -166,36 +160,7 @@ public final class OssKit {
 
 详细分层与用例清单见 `docs/testing.md`。
 
-## 9. 任务状态
-
-| 批 | 名称 | 状态 |
-| --- | --- | --- |
-| **P0** | XFS 版本 Java 8 兼容性实测 | ✅ |
-| **B1** | 骨架 + 公共面 | ✅ |
-| **B2** | 适配层 | ✅ |
-| **B3** | 接入层 | ✅ |
-| **B4** | 测试与门禁 | ✅ |
-| **B5** | 文档四件套 | ✅ |
-| **B6** | `copy`（AUTO 降级）、`listFiles`、MinIO 集成测试 | ✅ |
-| **B7** | `aifei-oss-demo` | ✅ |
-| **B8** | 跨平台复制 `copyTo`、分页列举 `OssPage`、`uploadIfAbsent`、目录信息 | ✅ |
-
-## 10. 已定档与待演进
-
-### 10.1 已定档
-
-| 项 | 结论 |
-| --- | --- |
-| 实现路径 | 基于 X File Storage 二次封装 |
-| 依赖范围 | `x-file-storage-core` 为 `compile`（显式例外） |
-| 框架集成 | 仅 `core` + `FileStorageServiceBuilder`，禁 `spring` / `solon` |
-| 公共面 | 根包固定 **6** 个公共类型 |
-| 配置 | `oss.*`，平台列表由 `oss.<name>.type` 推导 |
-| copy | 同平台 `AUTO`（服务端优先/降级）；跨平台 `copyTo` 用 `CROSS` |
-| if-absent | 非原子（先 `exists` 再上传） |
-| 列举 | 一次性 + 分页（`OssPage` 含子目录与游标） |
-
-### 10.2 待演进
+## 10. 后续演进
 
 1. `uploadIfAbsent` 的原子化（依赖平台条件写能力）。
 2. 递归列举（当前不递归；可用 `OssPage.getDirectories()` 逐层下探）。

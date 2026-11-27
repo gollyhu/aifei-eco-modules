@@ -1,6 +1,5 @@
 # aifei-sentinel 测试文档
 
-> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
 
 ## 1. 测试原则
 

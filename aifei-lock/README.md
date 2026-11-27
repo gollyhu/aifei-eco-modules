@@ -207,5 +207,5 @@ CacheKit.use().clear("__LOCK__");                              // ✗ 清空锁�
 ## 文档
 
 - 用法与本页：[README.md](README.md)
-- 契约与设计决策：[docs/design.md](docs/design.md)
+- 公共面与行为契约：[docs/design.md](docs/design.md)
 - 开发约束：[AGENTS.md](AGENTS.md)

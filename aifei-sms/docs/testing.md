@@ -1,8 +1,8 @@
-# aifei-sms 测试策略与用例清单
+# aifei-sms 测试文档
 
-> 契约见 [design.md](design.md)。判据：模块根目录 `mvn clean verify` **0 failure / 0 error**；全部单测零外网、零真实短信。
+> 判据：模块根目录 `mvn clean verify` **0 failure / 0 error**；全部单测零外网、零真实短信。
 
-## 分层策略
+## 测试分层
 
 | 层 | 覆盖 | 判据 |
 | --- | --- | --- |
@@ -15,7 +15,7 @@
 | 回执 | `ReceiptTest`：验签通过/失败 / 解析字段 / 监听器异常 / 404 / 响应契约 | AC-07 |
 | 异常契约 | `ExceptionContractTest`：参数 / 厂商 / 网络 / 状态 / 验签 / 解析逐字消息 + cause | AC-08 |
 | 公共面 | `PublicApiContractTest`：根包 5 / spi 2 / Kit 形态 / 签名零第三方 | Q-01 / AC-09~AC-10 |
-| 依赖树 | `mvn dependency:tree` | 仅 design §2.3 清单，无 Spring / 日志绑定 / starter |
+| 依赖树 | `mvn dependency:tree` | 仅允许清单，无 Spring / 日志绑定 / starter |
 
 ## 用例与 AC 映射
 
@@ -62,6 +62,6 @@
 ```bash
 mvn clean verify                                        # 49 例全绿（含门禁 14 例）
 mvn test -Dtest=ArchitectureBoundaryTest                # 仅门禁 14 例
-mvn dependency:tree                                     # 仅 design §2.3 允许清单
+mvn dependency:tree                                     # 依赖范围核对
 javap -verbose target/classes/cn/hg/aifei/sms/SmsClient.class | findstr "major version"   # 52
 ```

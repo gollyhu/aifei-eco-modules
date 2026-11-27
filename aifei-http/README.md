@@ -110,6 +110,6 @@ public class OrderService {
 
 | 文档 | 内容 |
 | --- | --- |
-| `docs/design.md` | 契约事实来源：公共面逐字签名、设计决策、门禁、AC 映射 |
-| `docs/testing.md` | 测试策略、AC ↔ 用例 ↔ 结果台账 |
+| `docs/design.md` | 公共面签名与架构约束 |
+| `docs/testing.md` | 测试策略与用例清单 |
 | `AGENTS.md` | 开发约束：硬约束、包边界、唯一定义点清单、验证命令 |

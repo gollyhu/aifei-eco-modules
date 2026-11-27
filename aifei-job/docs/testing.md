@@ -1,8 +1,8 @@
-# aifei-job 测试策略
+# aifei-job 测试文档
 
 > 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
 
-本文面向测试维护者：说明测试结构、用例矩阵（与需求验收项逐项对齐）、表达式用例清单、语义用例构造方案、纪律与 demo 验收口径。契约以 `docs/design.md` 为准；开发约束见模块 `AGENTS.md`。
+本文说明测试结构、用例矩阵、表达式用例清单与 demo 验收口径。
 
 ## 1. 运行方式
 
@@ -40,12 +40,6 @@ mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsBasedOnLastStart   # 单�
 | `StateViewTest` | 语义 | 首次执行中不出现、再次执行中保留上一次终态、结束后终态覆盖、回调内 `state()` 已见本次终态（记账顺序） | A15 / A18 |
 | `StartupExceptionContractTest`（装配/启动期断言）+ `ListenerContractTest` | 单元（装配） | 装配生命周期、`start()` / `stop()` 幂等、启动期失败不留半装配、任务名契约端到端 | A12 / A17 |
 
-> **设计名 → 实现名映射**（主表与 §3 矩阵已统一采用下表中的实测类名，可直接 `mvn test -Dtest=<类名>` 执行）：
-> `QuartzCronSupportTest` → `CronExpressionCasesTest`；`JobWakeSeparationTest` → `LongTaskDoesNotBlockWakeupTest`；
-> `JobRejectionTest` → `RejectionRescheduleTest`；`JobShutdownTest` → `ShutdownTest`；
-> `JobListenerTest` → `ListenerContractTest`；`JobStateObservationTest` → `StateViewTest`；
-> 原 `JobPluginTest` 的装配断言由 `StartupExceptionContractTest` + `ListenerContractTest` 承担；另有
-> `FixedRateSkipTest` / `InitialDelayTest` / `StartupExceptionContractTest` 三个按语义拆分的新增类。逐类计数见 §9.1。
 
 **测试替身（`src/test/java/cn/hg/aifei/job/support/`）**：
 
@@ -60,7 +54,7 @@ mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsBasedOnLastStart   # 单�
 
 ## 3. 用例矩阵（与需求验收项对齐）
 
-> 编号 `A01`–`A24` 与需求文档「九、验收标准」的 **24 项**逐项一一对应（顺序一致）；需求第 25 项「v1.1（本次不验收）」记作 `N1`，不建用例。
+> 编号 `A01`–`A24` 与验收标准的 24 项逐项对应（顺序一致）；`N1` 为 v1.1 项，不建用例。
 
 | 编号 | 验收项 | 覆盖测试 | 关键断言 |
 | --- | --- | --- | --- |
@@ -145,7 +139,6 @@ mvn test -Dtest=JobScheduleTest#nextDelayOfFixedRateIsBasedOnLastStart   # 单�
 
 ## 5. 语义用例构造方案
 
-> **总纪律**：**不依赖真实时钟等待、禁秒级 `Thread.sleep`**、禁断言「第 N 次触发发生在 X ms 内」。全部语义用例用 `CountDownLatch` + **宽松超时（统一 5s）**；`period` 只用于「至少触发两次」一类宽松断言。等待一律用 `EventProbe#awaitPhase(...)`（内部 `latch.await(5, SECONDS)`，超时即断言失败）。
 
 ### 5.1 队列占满（拒绝路径，A08 / A19）
 
@@ -167,7 +160,7 @@ TaskC（@FixedRate period=50, initialDelay=0，任务体立即返回）         
 
 ### 5.2 被拒重排的入参（A19）
 
-分两层验证（避免为了可测性给生产代码加钩子）：
+分两层验证：
 
 - **纯计算层**（`JobScheduleTest`）：`nextDelay(task, now, now, now, false)` 对 fixedRate 返回 `period`、对 fixedDelay 返回 `delay`；同一 `task` 把 `initialDelay` 改成任意值，`isFirst=false` 的结果**完全不变**（证明「为假完全不读该值」）；`isFirst=true` 返回 `initialDelay`。
 - **语义层**（`RejectionRescheduleTest`）：`TaskC` 的首次触发即被拒（`initialDelay = 300`、`period = 50`）。若 `isFirst` 未置 `false`，下次唤醒将再等 300ms 且累加；断言「连续被拒后下一次 `STARTED` 在 ≥1 个 `period` 且 **< 250ms** 内出现」即证明未重复消费 `initialDelay`（阈值取 `initialDelay/2` 与 `period` 的宽松区间，**不断言精确毫秒**）。
@@ -228,7 +221,7 @@ try {
 
 ## 6. demo 观测点清单与验收（A24）
 
-> 本节是 demo 静态原型的**验收依据**，也是完整 demo 的联调清单。端口 `18110`、端点契约、5 个观测点见 `docs/design.md` §13。**原型确认时点：demo 后端开工前，由用户确认**（不走产品文档 + QA 基线门禁）。
+> 本节是 demo 的验收依据与联调清单。端口 `18110`、端点契约、5 个观测点见 `docs/design.md` §13。
 
 ### 6.1 观测点 5 项（逐项验收）
 
@@ -246,7 +239,6 @@ try {
 - [ ] 5 个观测点在**假数据**下均可演示（含「执行中」状态与 `SKIPPED` 行）；
 - [ ] 页面不出现模块不提供的字段（**无** `nextFireTime` 来自公共面、**无** `period` / `cron` 来自 `JobEvent`）——「触发方式」与「下次触发时间」由 demo 端自算；
 - [ ] 术语与 `docs/design.md` §2 一致（任务 / 触发方式 / 阶段 / 终态 / 跳过）；
-- [ ] 由用户确认后，方可开始 demo 后端实现。
 
 ### 6.3 完整 demo 验收清单
 
@@ -279,7 +271,7 @@ try {
 ## 9. 实测结果（2026-11-10 全量验收）
 
 > 环境：Windows（win32）+ Maven 3.6+ + JDK 8 编译目标；`aifei-job` 已 `install` 到本地仓库。
-> 全部命令在对应模块根目录执行。本轮为**最终验收**，未新增/修改任何用例与主源码，仅回填本文与 `aifei-job-demo/README.md` 的验收小节。
+> 全部命令在对应模块根目录执行。
 
 ### 9.1 库本体全量回归
 
@@ -304,10 +296,6 @@ cd aifei-job && mvn -B -DskipTests install   # BUILD SUCCESS（装入本地仓�
 | `JobKitTest` | 7 | `StartupExceptionContractTest` | 13 |
 | `JobNamesTest` | 6 | `StateViewTest` | 3 |
 | **合计** | | | **184** |
-
-> 类名以本表（实测）为准，且 §2 结构表与 §3 矩阵已统一采用这些实测类名（设计期名称到实现名的映射见 §2 表下注释）。
-> 另有 `FixedRateSkipTest` / `InitialDelayTest` / `StartupExceptionContractTest` 三个按语义拆分的新增类；
-> 原 `JobPluginTest` 的装配断言由 `StartupExceptionContractTest` + `ListenerContractTest` 承担。覆盖项与 §3 矩阵的对应关系不变。
 
 ### 9.2 demo 构建与启停
 

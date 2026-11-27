@@ -72,11 +72,11 @@ settings.setServer(new UndertowServer(), new IoDispatcher())
 
 回调路径 `/sms/callback/{channel}`：按通道验签（阿里云 HMAC-SHA1，纯 JDK）→ 解析 → 同步交付监听器。响应契约：验签通过 `200 {"Status":"SUCCESS"}`；验签失败 `403 {"Status":"FAIL"}`；解析/监听器异常 `500 {"Status":"FAIL"}`；未知通道 `404`。`SmsIo` 是接入层桥接接口（`Output` 为空接口，写响应须由传输层提供实现），零第三方 / 零框架类型。
 
-## 本期不做
+## 能力边界
 
 邮件 / APP 推送、模板 CRUD 与审核、内容审核 / 敏感词、频率限制 / 防刷、多厂商负载均衡 / 故障切换、异步发送 API 与内置线程池、发送记录持久化、批量群发、国际短信特殊处理。
 
 ## 文档与示例
 
-- 契约事实来源：[docs/design.md](docs/design.md)；测试策略：[docs/testing.md](docs/testing.md)；开发约束：[AGENTS.md](AGENTS.md)
+- 公共面签名与架构约束：[docs/design.md](docs/design.md)；测试策略：[docs/testing.md](docs/testing.md)；开发约束：[AGENTS.md](AGENTS.md)
 - 零外网演示工程：[aifei-sms-demo](../aifei-sms-demo/README.md)（端口 18180）

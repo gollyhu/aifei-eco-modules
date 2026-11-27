@@ -6,14 +6,10 @@
 
 ## 开发前提
 
+- **v1 不留任何 v1.1 桩代码与占位配置**：不建 `cluster` 包、不声明 `job.cluster.*` 键、不写 `TODO` / 被注释掉的代码 / 预留未使用参数。
+
 - **改代码前必读 `docs/design.md`**。需求与现有设计冲突时，先明确并更新设计决策，再改代码。
 - 未经设计决策，不得自行确定契约类行为（触发与执行语义、跳过 / 拒绝 / 停机口径、异常类型与消息、配置键名、任务名格式等），也不得新增或扩大公共 API 面。
-
-## 交付性质
-
-`aifei-job` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 为**单模块** `io.github.gollyhu:aifei-job:1.0.0-SNAPSHOT`（`packaging=jar`）：公共 API 7 类型 + `internal` + `local` + `aifei.JobPlugin` 同处一个 JAR。
-
-**v1 不留任何 v1.1 桩代码与占位配置**：不建 `cluster` 包、不声明 `job.cluster.*` 键、不写 `TODO` / 被注释掉的代码 / 预留未使用参数。
 
 ## 硬性约束
 
@@ -82,7 +78,7 @@
 | `JobEvent` 构造（不可变装配点） | `internal.JobEvents#assemble`（内部只经 `JobEvent#of`） |
 | 监听器解析（按类型取一次、缺失即无监听器、多例即失败） | `internal.JobInstances#optionalSingle` |
 | 监听器分发与回调异常捕获 | `internal.JobEvents#dispatch` |
-| 容器实例获取与多例判定实现 | `internal.JobInstances`；容器语义映射在 `aifei.AifeiJobContainer#isSingleton`（先 `AopKit.get().getAopFactory().getMappingClass(type)` 解析实际类型，再读该类型上的 `@Singleton`，未声明回落 `AopKit.get().isSingleton()`——与 `AopFactory#doGet` 逐条一致，见 `docs/design.md` §12 D5） |
+| 容器实例获取与多例判定实现 | `internal.JobInstances`；容器语义映射在 `aifei.AifeiJobContainer#isSingleton`（先 `AopKit.get().getAopFactory().getMappingClass(type)` 解析实际类型，再读该类型上的 `@Singleton`，未声明回落 `AopKit.get().isSingleton()`——与 `AopFactory#doGet` 逐条一致，见 `docs/design.md` §5.2） |
 | 配置域常量、默认值与解析校验 | `internal.JobConfig` |
 | 任务名判重 | `internal.JobRegistry` 构造期 |
 | 续排投递（含「无下次触发」放弃） | `internal.JobScheduler#reschedule` |
@@ -102,8 +98,8 @@
 - **停机丢弃口径**：执行层队列中已到点未执行的 `JobRunner` 记 `SKIPPED`；唤醒层队列中**未到点**的 `JobWakeTask` 直接丢弃、**不记账**（属「停机期间错过」）。
 - **异常隔离**：任务体异常（含 `Error`）就地捕获记录、本轮不重试、`finally` 续排不断链；`InvocationTargetException` 须解包为 `error`。
 - **监听器**：可选单例、`start()` 只取一次、缺失即无监听器（不启动失败）、多例即启动失败；**同步回调在产生事件的线程上**；回调异常被隔离；终态**先记账再回调**；`STARTED` 在 `lastStart` 采样**之前**发出。
-- **`JobKit` 未启动 / 已停机**：`state()` / `names()` 返回**空集合且不抛**（有意偏离根 `AGENTS.md`「未装配即失败」，理由见 `docs/design.md` §12 D2；该让步只覆盖这两个只读方法）。
-- **启动期只用 `JobException`**：不复用 `IllegalArgumentException` / `IllegalStateException`；消息必含定位信息（方法全名 / 键名与原值 / 表达式原文 / 任务名），底层异常保留为 `cause`。**运行期不抛它**。**唯一例外**是 `JobPlugin` 构造期 `prop == null` 抛 `IllegalArgumentException`（调用方编程错误，早于 `start()`，与 `MqPlugin` / `WebSocketServerPlugin` 一致，见 `docs/design.md` §12 D4）。
+- **`JobKit` 未启动 / 已停机**：`state()` / `names()` 返回**空集合且不抛**（有意偏离根 `AGENTS.md`「未装配即失败」，理由见 `docs/design.md` §4.4；该让步只覆盖这两个只读方法）。
+- **启动期只用 `JobException`**：不复用 `IllegalArgumentException` / `IllegalStateException`；消息必含定位信息（方法全名 / 键名与原值 / 表达式原文 / 任务名），底层异常保留为 `cause`。**运行期不抛它**。**唯一例外**是 `JobPlugin` 构造期 `prop == null` 抛 `IllegalArgumentException`（调用方编程错误，早于 `start()`，与 `MqPlugin` / `WebSocketServerPlugin` 一致，见 `docs/design.md` §4.3）。
 - **配置解析时机**：全部在 `JobPlugin.start()`；构造函数只持 `Prop` 引用，不解析、不校验、不建线程池；失败即回滚（`scheduler.stop()` + `JobHolder.clear()`），不留半装配。
 - **配置读取唯一口径**：键名常量只在 `internal.JobConfig`，其它类不得硬编码 `"job.pool.size"` 等字面量。
 - **方法发现**：只扫被扫到类**自身声明**的方法（`getDeclaredMethods()`），跳过 `isSynthetic()` / `isBridge()`；签名须 `public` 实例方法、非 `static`、返回 `void`、参数为 `()` 或 `(JobEvent)`。

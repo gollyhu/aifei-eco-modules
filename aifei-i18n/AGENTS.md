@@ -1,7 +1,7 @@
 # AGENTS.md — aifei-i18n 开发约束
 
 本文件面向在本模块内工作的开发 / 测试代理。事实来源：`docs/design.md`（公共 API 逐字签名、唯一定义点、
-异常逐字表、门禁断言、任务分解）、`docs/需求/aifei-i18n.md`（需求，含 §6.1 的 16 条 P0 / 75 条 AC 矩阵与 §十一 Enjoy 模板指令增量）。
+异常逐字表、门禁断言、任务分解）、`docs/prd.md`（需求，含 §6.1 的 16 条 P0 / 75 条 AC 矩阵与 §十一 Enjoy 模板指令增量）。
 本文件只列硬约束与操作纪律，不重复契约细节。
 
 ## 一、模块性质
@@ -55,7 +55,7 @@
 
 - `ArchitectureBoundaryTest`：13 例源码文本 + 反射门禁；`ClassFileVersionTest`：全部 class major = 52。
   门禁位于 `src/test/java/cn/hg/aifei/i18n/`，须在模块根执行（surefire `workingDirectory=${project.basedir}` 保证）。
-- 门禁**不得为兼容错误用法而放宽**；新增例外必须先改 `docs/design.md` §2 再改门禁。
+- 门禁**不得为兼容错误用法而放宽**；新增例外必须先改 `docs/design.md` §11 再改门禁。
 - 唯一门禁例外：`cn.aifei.enjoy.*` 仅允许出现在 `enjoy/directive/`（design.md §16.8.1）；`cn.aifei.log.*` 另允许 design.md §6.3 登记的 WARN 记录类所在包。
 - 测试零联网：测试源码中的 URL host 只能是 `127.0.0.1` / `localhost`；无真实 DB / KV 外部服务依赖。
 - 验证命令：`cd aifei-i18n && mvn clean verify`，必须 0 failure / 0 error。

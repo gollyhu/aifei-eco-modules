@@ -9,10 +9,6 @@
 - **改代码前必读 `docs/design.md`**。需求与现有设计冲突时，先明确并更新设计决策，再改代码。
 - 未经设计决策，不得自行确定契约类行为（投递语义、异常类型与消息、关闭语义、配置键名等），也不得新增或扩大公共 API 面。
 
-## 交付性质
-
-`aifei-mq` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator。1.0.0 为**单模块** `io.github.gollyhu:aifei-mq:1.0.0-SNAPSHOT`（`packaging=jar`）：公共 API + `internal` + `aifei.MqPlugin` + 7 个后端实现包同处一个 JAR（`docs/design.md` §15）。
-
 ## 硬性约束
 
 ### 技术基线

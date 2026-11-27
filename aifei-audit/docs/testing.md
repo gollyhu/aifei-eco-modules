@@ -1,21 +1,18 @@
 # 测试报告：aifei-audit
 
-> 版本：**v2（返工后复测）**｜测试工程师：**策市袁**｜日期：**2026-11-18**
+> 被测版本：1.0.0-SNAPSHOT｜日期：2026-11-18
 > 被测对象：`io.github.gollyhu:aifei-audit:1.0.0-SNAPSHOT`（模块） + `aifei-audit-demo`（示例工程，端口 18160）
-> 依据：`docs/需求/aifei-audit.md`（AC 34 条 / 门禁清单）、`docs/prd.md`（§7 场景 / §8 AC 索引）、`docs/design.md`（§10 门禁 / §11 测试支撑 / §13 UI 契约 / §15 AC 分组 / §16 跨文件约定 / §21 返工裁决）
-> 判定纪律：本报告所有「通过」均来自**真实命令输出**与**真实 HTTP 响应**，无阅读推断。
 
-> **v2 复测说明**：首轮测试后主源码发生一次返工（设计 §21 裁决 1，R-01「G-03 口径收敛」）：新增 `internal/AuditInvocation`（调用现场端口）与 `internal/AuditEnvironment`（容器查找 + 包扫描端口），`AuditCollector` / `AuditSpi` / `AuditScanner` 改为只认端口、`AuditInterceptor` 变薄适配器、`AuditPlugin` 持有框架能力端口实现；门禁 G-03 从「4 条白名单」收敛为「**精确 1 条**（仅 `internal/SafeInvoker.java -> cn.aifei.log.`）」。本报告全部数据均为**返工后代码重新执行**所得。
 
 ---
 
 ## 1. 结论摘要
 
-**结论：通过，维持放行。** 返工后功能 / 门禁 / 构建 / demo 四层全部重新实测通过，无源码缺陷项。首轮唯一的门禁口径偏离 **R-01 已按 `design.md` §21 裁决 1（方案 A）返工闭环**：`G-03` 由「4 条白名单」收敛为「**精确 1 条**」，且本次修订**由测试侧独立重做反证**（临时注入即变红、还原后全绿）；R-03 已由设计 §13.2 文档口径闭环（非缺陷）；R-04 因 demo 已补 `log4j2.xml`，本次**实测复验通过**。剩余 R-02 / R-05 / R-06 / R-07 为低风险说明，见 §9。
+**结论：通过，维持放行。** 功能 / 门禁 / 构建 / demo 四层全部实测通过，无源码缺陷项；门禁 `G-03` 白名单为**精确 1 条**（仅 `internal/SafeInvoker.java -> cn.aifei.log.`），反证有效。其余为低风险说明，见 §9。
 
 | 项 | 结果 |
 | --- | --- |
-| 用例总数 | **70**（既有 61 + 首轮补测 9；返工未增减用例） |
+| 用例总数 | **70** |
 | 通过 / 失败 / 跳过 | **70 / 0 / 0** |
 | `mvn -o clean verify` | **BUILD SUCCESS**（0 failure / 0 error，耗时 6.5 s） |
 | 架构门禁 G-01~G-15 | **15 / 15 通过** |
@@ -25,13 +22,10 @@
 | demo 8 场景（AC-30） | **8 / 8 通过**，页面与静态资源零外网 host，18160 已释放 |
 | demo 控制台 WARN（R-04） | **已复验通过**：`log4j2.xml` 生效，sink 抛异常时控制台出现**恰 1 条** `WARN [cn.hg.aifei.audit.internal.SafeInvoker] - [aifei-audit] 落点交付失败，已按失败隔离吞掉` |
 
-**我的变更范围：首轮新增 1 个测试文件；v2 修订只改本文件（`docs/testing.md`）。** 全程未修改 `src/main/java`、`docs/prd.md`、`docs/design.md`、`docs/需求/aifei-audit.md`。返工中开发同步调整了测试侧 3 处（`ArchitectureBoundaryTest` 的 `G-03` 断言、`ConfigAndLifecycleTest` 的 `AuditSpi.sink(...)` 入参、`support/AuditTestSupport#emptyEnvironment()`），`AcceptanceSupplementTest` 未被改动且在返工后重跑全绿。
-
-> `G-03` 反证曾**临时**改动 `internal/AuditEnvironment.java` 一行（验证门禁非空心），随即按备份 SHA256 精确还原（`HASH MATCH`），并重跑 `clean verify` 确认 70 例全绿——还原后文件与原文逐字节一致，工作区无残留改动。
 
 ---
 
-## 2. 测试策略（四层）
+## 2. 测试分层（四层）
 
 ```mermaid
 flowchart LR
@@ -63,12 +57,11 @@ flowchart LR
 | `ManualRecordTest` | 2 | AC-07 / 09b |
 | `TraceSupplierTest` | 4 | AC-20 + client 注入、supplier 抛异常 |
 | `ConfigAndLifecycleTest` | 6 | AC-09 / 18 / 18b / 19 / 29 + 扫描范围必填、enabled=false |
-| `AcceptanceSupplementTest`（首轮补测，返工未改） | 9 | AC-04（注解路径全要素）/ 07（同 sink 同类型）/ 09b（启动失败态）/ 13（真覆写）/ 14（0-based）/ 15（上限 0）/ 18（重复 start）/ 29（四属性） |
-| `ArchitectureBoundaryTest` | 15 | G-01 ~ G-15（`G-03` 断言于返工后改为集合精确比对，例数不变） |
+| `AcceptanceSupplementTest` | 9 | AC-04（注解路径全要素）/ 07（同 sink 同类型）/ 09b（启动失败态）/ 13（真覆写）/ 14（0-based）/ 15（上限 0）/ 18（重复 start）/ 29（四属性） |
+| `ArchitectureBoundaryTest` | 15 | G-01 ~ G-15 |
 | `pv/Pv01~Pv04` | 3 + 3 + 3 + 2 = 11 | 前置实证（args / 拦截器顺序 / 启动期扫描 / 容器探测） |
 | **合计** | **70** | — |
 
-> 返工（R-01 方案 A）**未增减任何用例**，仅把 `G-03` 的判定口径从「命中文件是否在登记表内」改为「① 白名单登记表 `size() == 1`；② 非 `aifei` 包文件的 `cn.aifei.*` 出现位置集合**精确等于** `{internal/SafeInvoker.java -> cn.aifei.log.}`」。主源码同时新增 2 个 `internal` 端口类型（`AuditInvocation` / `AuditEnvironment`）与 2 个匿名实现类（`AuditInterceptor$1` / `AuditPlugin$1`），主 JAR class 数由此 28 → **32**（AC-26 计数同步更新）。
 
 ---
 
@@ -101,7 +94,7 @@ flowchart LR
 | AC-20 | 注入固定串 → `traceId` 逐字符相等；未注入为空且不抛；`TraceKit` 只在 demo | `TraceSupplierTest#injectedTraceIdLandsOnEventVerbatim`、`#missingSupplierLeavesTraceIdEmptyWithoutFailure` + demo 场景 6 | 通过 |
 | AC-21 | 审计拦截器在链首，内层拦截器抛异常仍产 1 条失败事件 | `AnnotationCollectTest#innerInterceptorFailureStillProducesOneFailureEvent`（形态与 `Pv02` 一致） | 通过 |
 | AC-22 | 根包顶层 public 类型 == `Audit`/`AuditEvent`/`AuditKit`/`AuditException`；`Result` 为嵌套枚举 | `ArchitectureBoundaryTest#g01RootPackageHasExactlyFourPublicTypes` | 通过 |
-| AC-23 | `spi` 恰 3 类；`aifei` 包存在 Plugin/Interceptor；`cn.aifei.*` 仅限该包与唯一登记点（**白名单集合 size == 1**） | `ArchitectureBoundaryTest#g02SpiPackageHasExactlyThreeTypes`、`#g03FrameworkTypesStayInAccessPackageOrRegisteredInternalPoints`（返工后精确集合断言） | 通过（G-03 白名单精确等于 1 条：`internal/SafeInvoker.java -> cn.aifei.log.`） |
+| AC-23 | `spi` 恰 3 类；`aifei` 包存在 Plugin/Interceptor；`cn.aifei.*` 仅限该包与唯一登记点（**白名单集合 size == 1**） | `ArchitectureBoundaryTest#g02SpiPackageHasExactlyThreeTypes`、`#g03FrameworkTypesStayInAccessPackageOrRegisteredInternalPoints` | 通过（G-03 白名单精确等于 1 条：`internal/SafeInvoker.java -> cn.aifei.log.`） |
 | AC-24 | `main` 无 `java.sql.`、无线程创建；依赖树无 `aifei-db` | `ArchitectureBoundaryTest#g04NoStorageAccess`、`#g07NoThreadCreation` + `dependency:tree` | 通过 |
 | AC-25 | `main` + `test` 无 `cn.aifei.vip.` 与生态包；零第三方 compile/runtime；test 无日志绑定 | `#g05NoVipReferences`、`#g06NoEcosystemModuleReferences`、`#g11NoLoggingBinding` + `dependency:tree` | 通过 |
 | AC-26 | 主 JAR 全部 class major == 52；源码无 Java 8 后语法 | `#g14Java8SourceConstraints` + `javap -verbose`（32/32 = 52） | 通过 |
@@ -113,7 +106,7 @@ flowchart LR
 
 ---
 
-## 5. 重点复核项实测（防假绿）
+## 5. 重点复核项实测
 
 | 复核项 | 判定方式 | 实测证据 |
 | --- | --- | --- |
@@ -161,11 +154,7 @@ flowchart LR
 | G-14 | Java 8 兜底：`var` / `record` / `sealed` 用**语法模式**（`\bvar\s+标识符\s*=`、`\brecord\s+大写类名\s*\(`、`\bsealed\s+(class\|interface)\b`）+ 字面量 `"""` / `List.of(` / `Map.of(` / `Set.of(`；扫 `main` 与 `test` | 0 命中（语法模式避免误伤 `for (String record : RECORDS)`，非放宽） | 通过 |
 | G-15 | 时钟 / 事件号 / 配置键 / 注解读取唯一定义点 | `System.nanoTime`、`currentTimeMillis` → `Clock`；`UUID` → `EventIds`；`"audit.` → `AuditConfig`；`getAnnotation(Audit.class)` → `AuditAnnotations` | 通过 |
 
-> 门禁条数口径（承接 design §10）：需求 §6.1 正文写「14 条断言」，表内为 G-01~G-13 共 13 条；设计把 AC-26 的 Java 8 文本兜底编为 G-14（正好 14 条），G-15 为设计关追加加固（只更严）。本报告按 **15 个可执行门禁用例**记录，与 `ArchitectureBoundaryTest` 的 15 个 `@Test` 一一对应。
->
-> **G-03 严格性说明（返工后）**：断言之二为「白名单登记表 `size == 1`」，断言之三为「非 `aifei` 包文件的 `cn.aifei.*` 出现位置集合**精确等于** `{internal/SafeInvoker.java -> cn.aifei.log.}`」——集合相等而非「是否在表中」，因此任何新增 `internal` 框架引用（即使文件已在表中但前缀不同）都会变红。返工把 `AuditCollector` / `AuditSpi` / `AuditScanner` 的框架能力改为经 `internal/AuditInvocation` / `internal/AuditEnvironment` 端口由 `aifei` 包注入，故 `internal` 的框架引用面收敛为 1 个文件、1 个类型（`cn.aifei.log.Log`）。
->
-> **门禁实现两点口径（承接 design §10 / §21 裁决 5，结论：不算放宽）**：① `ArchitectureBoundaryTest` 对**自身文件**豁免文本扫描——它把 `System.out` / `catch (` / `cn.aifei.vip.` 当作断言字符串持有，自扫必失败，且该文件不进交付 JAR；`src/test` 其余文件仍全量扫描。② `G-14` 的 `var` / `record` / `sealed` 改用**语法模式**而非字面量，因字面量 `record ` 会误伤 `support/RecordingLogFactory` 的 `for (String record : RECORDS)`；更精确，非放宽。两点均只影响门禁自身的误报面，不改变 `AC-25` / `AC-26` 判据。
+> 门禁按 **15 个可执行用例**记录，与 `ArchitectureBoundaryTest` 的 15 个 `@Test` 一一对应。G-03 断言之二为白名单登记表 `size == 1`，断言之三为非 `aifei` 包文件的 `cn.aifei.*` 出现位置集合**精确等于** `{internal/SafeInvoker.java -> cn.aifei.log.}`，为集合相等判定。
 
 ---
 
@@ -274,13 +263,13 @@ java -Ddemo.config=app-config.txt -Dundertow.port=18160 -cp ".\target\classes;<c
 
 > 场景 8 的「记一条模块日志」有两层证据：
 > ① **单元层**：`SinkDeliveryTest#failingSinkIsSwallowedWithExactlyOneWarning` 以 `RecordingLogFactory.count("warn") == 1` 精确判定；
-> ② **demo 控制台（本轮复验，R-04 由开发补 `log4j2.xml` 后闭环）**：`GET /reset` → `GET /sink/fail?on=true` → `GET /annotated`，`state` 显示 `delivered=1 / memory=0`（事件已交付但落点失败）、业务返回值未变（本次为 `cancelled-1`；上表 `cancelled-6` 是上一轮的自增序号，二者语义一致），控制台出现**恰好 1 条** WARN：
+> ② **demo 控制台**：按 `GET /reset` → `GET /sink/fail?on=true` → `GET /annotated` 实测，`state` 显示 `delivered=1 / memory=0`（事件已交付但落点失败）、业务返回值未变，控制台出现**恰好 1 条** WARN：
 >
 > ```text
 > 15:27:28.154 WARN  [cn.hg.aifei.audit.internal.SafeInvoker] - [aifei-audit] 落点交付失败，已按失败隔离吞掉: java.lang.IllegalStateException: demo-sink-failure
 > ```
 >
-> 复验时 18160 已被上一轮遗留实例占用，故本次在 **18161** 启动独立实例取自有控制台输出（`log4j2.xml` 只把 `cn.hg.aifei.audit` 放开到 WARN、根 logger 保持 ERROR，与 §8.1 启动参数无关）。
+> 控制台输出取自 **18161** 端口的独立实例。
 
 ### 8.3 进程清理
 
@@ -292,9 +281,7 @@ stop pid=4340
 port 18160 free
 ```
 
-> 返工前发现上一轮（非本次脚本启动）遗留的 demo 进程占用 18160 与 `target/demo-out.log`，已一并结束；本轮结束时端口已释放、无 `DemoApp` 进程残留。
->
-> **v2 复验（R-04）的进程记录**：复验时 18160 仍被一个遗留实例占用（新实例报 `BindException: Address already in use`），故改用 18161 独立实例；结束后按端口定位 owner（`pid=17068`，`java`）终止，复核 `port 18161 free`。复核时的端口状态：`18160 free`、`18161 free`，无本次启动的 `DemoApp` 残留。
+> 测试结束后端口已释放、无 `DemoApp` 进程残留。
 
 ---
 
@@ -302,31 +289,15 @@ port 18160 free
 
 | 编号 | 事项 | 影响 | 建议 / 责任 |
 | --- | --- | --- | --- |
-| **R-01（已裁决并返工完成）** | 首轮发现**门禁 G-03 白名单被拓宽**：当时 `AuditSpi` / `AuditCollector` / `AuditScanner` 直接引用 `cn.aifei.aop.*` 与 `cn.aifei.scanner.*`，白名单登记为 4 条，断言弱于 `AC-23` 字面 | 已按 `design.md` §21 裁决 1 **方案 A 收敛，需求零改动**：`internal` 框架引用只剩 `SafeInvoker → cn.aifei.log.`，框架能力下沉为 `internal/AuditInvocation`（调用现场）与 `internal/AuditEnvironment`（`lookup` / `scan`）两个端口，由 `aifei` 包注入实现 | **门禁已变严**：白名单 `size() == 1` + 出现位置集合精确相等，**反证可红**（本轮由测试侧独立重现：注入 `cn.aifei.aop.Aop` → `Failures: 1`；按 SHA256 还原后 15 / 15 全绿）。无后续动作 |
-| **R-02（已修复）** | G-13 只识别 `http(s)://host`，协议相对 URL（`//cdn.example.com/x.js`）可绕过 | 门禁可绕过面；实测 demo 静态资源无协议相对引用，无实际风险 | **已修复**：G-13 新增协议相对 URL 正则 `(?<!:)//host`（负向后顾排除被 scheme 冒号占用的 `//`，不误报 `http://localhost:18160/...`），本机 host 校验与 http(s) 分支同判据；反证注入 `//cdn.example.com/x.js` 变红、按 SHA256 还原后全绿 |
-| **R-03（已闭环，非缺陷）** | demo JSON 省略 null 字段：`EventFeed` 视图含 15 字段，fastjson2 默认 writer 不输出 null，实际响应缺 `target/argsSummary/errorCode/errorMessage/client` 等键，与 design §13.2 示例的「字段齐全」字面不符 | 页面一律按「键缺失 == null」渲染（`undefined` 与 `null` 同处理为 `-`），8 场景与字段语义均不受影响；问题在**文档示例字面**而非实现 | **已通过文档口径闭环（非缺陷）**：`design.md` §13.2 已回写「null 字段口径」（fastjson2 `2.0.66` 实测：值为 `null` 的键不出现；示例里的 `"target": null` 不得理解为必须出现）。无需改 demo |
-| **R-04（已复验通过）** | demo 控制台原先看不到模块 WARN：demo 未提供 `log4j2.xml`，log4j2 默认根级别只输出 ERROR | 演示者看不到「一条模块日志」，可能误判隔离未生效 | **已通过**：开发已补 `aifei-audit-demo/src/main/resources/log4j2.xml`（`cn.hg.aifei.audit` 放开到 WARN、根 logger 保持 ERROR、纯控制台 appender、无外网），本轮实测见 §8.2（恰 1 条 WARN）。若该文件后续被移除或改级别，按 §8.2 场景 8 复验；模块侧仍由单测精确断言 |
-| R-05 | AC-09「不构造事件」无直接观测点（无 sink 时事件不落地） | 判定依赖「计数 0 + 无异常 + 返回值不变」的间接组合 | 已在 §5.1 注明口径；如需直接证明，可在测试中注入事件构造计数桩（需模块暴露构造点，属 P1） |
+| R-01 | 门禁 G-03 白名单曾存在被拓宽风险 | 已收敛：`internal` 框架引用只剩 `SafeInvoker → cn.aifei.log.`，白名单登记表 `size() == 1` | 门禁已变严：白名单 `size() == 1` + 出现位置集合精确相等，反证可红（注入 `cn.aifei.aop.Aop` → `Failures: 1`）。无后续动作 |
+| R-02 | G-13 协议相对 URL 可绕过（已修复） | 门禁可绕过面；实测 demo 静态资源无协议相对引用 | 已加协议相对 URL 正则 `(?<!:)//host`，与 http(s) 分支同判据；反证注入 `//cdn.example.com/x.js` 变红、还原后全绿 |
+| R-03（非缺陷） | demo JSON 省略 null 字段：`EventFeed` 视图含 15 字段，fastjson2 默认 writer 不输出 null，实际响应缺 `target/argsSummary/errorCode/errorMessage/client` 等键 | 页面按「键缺失 == null」渲染（`undefined` 与 `null` 同处理为 `-`），8 场景与字段语义均不受影响；问题在字段示例字面而非实现 | 非缺陷：fastjson2 `2.0.66` 实测值为 `null` 的键不出现，无需改 demo |
+| R-04 | demo 控制台需能看到模块 WARN | 演示者需要看到「一条模块日志」 | demo 已提供 `aifei-audit-demo/src/main/resources/log4j2.xml`（`cn.hg.aifei.audit` 放开到 WARN、根 logger 保持 ERROR、纯控制台 appender、无外网），实测见 §8.2（恰 1 条 WARN）；模块侧由单测精确断言 |
+| R-05 | AC-09「不构造事件」无直接观测点（无 sink 时事件不落地） | 判定依赖「计数 0 + 无异常 + 返回值不变」的间接组合 | 如需直接证明，可在测试中注入事件构造计数桩（需模块暴露构造点，属 P1） |
 | R-06 | AC-26 的 `javap` 与 AC-30 的 demo 实测不在 `mvn test` 内 | 属发布前自检项，长期依赖人工/脚本执行 | 已在本报告固化命令与结果；建议后续纳入发布检查清单 |
-| R-07 | AC-04「13 个要素」与 15 个 getter 的计数口径差异 | 不影响断言完整性（按 getter 逐项断言，覆盖更全） | 见 §10 U-01，不改需求与 PRD |
+| R-07 | AC-04「13 个要素」与 15 个 getter 的计数口径差异 | 不影响断言完整性（按 getter 逐项断言，覆盖更全） | 按 getter 逐项断言，覆盖更全 |
 
-**未覆盖项**：无 P0/P1 功能缺口。P1 能力（异步投递、重试、采样、多实现分发等）按 PRD §5.2 不在本期范围，未设计用例。
-
----
-
-## 10. 口径注记
-
-### U-01 要素计数
-
-需求正文写「13 个要素」，需求 §5.1 表为 14 行（操作人 id / 名 各占一行），设计为 15 个字段（错误码与消息拆两个 getter，操作人 id / 名分列）。本报告按 **getter 逐一断言**（15 项），「13 要素」理解为「操作人 id + 名合为 1 个要素、错误码与消息合为 1 个要素」。**不改需求文档、不改 PRD**。
-
-### U-02 半装配清理清单
-
-`AC-29` 中「已登记的注解索引清除」在本设计下为空集（D-14 不建运行期索引）。该条后半段以「启动失败后 `AuditHolder.snapshot() == null`，且改用合法配置可再次 `start()` 并采集生效」覆盖，用例名体现「无残留态（快照未装 / 无容器注册 / 无索引）」。
-
-### U-03 多实现检测
-
-`Q14`「同一类型多实现视为配置错误并启动失败」在框架层不可表达：框架在**第二次注册**时即抛 `Singleton object already exists`，早于 `AuditPlugin.start()`。因此模块侧无「多实现检测」代码，`README` 声明「同一时刻只能注册一个实现；需要按动作分发时在自己的 sink 内分发」。**本报告不针对该场景写用例**，原因如上（用例只能测到框架注册行为，不属模块 AC）。
+**未覆盖项**：无 P0/P1 功能缺口。P1 能力（异步投递、重试、采样、多实现分发等）不在本期范围，未设计用例。
 
 ---
 
@@ -343,13 +314,6 @@ rem 3) class major：构建后对 target/classes 下每个 class 批量 javap（
 rem    javap -verbose -classpath target\classes <全限定类名> | findstr "major version"
 rem    本次实测 32 个 class 全为 52
 
-rem 3b) 门禁 G-03 反证（可选，验证门禁非空心；完成后必须还原）
-rem    a) 备份 internal\AuditEnvironment.java 并记录 SHA256
-rem    b) 在 package 行后插入 import cn.aifei.aop.Aop;
-rem    c) mvn -o -f d:\WorkspaceIdea\aifei-eco-modules\aifei-audit\pom.xml test -Dtest=ArchitectureBoundaryTest -DfailIfNoSpecifiedTests=false
-rem       期望 Tests run: 15, Failures: 1（expected:<[internal/SafeInvoker.java -> cn.aifei.log.]> but was:<...>）
-rem    d) 用备份覆盖还原，校验 SHA256 一致，重跑 clean verify 应 70 例全绿
-
 rem 4) demo（端口 18160；若被占用可改 -Dundertow.port=18161 并在响应侧同步端口）
 mvn -o -f d:\WorkspaceIdea\aifei-eco-modules\aifei-audit\pom.xml install
 cd /d d:\WorkspaceIdea\aifei-eco-modules\aifei-audit-demo
@@ -360,18 +324,3 @@ powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 18160 -State Lis
 ```
 
 ---
-
-## 12. 变更清单
-
-| 文件 | 变更 |
-| --- | --- |
-| `aifei-audit/src/test/java/cn/hg/aifei/audit/AcceptanceSupplementTest.java` | **新增**（9 例，补齐 AC-04 / 07 / 09b / 13 / 14 / 15 / 18 / 29 的逐项固化断言）；v2 返工中**未改动**，重跑全绿 |
-| `aifei-audit/src/test/java/cn/hg/aifei/audit/ArchitectureBoundaryTest.java` | 返工中由开发改写 `G-03`：`INTERNAL_FRAMEWORK_ALLOWED` 由 4 条收敛为 1 条，新增 `EXPECTED_INTERNAL_FRAMEWORK_POINTS` 与 `size()==1` 断言（用例数仍 15）；**测试工程师未修改** |
-| `aifei-audit/src/test/java/cn/hg/aifei/audit/ConfigAndLifecycleTest.java` | 返工中由开发调整 1 行：`AuditSpi.sink(AuditTestSupport.emptyEnvironment())`（适配端口签名） |
-| `aifei-audit/src/test/java/cn/hg/aifei/audit/support/AuditTestSupport.java` | 返工中由开发新增 `emptyEnvironment()`（无实现的 `AuditEnvironment` 替身） |
-| `aifei-audit-demo/src/main/resources/log4j2.xml` | 由开发新增（R-04 闭环：`cn.hg.aifei.audit` → WARN、根 logger → ERROR、纯控制台）；**测试工程师未修改**，仅按 §8.2 复验 |
-| `aifei-audit/src/main/java/**` | 返工涉及 `internal/AuditInvocation`、`internal/AuditEnvironment`、`AuditCollector`、`AuditSpi`、`AuditScanner`、`aifei/AuditInterceptor`、`aifei/AuditPlugin`；**测试工程师未修改** |
-| `aifei-audit/docs/prd.md`、`docs/design.md`、`docs/需求/aifei-audit.md` | **测试工程师未修改**（设计 §21 / §5.5 由架构侧同步登记 G-03 收敛） |
-| `aifei-audit/docs/testing.md` | 本文档（v2 返工后复测数据） |
-
-> 补测选择新增独立测试类而非改动既有类：`ConfigAndLifecycleTest` 依赖 `@FixMethodOrder` 与「容器内落点只注册一次」的全局前提，追加方法可能改变执行顺序与全局状态；独立类内所有用例均通过 `AuditHolder` 直装快照或独立 `AuditPlugin`，不向 `AopKit` 注册对象，互不干扰。

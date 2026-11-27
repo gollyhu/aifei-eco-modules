@@ -1,11 +1,9 @@
 # aifei-mq-demo 演示页面 · 契约与集成验收测试报告
 
-> **归档状态：历史验收快照，不再维护**（2026-11-03 归档）。本文缺陷台账为 D-01（P1）、D-02（P2）、D-03（P2）：截至第 2 轮复审，**D-01、D-03 已闭环**，**D-02 依据设计 §9 A2 预授权保留为已知偏差**（详见文末复审结论）。本文仅记录当轮结论，**不应据此判断当前状态**（「文档收口缺口 T04」属另一份 `test-report-e2.md`，与本文无关）。
+> **历史验收快照，不再维护**（2026-11-03 归档）。本文记录当轮验收结论，**不应据此判断当前状态**。
 
-> 验收标尺：`docs/archive/aifei-mq-demo-baseline.md`（BASELINE: PASS）+ `docs/aifei-mq-demo/prd.md` §5/§6/§7 + `docs/aifei-mq-demo/ui-prototype.md` + `docs/aifei-mq-demo/design.md` §0/§4/§7.3/§9
 > 被测范围：`aifei-mq-demo/src/main/java/cn/hg/aifei/mq/demo/**`（9 文件）+ `src/main/webapp/**`（6 文件）+ `src/main/resources/app-config.txt`
 > 测试类型：契约测试（HTTP 端点矩阵）+ 静态硬约束检查 + 端到端冒烟（无头 Edge）
-> 轮次：第 1 轮（上限 2 轮；另有第 2 轮复审，见文末「复审（第 2 轮）」）
 
 ---
 
@@ -48,7 +46,7 @@
 
 > Aifei 检查清单（静态抽查，源码级）：**Java 8 兼容 ✅**；**无分层污染 ✅**（无 Controller/Render/Repository/Mapper/DTO 新增）；**HIO 完整 ✅**（`In` / `Out` / `IoHandler` / `IoDispatcher` 均在应用侧 `cn.aifei.demo.common.arch`）；**SQL 安全 ✅**（本 demo 无库无表、无 SQL）；**生成器产物未被手改 ✅**（无 `common/db/base/`、无 `ModelSet.java`）；**事务用法 ✅**（无 `commit()` 调用，本 demo 无事务）；**能力边界 ✅**（未使用上传下载 / Cookie / Session / Excel / Admin 脚手架）。
 
-### B. 静态资源可达性（本次最易翻车项）
+### B. 静态资源可达性
 
 | 用例 | 期望 | 实测 | 结论 |
 | --- | --- | --- | --- |
@@ -70,7 +68,7 @@
 | C1 `/mq/demo/instances` | `count=3`；`[0].instanceName=__MAIN__`、`main=true`；随后 demoA、demoB；每条含 8 字段 | `count:3`；`[{__MAIN__,main:true,configPrefix:"mq",ready:true,subscribedTopicCount:1,messageLogSize:0,messageLogCapacity:200,type:"memory"},{demoA,…,configPrefix:"mq.demoA",ready:true,…},{demoB,…,configPrefix:"mq.demoB",ready:true,…}]`，顺序与 `mq.names` 一致 | PASS |
 | C2 `/mq/demo/state`（不带 instance，向后兼容回归） | `code=0`，行为同改造前 | `code:0`，`instance:"__MAIN__"`，`subscribedTopics:["aifei.mq.demo.topic"]`，`subscribers[0].{name:"DemoMessageListener",source:"startup"}`，旧字段齐：`mqType/configPrefix/sentCount/receivedCount/messageLogSize/messageLogCapacity/producerInjected/consumerInjected` | PASS |
 | C3 `/mq/demo/state?instance=demoA` | `code=0`，`instance=demoA` | `code:0`，`instance:"demoA"`，`configPrefix:"mq.demoA"`，`subscribedTopics:[]`，计数全 0 | PASS |
-| C4 `/mq/demo/send?instance=demoA&topic=t1&text=hello` 后查 messages | `delivered` 数值合理；messages 能查到该条 | `delivered:0`、`receivedCount:0`（demoA/t1 当时无订阅者 → 符合 PRD §7.1「无订阅者发送仍成功、消息被丢弃」），messages `count:0`。**用例口径需修正**：该断言隐含「已订阅」前置条件 | PASS（口径修正，见 C4′） |
+| C4 `/mq/demo/send?instance=demoA&topic=t1&text=hello` 后查 messages | `delivered` 数值合理；messages 能查到该条 | `delivered:0`、`receivedCount:0`（demoA/t1 当时无订阅者 → 无订阅者发送仍成功、消息被丢弃），messages `count:0` | PASS（见 C4′ 补齐订阅前置） |
 | C4′ 先订阅再发送的可查性（补齐前置条件） | 订阅后发送能被 `/messages` 查到且字段合规 | `subscribe` → `subscribedTopics:["t1"]`、`subscribers[0].source:"page"`；`send` → `delivered:1`、`receivedCount:1`；`messages` → `count:1`，`{sequence:1,topic:"t1",subscriber:"PageDemoListener",text:"hello",payloadSize:5,receivedAt:"10:40:04.424"}`，**无 `messageId`**（符合契约） | PASS |
 | C5 隔离性 | demoB 与主实例均不含 demoA 的 t1 记录 | 同一 topic `t1`：demoA `count:1`（text=hello），demoB `count:1`（text=demoB-hello），主实例 `count:0`；demoB 的 `sequence` 与 `messageId` 各自从 1 起（每实例自增） | PASS |
 | C6 `/mq/demo/messages/clear?instance=demoA` | demoA 归零；demoB 不受影响 | demoA `messageLogSize:0`、`sentCount:0`、`receivedCount:0`，订阅 `t1` **保留**；demoB 仍 `count:1` 且记录内容不变 | PASS |
@@ -83,7 +81,7 @@
 | C11b 参数非法（send 空 topic） | `/mq/demo/send?instance=demoA&topic=&text=x` → `10001` | **`code:0`，topic 被折叠为默认 `aifei.mq.demo.topic` 并真实发送**：`{"topic":"aifei.mq.demo.topic","messageId":"4","text":"x","delivered":0}` | **FAIL**（缺陷 D-01） |
 | C12 发送后计数按实例独立变化 | `sentCount`/`receivedCount`/`messageLogSize` 随实例独立 | 起：demoA `3/0/0`、demoB `1/1/1`；向 demoB 发送一次后：demoA **仍为** `3/0/0`，demoB 变 `2/2/2` | PASS |
 
-补充验证（超出 C 节清单，用于判定「是否属缺陷」）：
+补充验证：
 
 | 用例 | 期望 | 实测 | 结论 |
 | --- | --- | --- | --- |
@@ -91,7 +89,7 @@
 | X2 同 topic 双 listener 叠加（设计 R3/R4） | 页面再订阅装配期主题后，`delivered=2`、同消息两条记录且 subscriber 可区分 | 订阅后 `subscribers` 出现 startup+page 两条；发送 → `delivered:2`；messages 出现 `PageDemoListener` 与 `DemoMessageListener` 各一条（`sequence` 2、3） | PASS（符合设计 R3/R4，非遗留缺陷） |
 | X3 `unsubscribe` 后装配期仍生效文案（设计 §4.9） | `code=0` + msg 追加「代码：装配期订阅仍生效」，`subscribedTopics` 仍保留该主题 | `msg:"已取消订阅 aifei.mq.demo.topic（影响该实例的所有浏览器会话）；代码：装配期订阅仍生效"`，`subscribers` 只剩 startup | PASS |
 | X4 取消未订阅主题 | `10001`「未登记该主题的页面订阅」 | `{"code":10001,"msg":"未登记该主题的页面订阅: never.subscribed"}` | PASS |
-| X5 空白 vs 空串（定性根因） | 仅「空串」异常，「空白」应正常报错 | `topic=%20` → `10001 topic 不能为空`；`text=%20` → `10001 text 不能为空`；`topic=`/`text=` → 静默取默认值（见 D-01） | 记录（支撑 D-01 定位） |
+| X5 空白 vs 空串 | 仅「空串」异常，「空白」应正常报错 | `topic=%20` → `10001 topic 不能为空`；`text=%20` → `10001 text 不能为空`；`topic=`/`text=` → 静默取默认值（见 D-01） | 记录 |
 
 ### D. 硬约束静态检查（grep 源码）
 
@@ -139,24 +137,19 @@
 - **对照证据**：`topic=%20` / `text=%20`（空白）**正确**返回 `10001`，说明仅「恰好空串」这一路径异常。
 - **根因**：`cn.aifei.demo.common.arch.InParser#getStringValue`（第 66-69 行）把空串统一转 `null`（注释本意是「表单域无输入值 → null」），但该转换同时作用于 **query 参数**（`parseQueryPara` 第 58 行）；随后 `@Para(defaultValue = …)` 只在 `null` 时取默认值（`BasicArguments.StrArgument`）。设计 §0 A2 的前提「`?instance=`（空串）返回 `""` 而不是 null」与实现不符。
 - **受影响文件**：`src/main/java/cn/hg/aifei/mq/demo/service/MqDemoService.java`（`send` / `sendMessage` 的 `topic`/`text`）；可选 `src/main/java/cn/aifei/demo/common/arch/InParser.java`；`src/main/webapp/assets/js/mq-demo.js`（`send()` 无本地非空校验，`canSend` 仅判 `locked/busy`）。
-- **修正建议（择一，推荐 a）**：
-  - **a（推荐，最小侵入）**：`send` / `sendMessage` 保留 `@Para` 默认值以兼容「省略参数 = 旧行为」，同时引入 `In` 参数区分「缺省」与「空串」：`if (in.has("topic") && StrUtil.isBlank(topic)) return Out.fail(OutCode.INVALID_PARAM).msg("topic 不能为空");`（`In.has` 用 `containsKey`，空串在 query 里 key 存在、值为 null，可判定）。
-  - **b**：把 `InParser#getStringValue` 的「空串→null」限定为 form 数据，query 参数保留 `""`（符合注释本意，但需回归 `aifei-websocket-demo` 等既有 demo）。
-  - **c（治标，不单独采用）**：前端补非空校验；API 契约仍不符。
-  - 无论选哪条，都需同步修订设计 §0 A2 的错误前提陈述。
 
-### D-02（P2）`?instance=`（空串）回退主实例，未返回 `10001`
+### D-02（P2，已知偏差）`?instance=`（空串）回退主实例，未返回 `10001`
 
 - **现象**：`GET /mq/demo/state?instance=` → `code=0`、`instance:"__MAIN__"`；对照 `?instance=%20`（空格）→ `10001`。
 - **契约依据**：PRD §5「`instance` 参数语义 · 非法值：未注册名 / **空串** / 含 `.`、`=`、`:` 或空白 → `code=10001`，msg 含「未知实例」+ 可用实例清单」；基线 §3.3「省略即旧行为 / 空串非法」两条同时成立。
-- **降级理由（诚实边界）**：设计 §9 A2 已**预授权**该退化（「若框架把空串折叠为默认值，则空串行为退化为 `__MAIN__`（宽松），不影响其它契约」），故定 P2 —— 属于「实现遵从设计、但设计偏离 PRD/基线」的文档—契约不一致。
-- **修正建议**：与 D-01 同根同修（方案 a 对 `instance` 同样适用：`if (in.has("instance") && StrUtil.isBlank(instance)) return 10001`）；若决定保留宽松行为，则必须在 `prd.md` §5 与 `baseline` §3.3 登记为**已知偏差**，并同步修订设计 §0 A2。
+- **定性**：该退化已预授权（空串折叠为默认值时回退 `__MAIN__`，不影响其它契约），故定 P2 —— 属于文档—契约不一致。
+- **定位**：与 D-01 同根；按需在 `prd.md` 与 baseline 登记为已知偏差。
 
 ### D-03（P2，文档级）说明抽屉硬编码「上限 200 条」
 
 - **现象**：`view/mq/demo.html:266` `<tr><td>GET /mq/demo/messages</td><td>消息记录（最新在前，上限 200 条）</td></tr>`。
 - **影响**：仅说明文字；运行时渲染（`:40`、`:195`、`index.html:88`）均读接口字段，符合 PRD Q8 / 设计 R9 的本意，故不阻塞。
-- **修正建议**：改为「上限见接口返回 `messageLogCapacity`」，避免库常量变更后文案失同步。
+- **影响**：仅说明文字，运行时均读接口字段，不阻塞。
 
 ---
 
@@ -172,8 +165,6 @@
 
 > 关停确认：测试结束已执行 `stop-demo.bat`，`SUCCESS: The process with PID 21876 has been terminated`；`netstat -ano | findstr ":18100"` 无 `LISTENING` 记录（仅客户端 `TIME_WAIT`），**端口 18100 已释放**。
 
-IS_PASS: NO（复审前）
-
 ## 复审（第 2 轮）
 
 > 复审范围：验证第 1 轮遗留缺陷 **D-01（P1）**、**D-03（P2）** 的修复闭环，并对 **D-02（P2）** 给出最终定性 + 回归底线最小集；**未重跑**全量 38 用例。
@@ -186,8 +177,6 @@ IS_PASS: NO（复审前）
 | **D-01（P1）** 空 topic/text 静默改发默认主题 | 代码走查 + 无头浏览器实测（含网络层请求计数） | `mq-demo.js:481-501`：`send()` 内、`requestEnvelope`（`:503`）**之前**的前置校验；topic `:481` `trim()` 后判空（`:487-488`），text `:489` `trim()` 后判空（`:490`）；失败分支 `:492-500` 置 `receipt.cls = "is-fail"`、文案 `code=10001 发送失败：topic 不能为空` / `text 不能为空`，随后 `return` **不发请求**。双入口收敛：发送按钮 `demo.html:161` `@click="send"`；消息体 `demo.html:157` `@keydown="onTextKeydown"` → `mq-demo.js:555-560` Ctrl/⌘+Enter → `send()` | 安装 fetch 间谍统计 `/mq/demo/send*` 请求后实测 4 项：① 空 Topic 点发送 → 红框「code=10001 发送失败：topic 不能为空」，请求 0 次；② 空 text 点发送 → 红框「code=10001 发送失败：text 不能为空」，请求 0 次；③ Ctrl+Enter 空 Topic → 红框「topic 不能为空」，请求 0 次；④ Ctrl+Enter 正常内容（topic=t-recheck）→ 绿框「code=0 已发送到主题 t-recheck」含 messageId=2，恰 1 次真实请求 | **CLOSED** |
 | **D-03（P2）** demo.html 写死「上限 200 条」 | grep 源码 + 逐条判读 | `demo.html:266` 已改为「消息记录（最新在前，上限读接口的 `<code>messageLogCapacity</code>`）」；全文件 grep `200` 仅剩 `:274`「HTTP 恒 200，业务结果看响应里的 code」（接口说明注释，属正常命中），运行时动态值与 CSS 数值无异常命中 | 文案口径与 PRD Q8 / 设计 R9 一致 | **CLOSED** |
 | **D-02（P2）** `?instance=` 空串回退主实例 | 契约定性（不修代码） | 设计 `design.md` §9 A2 已预授权该退化：「若框架把空串折叠为默认值，则空串行为退化为 `__MAIN__`（宽松），不影响其它契约」；实测行为（`state?instance=` → `code=0`、`__MAIN__`）与此一致 | 属「实现遵从设计、设计偏离 PRD §5 / 基线 §3.3」的已知偏差；按 A2 预授权保留宽松行为，**不判定为待修缺陷**。后续若需严格对齐 PRD，按 D-02 修正建议改 `instance` 判空并同步 prd/baseline 登记 | **已知偏差（A2 预授权，关闭跟踪）** |
-
-> 复审过程说明（诚实记录）：初次用 Puppeteer `fill` 清空 Topic 后点发送曾出现绿色回执（code=0），核查确认系**测试工装问题**——`fill` 未触发 Vue `v-model` 的 `input` 事件（输入框实际值仍为默认主题），该次误发不计缺陷；改用原生 value setter + `dispatchEvent(new Event('input'))` 后复测，上述 4 项全部符合预期。
 
 ### R-2 回归底线（最小集）
 
@@ -208,6 +197,5 @@ IS_PASS: NO（复审前）
 - D-03（P2）：**闭环**（写死文案已改为「上限读接口的 messageLogCapacity」口径）。
 - D-02（P2）：**已知偏差，关闭跟踪**（设计 §9 A2 预授权的宽松退化：`?instance=` 空串回退 `__MAIN__`，不返回 10001；不影响其它契约，故不判定为待修缺陷）。
 - 回归底线 4 项全部 PASS。
-- 路由判定：**NoOne**（D-01/D-03 已闭环、D-02 定性为已知偏差，无待修缺陷，无需再派发）。
 
-IS_PASS: YES（D-01/D-03 闭环 + D-02 已在本报告定性为已知偏差；存档快照，详见文首归档状态）
+结论：D-01/D-03 已闭环，D-02 定性为已知偏差，无待修缺陷。

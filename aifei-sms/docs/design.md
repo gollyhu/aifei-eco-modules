@@ -1,30 +1,12 @@
 # aifei-sms 设计文档
 
-> 本文是 `aifei-sms` 的**设计事实来源（契约）**：公共 API 逐字签名、包边界与门禁断言、配置键全集、sms4j 选型实证、行为契约、任务分解与验收映射以本文为准。面向使用者的用法见 `README.md`；面向开发代理的约束见模块 `AGENTS.md`；测试策略与用例清单见 `docs/testing.md`（本文只定契约与端点清单）。
+> 本文是 `aifei-sms` 的设计事实来源：公共 API 签名、包边界与门禁断言、配置键全集、行为契约与验收映射以本文为准。面向使用者的用法见 `README.md`；面向开发代理的约束见模块 `AGENTS.md`；测试策略与用例清单见 `docs/testing.md`。
 >
-> **交付性质**：`aifei-sms` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**。任务输入 §〇 已定档：表结构草案（零存储、禁 `java.sql.*`）、Service 方法清单（无 `@Path` / 服务）、低保真 UI 原型（跳过 PM 原型与 QA 基线门禁）三章节**不适用**。本模块只有「根包公共 API + `internal` 适配层 + `aifei` 接入层 + `spi` 回执 SPI」四层，无 `AppConfig` / `Launcher` / `@Path` / 业务库表 / `Db+Row` / `Generator`。
+> `aifei-sms` 是 aifei 生态的库模块（SDK，可被应用依赖），只有「根包公共 API + `internal` 适配层 + `aifei` 接入层 + `spi` 回执 SPI」四层，零存储（禁 `java.sql.*`），无 `AppConfig` / `Launcher` / `@Path` / 业务库表 / `Db+Row` / `Generator`。
 >
 > **坐标**：`io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT`（`packaging=jar`）；根包 `cn.hg.aifei.sms`；接入层 `cn.hg.aifei.sms.aifei`；适配层 `cn.hg.aifei.sms.internal`；回执 SPI `cn.hg.aifei.sms.spi`；**Java 8**（语法与 API 双约束，主 JAR class major = 52）；sms4j 内核 `org.dromara.sms4j:sms4j-core:3.3.6` 为 `optional`，`aifei:1.1.2` 为 `provided`。
 >
-> **技术路线（用户点名锁定，不得推翻）**：基于 **sms4j v3.3.6**（dromara 社区，https://gitee.com/dromara/sms4j，Apache-2.0，JDK 8+）二次封装。sms4j 必须以「**引入核心 + `internal` 适配层隔离**」的技术路线落地，**不得被「自研等价」顶替**；**禁** `sms4j-spring-boot-starter` / `sms4j-solon-plugin`。发送内核一律走 sms4j 的 `SmsFactory` / `SmsBlend`（实证见 §2）；本模块 `internal` 只做配置解析、类型映射、依赖探测、异常翻译、回执验签与结果适配，**不自行实现短信发送协议**。
-
----
-
-## 0. 不适用章节声明（模板裁剪）
-
-本次是**库模块（SDK）**，不是业务应用工程。系统架构师模板中以下章节**不适用**，逐条给出理由：
-
-| 模板章节 | 结论 | 理由 |
-| --- | --- | --- |
-| 模块划分（业务服务/子系统拓扑） | **不适用** | 单一 JAR 库，无业务服务切分；仅按「根包公共 API / `internal` 适配层 / `aifei` 接入层 / `spi` 扩展点」四个技术层划分（§4） |
-| 业务库表结构 / `Db+Row` / `Generator` / `Model` | **不适用** | 本模块**零存储**：无表、无连接、无 DDL；门禁反向断言 `src/main/java` 无 `import java.sql.`、无 `aifei-db` 依赖（§4.2 / §13） |
-| 服务拓扑 / `@Path` 方法清单 / HIO / 路由 / 拦截器（入站） | **不适用** | 库模块本体无业务入站 HTTP 面；回执接收经 `aifei` 包的 `SmsHandler`（框架 `Handler` 旁路）提供接入构件，真实端点只在 `aifei-sms-demo`（§12） |
-| 部署架构 / 实例规格 / 容量规划 | **不适用** | 库模块随消费方应用部署，无独立部署单元 |
-| 数据层角色产出清单 / 前端页面设计交付 | **不适用** | 无数据层实现；无设计交付页面——demo 单页由前端直接实装，不经原型与 QA 基线门禁 |
-| `AppConfig implements AifeiConfig` / `Launcher` | **不适用** | 库模块无启动入口；装配经消费方 `config(Plugins)` 内 `plugins.add(new SmsPlugin(prop))`（§5.4） |
-| 缓存 / Redis 设计 | **不适用** | 模块零缓存、零 Redis：不做幂等去重、不做发送记录持久化（回执去重由消费方承担）；不引入 `aifei-cache` 及任何 Redis 客户端 |
-
-`aifei-sms/` 内 `mvn clean verify` 必须 **0 failure / 0 error**（含架构门禁测试）。
+> **技术路线**：基于 **sms4j v3.3.6**（dromara 社区，Apache-2.0，JDK 8+）二次封装，以「引入核心 + `internal` 适配层隔离」落地，不自行实现短信发送协议；禁 `sms4j-spring-boot-starter` / `sms4j-solon-plugin`。发送内核走 sms4j 的 `SmsFactory` / `SmsBlend`；本模块 `internal` 只做配置解析、类型映射、依赖探测、异常翻译、回执验签与结果适配。
 
 ---
 
@@ -32,12 +14,12 @@
 
 ### 1.1 定位
 
-aifei 生态有 `aifei-weixin` 覆盖微信通道，但**短信通道缺位**：业务普遍各自裸用阿里云 / 腾讯云 / 华为云 SDK，模板 ID、签名、变量拼装、回执接收各写各的，换厂商即重写发送代码。本模块基于 sms4j 补齐**统一短信通道**：以一套接口聚合多厂商（规划原文「先落地 1 家通道，其余按 provider 追加」，首期定档阿里云），换厂商只改 `sms.*` 配置不改业务代码。
+aifei 生态有 `aifei-weixin` 覆盖微信通道，但**短信通道缺位**：业务普遍各自裸用阿里云 / 腾讯云 / 华为云 SDK，模板 ID、签名、变量拼装、回执接收各写各的，换厂商即重写发送代码。本模块基于 sms4j 补齐**统一短信通道**：以一套接口聚合多厂商（首期落地阿里云），换厂商只改 `sms.*` 配置不改业务代码。
 
 | # | 目标 | 落点 |
 | --- | --- | --- |
 | 1 | **统一发送门面** | `SmsClient`（接口）/ `SmsKit`（静态门面）模板化发送；底层经 sms4j `SmsBlend`（§5） |
-| 2 | **多厂商聚合** | 基于 sms4j 聚合 23 家厂商（supplier 全集见 §2.4）；首期落地 `alibaba`，其余按通道追加 |
+| 2 | **多厂商聚合** | 基于 sms4j 聚合 23 家厂商；首期落地 `alibaba`，其余按通道追加 |
 | 3 | **类型隔离** | `org.dromara.sms4j.*` 只在 `internal.sms4j`；公共面零第三方 / 零框架类型（§4.2） |
 | 4 | **回执接收** | `aifei.SmsHandler` + `spi.SmsReceiptListener` + 阿里云 HMAC-SHA1 验签（§8） |
 
@@ -49,24 +31,24 @@ aifei 生态有 `aifei-weixin` 覆盖微信通道，但**短信通道缺位**：
 2. **薄门面**：对外暴露 aifei 风格极简 API（`SmsClient` / `SmsKit`）。
 3. **类型收敛**：sms4j 类型**不得**出现在公共 API 面。
 4. **框架接线**：经 `@Inject` 注入客户端、经 `app-config.txt` 的 `Prop` 承载配置。
-5. **回执验签补充**：sms4j 是**出站发送**聚合框架，**不提供入站回执验签**（§2.5 实证），故阿里云回调验签由 `internal` 用纯 JDK `javax.crypto.Mac` 实现——这是 sms4j 未覆盖能力的补充，**不是**对发送内核的「自研顶替」。
+5. **回执验签补充**：sms4j 是**出站发送**聚合框架，**不提供入站回执验签**，故阿里云回调验签由 `internal` 用纯 JDK `javax.crypto.Mac` 实现——这是 sms4j 未覆盖能力的补充，**不是**对发送内核的「自研顶替」。
 6. **统一异常与依赖探测**：失败收敛 `SmsException`；sms4j 缺失时可读失败（§7.4 / §7.5）。
 
 ### 1.3 设计原则（硬约束）
 
 | # | 纪律 |
 | --- | --- |
-| 1 | **根包 `cn.hg.aifei.sms` 精确 5 个公共类型**：`SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException`。不得增删、不得改名；变更须先改本文 §5 并过设计决策（Q7 定稿，§5.6） |
+| 1 | **根包 `cn.hg.aifei.sms` 精确 5 个公共类型**：`SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException`。不得增删、不得改名；变更须先改本文 §5 与公共面名单（§5.6） |
 | 2 | **公共签名零第三方类型、零框架类型**：只用 JDK 类型 + 本模块类型；不出现 `org.dromara.sms4j.*` / `cn.aifei.*`（`spi` 包同约束） |
 | 3 | **sms4j 唯一内核**：`org.dromara.sms4j:*` 为 `optional`；仅 `sms4j-core`（传递 provider/api/comm）引入；禁 starter / solon plugin；由 `internal.sms4j` 单点引用 |
 | 4 | **唯一定义点**：配置键名解析、通道类型映射、异常消息措辞、依赖探测、验签算法各只有一处实现（§7.1 标 ★） |
 | 5 | **零存储 / 零日志绑定**：`src/main/java` 禁 `import java.sql.` / `io.undertow.*`；不声明任何日志绑定实现 |
-| 6 | **同步发送**：公共面只提供同步发送，不暴露异步 API、不自带线程池（§3 D6） |
+| 6 | **同步发送**：公共面只提供同步发送，不暴露异步 API、不自带线程池 |
 | 7 | **Java 8 双约束**：语法与 API 均限 Java 8，主 JAR class major = 52 |
 
 > 第 1、2、3、4、5、7 条由架构门禁 `ArchitectureBoundaryTest`（§9）强制，**不得放宽或绕过**。
 
-### 1.4 本期不做清单（边界，防范围蔓延）
+### 1.4 本期不做清单（能力边界）
 
 | 不做项 | 边界说明 |
 | --- | --- |
@@ -78,121 +60,6 @@ aifei 生态有 `aifei-weixin` 覆盖微信通道，但**短信通道缺位**：
 | 异步发送 API / 内置线程池 | 公共面只同步；异步由消费方包装 |
 | 发送记录持久化 / 回执去重 | 零存储；落库与幂等由消费方承担 |
 | 批量群发 / 国际短信特殊处理 | P1，本期不做 |
-
----
-
-## 2. 选型实证记录（含依赖树结论）
-
-> **门禁要求**：对框架 / 依赖做「不可用 / 有缺陷」断言前必须当场实测；本次对定档依赖做精确 artifact、Java 8 兼容、传递依赖、编程式装配可行性实测。**全部结论均为当场实测，非凭记忆**。
-
-### 2.1 实测环境与命令清单
-
-| 项 | 值 |
-| --- | --- |
-| Maven | `Apache Maven 3.8.3`，home `D:/Apache/apache-maven-3.8.3` |
-| 本地仓库 | `D:/Apache/MavenRepository`（`settings.xml` 的 `localRepository`） |
-| 探测 JDK | JDK 19（仅用于 `javap` 读 class major；编译 `source/target=1.8`） |
-| 临时探针 | `%TEMP%/sms4j-probe`（用毕即删，不留仓库） |
-
-执行过的实证命令（枚举，便于复核）：
-1. `mvn -q dependency:get "-Dartifact=org.dromara.sms4j:sms4j-core:3.3.6"` → **EXIT=0**（`-D` 参数整体加引号，避免 PowerShell 在冒号处切断）。
-2. `dir D:/Apache/MavenRepository/org/dromara/sms4j` → 落盘 3.3.6 全套构件。
-3. `jar tf <jar>` → 列出 core/provider jar 真实类名。
-4. `javap -verbose -classpath <jar> <class> | Select-String "major version"` → 逐构件 / 逐传递项验证字节码版本。
-5. `javap -classpath <cp> ...` → 反编译 `SmsFactory` / `SupplierConfig` / `SmsBlend` / `AlibabaConfig` / `BaseConfig` / `SmsResponse` / `ProviderFactoryHolder` 方法签名与字节码。
-6. 临时 pom（`sms4j-core:3.3.6` 唯一依赖）`mvn dependency:tree` → EXIT=0，抓完整传递树。
-
-### 2.2 Q1 结论：精确 artifactId 与 Java 8 / 依赖树（**已实证通过**）
-
-| # | 结论 | 证据 |
-| --- | --- | --- |
-| 1 | **精确 artifactId = `org.dromara.sms4j:sms4j-core:3.3.6`**（不是 `org.dromara:sms4j`） | `dependency:get` EXIT=0；落盘 `org/dromara/sms4j/sms4j-core/3.3.6/sms4j-core-3.3.6.jar` |
-| 2 | **groupId 为 `org.dromara.sms4j`**，父 pom 为 `org.dromara.sms4j:sms4j:3.3.6` | core pom `<parent>` 与 `<groupId>` 实际内容 |
-| 3 | **core 传递链**：`sms4j-core → sms4j-provider → sms4j-api → sms4j-comm` | `dependency:tree` 输出 |
-| 4 | **sms4j 各构件 class major = 52** | `javap -verbose`：core/api/comm/provider 抽验类全部 `major version: 52` |
-| 5 | **传递项全部 Java 8 兼容**（major ≤ 52） | hutool-core/http/json/crypto 5.8.28 = 52；slf4j-api 1.7.36 = 49；jaxb-api 2.3.0 = 51；activation 1.1.1 = 48 |
-| 6 | **无 Spring / 无日志绑定实现** | `dependency:tree` 无 `org.springframework.*`；日志仅 `slf4j-api:1.7.36`（API，无 `slf4j-simple` / `logback` / `log4j` 绑定）；`jdcloud-sdk` 在 provider pom 为 `provided`，不进树 |
-| 7 | 全树传递项 | 见 §2.3 |
-
-### 2.3 Q1 依赖树（实测回填，实现期以本表核对）
-
-```text
-io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT
-├─ cn.aifei:aifei:1.1.2 ........................ provided（消费方自带，不传递）
-│  └─ fastjson2 .................................... provided（由 aifei 底座传递；非本模块直接声明，不进消费方运行 classpath）
-├─ org.dromara.sms4j:sms4j-core:3.3.6 .............. optional（阻断传递，唯一实现内核）
-│  └─ org.dromara.sms4j:sms4j-provider:3.3.6 ....... optional（传递）
-│     ├─ org.dromara.sms4j:sms4j-api:3.3.6 ......... optional（传递）
-│     │  └─ org.dromara.sms4j:sms4j-comm:3.3.6 ..... optional（传递）
-│     │     ├─ org.slf4j:slf4j-api:1.7.36 .......... optional（传递，仅 API 无绑定）
-│     │     ├─ cn.hutool:hutool-json:5.8.28 ......... optional（传递）
-│     │     └─ cn.hutool:hutool-http:5.8.28 ......... optional（传递）
-│     ├─ javax.xml.bind:jaxb-api:2.3.0 ............. optional（传递）
-│     ├─ javax.activation:activation:1.1.1 ......... optional（传递）
-│     └─ cn.hutool:hutool-crypto:5.8.28 ............ optional（传递）
-│        └─ cn.hutool:hutool-core:5.8.28 ........... optional（传递）
-└─ junit:junit:4.13.2 .............................. test
-   └─ hamcrest-core ................................ test（由 junit 传递；仅测试期，不进生产 classpath）
-```
-
-**断言口径**：① `sms4j-core` 及全部传递项均为 `optional`（`optional` 阻断向下游传递，消费方要用发送能力必须显式引入 sms4j-core，从而连带获得其传递项）；② 无日志绑定实现（仅 `slf4j-api`，消费方自行选择绑定）；③ 无 Spring / 无 JDBC / 连接池；④ 除上表外出现任何条目即视为依赖失控（`dependency:tree` 人工核对项）；⑤ 表中 `fastjson2`（由消费方自带，非本模块声明）与 `hamcrest-core`（junit `test` 传递）为实测受限传递项，均非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」三条纪律——前者 scope 为 `provided`（消费方自带、不传递），后者 scope 为 `test`（仅测试期），二者均不属 sms4j 传递链、亦非任何日志绑定实现；其精确坐标与版本以 `mvn dependency:tree` 实测为准。
-
-**`optional` 语义必须写入 README**：不引 `org.dromara.sms4j:sms4j-core:3.3.6` 则本模块发送不可用（首次调用抛可读 `SmsException`，消息由 `SmsErrors` 给出，不得出现裸 `NoClassDefFoundError`）——这是「能力按需引入」。sms4j 缺失的可读失败由适配层唯一探测点捕获 `ClassNotFoundException` / `LinkageError` 后包装（§7.4）。
-
-### 2.4 Q3 结论：编程式装配可行性（**已实证通过**）
-
-> 实证问题：sms4j 核心在**不引入 starter** 的前提下能否编程式构建 `SmsBlend`？结论：**能，完整可行**。
-
-| # | 结论 | 证据（javap 方法签名 / 字节码） |
-| --- | --- | --- |
-| 1 | `SmsFactory` 提供编程式装配 API | `public static void createSmsBlend(SupplierConfig)` / `createSmsBlend(SmsReadConfig, String)` / `register(SmsBlend)` / `registerIfAbsent(SmsBlend)` / `getSmsBlend(String configId)` / `unregister(String)` / `reload(String, SmsReadConfig)` |
-| 2 | 构建链路**纯编程式**，不读 yaml、不需 starter | `create(SupplierConfig)` 字节码：`getSupplier()` → `ProviderFactoryHolder.requireForSupplier(supplier)` → `BaseProviderFactory.createSms(config)` → `renderWithProxy(smsBlend)`；全程无配置文件读取 |
-| 3 | 厂商配置对象可无参构造 + setter 填充 | `AlibabaConfig extends BaseConfig`，有 `public AlibabaConfig()`；`BaseConfig` 提供 `setAccessKeyId` / `setAccessKeySecret` / `setSignature` / `setTemplateId` / `setConfigId` / `setWeight` 等；`AlibabaConfig` 另有 `setRegionId` / `setTemplateName` / `setAction` / `setVersion` / `setRequestUrl` |
-| 4 | 工厂静态注册，加载即可用 | `ProviderFactoryHolder` 的 `static {}` 内 `new ConcurrentHashMap` + `registerFactory(...)`；jar 内**无** `META-INF/services`、无 yml/properties 配置资源——只要 provider 类被加载，工厂即就绪 |
-| 5 | 不支持的厂商类型有明确失败点 | `create()` 字节码：工厂为 null 时抛 `SmsBlendException("不支持当前供应商类型")` |
-| 6 | 发送 API 与结果对象 | `SmsBlend.sendMessage(phone, templateId, LinkedHashMap<String,String>) → SmsResponse`；`SmsResponse.isSuccess()` / `getData()` / `getConfigId()` |
-
-**落地结论（与实现一致）**：`internal.sms4j.SmsSupplierTypes.newSupplierConfig(type, channel, options)` 负责 `new AlibabaConfig()` 并按 `sms.*` 填 setter（`configId` = 通道标识）；`internal.sms4j.SmsBlendFactory` 调 `SmsFactory.createSmsBlend(config)`（该方法返回 `void`、内部 register）后用 `SmsFactory.getSmsBlend(config.getConfigId())` 取回 `SmsBlend`、包成 `SmsSender`，本模块按**通道标识**经 `SmsClients` 维护自己的客户端注册表。**不评估「internal 自行解析并手动构建 sms4j 配置对象」的兜底路径——该路径已被实证排除，编程式 API 完备**。
-
-> **实证更正（回填）**：`SmsFactory.createSmsBlend(SupplierConfig)` 实测签名为 `public static void`（无返回），不能直接作为 `Function<SupplierConfig, SmsBlend>` 的方法引用；实现的默认装配函数先调用它注册、再 `getSmsBlend(configId)` 取回实例（§7.6）。§2.4 上表第 1 行的 `void` 记录正确，此处此前表述「构建并返回」已更正。
-
-**厂商 supplier 字面量全集（实测提取 23 家）**：`alibaba` / `baidu` / `buding_v2` / `chuanglan` / `cloopen` / `ctyun` / `danmi` / `dingzhong` / `emay` / `huawei` / `huyi` / `jdcloud` / `jiguang` / `lianlu` / `luosimao` / `mas` / `montnets` / `netease` / `qiniu` / `mysubmail` / `tencent` / `unisms` / `yixintong` / `yunpian` / `zhutong`。首期只落地 `alibaba`；`sms.<name>.type` 合法值取此集合的子集（首期白名单 = `{alibaba}`，其余按通道追加时扩充，§6.2）。
-
-### 2.5 回执验签能力实证（sms4j 未覆盖 → 本模块补充）
-
-- sms4j `sms4j-api` jar 仅含 `callback/CallBack`（**发送**异步回调）与 `verify/PhoneVerify`（手机号格式验证）；`sms4j-comm` 无任何 sign/verify 类。
-- 阿里云 `AliyunUtils.sign(...)` / `generateSendSmsRequestUrl(...)` 是**出站请求签名**（本模块发短信时由 sms4j 内部调用），**不是入站回调验签**。
-- **结论**：回执回调验签（阿里云 HMAC-SHA1）须由本模块 `internal.sms4j.AliyunReceiptVerifier` 用纯 JDK `javax.crypto.Mac("HmacSHA1")` 实现。这是 sms4j 作为「出站发送聚合框架」的职责边界之外能力，**不构成对用户点名技术路线的替换**——发送仍全部走 sms4j。
-
-### 2.6 选型决策留痕（偏离 / 遵循默认栈记录）
-
-| 决策 | 结论 | 证据 / 理由 |
-| --- | --- | --- |
-| 发送内核 | 引入 sms4j-core:3.3.6（用户点名，不弃用） | §2.2 / §2.3 实测可用、Java 8 兼容、无 Spring / 无日志绑定 |
-| 依赖范围 | sms4j-core 为 `optional`（非 compile 例外） | 对齐 `aifei-excel` 先例；门面类可独立加载，缺依赖仅发送不可用，不构成「脱离即无功能」的 compile 例外；根 `AGENTS.md` 无需新增登记（§13 事项 1） |
-| 装配形态 | `SmsPlugin(Prop)` + 编程式 `SmsFactory`，禁 starter / solon | §2.4 实证编程式可行；对齐 `aifei-oss` 只引 core 的范式 |
-| 回执验签 | 本模块自行实现阿里云 HMAC-SHA1 | §2.5 实证 sms4j 无入站验签；属职责边界补充 |
-
----
-
-## 3. 设计决策表
-
-> 格式：**决策** —— 理由 —— 被否决的替代方案。逐条对应任务输入 §三前置决策 / PRD 定档，并补充契约落地所需的衍生决策。
-
-| # | 决策 | 理由 | 被否决的替代方案 |
-| --- | --- | --- | --- |
-| **D1**（技术路线） | **基于 sms4j-core:3.3.6 二次封装，发送全走 `SmsFactory` / `SmsBlend`**；`internal.sms4j` 单点引用 `org.dromara.sms4j.*` | 用户点名锁定；§2 实测可用；对齐 `aifei-oss` 聚合门面 + 适配层隔离 | ① 自研厂商 HTTP 发送「等价替代」——违反铁律、重复造轮子；② 裸用阿里云 SDK——换厂商即重写，违背统一门面目标 |
-| **D2**（§三-3.1） | **引入 sms4j 核心（非 starter）**，在 `SmsPlugin(Prop).start()` 编程式装配；禁 `sms4j-spring-boot-starter` / `sms4j-solon-plugin` | §2.4 实证编程式 API 完备；aifei 非 Spring 非 Solon，装配统一 Plugin + Prop | 引入 starter → 拖入 Spring / Solon 自动装配依赖，破坏「公共面零框架类型」与依赖纪律 |
-| **D3**（§三-3.2） | **根包 + `spi` 公共面零第三方 / 零框架类型**；sms4j 类型只在 `internal.sms4j` | 公共 API 实现无关，换内核不破坏二进制兼容 | 公共方法暴露 `SmsBlend` / `SmsResponse` → 消费方被迫依赖 sms4j |
-| **D4**（§三-3.3） | **sms4j-core 为 `optional`**；缺失首次调用抛可读 `SmsException` | §3.2 定档；`aifei-excel` easyexcel 先例；门面可独立加载 | ① `compile`（像 aifei-oss）——需根登记新例外，且 sms4j 不构成「脱离即无功能」；② 裸抛 `NoClassDefFoundError`——违反 R-04 |
-| **D5**（Q7 / §三-3.6） | **根包精确 5 个公共类型**：`SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException`；`SmsResult` **独立成类**；门禁按文件名集合精确相等断言 | 发送结果需承载「状态 + 厂商流水号 / 回执 ID」，独立值对象职责清晰；回执解析字段复用同构语义；集合相等可防同名替换（`aifei-excel` 决策 D3 先例） | ① 用 `Map<String,Object>` 代替 `SmsResult`——无类型、易误用；② 把结果塞进 `SmsMessage`——消息与结果语义混淆；③ `SmsResult` 塞进 `spi` 包——发送结果与回执 SPI 归属不符 |
-| **D6**（§三-3.4） | **只提供同步发送**，不暴露异步 API、不自带线程池 | 仓库纪律「库模块不自带线程模型」；sms4j 内置线程池不启用、不在公共面暴露；异步由消费方包装 | 提供异步 API → 引入线程池生命周期管理，工期增加，且需在门禁处理线程创建断言 |
-| **D7**（§三-3.5） | **提供回执接收**：`aifei.SmsHandler`（框架 `Handler` 旁路）+ `spi.SmsReceiptListener` + 阿里云 HMAC-SHA1 验签；模块不落库、不做幂等去重 | 对齐 `aifei-weixin` 回调先例；验签是安全底线；落库与幂等由消费方承担 | 不做回执 → 规划「回执」能力缺位，消费方每家各写回调 |
-| **D8**（§五-5.3 探测时机） | **依赖探测在 `SmsPlugin.start()` 执行**（启动即失败），`internal.sms4j.SmsDeps` 是唯一 `Class.forName` 点 | 有 Plugin 装配期，启动即失败优于延迟到首次发送（PRD 假设 1 倾向）；与 R-03「配置非法/依赖缺失启动即失败」一致；`SmsKit` 未装配调用另有「插件未启动」保护 | 首次发送探测 → 问题延迟暴露；与 R-03 启动期校验口径不一致 |
-| **D9**（§四基线 6 命名） | `SmsKit` 属 **Kit**（有状态门面，需先 `SmsPlugin.start()`），不得改名 `SmsUtil`；`SmsClient` 为接口 | 根 `AGENTS.md` 命名约定 §「XxxKit 有状态门面」；对齐 `AuditKit` / `OssKit` | 改名 `SmsUtil` → 违反定档与命名口径 |
-| **D10**（回执响应契约） | 阿里云回调：验签通过回 `{"Status":"SUCCESS"}`（HTTP 200）；验签失败回 `{"Status":"FAIL"}`（HTTP 403）；解析/监听异常回 `{"Status":"FAIL"}`（HTTP 500）；未知通道回 404 | 阿里云短信状态报告回调约定「Success/Failure」应答；HTTP 语义与响应体双表达便于排障（§8.4） | 只回纯文本 `success`（微信风格）→ 不符合阿里云回调应答格式 |
-| **D11**（mock 注入点） | 在 `internal.sms4j.SmsBlendFactory` 设 **`setBlendFactory(Function<SupplierConfig, SmsBlend>)`** 包级注入点，供测试 / demo 注入 mock `SmsBlend`；默认走 `SmsFactory.createSmsBlend` | 任务输入定档「适配层可注入点 mock」；不新增公共 API、不污染门禁 | 要求消费方真实发短信测试——不可重复、有外网依赖 |
-| **D12**（§四基线 9 日志） | **本模块零 `cn.aifei.*` 引用**（含 `cn.aifei.log.*`），失败即抛 `SmsException` | 对齐 `aifei-excel` D2 / `aifei-trace` 教训：避免装配期 `NoLogFactory` 陷阱；异常即契约；根 `AGENTS.md` 无需框架类型例外登记 | 用 `cn.aifei.log.Log` 记日志 → 引入装配期风险且需登记例外，无收益 |
 
 ---
 
@@ -239,9 +106,9 @@ internal.sms4j  ──→ sms4j API + JDK；不得引用 cn.aifei.*（框架能�
 
 ---
 
-## 5. 公共接口契约（Q7 定稿：根包精确 5 类型）
+## 5. 公共接口契约（根包精确 5 类型）
 
-根包 `cn.hg.aifei.sms` **精确 5 个公共类型**，为本节与门禁 `EXPECTED_ROOT_TYPES_SET`（§9）的**唯一事实来源**。逐字签名如下（**编码角色照抄**；`static` 与否、返回类型、参数顺序均不得改动）。所有公共方法均**不声明 `throws` 子句**（`SmsException` 为 `RuntimeException`），但 javadoc **必须**写全 `@param` / `@return` / `@throws SmsException`。
+根包 `cn.hg.aifei.sms` **精确 5 个公共类型**，为本节与门禁 `EXPECTED_ROOT_TYPES_SET`（§9）的**唯一事实来源**。逐字签名如下（`static` 与否、返回类型、参数顺序均不得改动）。所有公共方法均**不声明 `throws` 子句**（`SmsException` 为 `RuntimeException`），但 javadoc **必须**写全 `@param` / `@return` / `@throws SmsException`。
 
 ### 5.1 `SmsClient`（发送门面接口）
 
@@ -307,7 +174,7 @@ public final class SmsMessage {
 
 > **公共面计数口径**：`SmsMessage` 属根包 5 类型之一但发送主路径不强制使用它——这是设计取舍：既保留消息值对象的语义完整性与门禁计数，又让主发送 API 保持三参直传的简洁（对齐 sms4j `sendMessage(phone, templateId, map)`）。
 
-### 5.4 `SmsResult`（发送结果值对象，不可变；Q7 定稿独立成类）
+### 5.4 `SmsResult`（发送结果值对象，不可变）
 
 ```java
 public final class SmsResult {
@@ -332,7 +199,7 @@ public final class SmsPlugin implements Plugin {
   - `requestId`：厂商流水号 / 回执 ID（从 `SmsResponse.getData()` 解析，可空）。
 - **发送失败不返回 `SmsResult(success=false)`，而是抛 `SmsException`**（R-01 / AC-01）：`isSuccess=false` 仅用于「厂商明确返回失败应答但非异常」的场景边界；默认所有失败路径走异常（§7.5）。
 
-> 注：上代码块中的 `SmsPlugin` 仅用于对比展示签名形态，**其实际归属包为 `cn.hg.aifei.sms.aifei`**（见 §5.5），不计入根包 5 类型。Q7 冻结名单见 §5.6。
+> 注：上代码块中的 `SmsPlugin` 仅用于对比展示签名形态，**其实际归属包为 `cn.hg.aifei.sms.aifei`**（见 §5.5），不计入根包 5 类型。公共面名单见 §5.6。
 
 ### 5.5 接入构件与 SPI（非根包计数）
 
@@ -373,9 +240,9 @@ public final class SmsReceipt {
 }
 ```
 
-> **SPI 签名决策（D13）**：`SmsReceipt` 作为**回执内容值对象落在 `spi` 包**，与 `SmsReceiptListener` 共同构成回执 SPI 的 2 个公共类型——二者均为本模块类型、纯 JDK 字段，零第三方 / 零框架类型（AC-09 / AC-11 合规）。**理由**：公共 SPI 的签名不得引用 `internal`（非承诺实现层）类型，否则消费方被迫依赖可随时重构的内部包，与「internal 非承诺」自相矛盾；把值对象提升到 `spi` 使公共契约自洽、实现无关。**被否决方案**：`SmsReceipt` 落 `internal` 并由 SPI 引用——虽不触发第三方/框架门禁，但破坏包边界语义。实现期若评审要求调整，须先改本文 §5.5 / §5.6 与门禁 ⑤ 的 spi 计数再动。
+> **SPI 签名**：`SmsReceipt` 作为**回执内容值对象落在 `spi` 包**，与 `SmsReceiptListener` 共同构成回执 SPI 的 2 个公共类型——二者均为本模块类型、纯 JDK 字段，零第三方 / 零框架类型（AC-09 / AC-11 合规）。**理由**：公共 SPI 的签名不得引用 `internal`（非承诺实现层）类型，否则消费方被迫依赖可随时重构的内部包，与「internal 非承诺」自相矛盾；把值对象提升到 `spi` 使公共契约自洽、实现无关。**被否决方案**：`SmsReceipt` 落 `internal` 并由 SPI 引用——虽不触发第三方/框架门禁，但破坏包边界语义。
 
-### 5.6 Q7 定稿：公共面精确名单（冻结）
+### 5.6 公共面精确名单
 
 | 包 | 精确类型 | 数量 | 门禁常量 |
 | --- | --- | --- | --- |
@@ -390,8 +257,8 @@ public final class SmsReceipt {
 | 类型 | 形态 | 命名依据 |
 | --- | --- | --- |
 | `SmsClient` | 接口，名词性后缀 | 对齐 `HttpClient` / `OssClient`（根 `AGENTS.md` §命名约定） |
-| `SmsKit` | `public final` + 私有构造 + 全 `static` | 有状态门面（需先 `SmsPlugin.start()`），对齐 `OssKit` / `AuditKit`（D9） |
-| `SmsMessage` / `SmsResult` | `public final` 不可变值对象 | 名词，消息 / 结果语义分离（D5） |
+| `SmsKit` | `public final` + 私有构造 + 全 `static` | 有状态门面（需先 `SmsPlugin.start()`），对齐 `OssKit` / `AuditKit` |
+| `SmsMessage` / `SmsResult` | `public final` 不可变值对象 | 名词，消息 / 结果语义分离 |
 | `SmsException` | `public final extends RuntimeException` | 模块唯一异常；`public` 构造器因唯一构造点在异包 `internal`（§7.5） |
 | `SmsReceiptListener` | 接口，SPI | 回执监听器扩展点，消费方实现 |
 | `SmsReceipt` | `public final` 不可变值对象 | 回执内容数据契约，名词（spi 包） |
@@ -418,16 +285,16 @@ public final class SmsReceipt {
 | `sms.<name>.weight` | 否 | 权重（映射 `setWeight`）；本期不做负载均衡，仅透传，默认 1 |
 | `sms.<name>.max-retries` / `retry-interval` / `timeout` | 否 | sms4j 重试 / 超时参数（透传 `BaseConfig`），有 sms4j 默认值 |
 
-> **凭据安全**：`access-key` / `secret-key` / `access-key-secret` 等敏感值一律走 `app-config.txt`，禁止硬编码（工程规范 §3）；门禁读取配置只核键名不复制值。
+> **凭据安全**：`access-key` / `secret-key` / `access-key-secret` 等敏感值一律走 `app-config.txt`，禁止硬编码；门禁读取配置只核键名不复制值。
 
 ### 6.2 通道类型映射（唯一定义点 `internal.sms4j.SmsSupplierTypes`）
 
 | 配置 `type` 值 | sms4j supplier 字面量 | sms4j 配置类 | 本期状态 |
 | --- | --- | --- | --- |
 | `alibaba` | `alibaba` | `org.dromara.sms4j.aliyun.config.AlibabaConfig` | **首期落地** |
-| 其余 24 项（§2.4 全集去掉 alibaba，注意全集实际 25 项见下） | 同名 | 各 `*Config` | P1，按通道追加；首期不在白名单 → 配置即报「类型未知」 |
+| 其余 24 项（supplier 全集去掉 alibaba，注意全集实际 25 项见下） | 同名 | 各 `*Config` | P1，按通道追加；首期不在白名单 → 配置即报「类型未知」 |
 
-> **更正说明**：§2.4 实测提取的 supplier 字面量共 **25** 项（清单见该节）。首期 `SmsSupplierTypes.supported()` 只返回 `{alibaba}`；其余类型在后续通道追加任务中逐个登记（每追加一家：加映射 + 必填项校验规则 + 单测），**不属于本期 P0**。
+> supplier 字面量共 **25** 项。首期 `SmsSupplierTypes.supported()` 只返回 `{alibaba}`；其余类型在后续通道追加任务中逐个登记（每追加一家：加映射 + 必填项校验规则 + 单测），**不属于本期 P0**。
 
 **类型映射规则**：`sms.<name>.type` 的值直接作为 sms4j supplier 字面量传给 `ProviderFactoryHolder.requireForSupplier(type)`；映射表 additionally 记录「supplier → 配置类构造器 + 必填键集合」，供 `SmsBlendFactory` 构建 `BaseConfig` 与 `SmsConfigLoader` 校验必填项。
 
@@ -461,7 +328,7 @@ public final class SmsReceipt {
 | `SmsChannelConfig` | internal | **单通道配置值对象（非承诺实现层，非计数）**：不可变，承载 `name`/`type`/原始 kebab-case `options`，验签密钥等经 `getOption` 按原键名读取 |
 | `SmsClients` | internal | ★ 通道注册表：按通道标识存 `SmsClient` 实例 + `SmsChannelConfig` + 默认通道 + `started` 状态；`register(name, client, config)` / `registerDefault` / `defaultClient` / `use` / `channels` / `config` / `isStarted` / `setStarted` / `clear`（进程内 `ConcurrentHashMap`，非缓存出口） |
 | `SmsSupplierTypes` | internal.sms4j | ★ 通道类型映射 + 必填键集合 + 合法值集合唯一定义点（§6.2 / §6.3）；`supported` / `isSupported` / `requiredKeys` / `newSupplierConfig`（构建并填充 sms4j 配置对象） |
-| `SmsBlendFactory` | internal.sms4j | ★ 客户端批量构建唯一装配点：`buildClients(List<SmsChannelConfig>) → Map<String, SmsClient>`，内部经 `SmsSupplierTypes.newSupplierConfig` 建配置 → `SmsFactory.createSmsBlend(config)`（返回 **void**）→ `SmsFactory.getSmsBlend(configId)` 取回 → `new SmsSender(name, blend)`；★ mock 注入点 `setBlendFactory(Function)`（D11） |
+| `SmsBlendFactory` | internal.sms4j | ★ 客户端批量构建唯一装配点：`buildClients(List<SmsChannelConfig>) → Map<String, SmsClient>`，内部经 `SmsSupplierTypes.newSupplierConfig` 建配置 → `SmsFactory.createSmsBlend(config)`（返回 **void**）→ `SmsFactory.getSmsBlend(configId)` 取回 → `new SmsSender(name, blend)`；★ mock 注入点 `setBlendFactory(Function)` |
 | `SmsSender` | internal.sms4j | 发送实现：`implements SmsClient`，构造 `SmsSender(String channelName, SmsBlend blend)`，调 `SmsBlend.sendMessage`，结果/异常经 `SmsMappers` / `SmsErrors` 翻译 |
 | `SmsMappers` | internal.sms4j | `toResult(channel, response)`：`SmsResponse` → `SmsResult`；`toReceipt(channel, params, rawBody)`：`SmsReceipt` 字段解析（状态/流水号/时间） |
 | `SmsDeps` | internal.sms4j | ★ 唯一 `Class.forName` 点（`org.dromara.sms4j.core.factory.SmsFactory`，不初始化，第二参 `false`）；`requireSms4j()` + 包级 `requireSms4j(ClassLoader)`（测试注入）；缺失抛可读异常 |
@@ -484,7 +351,7 @@ SmsPlugin(Prop prop)               // 构造期只持引用，null → SmsErrors
 start()  [synchronized, 幂等]
   if started → return
   try:
-    SmsDeps.requireSms4j()                         // ① 依赖探测（D8：启动即失败）
+    SmsDeps.requireSms4j()                         // ① 依赖探测（启动即失败）
     List<SmsChannelConfig> configs = SmsConfigLoader.load(prop)   // ② 全量解析+校验（失败含键名原值）
     String defaultChannel = SmsConfigLoader.defaultChannel(prop, configs)
     Map<String, SmsClient> clients = SmsBlendFactory.buildClients(configs)  // ③ 构建全部客户端（内部 newSupplierConfig→createSmsBlend(void)→getSmsBlend→new SmsSender）
@@ -511,7 +378,7 @@ stop()   [synchronized, 幂等]
 
 **幂等与失败无残留**：`start()` / `stop()` 均 `synchronized` + `started` 守卫；连续两次无副作用、状态不叠加；`start()` 任一步失败先 `SmsClients.clear()` 再抛，再次以合法配置 `start()` 可正常工作（AC-05）。
 
-### 7.3 发送链路（R-01 / R-02 / R-03）
+### 7.3 发送链路
 
 > 下列为调用链**示意**，实际签名见 `internal/sms4j/SmsSender.java` 与 `internal/sms4j/SmsMappers.java`。
 
@@ -532,11 +399,11 @@ SmsKit.use(name).send(phone, templateId, variables)
 - **多通道独立实例**（AC-02）：每个 `sms.<name>` 独立构建 `SmsBlend`（独立 configId），`SmsKit.use(name)` 取各自 `SmsSender`；默认通道由 `sms.default-channel` 切换。
 - **并发**（Q-08）：`SmsClients` 用 `ConcurrentHashMap`；`SmsSender` 无可变字段；`SmsBlend` 经 sms4j 代理缓存且线程安全；模块不额外加锁。
 
-### 7.4 依赖缺失探测（R-04 / AC-06）
+### 7.4 依赖缺失探测
 
 - **唯一探测点**：`internal.sms4j.SmsDeps.requireSms4j()`。
 - **方式**：`Class.forName("org.dromara.sms4j.core.factory.SmsFactory", false, loader)`（第二参 `false` = 不初始化类）；捕获 `ClassNotFoundException` / `LinkageError`（含 `NoClassDefFoundError`）。
-- **时机**：`SmsPlugin.start()`（D8，启动即失败）。
+- **时机**：`SmsPlugin.start()`（启动即失败）。
 - **缺失行为**：抛 `SmsException("sms: org.dromara.sms4j:sms4j-core:3.3.6 is required, add it to your dependencies")`（场景 12），**不裸抛** `NoClassDefFoundError`。
 - **门禁**：`classForNameOnlyInDeps` 断言全模块仅此一处 `Class.forName`。
 
@@ -564,9 +431,9 @@ SmsKit.use(name).send(phone, templateId, variables)
 - **消息不含第三方类型名**：厂商异常的类名（如 `SmsBlendException`）不得进入消息，只取错误码与描述。
 - **枚举值**：以上措辞为唯一定义点，测试按表逐字断言；门禁 `errorMessagesOnlyInErrors` 锁定 `sms: ` 前缀仅出现在 `internal/SmsErrors.java`（公共类型与测试断言除外）。
 
-### 7.6 mock 可注入点（D11 / AC-01 / 场景 1）
+### 7.6 mock 可注入点
 
-> 下列签名与实际 `internal/sms4j/SmsBlendFactory.java` 一致（**勘误**：`SmsFactory.createSmsBlend` 实测返回 `void`，不可写作方法引用 `SmsFactory::createSmsBlend`）：
+> 下列签名与实际 `internal/sms4j/SmsBlendFactory.java` 一致（`SmsFactory.createSmsBlend` 返回 `void`，不可写作方法引用 `SmsFactory::createSmsBlend`）：
 
 ```java
 // internal.sms4j.SmsBlendFactory —— 默认装配函数：createSmsBlend 返回 void，需再按 configId 取回
@@ -653,7 +520,7 @@ static void setBlendFactory(Function<org.dromara.sms4j.api.universal.SupplierCon
 | `channelName` | URL 路由得到的通道标识 | 必有 |
 | `rawBody` | 原始 POST body | 必有 |
 
-**响应契约（D10）**：
+**响应契约**：
 
 | 场景 | HTTP 状态 | 响应体 | 是否交付监听器 |
 | --- | --- | --- | --- |
@@ -692,24 +559,24 @@ private static final Set<String> EXPECTED_SPI_TYPES_SET = new LinkedHashSet<>(Ar
 
 | # | 测试方法 | 判定口径 | 风险针对 |
 | --- | --- | --- | --- |
-| ① | `sms4jOnlyInAdapter` | 每条 `import org.dromara.sms4j.` 只允许出现在 `SMS4J_PACKAGE` 下文件；出现在根包 / spi / aifei / internal 其它子包即失败 | 第三方实现类型泄漏（D3） |
+| ① | `sms4jOnlyInAdapter` | 每条 `import org.dromara.sms4j.` 只允许出现在 `SMS4J_PACKAGE` 下文件；出现在根包 / spi / aifei / internal 其它子包即失败 | 第三方实现类型泄漏 |
 | ② | `frameworkOnlyInBridgePackage` | `import cn.aifei.` 只允许出现在 `BRIDGE_PACKAGE` 下文件 | D12「零框架引用」被绕过 |
-| ③ | `noSqlOrUndertowInLibrary` | 全模块 `.java` 不得 `import io.undertow.` / `import java.sql.`；pom 不得有 JDBC / `aifei-db` | 库模块零 Web / 零 DB（§0） |
-| ④ | `noSlf4jBinding` | 全模块 `.java` 不得 `import org.slf4j.`；pom 不声明 `slf4j-simple` / `logback` / `log4j`（人工核对） | 日志绑定被悄悄引入（D12） |
-| ⑤ | `publicSurfaceExact` | 根包直接子 `.java` 数量精确 = 5 且集合等于 `EXPECTED_ROOT_TYPES_SET`；`spi` 包精确 = 2 且集合等于 `EXPECTED_SPI_TYPES_SET` | 同名替换 / 增删公共类型（D5 / Q7 / D13） |
-| ⑥ | `publicSignaturesNoThirdParty` | 根包 + `spi` 包源码中不得出现 `org.dromara.sms4j.` / `cn.aifei.` 字面量（import 与全限定名均查） | 公共签名零第三方 / 框架类型（D3） |
+| ③ | `noSqlOrUndertowInLibrary` | 全模块 `.java` 不得 `import io.undertow.` / `import java.sql.`；pom 不得有 JDBC / `aifei-db` | 库模块零 Web / 零 DB |
+| ④ | `noSlf4jBinding` | 全模块 `.java` 不得 `import org.slf4j.`；pom 不声明 `slf4j-simple` / `logback` / `log4j`（人工核对） | 日志绑定被悄悄引入 |
+| ⑤ | `publicSurfaceExact` | 根包直接子 `.java` 数量精确 = 5 且集合等于 `EXPECTED_ROOT_TYPES_SET`；`spi` 包精确 = 2 且集合等于 `EXPECTED_SPI_TYPES_SET` | 同名替换 / 增删公共类型 |
+| ⑥ | `publicSignaturesNoThirdParty` | 根包 + `spi` 包源码中不得出现 `org.dromara.sms4j.` / `cn.aifei.` 字面量（import 与全限定名均查） | 公共签名零第三方 / 框架类型 |
 | ⑦ | `classForNameOnlyInDeps` | `Class.forName` 只允许出现在 `internal/sms4j/SmsDeps.java` | 依赖探测散落（§7.4） |
 | ⑧ | `errorMessagesOnlyInErrors` | 消息前缀 `sms: ` 只允许出现在 `internal/SmsErrors.java`（公共类型与测试断言除外） | 异常消息措辞唯一定义点（§7.5） |
 | ⑨ | `java8Compatibility` | 不得出现 `List.of(` / `Map.of(` / `Set.of(` / `record ` / `var ` 局部声明 / `"""` / `sealed ` / `instanceof` 模式匹配 | Java 8 兼容底线 |
-| ⑩ | `noStarterDependency` | pom 不得出现 `sms4j-spring-boot-starter` / `sms4j-solon-plugin` / `org.springframework` / `org.noear` | 禁 starter / solon（D2） |
+| ⑩ | `noStarterDependency` | pom 不得出现 `sms4j-spring-boot-starter` / `sms4j-solon-plugin` / `org.springframework` / `org.noear` | 禁 starter / solon |
 | ⑪ | `supplierTypesOnlyInFactory` | supplier 字面量集合（如 `"alibaba"`）的映射定义只允许出现在 `internal/sms4j/SmsSupplierTypes.java` | 通道类型映射唯一定义点（§6.2） |
 | ⑫ | `pluginBridgeContract` | `aifei` 包必须存在 `SmsPlugin.java` 与 `SmsHandler.java`（防门禁假通过）；二者须 `import cn.aifei.` | 接入构件存在性 + 边界 |
 | ⑬ | `configKeysOnlyInLoader` | 字面量 `sms.default-channel` 与 `sms.` 配置前缀解析只允许出现在 `aifei/SmsConfigLoader.java` | 配置键名唯一定义点（§6.3） |
 | ⑭ | `testSourcesOfflineOnly` | 扫描 `src/test/java`：`http://` / `https://` 字面量 host 只能是 `127.0.0.1` / `localhost`（注释先剥离） | 测试联网 |
 
 > **实现要点**：私有工具 `javaFiles(Path)` / `imports(String)` / `stripComments(String)` / `normalize(Path)` / `isDirectChild(String, String)`；异常消息须列出**违规文件 + 违规内容**。
-> 门禁**不得为兼容错误用法而放宽或绕过**；新增例外必须先改本文 §3 再改断言，并提请主会话登记（根 `AGENTS.md`）。
-> 门禁外的构建期断言：主 JAR 全部 class major = 52（`javap -verbose` 抽查 `SmsClient.class` / `SmsKit.class` / `SmsPlugin.class` / `SmsDeps.class`）；`mvn dependency:tree` 只出现 §2.3 允许清单。
+> 门禁**不得为兼容错误用法而放宽或绕过**；新增例外必须先改本文契约章节再改断言，并提请主会话登记（根 `AGENTS.md`）。
+> 门禁外的构建期断言：主 JAR 全部 class major = 52（`javap -verbose` 抽查 `SmsClient.class` / `SmsKit.class` / `SmsPlugin.class` / `SmsDeps.class`）；`mvn dependency:tree` 只出现依赖允许清单。
 
 ---
 
@@ -720,17 +587,18 @@ private static final Set<String> EXPECTED_SPI_TYPES_SET = new LinkedHashSet<>(Ar
 | 依赖 | 范围 | 用途 |
 | --- | --- | --- |
 | `cn.aifei:aifei:1.1.2` | **`provided`** | 生态底座（`Plugin` / `Prop` / `AopKit` / `Handler` / `Input` / `Output`）；本模块源码仅 `aifei` 包引用；消费方自带、不传递 |
-| `org.dromara.sms4j:sms4j-core:3.3.6` | **`optional`** | 唯一实现内核（§2），经 `internal.sms4j` 引用；不传递，缺失时启动期可读失败（场景 8） |
+| `org.dromara.sms4j:sms4j-core:3.3.6` | **`optional`** | 唯一实现内核，经 `internal.sms4j` 引用；不传递，缺失时启动期可读失败（场景 8） |
+| `io.github.gollyhu:aifei-tools` | `optional` | 阿里云回执 HMAC-SHA1 验签复用 `crypto.CryptoUtil`（`AliyunReceiptVerifier`）；不向下游传递 |
 | `junit:junit:4.13.2` | `test` | 单元测试 + 架构门禁 |
 | （测试辅助）mock `SmsBlend` | test 源码 | 测试自行实现 `SmsBlend` 接口返回预设 `SmsResponse`，不真实发短信、不提交二进制 |
 
 - **零日志绑定**：不声明 `slf4j-simple` / `logback` / `log4j`（sms4j 传递的 `slf4j-api` 仅 API，无绑定；消费方自选）。
 - **零 DB / 零 Web 容器**：无 JDBC / 连接池；不引入 `io.undertow.*`（库模块本体）。
-- pom 对齐 `aifei-http/pom.xml` / `aifei-excel/pom.xml` 模板：`maven-compiler-plugin`（`source`/`target` 1.8、UTF-8）+ `maven-surefire-plugin`（`workingDirectory = ${project.basedir}`，门禁依赖相对路径）+ forceCreation source plugin + javadoc plugin（`excludePackageNames` 排除 `internal`）。**不引入** Central 发布元数据与 profile（§13 事项 3）。
+- pom 对齐 `aifei-http/pom.xml` / `aifei-excel/pom.xml` 模板：`maven-compiler-plugin`（`source`/`target` 1.8、UTF-8）+ `maven-surefire-plugin`（`workingDirectory = ${project.basedir}`，门禁依赖相对路径）+ forceCreation source plugin + javadoc plugin（`excludePackageNames` 排除 `internal`）。**不引入** Central 发布元数据与 profile。
 
 ### 10.2 `dependency:tree` 允许清单
 
-以 §2.3 实测树为准。断言口径重申：① 除 `aifei:provided` / `sms4j-core:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控；② sms4j 全传递项均 `optional`；③ 无日志绑定实现；④ 无 Spring / JDBC / 连接池；⑤ 无 starter / solon；⑥ 允许清单额外登记两项**受限传递依赖**——`fastjson2`（scope `provided`，由消费方自带）与 `hamcrest-core`（scope `test`，由 `junit` 传递），二者均非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」纪律：`fastjson2` 为 provided（消费方自带、不传递）、`hamcrest-core` 仅测试期、二者均不属 sms4j 传递链且非任何日志绑定实现；精确坐标与版本以 `mvn dependency:tree` 实测为准。
+以依赖树为准。断言口径重申：① 除 `aifei:provided` / `sms4j-core:optional` 及其传递项 / `junit:test` 外，出现任何条目即依赖失控；② sms4j 全传递项均 `optional`；③ 无日志绑定实现；④ 无 Spring / JDBC / 连接池；⑤ 无 starter / solon；⑥ 允许清单额外登记两项**受限传递依赖**——`fastjson2`（scope `provided`，由消费方自带）与 `hamcrest-core`（scope `test`，由 `junit` 传递），二者均非本模块 pom 直接声明、不进消费方运行 classpath，**不违背**「零强制第三方运行依赖 / 无日志绑定 / sms4j optional」纪律：`fastjson2` 为 provided（消费方自带、不传递）、`hamcrest-core` 仅测试期、二者均不属 sms4j 传递链且非任何日志绑定实现；精确坐标与版本以 `mvn dependency:tree` 为准。
 
 ### 10.3 验证命令（模块根目录）
 
@@ -738,88 +606,15 @@ private static final Set<String> EXPECTED_SPI_TYPES_SET = new LinkedHashSet<>(Ar
 cd aifei-sms
 mvn clean verify                                                        # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest                                # 仅跑架构门禁（14 例）
-mvn dependency:tree                                                     # 断言：仅 §2.3 允许清单
+mvn dependency:tree                                                     # 断言：仅依赖允许清单
 javap -verbose target/classes/cn/hg/aifei/sms/SmsClient.class | findstr "major version"   # 期望 52
 ```
 
 ---
 
-## 11. 文件清单与有序任务分解
+## 11. 跨文件约定
 
-### 11.1 模块源码文件清单
-
-```text
-aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT（packaging=jar）
-├── pom.xml                                   # Java 8；aifei provided；sms4j-core optional；junit test；零日志绑定/零 starter
-├── README.md                                 # 用法 / sms.* 配置 / 同步发送声明 / sms4j optional 警告（T09 写，素材 §5–§8、§10）
-├── AGENTS.md                                 # 模块硬约束（T09 写，素材 §9 + §3 决策表）
-├── docs/
-│   ├── design.md                             # ★ 本文（契约事实来源，本轮唯一落盘）
-│   └── testing.md                            # 测试策略与用例清单（T09 写，素材 §7.5 + §12）
-└── src/main/java/cn/hg/aifei/sms/
-    ├── SmsClient.java                        # 发送门面接口（根包 5 之一）
-    ├── SmsKit.java                           # 静态门面（根包 5 之一）
-    ├── SmsMessage.java                       # 发送消息值对象（根包 5 之一）
-    ├── SmsResult.java                        # 发送结果值对象（根包 5 之一，Q7 定稿独立）
-    ├── SmsException.java                     # 统一异常（根包 5 之一）
-    ├── spi/
-    │   ├── SmsReceiptListener.java           # 回执监听器 SPI（spi 2 类型之一）
-    │   └── SmsReceipt.java                   # 回执内容值对象（spi 2 类型之一）
-    ├── aifei/
-    │   ├── SmsPlugin.java                    # ★ 装配入口（implements Plugin）
-    │   ├── SmsHandler.java                   # ★ 回执接收入口（extends Handler，经 SmsIo 桥接）
-    │   ├── SmsIo.java                        # 回执传输桥接接口（params/body/reply；接入层非承诺构件，非计数）
-    │   └── SmsConfigLoader.java              # ★ sms.* 配置解析唯一定义点
-    └── internal/
-        ├── SmsChannelConfig.java             # 单通道配置值对象（非承诺实现层，非计数）
-        ├── SmsErrors.java                    # ★ 异常唯一构造点 + 消息措辞（门禁 ⑧）
-        ├── SmsClients.java                   # ★ 通道注册表（register/default/use/channels/config/isStarted/setStarted/clear）
-        └── sms4j/
-            ├── SmsSupplierTypes.java         # ★ 类型映射 + 必填键 + 合法值 + 配置对象构建（门禁 ⑪）
-            ├── SmsBlendFactory.java          # ★ 客户端批量构建装配点（buildClients）+ mock 注入点（D11）
-            ├── SmsSender.java                # SmsClient 实现（发送 + 异常翻译）
-            ├── SmsMappers.java               # SmsResponse→SmsResult / 回执字段解析
-            ├── SmsDeps.java                  # ★ 唯一 Class.forName 点（门禁 ⑦）
-            └── AliyunReceiptVerifier.java    # ★ 阿里云 HMAC-SHA1 验签
-```
-
-> **新增构件归属说明**：`aifei/SmsIo.java`（回执传输桥接）与 `internal/SmsChannelConfig.java`（单通道配置值对象）是为适配真实框架 / sms4j API 而在实现期新增的接入层 / 非承诺实现层构件（§7.1）。二者**不计入**根包 5 与 `spi` 2 的冻结公共面计数，门禁 ⑤ 断言口径不变；公共签名零第三方 / 零框架类型约束同样适用。
-
-### 11.2 测试文件清单（`src/test/java/cn/hg/aifei/sms/`）
-
-```text
-├── ArchitectureBoundaryTest.java             # 门禁 14 例（§9）
-├── SendContractTest.java                     # 模板化发送 / 换厂商 / 多通道 / 结果映射（R-01/R-02）
-├── PluginLifecycleTest.java                  # start/stop 幂等 / 失败无残留 / stop 后语义（R-03）
-├── ConfigValidationTest.java                 # 必填项 / 类型未知 / 默认通道 / 消息含键名原值（R-03）
-├── DependencyMissingTest.java                # sms4j 缺失可读异常，无裸 NoClassDefFoundError（R-04）
-├── ReceiptTest.java                          # 验签通过/失败 / 回执解析 / 监听器交付 / 响应契约（R-05）
-├── ExceptionContractTest.java                # 参数/厂商/网络/验签异常逐字消息 + cause（R-06）
-├── PublicApiContractTest.java                # 公共面精确 5 + 零第三方/框架 + SPI 形态（Q-01）
-└── support/
-    ├── MockSmsBlend.java                     # 测试用 SmsBlend mock（返回预设 SmsResponse）
-    └── RecordingReceiptListener.java        # 测试用回执监听器（记录收到的 SmsReceipt）
-```
-
-### 11.3 有序任务分解（T01…T11，逐步依赖）
-
-> owner 均为 `aifei-core-engineer`；每任务完成后**不得**改动公共面签名，若发现签名不可行须**先回写本文 §5** 再改代码（根 `AGENTS.md`：需求与设计冲突时先更新设计决策）。T01 为项目基础设施（构建文件 + 配置骨架 + 公共架构件）。
-
-| 任务 | 内容（文件） | 依赖 | 优先级 | 验收 |
-| --- | --- | --- | --- | --- |
-| **T01 基础设施** | `pom.xml` + 目录骨架 + 根包 5 公共类型**签名骨架**（方法体抛 `UnsupportedOperationException`）+ `spi/SmsReceiptListener` 与 `spi/SmsReceipt` 签名 + `ArchitectureBoundaryTest` 常量与 ⑤ 公共面计数断言先落地 | — | P0 | `mvn -q -DskipTests compile` 通过；5 签名与 §5 逐字一致；class major 52；`dependency:tree` 仅 §2.3 清单；门禁 ⑤ 绿 |
-| **T02 异常与依赖探测** | `internal/SmsErrors.java` + `internal/sms4j/SmsDeps.java` | T01 | P0 | §7.5 消息逐字；场景 8 可读失败（模拟缺依赖不出现裸 `NoClassDefFoundError`）；门禁 ⑦⑧ |
-| **T03 配置与类型映射** | `aifei/SmsConfigLoader.java` + `internal/SmsChannelConfig.java` + `internal/sms4j/SmsSupplierTypes.java` | T02 | P0 | §6 全部规则（通道发现 / 必填 / 类型白名单 / 默认通道 / 键名→setter）；`ConfigValidationTest` 绿；门禁 ⑪⑬ |
-| **T04 sms4j 适配层** | `internal/sms4j/SmsBlendFactory.java` + `SmsSender.java` + `SmsMappers.java` + `internal/SmsClients.java` | T03 | P0 | §2.4 编程式装配链路落地；mock 注入点（D11）；`SmsResponse`→`SmsResult` 映射；`SendContractTest` 绿 |
-| **T05 接入层装配** | `aifei/SmsPlugin.java` | T04 | P0 | §7.2 start/stop 幂等、失败回滚、`@Inject` 单例、stop 后语义；`PluginLifecycleTest` 绿；门禁 ②⑫ |
-| **T06 回执链路** | `aifei/SmsHandler.java` + `aifei/SmsIo.java` + `internal/sms4j/AliyunReceiptVerifier.java` + `spi/SmsReceipt` 值对象方法体（T01 骨架填充） | T04、T05 | P0 | §8 路由 / 验签 / 解析 / 交付 / 响应契约；`ReceiptTest` 绿；门禁 ①（验签类在 sms4j 子包） |
-| **T07 公共门面实现 + 门禁** | `SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException` 方法体 + 补齐门禁 ①–⑭ | T05、T06 | P0 | §5 契约全部落地；门禁 14 例全绿；`mvn clean verify` 0/0 |
-| **T08 核心单测** | `SendContractTest` / `PluginLifecycleTest` / `ConfigValidationTest` / `DependencyMissingTest` / `ReceiptTest` / `ExceptionContractTest` / `PublicApiContractTest` + `support/**` | T07 | P0 | AC-01~AC-08 逐条覆盖；§7.5 场景 1–12 全覆盖；全部 mock 零外网 |
-| **T09 文档四件套（本模块）** | `README.md` / `AGENTS.md` / `docs/testing.md` + 根导航同步（根 `README.md` 模块表加 `aifei-sms` + demo 条目 + 依赖口径） | T08 | P1 | README 含 §1.4 本期不做、§2.3 optional 警告、同步发送声明；AGENTS 对齐 §9 门禁 14 例；testing 用例与 AC 一一对应 |
-| **T10 demo 后端** | `aifei-sms-demo/pom.xml` + `DemoApp` / `DemoAppConfig` + `demo/arch/**`（自写 HIO 复制改包名）+ `demo/console/**` + `demo/service/SmsDemoService` + mock 注入桥接 | T06 | P1 | 端口 18180 启动；§12.2 六场景端点按契约返回；零外网（mock 发送） |
-| **T11 demo 前端与脚本** | `aifei-sms-demo/webapp/view/sms/index.html` + `assets/{js,css,lib}` + `start-demo.bat` / `stop-demo.bat` + demo `README.md` | T10 | P1 | §12.3 六场景可见；页面零外网请求；真跑一遍通过；demo `dependency:tree` 验证 optional 口径 |
-
-### 11.4 跨文件约定（工程师与 QA 共同遵守）
+### 11.1 跨文件约定
 
 | 约定 | 内容 |
 | --- | --- |
@@ -851,7 +646,7 @@ aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-
 | **回执** | `ReceiptTest`：验签通过交付 / 验签失败拒绝+403 / 解析字段 / 监听器异常 / 响应契约 / 未知通道 404 | §8 / AC-07 |
 | **异常契约** | `ExceptionContractTest`：参数 / 厂商 / 网络 / 验签逐字消息 + cause 保留 + 消息不含第三方类型名 | §7.5 / AC-08 |
 | **公共面契约** | `PublicApiContractTest`：根包精确 5 / spi 精确 2（`SmsReceiptListener` / `SmsReceipt`）/ 公共签名零第三方 / `SmsKit` 形态 / `SmsClient` 接口 | §5 / Q-01 |
-| **依赖树** | `mvn dependency:tree` 仅 §2.3 清单；无 Spring / 日志绑定 / starter | §10.2 / Q-03 |
+| **依赖树** | `mvn dependency:tree` 仅依赖允许清单；无 Spring / 日志绑定 / starter | §10.2 / Q-03 |
 
 - **离线**：全部单测零外网；mock `SmsBlend` 返回预设 `SmsResponse`（门禁 ⑭）。
 - **判据**：`aifei-sms/` 内 `mvn clean verify` **0 failure / 0 error**。
@@ -859,7 +654,7 @@ aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-
 ### 12.2 demo 端点清单（`aifei-sms-demo`，不发布）
 
 - **位置**：仓库根 `aifei-sms-demo/`（与 `aifei-sms/` 平级）；依赖 `io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` + `org.dromara.sms4j:sms4j-core:3.3.6`（demo 以 `compile` 自带，验证 optional 口径）+ `cn.aifei:aifei`（demo 以 `compile` 自带，验证 provided 口径）。
-- **端口**：**18180**（已定档；18100 mq / 18110 job / 18120 http / 18130 trace / 18140 id / 18150 excel / 18160 audit / 18170 i18n 已占用）。
+- **端口**：**18180**（18100 mq / 18110 job / 18120 http / 18130 trace / 18140 id / 18150 excel / 18160 audit / 18170 i18n 已占用）。
 - **形态**：自写 HIO（包名 `cn.hg.aifei.sms.demo`，跟随 `aifei-excel-demo` 的 `arch` 同步类结构：`ContentType` / `In` / `InParser` / `IoDispatcher` / `IoHandler` / `Out` / `OutCode` / `TargetFactory`）+ `console/**`（自带日志）+ `SmsDemoService` + `DemoAppConfig` + `start-demo.bat` / `stop-demo.bat`；离线可跑、零外网。
 - **mock**：demo 经 §7.6 注入点设 `MockSmsBlend`（返回预设 `SmsResponse`），**不真实发短信**。
 - **端点契约**（信封 `code` / `data` / `msg`，HTTP 状态恒 200，语义由 `code` 承载；`/sms/demo/...` 命名空间；回执模拟端点除外）：
@@ -887,27 +682,11 @@ aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-
 6. **空态**：首次进入、未触发操作时列表显示占位文案，不残留上次数据。
 
 - **离线可跑**：页面零外网请求；`start-demo.bat` 启动后浏览器访问 `http://localhost:18180/sms/demo/page` 可完成一轮「发送 → 切换通道 → 模拟回执」闭环。
-- **不经过原型与 QA 基线门禁**（任务输入 §〇 定档）。
+
 
 ---
 
-## 13. 待明确事项与假设
-
-| # | 事项 | 处理 / 假设 | 归属 |
-| --- | --- | --- | --- |
-| 1 | **根 `AGENTS.md` 需登记清单** | sms4j 为 `optional`（非 compile 例外）；根包 / spi 零框架类型、零第三方类型；`aifei` 包引用 `cn.aifei.*` 属 Plugin/Handler 接入构件（与 `aifei-oss` / `aifei-trace` 同类，非「公共面框架类型例外」）；`cn.aifei.*` 全在 `aifei` 包、无需登记公共面例外 → **需登记清单为空，本设计不修改根 `AGENTS.md`**。若评审要求改变任一前提，须先提请主会话登记 | 已定档（默认空） |
-| 2 | **Q1 精确 artifactId** | 已实证 `org.dromara.sms4j:sms4j-core:3.3.6`（§2.2），网络可达、`dependency:get` EXIT=0；传递项 Java 8 兼容、无 Spring / 无日志绑定。定档无需最小假设兜底 | 已实证定档 |
-| 3 | **Q3 装配方式** | 已实证编程式 `SmsFactory.createSmsBlend(SupplierConfig)` 完备（§2.4），无需 internal 兜底解析方案 | 已实证定档 |
-| 4 | **Q7 根包数量** | 定稿 5 类（§5.6），`SmsResult` 独立；已回写任务输入 §五 5.5 与 AC-10 | 已定档并回写 |
-| 5 | **依赖探测时机** | 定档 `SmsPlugin.start()` 探测（D8）；已同步 PRD 假设 1 倾向。若评审改首次发送探测，须回写 R-04 / AC-06 与本文 §7.4 | 已定档 |
-| 6 | **`SmsReceipt` 包归属** | 落 `spi` 包（与 `SmsReceiptListener` 共同构成 spi 2 公共类型，D13 说明），公共 SPI 不依赖 internal；spi 门禁计数 = 2 | 已定档 |
-| 7 | **发布元数据（Central）** | 本轮 pom 不含 Central 发布 profile；是否加入 licenses/developers/scm + central-publishing 由主理人决定（`aifei-oss` 有、`aifei-excel` 无，仓库不统一） | 待主会话拍板（非阻塞实现） |
-| 8 | **回执验签覆盖厂商** | 首期仅阿里云 HMAC-SHA1（用户裁决阿里云支持回调）；其余厂商验签按通道追加时补 `internal` 验签器 | 已定档 |
-| 9 | **本批只交本文** | 本批不写任何 Java 源码，也不写 `README.md` / `AGENTS.md` / `docs/testing.md` / demo / 根导航（由 T09–T11 产出）；本文 §5–§12 是其素材 | 已定档 |
-
----
-
-## 14. 验收标准（AC）映射（对应 PRD / 任务输入 AC-01~AC-16）
+## 14. 验收标准（AC）映射
 
 | # | 判定条件 | 验证通道 | 对应 P0 |
 | --- | --- | --- | --- |
@@ -923,25 +702,11 @@ aifei-sms/                                    io.github.gollyhu:aifei-sms:1.0.0-
 | AC-10 | 根包公共类型精确 5（`SmsClient`/`SmsKit`/`SmsMessage`/`SmsResult`/`SmsException`），spi 精确 2（`SmsReceiptListener` / `SmsReceipt`） | 门禁 ⑤ `publicSurfaceExact` + 反射 | Q-01 |
 | AC-11 | `cn.aifei.*` 仅 `aifei` 包；`java.sql.*` / `io.undertow.*` 全模块禁止 | 门禁 ②③ | Q-01/Q-07 |
 | AC-12 | 主 JAR 全 class major 52；源码无 Java 8 之后语法/API | 门禁 ⑨ + `javap` 抽查 | Q-02 |
-| AC-13 | 除 aifei(provided) 外 sms4j optional、无其它第三方编译/运行依赖、无日志绑定、无 starter | 门禁 ④⑩ + `dependency:tree`（§2.3） | Q-03 |
+| AC-13 | 除 aifei(provided) 外 sms4j optional、无其它第三方编译/运行依赖、无日志绑定、无 starter | 门禁 ④⑩ + `dependency:tree` | Q-03 |
 | AC-14 | 模块目录 `mvn clean verify` 0 failure / 0 error | 构建日志 | Q-04 |
 | AC-15 | 文档四件套齐备 + 根 README 补条目 | 文件检查 + T09 | Q-05 |
-| AC-16 | demo 端口 18180 可启动、六场景可见、零外网 host | `aifei-sms-demo` 实测 + 门禁 ⑭（demo 侧） | Q-06 |
+| AC-16 | demo 端口 18180 可启动、六场景可见、零外网 host | 门禁 ⑭（demo 侧） | Q-06 |
 
-> **P0 覆盖核对**：R-01~R-06 + Q-01~Q-08 全部映射到 AC-01~AC-16 与 §9 门禁，无遗漏。Q-08（线程安全）在 §5.1 / §7.3 / §11.4 以契约 + 实现约定覆盖，并由 `SendContractTest` 并发用例验证。
-
----
-
-## 15. 设计关 DoD 自检
-
-| # | 检查项（quality-gates §2） | 结论 |
-| --- | --- | --- |
-| 1 | 选型有实证：偏离/弃用默认栈的每个决策附当场实测证据，无凭记忆断言 | **通过**：§2 全部为当场实测（`dependency:get` EXIT=0、`javap` major 52、完整 `dependency:tree`、编程式装配字节码反编译）；Q1/Q3/Q5 结论均有证据；无「凭记忆判不可用」 |
-| 2 | 覆盖 PRD 全部 P0，遗漏处显式说明 | **通过**：R-01~R-06 + Q-01~Q-08 逐条映射到 §14 AC-01~AC-16；本期不做清单 §1.4 显式写死 |
-| 3 | 文件清单完整，每个文件恰好归属一个任务 | **通过**：§11.1 模块文件 + §11.2 测试文件 + §12.2 demo 文件，均在 §11.3 T01~T11 中恰好出现一次 |
-| 4 | 任务列表有序、标注依赖，T01 为项目基础设施 | **通过**：T01~T11 逐步依赖，T01 = pom + 目录骨架 + 公共签名骨架 + 门禁骨架 |
-| 5 | 跨文件约定（命名/错误码/公共工具）已定义 | **通过**：§11.4 定义命名、javadoc、异常消息、依赖探测、配置解析、验签、线程安全、编码、git 纪律的唯一定义点与约定 |
+> **P0 覆盖核对**：R-01~R-06 + Q-01~Q-08 全部映射到 AC-01~AC-16 与 §9 门禁，无遗漏。Q-08（线程安全）在 §5.1 / §7.3 / §11.1 以契约 + 实现约定覆盖，并由 `SendContractTest` 并发用例验证。
 
 ---
-
-> **一句话总览**：`io.github.gollyhu:aifei-sms:1.0.0-SNAPSHOT` 基于 **sms4j-core:3.3.6（已实测 Java 8 兼容、编程式装配完备、无 Spring / 无日志绑定）** 二次封装——根包精确 **5 个公共类型**（`SmsClient` / `SmsKit` / `SmsMessage` / `SmsResult` / `SmsException`）+ `spi` 包 2 类型（`SmsReceiptListener` / `SmsReceipt`）+ `aifei.SmsPlugin`/`SmsHandler`；sms4j 经 `internal.sms4j` 单点隔离且为 `optional`；发送走 `SmsFactory.createSmsBlend`，回执经 Handler 验签（阿里云 HMAC-SHA1）后交 SPI 监听器；零存储、零日志绑定、同步发送；示例工程 `aifei-sms-demo` 端口 18180 以 mock 方式零外网跑通六场景，不发布。

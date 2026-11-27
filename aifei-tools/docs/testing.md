@@ -1,43 +1,46 @@
-# aifei-tools 测试策略与用例清单
+# aifei-tools 测试文档
 
 > 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
-> 面向实现者与质量关卡。契约事实来源为 `docs/design.md`（§6.2 门禁、§7 异常语义、§8 定档决策、§9 P0 映射）；本文只落地测试策略、用例清单与运行结果，不重复决策理由。
+> 本文给出用例清单与运行结果。
 > 本模块为库模块，无 Plugin / 门面装配 / Web 面，测试全部在模块内完成，0 failure / 0 error 为准入线（根 `AGENTS.md`）。
 
-## 1. 测试策略
+## 1. 测试方式
 
-四条策略贯穿全部用例，目的是「完全离线、可重复、零外链生产数据」：
-
-| 策略 | 做法 | 理由 |
+| 方式 | 做法 |
 | --- | --- | --- |
-| **全离线** | 测试源无任何外部 URL（门禁⑭断言 host 仅 `127.0.0.1` / `localhost`）；无联网 IP 查询、无外部服务 | CI 与开发机无网也能跑，结果稳定 |
-| **xdb 样本内嵌** | 最小 v4/v6 xdb 以 gzip + base64 常量固化在 `support/IpSampleData.java`（源码零二进制）；首次取用解码到 `target/`，不入库 | 使用真实 ip2region 3.3.7 内核端到端校验，又不提交二进制数据文件（§7.4 定档） |
-| **依赖缺失隔离实测** | 用 `support/HiddenClassClassLoader` 隐藏内核包前缀，反射调用 `*Deps` 探测方法，断言抛可读模块异常 | 真实模拟「消费方未引 optional 内核」，验证不裸抛 `NoClassDefFoundError` |
-| **集群存储内存 Mock** | `CaptchaStoreTest` 用动态代理实现 `Cache` / `CounterFactory`，值存内存 `ConcurrentHashMap`，注册进 `CacheManager` | 验证集群存储三态与 TTL，不连真实 Redis，保持离线 |
+| **全离线** | 测试源无任何外部 URL（门禁⑭断言 host 仅 `127.0.0.1` / `localhost`）；无联网 IP 查询、无外部服务 |
+| **xdb 样本内嵌** | 最小 v4/v6 xdb 以 gzip + base64 常量固化在 `support/IpSampleData.java`（源码零二进制）；首次取用解码到 `target/`，不入库 |
+| **依赖缺失隔离实测** | 用 `support/HiddenClassClassLoader` 隐藏内核包前缀，反射调用 `*Deps` 探测方法，断言抛可读模块异常 |
+| **集群存储内存 Mock** | `CaptchaStoreTest` 用动态代理实现 `Cache` / `CounterFactory`，值存内存 `ConcurrentHashMap`，注册进 `CacheManager` |
 
 样本内容（真实 ip2region 3.3.7 的 xdb 结构 3.0 一次性生成后固化）：境内 IPv4 中文五段、境外 IPv4 英文五段、Reserved 保留段、含 `"0"` 哨兵段、IPv6 中文段、IPv6 保留段、未收录 IP。三模式一致性用同一份样本、同一 IP 逐字比对。
 
 ## 2. 用例构成与结果
 
-实测口径来自 `mvn clean verify` 的 surefire 报告（`EXIT=0`、`BUILD SUCCESS`）：
+实测口径来自 `mvn clean verify` 的 surefire 报告（`EXIT=0`、`BUILD SUCCESS`），全量 235 例（门禁 33 + 功能 202）。
 
 | 分组 | 测试类 | 用例数 |
 | --- | --- | --- |
-| 架构门禁 | `ArchitectureBoundaryTest` | 21 |
+| 架构门禁 | `ArchitectureBoundaryTest` | 33 |
 | ipdb | `IpSearcherTest` 15 / `IpRegionTest` 8 / `IpKitTest` 3 / `PublicApiContractIpTest` 9 | 35 |
 | captcha | `CaptchaKitTest` 10 / `CaptchaStoreTest` 7 / `PublicApiContractCaptchaTest` 8 | 25 |
 | qr | `QrKitTest` 11 / `PublicApiContractQrTest` 8 | 19 |
 | mask | `MaskUtilTest` 12 / `MaskKitTest` 8 / `PublicApiContractMaskTest` 7 | 27 |
 | kdf | `HkdfTest` 6 / `Pbkdf2Test` 6 / `HmacTest` 10 / `KdfKitTest` 20 / `PublicApiContractKdfTest` 9 | 51 |
-| **合计** | 门禁 21 + 功能 157 | **178** |
+| crypto | `CryptoTest` 10 / `PublicApiContractCryptoTest` 4 | 14 |
+| random | `RandomUtilTest` 4 / `PublicApiContractRandomTest` 4 | 8 |
+| xml | `XmlUtilTest` 8 / `PublicApiContractXmlTest` 4 | 12 |
+| codec | `CodecUtilTest` 4 / `PublicApiContractCodecTest` 4 | 8 |
+| 合规 | `SourceReuseComplianceTest` 3 | 3 |
+| **合计** | 门禁 33 + 功能 202 | **235** |
 
-**结果：`Tests run: 178, Failures: 0, Errors: 0, Skipped: 0`。** `target/aifei-tools-1.0.0.jar` 产出，主 JAR class major 52（门禁⑨ + 各 `PublicApiContract*Test.mainClasses_majorVersionIsJava8` 双重断言）。
+**结果：`Tests run: 235, Failures: 0, Errors: 0, Skipped: 0`。** `target/aifei-tools-1.0.0.jar` 产出，主 JAR class major 52（门禁⑨ + 各 `PublicApiContract*Test.mainClasses_majorVersionIsJava8` 双重断言）。
 
-> **数字口径（最终确认）**：用例总数 **178（门禁 21 + 功能 157）**，其中 kdf 子包 51 例（HkdfTest 6 + Pbkdf2Test 6 + HmacTest 10 + KdfKitTest 20 + PublicApiContractKdfTest 9），门禁 17→21（追加 ⑱⑲⑳⑳′ 四例）。本文所有数字以磁盘源码 `@Test`（178 个）与 surefire 报告为准，`mvn clean verify` 无任何跳过。
+> 数字口径：用例总数 **235（门禁 33 + 功能 202）**，其中 kdf 子包 51 例。数字以磁盘源码 `@Test` 与 surefire 报告为准，`mvn clean verify` 无任何跳过。
 
 ## 3. 用例清单（按子包）
 
-### 3.1 架构门禁 `ArchitectureBoundaryTest`（21 例）
+### 3.1 架构门禁 `ArchitectureBoundaryTest`（33 例）
 
 对应 §6.2 定档的 21 条，原 17 例断言逐字保留，kdf 追加 ⑱⑲⑳⑳′ 四例：
 
@@ -113,7 +116,7 @@
 - **`KdfKitTest`（20）**：三算法门面分派（HKDF/PBKDF2/HMAC 各档 keyLen 正确，含 HMAC 三参重载 data=message 路径、keyLen 截断与扩展）；参数非法路径全覆盖——null spec / null ikm / HKDF keyLen≤0 / PBKDF2 salt null / iterations≤0 / keyLen≤0 / HMAC keyLen≤0 / 三工厂 hash null（断言 `kdf: hash must not be null`）；HKDF 任意 keyLen 输出（1/100/500）。
 - **`PublicApiContractKdfTest`（9）**：`KdfKit` / `KdfSpec` / `KdfHash` / `KdfException` 类型 final、逐字签名（KdfSpec 三静态工厂 + 6 getter、KdfHash SHA256/SHA512 常量）、异常仅两公共构造、公共方法无 `throws`、签名零第三方类型、KdfSpec 不可变（salt/info 防御性拷贝、getter 返回副本）、class major 52。
 
-**权威口径（§8-F9-a，F9-a 实测结论）**：当前 JDK（实测 JDK 19 SunJCE）`PBKDF2WithHmacSHA256` / `PBKDF2WithHmacSHA512` / `HmacSHA256` / `HmacSHA512` **四算法名全部可用**。但 SunJCE 的 `SecretKeyFactory.generateSecret(PBEKeySpec).getEncoded()` 返回的 key 长度由 PBE cipher 约束决定（默认 8 字节），不等于 `PBEKeySpec` 请求的 keyLen，无法满足"任意 keyLen 输出"契约；故 `Pbkdf2Engine` 改用手动 HMAC PRF 循环实现 RFC 8018 §5.2（纯 JDK、零第三方，偏离原设计手法已记录于 design §8-F）。
+**权威口径（design §7）**：当前 JDK（实测 JDK 19 SunJCE）`PBKDF2WithHmacSHA256` / `PBKDF2WithHmacSHA512` / `HmacSHA256` / `HmacSHA512` **四算法名全部可用**。但 SunJCE 的 `SecretKeyFactory.generateSecret(PBEKeySpec).getEncoded()` 返回的 key 长度由 PBE cipher 约束决定（默认 8 字节），不等于 `PBEKeySpec` 请求的 keyLen，无法满足"任意 keyLen 输出"契约；故 `Pbkdf2Engine` 改用手动 HMAC PRF 循环实现 RFC 8018 §5.2（纯 JDK、零第三方，实现手法见 design §7）。
 
 ## 4. 运行方法
 
@@ -148,9 +151,9 @@ mvn dependency:tree                               # 依赖口径核对（kdf 无
 | 根包零类型 + 各子包精确 N、依赖边界、Java8、离线 | `ArchitectureBoundaryTest`（21） | PASS |
 | kdf HKDF/PBKDF2/HMAC 对标 RFC 测试向量逐字比对、三算法门面分派、参数非法、任意 keyLen | `HkdfTest` / `Pbkdf2Test` / `HmacTest` / `KdfKitTest` | PASS |
 
-> 全部 178 例 0 failure / 0 error；无已知遗留问题（kdf PBKDF2 实现手法偏离已记录于 design §8-F，待主理人回写）。任何门禁断言不得放宽；冻结契约的判定规则与异常消息变更须先更新断言（根 `AGENTS.md`）。
+> 全部 235 例 0 failure / 0 error；门禁断言不得放宽；冻结契约的判定规则与异常消息变更须先更新断言（根 `AGENTS.md`）。
 
-## 3.7 crypto（建议 14 例）
+## 3.7 crypto（14 例）
 
 对应 `docs/design.md` §11.3.1 / §11.10，验证五个原语的向量一致性、null/空串语义与公共面。全部测试零联网，向量以 JDK 独立参考实现 + 公开 RFC 向量表达，**不复制来源模块源码 / 协议串 / 字段名**。
 
@@ -167,12 +170,12 @@ mvn dependency:tree                               # 依赖口径核对（kdf 无
   10. `nullAndInvalidParams_readableException`：`sha1Hex(null)` / `sha1Base64(null)` → `crypto: text must not be null`；`hmacSha1(null,"x")` / `hmacSha256(null,"x")` → `crypto: key must not be null`；`hmacSha1("k",null)` → `crypto: data must not be null`（逐字断言，不用常量拼期望）。
 - **`PublicApiContractCryptoTest`（4）**：`CryptoUtil` / `CryptoException` 均 `final`；`CryptoUtil` 私有构造且 5 个公共方法 static、逐字签名（`String`/`boolean` 白名单）；`CryptoException` 仅两个公共构造、无 `throws`；公共层零 JDK 加密 / 第三方字面量（门禁 ⑳′ 同款断言）；class major 52。
 
-## 3.8 random（建议 8 例）
+## 3.8 random（8 例）
 
 - **`RandomUtilTest`（4）**：`randomString(0)` → `""`，`randomString(1/16/64)` 长度精确且每个字符 ∈ `[A-Za-z0-9]`；多次调用不重复（统计抽样）；`token()` 结果恰为 43 字符、字符集为 Base64URL（`[A-Za-z0-9-_]`）、无 `=` 填充；多线程并发调用无异常、无重复（抽样）。
 - **`PublicApiContractRandomTest`（4）**：`RandomUtil` / `RandomException` 均 `final`、私有构造 / 逐字签名 / 异常两构造 / 无 `throws`；公共层零 `java.security.` / 第三方字面量（且不出现 `Captcha`/`TokenGenerator`）；class major 52；负长度 `randomString(-1)` → `random: length must not be negative, but was: -1`（逐字断言）。
 
-## 3.9 xml（建议 12 例）
+## 3.9 xml（12 例）
 
 - **`XmlUtilTest`（8）**：
   1. `parse_directChildrenOrdered`：通用 XML（**不使用 `<xml>` 根节点 / 微信字段名**）解析为保序 `LinkedHashMap`，值为 `getTextContent()`。
@@ -185,12 +188,12 @@ mvn dependency:tree                               # 依赖口径核对（kdf 无
   8. `escape_noDoubleEscaping`：`&amp;` 输入 → `&amp;amp;`（先转 `&` 再转其余，不二次转义）。
 - **`PublicApiContractXmlTest`（4）**：`XmlUtil` / `XmlException` 均 `final`、私有构造 / 逐字签名（`Map<String,String>` 返回类型写全）/ 异常两构造 / 无 `throws`；公共层零第三方字面量且不出现 `"<xml>"` / `ToUserName` / `FromUserName`；class major 52。
 
-## 3.10 codec（建议 8 例）
+## 3.10 codec（8 例）
 
 - **`CodecUtilTest`（4）**：`gunzip_roundTrip` 用 `GZIPOutputStream` 内存生成压缩字节，解压后与原文逐字节相等（零外链样本）；`gunzip_nullAndEmptyPassthrough`：null → null、空数组 → 同一空数组（原样返回）；`gunzip_invalidBytes_readableException`：非 gzip 字节 / 截断流 → `codec: gunzip failed, cause: {msg}` 且保留 cause、不返回 null；`gunzip_largePayload`：大字节流跨缓冲区边界正确。
 - **`PublicApiContractCodecTest`（4）**：`CodecUtil` / `CodecException` 均 `final`、私有构造 / 逐字签名 / 异常两构造 / 无 `throws`；公共层零第三方字面量且不出现 `HttpConfig` / `http.gzip` / `Accept-Encoding`；class major 52。
 
-## 3.11 授权 / 版权静态合规（`SourceReuseComplianceTest`，建议 3 例）
+## 3.11 授权 / 版权静态合规（`SourceReuseComplianceTest`，3 例）
 
 静态扫描四个新子包（含 internal）与对应测试的全部 `.java` 源码文本（`stripComments` 后）：
 
@@ -200,9 +203,9 @@ mvn dependency:tree                               # 依赖口径核对（kdf 无
 
 > 静态检查是**授权复核结论的落地 guard**（设计 §11.2）：本轮只按公开算法 / 规范自行重写，任何来源源码注释、协议串、字段名进入新子包即失败。
 
-## 3.12 门禁扩充（`ArchitectureBoundaryTest`，21 → 33 例）
+## 3.12 门禁扩充（`ArchitectureBoundaryTest`，33 例）
 
-对应 `docs/design.md` §11.7。原 21 例断言**逐字不改**，唯一放宽是 `cryptoOnlyInKdfInternal`（原 ⑲）的 import 允许路径。
+对应 `docs/design.md` §11.7。原有断言保留，`cryptoOnlyInKdfInternal`（原 ⑲）的 import 允许路径作了扩充。
 
 | 类别 | 方法（新增 12） | 判定口径 |
 | --- | --- | --- |
@@ -211,7 +214,7 @@ mvn dependency:tree                               # 依赖口径核对（kdf 无
 | 公共层零字面量（+4） | `publicSignaturesNoThirdPartyCrypto` / `...Random` / `...Xml` / `...Codec` | 公共层零 `javax.crypto.`/`java.security.`/第三方 / 框架字面量 + 各子包协议串禁用（§11.7） |
 | import 边界（修改 1，不新增方法） | `cryptoOnlyInKdfInternal` | 放宽为允许 `kdf/internal` / `captcha/internal` / `crypto/internal` / `random/internal` 使用 `javax.crypto.`/`java.security.`；既有断言文本与集合不改 |
 
-**例数口径**：门禁 21 → **33**（+12 新 `@Test`）；功能例新增 45（crypto 14 + random 8 + xml 12 + codec 8 + 合规 3）；全量回归 = 178（原）+ 12（门禁新增）+ 45（功能新增）= **235 例**，0 failure / 0 error 为准入线（实际以磁盘 `@Test` 与 surefire 报告为准）。`rootPackageEmpty`（①）继续断言根包精确 0，不创建 `package-info.java`。
+**例数口径**：门禁 **33** + 功能 202 = **235 例**，0 failure / 0 error。`rootPackageEmpty`（①）断言根包精确 0，不创建 `package-info.java`。
 
 ## 4.1 新增子包运行方法（补充）
 

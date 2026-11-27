@@ -283,6 +283,6 @@ public class DemoJobListener implements JobListener {
 
 ### 7.5 参考
 
-- 设计契约（事实来源）：`docs/design.md`
-- 开发约束（面向开发代理）：`AGENTS.md`
+- 公共面与行为契约：`docs/design.md`
+- 开发约束：`AGENTS.md`
 - 测试策略与用例清单：`docs/testing.md`

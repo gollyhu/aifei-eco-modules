@@ -6,14 +6,8 @@
 
 ## 开发前提
 
-- **改代码前必读 `docs/design.md`**（尤其 §5 的 6 类型逐字签名与 §2 的 16 条设计决策）。需求与设计冲突时，**先改设计决策再改代码**。
+- **改代码前必读 `docs/design.md`**（尤其 §5 的 6 类型逐字签名与 §11 的架构门禁口径）。需求与设计冲突时，**先改设计决策再改代码**。
 - 未经设计决策，不得自行确定契约类行为（异常类型与消息、资源名规则、重试触发条件、配置键名、拦截器链语义等），也不得新增或扩大公共 API 面。
-
-## 交付性质
-
-`aifei-http` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面。坐标 `io.github.gollyhu:aifei-http:1.0.0-SNAPSHOT`（`packaging=jar`），公共 API + `internal` + `aifei.HttpPlugin` 同处一个 JAR。
-
-**不适用范围（不得据此模块约束要求）**：表结构 / `Db+Row` / `Generator`（零 DB）；`@Path` Service 与 HIO（模块无入站 HTTP 面）；页面 / 原型基线（无 UI，`aifei-http-demo` 单页由前端直接实装，不经原型与 QA 基线门禁）。
 
 ## 硬性约束
 

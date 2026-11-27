@@ -41,8 +41,6 @@ $CP = Get-Content target\cp.txt -Raw
 java -Ddemo.config=app-config.txt -Dundertow.port=18120 -Dundertow.host=0.0.0.0 -cp ".\target\classes;$CP" cn.hg.aifei.http.demo.DemoApp
 ```
 
-构建自验：`mvn -B clean verify`（当前无测试源码，编译打包通过即 BUILD SUCCESS）。
-
 ## 配置（`src/main/resources/app-config.txt`）
 
 `http.*` 七键写全前缀；非法值会让应用启动失败（消息含键名与原值）。
@@ -63,18 +61,18 @@ java -Ddemo.config=app-config.txt -Dundertow.port=18120 -Dundertow.host=0.0.0.0 
 
 | 路径 | 参数 | 用途 | 覆盖场景 |
 | --- | --- | --- | --- |
-| `/demo/echo` | `status`(100–599，默认 200)、`delay`(0–30000ms)、`failFirst`(N)、`key`(计数分组)、`gzip`(1/true)、`redirect`(1/true)、`text`(指定响应体文本) | **可控回环目标端点**（由 demo 自身 HIO `EchoHandler` 实现，不经 Service）：原样回显方法 / 路径 / 查询串 / 全部请求头 / 请求体大小与内容；可按参数改状态码、延迟、前 N 次 503、gzip 压缩、302 重定向 | §八 全部场景的靶子 |
-| `/http/demo/state` | 无 | 现场快照：`http.*` 七键、`clientInjected`、已登记拦截器顺序、累计 `requestCount` / `attemptCount` / `retryCount`、最近资源名、echo 计数、JVM `http.maxConnections` / `http.keepAlive`（**只读展示**） | §八-8；装配与计数证据 |
-| `/http/demo/get` | `status`、`delay`、`failFirst`、`key` | 基本 GET：返回 `request`（即将发出的请求）+ `response`（状态码 / 总耗时 / 尝试次数 / 响应头 / 响应体）或 `error` | §八-2 |
-| `/http/demo/retry` | `failFirst`(默认 2)、`retryTimes`(默认 2)、`intervalMillis`(缺省用 `http.retry-interval`) | 重试对照：`withoutRetry`（默认不重试，`attempts=1` 即返回 503）vs `withRetry`（显式 `retry(N)`，`attempts=N+1` 拿到 200）+ 第二次运行的穿链记录 | §八-3 |
-| `/http/demo/timeout` | `delay`(默认 1500)、`readTimeout`(默认 300)、`connectTimeout`(默认 500) | 三分支：`normal`（不超时）/ `readTimeout`（`HttpException`，cause 为 `SocketTimeoutException`）/ `connectRefused`（`HttpException`，cause 为 `ConnectException`），返回异常类型、消息、cause、耗时、尝试次数与「是否符合预期」 | §八-4、§八-7 |
-| `/http/demo/interceptor` | `resource`（缺省 `demo.resource.explicit`）、`status` | 资源名对照：`defaultResource`（默认推导 `METHOD host:port path`）vs `explicitResource`；两次运行的 `beforeOrder`（正序）/ `afterOrder`（逆序）与逐条 `events` | §八-5 |
-| `/http/demo/gzip` | 无 | 探针返回 echo 实际收到的 `Accept-Encoding`；再取一次 gzip 压缩响应，给出 `decompressed`（模块解压后与原文逐字相等）与解压后字节数 | §八-2；编解码 |
-| `/http/demo/redirect` | 无 | echo 返回 302 → 模块**固定不跟随**，返回 `status=302`、`location`、`followedRedirect=false`、`attempts=1` | §八-2 |
-| `/http/demo/send` | `method`、`path`、`query`、`headers`(多行 `Name: Value`)、`body`、`contentType`、`resource`、`connectTimeout`、`readTimeout`、`retryTimes`、`intervalMillis` | 通用发送（页面「请求构造器」）：返回 `request`（方法 / 完整 URL / 头 / 体大小与内容 / 显式资源名 / 超时 / 重试设置）+ `response` 或 `error` + `trace`；`rejected` 记录被拒的入参（如 POST 开重试） | §八-1、§八-2、§八-6、§八-7 |
+| `/demo/echo` | `status`(100–599，默认 200)、`delay`(0–30000ms)、`failFirst`(N)、`key`(计数分组)、`gzip`(1/true)、`redirect`(1/true)、`text`(指定响应体文本) | **可控回环目标端点**（由 demo 自身 HIO `EchoHandler` 实现，不经 Service）：原样回显方法 / 路径 / 查询串 / 全部请求头 / 请求体大小与内容；可按参数改状态码、延迟、前 N 次 503、gzip 压缩、302 重定向 | 全部演示场景的回环靶子 |
+| `/http/demo/state` | 无 | 现场快照：`http.*` 七键、`clientInjected`、已登记拦截器顺序、累计 `requestCount` / `attemptCount` / `retryCount`、最近资源名、echo 计数、JVM `http.maxConnections` / `http.keepAlive`（**只读展示**） | 装配与计数证据 |
+| `/http/demo/get` | `status`、`delay`、`failFirst`、`key` | 基本 GET：返回 `request`（即将发出的请求）+ `response`（状态码 / 总耗时 / 尝试次数 / 响应头 / 响应体）或 `error` | 基本请求 |
+| `/http/demo/retry` | `failFirst`(默认 2)、`retryTimes`(默认 2)、`intervalMillis`(缺省用 `http.retry-interval`) | 重试对照：`withoutRetry`（默认不重试，`attempts=1` 即返回 503）vs `withRetry`（显式 `retry(N)`，`attempts=N+1` 拿到 200）+ 第二次运行的穿链记录 | 重试 |
+| `/http/demo/timeout` | `delay`(默认 1500)、`readTimeout`(默认 300)、`connectTimeout`(默认 500) | 三分支：`normal`（不超时）/ `readTimeout`（`HttpException`，cause 为 `SocketTimeoutException`）/ `connectRefused`（`HttpException`，cause 为 `ConnectException`），返回异常类型、消息、cause、耗时、尝试次数与「是否符合预期」 | 超时与连接异常 |
+| `/http/demo/interceptor` | `resource`（缺省 `demo.resource.explicit`）、`status` | 资源名对照：`defaultResource`（默认推导 `METHOD host:port path`）vs `explicitResource`；两次运行的 `beforeOrder`（正序）/ `afterOrder`（逆序）与逐条 `events` | 拦截器顺序 |
+| `/http/demo/gzip` | 无 | 探针返回 echo 实际收到的 `Accept-Encoding`；再取一次 gzip 压缩响应，给出 `decompressed`（模块解压后与原文逐字相等）与解压后字节数 | 编解码 |
+| `/http/demo/redirect` | 无 | echo 返回 302 → 模块**固定不跟随**，返回 `status=302`、`location`、`followedRedirect=false`、`attempts=1` | 重定向 |
+| `/http/demo/send` | `method`、`path`、`query`、`headers`(多行 `Name: Value`)、`body`、`contentType`、`resource`、`connectTimeout`、`readTimeout`、`retryTimes`、`intervalMillis` | 通用发送（页面「请求构造器」）：返回 `request`（方法 / 完整 URL / 头 / 体大小与内容 / 显式资源名 / 超时 / 重试设置）+ `response` 或 `error` + `trace`；`rejected` 记录被拒的入参（如 POST 开重试） | 请求构造器、异常与空态 |
 | `/http/demo/echo/state/reset` | 无 | 重置 echo 端点的 `failFirst` 计数分组（返回清理前快照） | 辅助：多次演示互不干扰 |
 
-> §八-6「空态」是纯前端行为（首次进入不残留上次结果），数据结构已由 `send` 的 `request` / `response` / `error` 三段支撑。
+> 「空态」是纯前端行为（首次进入不残留上次结果），数据结构已由 `send` 的 `request` / `response` / `error` 三段支撑。
 
 ## 演示步骤（页面未就绪时可先用 curl 验证）
 
@@ -89,17 +87,6 @@ curl.exe -s "http://127.0.0.1:18120/http/demo/redirect"
 curl.exe -s "http://127.0.0.1:18120/http/demo/send?method=GET&path=/demo/echo&resource=demo.explicit"
 curl.exe -s "http://127.0.0.1:18120/http/demo/echo/state/reset"
 ```
-
-实测要点（本机已跑通）：
-
-- `retry`：`withoutRetry.attempts=1`（503）；`withRetry.attempts=3`（两次 503 + 一次 200，总耗时 ≈ 2×200ms 间隔 + 传输）；
-- `timeout`：读超时 `elapsedMillis≈306 ≥ 300`，cause `java.net.SocketTimeoutException: Read timed out`；
-  连接被拒 cause `java.net.ConnectException: Connection refused`；
-- `interceptor`：`beforeOrder = demo-a>demo-b>demo-c`，`afterOrder = demo-c>demo-b>demo-a`，
-  默认资源名形如 `GET 127.0.0.1:18120/demo/echo`（含非默认端口、去 query）；
-- `gzip`：`http.gzip=true` 时 `echoSawAcceptEncoding=gzip`、`decompressed=true`；
-- `redirect`：`status=302`、`followedRedirect=false`；
-- `send`：POST 带 JSON 体时 echo 回显 `bodySize=7`；`retryTimes=2` 被当场拒绝（`非幂等方法不支持重试: POST`）。
 
 ## 实现说明与已知边界
 

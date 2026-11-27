@@ -1,16 +1,10 @@
-# aifei-tools 模块需求（任务输入）
+# PRD：aifei-tools（极简通用工具集）
 
-> 本文件是任务输入，不是 PRD / 设计。
 > 关联：`aifei-cache`（验证码答案共享存储，`optional`）；`org.lionsoul:ip2region`（IP 归属地数据内核，`optional`）；`com.google.zxing:core`（二维码编解码内核，`optional`）。
-> 决策出处：`docs/计划/aifei-eco-modules 模块规划与排期.md` §6.2（2026-11-18 复评：`aifei-captcha` 不独立立项，并入本模块作为首个工具）。
 
-## 一、背景
+## 一、定位
 
-若干「几十行就能写完、却每个应用都要抄一遍」的极简工具缺少统一收口。首个候选是验证码（captcha）：单体能力薄（生成图片 + 校验答案），独立成模块的固定成本（公共面定档 + 架构门禁 + 文档四件套 + demo）与其体量不匹配。
-
-本模块定位为**极简工具集**：一个 JAR 收纳多个互不相关的工具，按子包隔离、各自独立可用，不做跨工具抽象。
-
-第二个工具候选是 IP 归属地查询（ipdb）：把「引入 ip2region 客户端、准备 xdb 数据文件、选择查询模式、处理 Searcher 线程安全、解析五段 region 字符串」这套每个应用都要重复处理的样板收口。与 captcha 并列，同属「单体能力薄、独立立项固定成本不划算」的极简工具，并入本模块落 `cn.hg.aifei.tools.ipdb` 子包（与实现一致；早期需求稿的 `cn.hg.aifei.tools.ip` 为过期包名），共享「子包隔离、各自独立可用、不做跨工具抽象」的定位。
+本模块是**极简工具集**：一个 JAR 收纳多个互不相关的工具，按子包隔离、各自独立可用，不做跨工具抽象。首批工具为验证码（captcha）、IP 归属地查询（ipdb）、二维码（qr）、脱敏（mask）。
 
 ## 二、范围
 
@@ -26,16 +20,6 @@
 3. 风控画像、设备指纹、频率策略编排。
 4. 工具之间的公共抽象层（如统一 `Tool` 接口）——各工具互不相关，抽象只增加认知成本。
 
-## 三、必须先定档的前置决策：门禁口径
-
-仓库纪律要求「根包公共类型数量精确并由架构门禁断言」，而工具集会随工具增减变动公共面。**未定档口径前不得启动编码**。推荐口径：
-
-1. **根包零公共类型**，公共 API 全部落工具子包（`captcha` 等）；
-2. 门禁按子包分别断言：`ArchitectureBoundaryTest` 对每个工具子包断言「公共类型精确 N 个」，并断言根包为空；
-3. 新增工具 = 新增子包 + 门禁新增一条断言，不改既有工具签名。
-
-备选口径（需说明理由才可采用）：根包保留一个统一门面 `ToolsKit`，所有工具方法经它转发。代价是公共面随工具增长、门禁只能断言方法数。
-
 ## 四、captcha 工具要求
 
 - **生成**：字符型与算式型两类；纯 JDK `Graphics2D` 绘制 PNG（不引第三方图形库）；接口返回 token、图片字节、过期时刻
@@ -47,11 +31,11 @@
 ## 五、ip 工具要求
 
 - **定位与场景**：离线 IP 归属地查询（城市级），输入 IPv4 / IPv6 文本，返回「国家|省份|城市|ISP|ISO 国家码」五段结果（境内中文、境外英文）。典型场景：日志/审计标注来源地域、请求地域统计、内容地域化。无 Plugin、无配置键、随取随用（对齐 `aifei-excel` / `aifei-trace` 的无装配门面型）。
-- **依赖策略**：唯一第三方内核 `org.lionsoul:ip2region:3.3.7`（版本已定档——2026-11-20 随实现回写，与 `aifei-tools/pom.xml` 的 `<ip2region.version>3.3.7</ip2region.version>` 及根 `README.md` 依赖说明一致；早期「3.x 待定 / tag v3.19.0 仅线索」为设计前口径，已废止）为 `optional`、阻断传递；`aifei-all` 为 `provided`；库模块零 `cn.aifei.*` 引用、零日志绑定。依赖缺失时首次调用抛可读 `IpException`（收敛 `NoClassDefFoundError` / `ClassNotFoundException`），不得裸抛。双许可 Apache-2.0 OR MIT，署名与许可说明按设计决策在文档留痕。
-- **公共面（已按实现定稿）**：落 `cn.hg.aifei.tools.ipdb` 子包，精确 5 个类型——`IpKit`（便捷门面，`search(v4Xdb, v6Xdb, ip[, mode])`）、`IpRegion`（结果值对象）、`IpQueryMode`（查询模式枚举）、`IpException`（统一异常）、`IpSearcher`（`AutoCloseable` 会话）。**当前无 `Ip` 顶层类**（早期候选 `Ip` 未落地，已废止）。公共签名零第三方、零框架类型，不得暴露 ip2region 的 `Searcher`。region 五段解析（含「0」/未知值语义）唯一定义点放 `internal`，公共层与实现层不得复制。
+- **依赖策略**：唯一第三方内核 `org.lionsoul:ip2region:3.3.7`（与 `aifei-tools/pom.xml` 的 `<ip2region.version>3.3.7</ip2region.version>` 及根 `README.md` 依赖说明一致）为 `optional`、阻断传递；`aifei-all` 为 `provided`；库模块零 `cn.aifei.*` 引用、零日志绑定。依赖缺失时首次调用抛可读 `IpException`（收敛 `NoClassDefFoundError` / `ClassNotFoundException`），不得裸抛。双许可 Apache-2.0 OR MIT，署名与许可说明见第三方声明文件。
+- **公共面**：落 `cn.hg.aifei.tools.ipdb` 子包，精确 5 个类型——`IpKit`（便捷门面，`search(v4Xdb, v6Xdb, ip[, mode])`）、`IpRegion`（结果值对象）、`IpQueryMode`（查询模式枚举）、`IpException`（统一异常）、`IpSearcher`（`AutoCloseable` 会话）。公共签名零第三方、零框架类型，不得暴露 ip2region 的 `Searcher`。region 五段解析（含「0」/未知值语义）唯一定义点放 `internal`，公共层与实现层不得复制。
 - **数据文件策略**：xdb 为独立二进制数据文件、不打包进 jar，由消费方自带并经入参显式传入路径（不设配置键、不内置默认文件、不联网下载）。IPv4 / IPv6 分别对应 `ip2region_v4.xdb` / `ip2region_v6.xdb`。
-- **查询模式**：fileOnly（内存最低、每次磁盘 IO）、vectorIndex（固定 512 KiB 索引缓存，约 100µs）、content（全文件内存，约 10µs）三选一，由入参指定；三种模式对同一 IP 与同一 xdb 的归属地结果须一致，差异只在性能/内存占用。
-- **并发与生命周期契约**：`Searcher` 非线程安全，并发策略按模式定档（每次查询新建 / ThreadLocal / 实例独占等），不得在无保护下单实例共享；三种模式均持有需关闭的资源，`close()` 须幂等，关闭后查询抛可读异常（具体异常类型与消息待设计决策）。
+- **查询模式**：`IpQueryMode` 枚举 `FILE_ONLY`（内存最低、每次磁盘 IO）、`VECTOR_INDEX`（固定 512 KiB 索引缓存，约 100µs，默认）、`CONTENT`（全文件内存，约 10µs）三选一，由入参指定；三种模式对同一 IP 与同一 xdb 的归属地结果须一致，差异只在性能/内存占用。
+- **并发与生命周期契约**：`Searcher` 非线程安全，并发策略按模式定档（每次查询新建 / ThreadLocal / 实例独占等），不得在无保护下单实例共享；三种模式均持有需关闭的资源，`close()` 须幂等，关闭后查询抛可读异常（统一为 `IpException`）。
 - **异常**：统一收敛为 `IpException`——参数非法（null / 非法 IP 文本）、xdb 文件缺失或不可读、依赖缺失、解析失败均给可读消息与 cause；不向调用方抛底层原始异常。
 - **不做**（边界）：
   1. xdb 文件的生成、更新与联网下载（数据文件由消费方自备）。
@@ -129,13 +113,13 @@ public final class MaskException extends RuntimeException {
 - 未引入 `aifei-cache` 时单机可用；引入后集群内跨实例校验成功
 - 门禁按定档口径断言：根包零类型、`captcha` 子包公共类型精确 N 个
 - 文档四件套齐备 + 根 `README.md` 模块总览补条目
-- 同一 IP 与同一 xdb，fileOnly / vectorIndex / content 三种模式返回相同的 `IpRegion` 五段结果
+- 同一 IP 与同一 xdb，`FILE_ONLY` / `VECTOR_INDEX` / `CONTENT` 三种模式返回相同的 `IpRegion` 五段结果
 - IPv4 用 `ip2region_v4.xdb`、IPv6 用 `ip2region_v6.xdb` 均能命中并返回预期五段；境内样本返回中文、境外样本返回英文，未知段按定档的「0」语义表达
 - 非法 IP 文本 / null 入参、xdb 文件不存在或不可读、未引入 ip2region 依赖 → 首次调用均抛 `IpException` 且消息可读，无裸 `NoClassDefFoundError` / `NullPointerException`
 - 多线程并发查询（按定档并发策略）无结果串扰、无 `Searcher` 共享异常
 - `close()` 连续调用幂等；关闭后查询抛可读异常（符合定档语义）
 - 门禁按定档口径断言：根包公共类型为零、`ipdb` 子包公共类型精确 5 个（`IpKit` / `IpRegion` / `IpQueryMode` / `IpException` / `IpSearcher`，N=5 已随实现定档）
-- 测试不提交 xdb 二进制；测试样本策略（现场生成小样本 / 测试期拉取）由设计决策确定后落地
+- 测试不提交 xdb 二进制
 - qr：`encode` 产出可被 `decode` 还原的 PNG。
 - qr：四档纠错等级与 `size`/`margin` 选项生效。
 - qr：中文文本 UTF-8 不乱码。
@@ -155,19 +139,3 @@ public final class MaskException extends RuntimeException {
 - mask：`maskAddress` 保留前 6 字符、其余等长 `*`，`浙江省杭州市金城坊街2号` → `浙江省杭州市******`，长度 ≤6 时全打码；且 `maskAddress(x)` ≡ `use("address").apply(x)`，`address` 初始在册，`replace("address", ...)` 后跟随新规则。
 - mask：`maskIp` 保留首段、其余每段一个 `*`，IPv4/IPv6 分别按 `.`/`:` 分段，`192.168.2.1` → `192.*.*.*`、`2001:db8:85a3::8a2e:370:7334` → `2001:*:*:*:*:*:*:*`；且 `maskIp(x)` ≡ `use("ip").apply(x)`，`ip` 初始在册，`replace("ip", ...)` 后跟随新规则。
 
-## 九、待确认问题（ip / qr / mask 工具）
-
-1. ~~`ip2region` 具体版本：仅写「3.x，版本待设计决策实证」~~ **— 已定档（2026-11-20）**：`org.lionsoul:ip2region:3.3.7`，出处 `aifei-tools/pom.xml` 与根 `README.md` 依赖说明（原「tag v3.19.0 仅线索」作废）。
-2. IPv4 / IPv6 路由：单实例绑单库，还是按 IP 版本自动路由双库（影响公共面形态与 `IpRegion` 来源）——待设计决策，不冻结。
-3. ~~公共面精确命名与数量（待设计决策）~~ **— 已按实现定档（2026-11-20）**：`ipdb` 子包精确 5 个类型 `IpKit` / `IpRegion` / `IpQueryMode` / `IpException` / `IpSearcher`（门禁 N=5）；无 `Ip` 顶层类；命名后缀符合「`XxxUtil` 无状态 / `XxxKit` 有状态门面」约定。
-4. 测试样本策略：不提交 xdb 二进制前提下，采用现场生成最小样本还是测试期拉取（拉取需可重复、不外链生产数据）——待设计决策。
-5. 查询模式默认值与并发默认值：未显式指定模式时的默认选择、并发策略默认项（每次新建 / ThreadLocal / 实例独占）——待设计决策。
-6. region 五段中「0」/未知值的对外语义（空串 / 特定占位 / 可选字段）与 `close()` 后异常类型、消息——按仓库纪律「未经设计决策不得自定空值/异常语义」，须先定档。
-7. 范围边界提示（非本轮产出）：规划文档 §3.3 / §6.2 的「首个工具 / 1 周」措辞、是否配 `aifei-tools-demo`、精确公共类型数，均不在本片段内，未擅自扩张。
-8. qr：是否保留 `decode`。
-9. qr：`null` / 空输入语义。
-10. qr：`decode` 失败语义。
-11. qr：`QrOptions` 是否扩展。
-12. qr：是否加流式输出。
-13. mask：`null` / 空串输入语义——9 个默认规则对 `null`/空串是返回原值、返回 `null` 还是抛 `MaskException`，未定档（qr 同类问题见第 9 条）。
-14. mask：`maskIp` 对非 IPv4/IPv6 非法文本的处理语义（按文本格式分段打码 vs 抛 `MaskException`），未定档。

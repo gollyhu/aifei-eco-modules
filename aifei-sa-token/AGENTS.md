@@ -16,7 +16,7 @@
 - 持久层的委托层（`SaTokenDaoForCache` 的 `delegate`）只允许以 `SaTokenDao` 接口形态出现：不得引入 JDBC、消费方表结构或任何具体持久化实现类型。
 - `SaTokenDaoForCache` **不转发** `init()` / `destroy()` 属既定决策；如需改为转发，先更新 `docs/design.md` 再改代码。
 - `cn.aifei.vip.*`、`java.sql.*` 零引用。
-- **不得擅自更换上下文挂载点**（当前为装饰 `Dispatcher`）。挂载点的选择直接决定请求/响应能力边界，属设计决策，见 `docs/design.md` §2.1。
+- **不得擅自更换上下文挂载点**（当前为装饰 `Dispatcher`）。挂载点的选择直接决定请求/响应能力边界，属设计决策，见 `docs/design.md` §4.1。
 - 上下文清理必须在 `finally` 中完成（`clearContext` + `clearInput` + `clearExchange`），否则线程复用会串号。
 - 桥接对象（`SaRequest` / `SaResponse` / `SaStorage` 实现）必须无状态，请求相关数据放线程变量或 `exchange`。
 - 不得在桥接层调用 `exchange.endExchange()`：响应输出由消费方 IoHandler 统一负责。

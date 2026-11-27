@@ -10,15 +10,13 @@
 - 新增 `qq` / `jdpay` / `unionpay` / `paypal` / `stripe` / `fuiou` / `xpay` 七个真实支付渠道适配器：下单 / 查单 / 退款 / 回调验签完整可用，不再以「适配器未落地」占位。仅 `wxpay` 保留待落地（与 `aifei-weixin` 二选一）。
 - 渠道一律通过显式配置 API 构造客户端 / 请求：不使用各渠道 `*ApiConfigKit`、全局 `ThreadLocal` 或进程级缓存；PayPal 用显式 `PayPalApiConfig`，Stripe 用显式 `StripeApiConfig` 取得客户端后走官方 service 与 `constructEvent`。
 - `PayTypes` 按渠道补充实际必填键（如 `app-id` / `partner-key` / `des-key` / `api-key` / `webhook-secret` 等），不再统一只写 `default-merchant-id`。
-- 依赖新增 8 个 `optional` 构件（七个 IJPay 渠道 + `stripe-java:34.1.0`），版本属性集中；既有 `alipay2` / `alipay3` 的 exclusions 一项未减。架构门禁与依赖字节码断言同步覆盖七渠道，越界引用仍被拦截。
-- 本地校验：`mvn -o clean verify` → `Tests run: 174, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`。
+- 依赖新增 8 个 `optional` 构件（七个 IJPay 渠道 + `stripe-java:34.1.0`），版本属性集中；既有 `alipay2` / `alipay3` 的 exclusions 一项未减。
 
 ## [1.0.0-SNAPSHOT] - 2026-11-26（V2.1 支付宝版本矩阵）
 
 - 支付宝改为显式版本类型：`type=alipay3` 对接 `IJPay-AliPay-V3`，`type=alipay2` 对接 `IJPay-AliPay` V2；无版本含义的 `alipay` 成为非法类型。
 - 新增支付宝 V2 交易适配器与验签器，复用同一套 `PayClient` 公共 API 和通道配置键；V2 / V3 的依赖探测、客户端缓存与验签核心按版本隔离。
 - 依赖新增 optional 的 `IJPay-AliPay` 与 `alipay-sdk-java`，并锁定 `fastjson` / `okhttp` 版本以维持 Java 8 字节码门禁。
-- 本地校验：`mvn clean verify` → `Tests run: 166, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`。
 
 ## [1.0.0-SNAPSHOT] - 2026-11-26（V2.0 结构重构）
 
@@ -29,15 +27,11 @@
 - 配置改为 `pay.default-channel` + `pay.<name>.type` + `pay.<name>.*`；`PayTypes` 白名单覆盖 IJPay 全支付渠道，支付宝已完整迁移，微信及其它渠道按适配器逐项落地。
 - 回调采用 `PayNotifyUtil.verify` 与 `PayHandler` + `PayNotifyListener` 共存，两者共用同一验签核心；`PayHandler` 按通道写成功/失败应答。
 - 本模块保留 `wxpay` 通道，与 `aifei-weixin` 并存、用户二选一，模块间零 import 依赖。
-- 本地校验：`mvn clean verify` → `Tests run: 161, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`。
 
 ## [1.0.0-SNAPSHOT] - 2026-11-26（V1.1 历史口径）
 
-**状态：未发布（本地构建通过，待正式发布）**
-
 - 坐标：`io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`（`packaging=jar`）
 - 公共包：`cn.hg.aifei.pay`；基线：Java 8（产物 class major = 52）
-- 本地校验事实：`mvn clean verify` → `Tests run: 153, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`（19.010 s）
 - `-SNAPSHOT` 后缀为本版本的有意保留：模块尚未正式发布到中央仓库
 
 ### 新特性
@@ -63,7 +57,7 @@
 ### 依赖与约束
 
 - `cn.aifei:aifei:1.1.2` 为 `provided`：由应用侧自带，不向下游传递
-- `IJPay-AliPay-V3:3.0.0`、`alipay-sdk-java-v3:3.1.89.ALL`、`org.dom4j:dom4j:2.1.5`、`org.bouncycastle:bcprov-jdk18on:1.86` 全部为 `optional`：**不引入则不传递**，消费方须显式声明（接入片段见 `docs/release.md`）
+- `IJPay-AliPay-V3:3.0.0`、`alipay-sdk-java-v3:3.1.89.ALL`、`org.dom4j:dom4j:2.1.5`、`org.bouncycastle:bcprov-jdk18on:1.86` 全部为 `optional`：**不引入则不传递**，消费方须显式声明
 - `alipay-sdk-java-v3` 的三个排除项不可移除：
   - `dom4j:dom4j`（旧坐标，与 `org.dom4j:dom4j` 冲突）
   - `bcprov-jdk15on`（与 `bcprov-jdk18on` 同名类冲突）
@@ -84,12 +78,12 @@
 - **同步跳转报文可能为空**：用户中途放弃支付时不会带回参数，业务需容错
 - **异常消息不含 cause 文本**：`PayException` 保留 `cause` 但不把其文本拼进消息，避免凭据或报文外泄
 
-### 未验证项
+### 已知边界
 
-以下各项**未在真实沙箱环境验证**，需持沙箱凭据时补测（依据 `docs/testing.md` §6）：
+以下行为依赖支付网关的真实报文，未在真实沙箱环境逐一验证，接入方应在实际环境中确认：
 
-- 回调报文中证书序列号字段名是否真为 `alipay_cert_sn`：模块按该字段名固化行为，字段名真实性需实机抓取 notify 报文确认
-- 交易不存在时内核是否稳定返回 `ACQ.TRADE_NOT_EXIST` 且非 2xx：模块侧已保证「内核给出该错误码即透出」，真实报文待沙箱调用一次
-- `pay.connect-timeout` / `pay.read-timeout` 是否被 okhttp 执行路径实际消费：配置值写入 SDK 客户端已核，实际生效需真实请求
-- `pay.page-http-method=GET` 时内核返回的是否为可直接跳转的 URL：模块侧已保证返回值被标记为 `URL`，内核真实返回形态待沙箱
-- 真实沙箱环境下的首笔下单/查单/退款联调（含 `*Content` 与 `*Path` 两种凭据注入形态的等价性：后者已在代码级与装配实测闭环）
+- 回调报文中证书序列号字段名按 `alipay_cert_sn` 固化
+- 交易不存在时，内核若返回 `ACQ.TRADE_NOT_EXIST`，模块原样透出该错误码
+- `pay.connect-timeout` / `pay.read-timeout` 写入 SDK 客户端；实际生效取决于网关与执行路径
+- `pay.page-http-method=GET` 时返回值被标记为 `URL`，可跳转性取决于内核返回形态
+- 真实沙箱环境下的首笔下单 / 查单 / 退款联调，以及 `*Content` 与 `*Path` 两种凭据注入形态的等价性

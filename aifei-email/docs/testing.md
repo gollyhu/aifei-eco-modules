@@ -1,8 +1,8 @@
-# aifei-email 测试策略与用例清单
+# aifei-email 测试文档
 
-面向实现者与验收者。契约事实来源是 [design.md](design.md)（§7.5 异常语义、§9 门禁、§14 AC 映射），本文只回答「怎么测、测了什么、哪些没测到、怎么复现」。
+本文给出测试分层、用例清单、覆盖情况与复现命令。
 
-## 一、测试策略
+## 一、测试分层
 
 | 层 | 测试类 | 判据 |
 | --- | --- | --- |
@@ -162,9 +162,9 @@ BUILD SUCCESS
 
 > AC-12 / AC-13 由「门禁 + 构建期人工核对」双通道验证，属工具链断言而非 JUnit 用例。
 
-## 四、场景 14（附件临时文件写入失败）的实际覆盖方式
+## 四、场景 14（附件临时文件写入失败）的覆盖方式
 
-**现状：降级覆盖，不粉饰。**
+**覆盖方式：消息工厂级（逐字消息 + cause 保留），未做真实 IO 失败路径重放。**
 
 | 维度 | 现状 |
 | --- | --- |
@@ -172,7 +172,6 @@ BUILD SUCCESS
 | 断言内容 | `MailErrors.attachmentWriteFailed("a.txt", new IOException("No space left on device"))` → `email: failed to write attachment a.txt to temp file, cause: No space left on device`，并 `assertSame(cause, e.getCause())` |
 | 未重放的技术原因 | 需让 `Files.createTempFile` 抛异常，可行手段是改写 `java.io.tmpdir`，但 JDK `TempFileHelper` 在类初始化时**静态缓存**临时目录，共享 surefire 进程内已被其它用例初始化，重放不可靠；`SecurityManager` 方案需额外 JVM 启动参数（JDK 21 默认拒绝安装），未引入 |
 | 补偿覆盖（已实测） | 附件正路径由 `SendContractTest.convertsAttachmentsAndCleansTempFiles` 覆盖（发送时刻临时文件真实存在 + 字节与消费方一致 + `send` 返回后同路径已删除）；并发清理由 `sendsConcurrentlyWithoutCrossTalk` 覆盖（8 线程逐次断言清理与无串扰） |
-| 后续建议 | 若要求 100% 路径覆盖，用独立 surefire 执行（独立 fork + `-Djava.io.tmpdir=<不存在路径>`）承载该用例，属增量改造 |
 
 ## 五、其他已知局限
 
@@ -204,30 +203,11 @@ io.github.gollyhu:aifei-email:jar:1.0.0-SNAPSHOT
 | `org.hamcrest:hamcrest-core:1.3` | `test`（由 junit 传递） | 允许清单（§10.2 已登记受限传递项） |
 
 > **AC-13 结论：PASS。** AC-13 口径是「除 `aifei` 外无其它第三方 **compile / runtime** 依赖」，`fastjson2` 为 `provided`，故不违反。
-> **设计文档补登遗留**：`design.md` §2.3 的依赖树未列 `fastjson2`（它经由 `aifei` 传递而非本模块直接声明）；此差异属设计文档补登项，**不影响 AC-13 判定**，已在本表留痕。
 
-## 七、与设计文档的已知差异（实现层等价偏差）
-
-均已由主理人裁定为「实现层等价偏差」，**不改 `design.md` 契约、不改公共面签名、不改 16 条消息措辞**。
-
-| # | 偏差 | 理由 | 影响判定 |
-| --- | --- | --- | --- |
-| S-4 | `MailMessage` 只有包内 `MailMessage(Builder)` 构造器，没有设计字面列出的 `MailMessage()` 无参构造器 | 无参构造器会允许构造非法消息（空收件人 / 空主题），`build()` 失控；包内构造器仍不暴露公共构造器 | 无契约影响（公共面零变化） |
-| S-5 | `MailErrors` 增加 2 条表外消息：`propNull()`（`email: prop can not be null`）、`duplicateProvider()`（`email: multiple MailProvider implementations found for type {type}`） | 前者由 §5.4 / §7.2 明确要求 `MailErrors.propNull()`；后者由 §7.1「同 type 多实现 → 装配期错误」要求，但 §7.5 未冻结措辞 | 无契约影响；16 条场景措辞逐字未变，另测 2 条 |
-| S-6 | 场景 6 / 7 / 15 的 `{name}` / `{rawValue}` 走统一 `display()`，空值显示 `<empty>` | 与场景 4 / 7 的占位口径保持一致，避免空串进入消息导致「冒号后什么都没有」 | 无契约影响（仅空值入参的展示细节） |
-| S-7 | 场景 10 / 11 / 14 / 16 的 `{causeMsg}` 取 **cause 链上最深一层非空 message**，而非直接取外层 `getMessage()` | 外层 `RuntimeException(cause).getMessage()` 等于内层 `toString()`，会把 `javax.mail.*` 类名带进消息，违反 §7.5「消息不含第三方类型名」 | 无契约影响（消息模板未变，仅取值层级） |
-| S-8 | `<htmlTemplate>` 读取过程中的 `IOException` 并入场景 15（`html template not found: ...`） | §7.5 只定义「模板不存在」，未定义「模板读取失败」；两者对消费方语义一致（模板不可用） | 无契约影响（属未定义路径的归并） |
-| S-12 | `MailClients` 增加 `defaultChannelName()` / `snapshot()`，`MailProviderRegistry` 增加 `setDiscoveryClassLoader()` / `reset()` | 内部（非承诺）构件的诊断与测试便利；`reset()` 同时清发现缓存与类加载器覆盖 | 无契约影响（不进根包 / spi 公共面，门禁 ⑥ 计数不变） |
-| S-9 | `SmtpClientFactory` 整数二次防线报错用**裸选项键**（`max-retries`）而非完整键名（`email.<name>.max-retries`） | 完整键名前缀字面量出现在 `internal.smtp` 会触发门禁 ⑬（配置前缀唯一性） | 无契约影响；该分支为**防御分支、在 `EmailConfigLoader` 校验之后不可达**，主路径由场景 9 覆盖（含完整键名） |
-| I-2 | **§7.5 判据事实澄清**：在 `javax.mail 1.6.2` 下 `MessagingException#getCause()` 已被重写为返回内部 `next`，故 **cause 链天然包含 next 链**；实现显式遍历 `getNextException()` 属**防御性等价**（对未重写 `getCause()` 的实现 / 未来版本有意义） | 邮件协议把嵌套异常挂在 `next`（`setNextException` 串链）；显式遍历使判据不依赖 `getCause()` 的重写行为 | **消息与公共面不变**（16 条措辞逐字不变、cause 仍保留原异常）；2 条用例以 `setNextException` 构造 **next-only 链**覆盖该形态，不声称证明 next 分支必要 |
-| S-11 | `EmailPlugin.start()` 的单例注册改为**类级双检**（`synchronized (EmailPlugin.class)`） | `singletonRegistered` 是 static 而方法锁是实例锁，多插件实例并发装配可能重复注册 | 无契约影响（语义与幂等性不变） |
-
-## 八、门禁兜底位置与遗留项
+## 八、遗留项
 
 | 事项 | 现状 |
 | --- | --- |
-| `META-INF/services` 资源守护（原 I-3 建议加门禁） | **本轮不加门禁**（加项属设计变更）。已由 `ConfigValidationTest.rejectsMissingProvider` 双向兜住：屏蔽服务资源 → `getProvider("smtp") == null` + 场景 13 逐字消息；`reset()` 后正常类路径 → `getProvider("smtp") != null`（防「services 文件缺失」假通过） |
-| 门禁加固（原 S-10：`record` / `sealed` 尾空格匹配、①③ 仅匹配 `import` 行） | **本轮不动**（属设计变更），登记为遗留项 |
 | 单机测试类并行 | 不支持（三个静态状态共享），已在第五节列明 |
 
 ## 九、复现命令

@@ -1,8 +1,6 @@
 # aifei-sentinel 设计文档
 
-> 版本：1.0.0 ｜ 关联：`README.md`（定位与用法）、`docs/testing.md`（测试）
-
-## 1. 背景与目标
+## 1. 模块定位与目标
 
 aifei 生态已有缓存（`aifei-cache`）、鉴权（`aifei-sa-token`）等社区组件，缺流量治理能力。`aifei-sentinel` 以「L1 接线」方式把阿里开源的 Sentinel 接入 aifei，提供五种能力：
 
@@ -17,18 +15,6 @@ aifei 生态已有缓存（`aifei-cache`）、鉴权（`aifei-sa-token`）等社
 - `provided` 依赖仅 `aifei`，对 arch / undertow 零依赖。
 - 业务代码零 Sentinel 类型，只注册拦截器、实现降级策略。
 - 五种能力共用同一处埋点，差异只在规则类型。
-
-## 2. 选型与技术决策
-
-| 决策 | 结论 | 理由 |
-|---|---|---|
-| 引入方式 | 引入 `sentinel-core`（compile），L1 接线 | 流控与熔断算法成熟但滑动窗口/令牌桶边界易错，不宜自研；`sentinel-core` 是纯 Java，可手工装配 |
-| 埋点方式 | aifei 拦截器 + 编程式 `SphU.entry` | 官方 `@SentinelResource` 依赖 Spring AOP，aifei 不支持 Spring；改由拦截器统一埋点 |
-| 资源名声明 | 自研 `@SentinelResource` 注解（方法级） | 官方注解因 Spring AOP 被否决；自研注解仅用 JDK 注解类型、不含 Spring，由 `resourceOf` 直接读取，不新增依赖 |
-| 资源名解析缓存 | 按 `Method` 缓存在拦截器内部，用 `ClassValue<ConcurrentHashMap<Method,String>>` | 注解为编译期静态元数据、运行期不变，无需失效；`ClassValue` 随类卸载回收，避免强引用 `Method` 阻塞类卸载。本缓存属**模块内部私有内存缓存**，与根 `AGENTS.md`「缓存 / Redis 出口基线」所指的**跨实例 / 公共缓存**（`aifei-cache`）边界不同：前者是消除重复反射的实现细节、按需保留；后者才受「一律优先 `aifei-cache`」约束 |
-| 禁用项 | `sentinel-annotation-aspectj`、`spring-cloud-starter-alibaba-sentinel` | 同上，Spring 生态 |
-| 规则管理 | 对接官方 Sentinel Dashboard，不自研控制台 | 规则管理、推送、监控由官方 Dashboard 承担，自研 WebUI + CRUD 的投入产出比不划算 |
-| 生命周期 | 静态门面 `SentinelKit`，在 `onStart()` 装配 | 不需要插件机制，静态 init 即可嵌入 aifei 启动流程 |
 
 ## 3. 总体架构
 
@@ -66,7 +52,8 @@ aifei-sentinel/src/main/java/cn/hg/aifei/sentinel/
 
 | 依赖 | scope | 说明 |
 |---|---|---|
-| `cn.aifei:aifei` | `provided` | 内核，消费方自带（含传递的 `fastjson2`） |
+| `cn.aifei:aifei` | `provided` | 内核，消费方自带 |
+| `com.alibaba.fastjson2:fastjson2` | `provided` | 规则 JSON 读写直接引用（`SentinelRuleLoader` / `SentinelRuleWriter`），显式声明、消费方自带 |
 | `com.alibaba.csp:sentinel-core` | `compile` | Sentinel 核心：埋点、规则管理器、降级 |
 | `com.alibaba.csp:sentinel-parameter-flow-control` | `compile` | 热点参数限流（独立于 core 的扩展模块） |
 | `com.alibaba.csp:sentinel-datasource-extension` | `compile` | `FileRefreshableDataSource`，规则文件热读 |

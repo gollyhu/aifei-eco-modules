@@ -65,21 +65,21 @@
 - 第三方依赖一律 `optional` 或 `provided`：不向下游传递，由消费方按需自带。
 - **已登记的 `compile` 例外**（模块须先在自身 `docs/design.md` 作出设计决策，并在此登记后方可落地）：
   - `aifei-oss` 的 `org.dromara.x-file-storage:x-file-storage-core` 为 `compile`——它是该模块的实现内核，脱离它门面无任何功能，标 `optional` 只会迫使消费方重复声明；理由见 `aifei-oss/docs/design.md` §3.2。
-  - `aifei-sa-token` 的 `cn.dev33:sa-token-core` 为 `compile`——公共 API 签名直接暴露其类型（`StpInterface` / `SaTokenDao` 等），插件与上下文桥接也以内核实现为前提，标 `optional` 会让消费方被迫重复声明且编译期缺类型；理由见 `aifei-sa-token/docs/design.md` §2 与 §3 依赖表。
-  - `aifei-job` 的 `org.quartz-scheduler:quartz` 为 `compile`——cron 表达式校验与下次触发计算依赖其 `CronExpression`，是本模块的实现内核（非 Quartz 调度运行时，`Scheduler` / `JobStore` / `Trigger` 均不用），标 `optional` 只会迫使消费方重复声明；理由见 `aifei-job/docs/design.md` §3.1 与 §10。
+  - `aifei-sa-token` 的 `cn.dev33:sa-token-core` 为 `compile`——公共 API 签名直接暴露其类型（`StpInterface` / `SaTokenDao` 等），插件与上下文桥接也以内核实现为前提，标 `optional` 会让消费方被迫重复声明且编译期缺类型；理由见 `aifei-sa-token/docs/design.md` §3.3。
+  - `aifei-job` 的 `org.quartz-scheduler:quartz` 为 `compile`——cron 表达式校验与下次触发计算依赖其 `CronExpression`，是本模块的实现内核（非 Quartz 调度运行时，`Scheduler` / `JobStore` / `Trigger` 均不用），标 `optional` 只会迫使消费方重复声明；理由见 `aifei-job/docs/design.md` §10。
   - `aifei-job` 的 `org.slf4j:slf4j-api` 为 `compile`——Quartz 内部日志门面，排掉会导致类加载失败，故显式直接声明（不靠 Quartz 传递，避免 Quartz 变动后门面消失）；本模块自身零 `org.slf4j.*` 引用（门禁断言）；理由同上。
   - `aifei-sentinel` 的 `com.alibaba.csp:sentinel-core` / `sentinel-parameter-flow-control` / `sentinel-datasource-extension` 为 `compile`（随 SDK 传递）——三者是 Sentinel 治理能力的实现内核（埋点、热点参数限流、规则文件热读），标 `optional` 只会迫使消费方重复声明；`sentinel-transport-simple-http` 仍为 `provided + optional`；理由见 `aifei-sentinel/docs/design.md` §3.3。
   **新增例外一律须先在此登记**，不得由模块文档单方面声明。
 - **已登记的第三方许可证留痕**（下列依赖仍为 `optional` / `provided`，**不属**上面的 `compile` 例外；compile 例外清单不变，登记目的是合规追溯与版本变更时同步声明）：
-  - `aifei-email` 的唯一实现内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6`（Apache-2.0）为 **`optional`**（不向下游传递）；其传递依赖 `com.sun.mail:javax.mail:1.6.2`（JavaMail）与 `javax.activation` / `com.sun.activation:javax.activation` 的许可证为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**，**法务已确认 CPE（Classpath Exception）豁免可接受**。声明落地在 `aifei-email/LICENSE` / `aifei-email/NOTICE` / `aifei-email/README.md` 三处；登记依据见 `aifei-email/docs/design.md` §2.2 / §13 事项 2。升级内核版本或新增传递依赖时须同步更新这三处声明。
+  - `aifei-email` 的唯一实现内核 `org.dromara.sms4j:sms4j-Email-core:3.3.6`（Apache-2.0）为 **`optional`**（不向下游传递）；其传递依赖 `com.sun.mail:javax.mail:1.6.2`（JavaMail）与 `javax.activation` / `com.sun.activation:javax.activation` 的许可证为 **CDDL 1.1 + GPL 2.0 with Classpath Exception**，**法务已确认 CPE（Classpath Exception）豁免可接受**。声明落地在 `aifei-email/LICENSE` / `aifei-email/NOTICE` / `aifei-email/README.md` 三处；登记依据见 `aifei-email/docs/design.md` §10。升级内核版本或新增传递依赖时须同步更新这三处声明。
 - 公共 API 一律**极简、实现无关**：不得暴露 Caffeine、Jedis、Fury、okhttp、jackson 等具体实现类型或框架内部类型；使用者代码只依赖接口，通过 `@Inject` 注入实现。
 - **已登记的公共面框架类型例外**（须先在此登记，模块文档不得单方面声明）：
-  - `aifei-trace` 的 `TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `cn.aifei.log.LogFactory`——日志门面接口即框架公共契约，包装实现收进 `internal` 会使使用方 `settings.setLogFactory(new TraceLogFactory(...))` 这一核心用法失效；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链；理由见 `aifei-trace/docs/design.md` §2 决策 2 / 3。
-  - `aifei-i18n` 的 `web.I18nHandler` / `web.LocaleExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链（与 `aifei-trace` 同构）；理由见 `aifei-i18n/docs/design.md` §2 决策 D-1 / §5.7 / §13 待明确事项 1。
+  - `aifei-trace` 的 `TraceLog` / `TraceLogFactory` 暴露 `cn.aifei.log.Log` / `cn.aifei.log.LogFactory`——日志门面接口即框架公共契约，包装实现收进 `internal` 会使使用方 `settings.setLogFactory(new TraceLogFactory(...))` 这一核心用法失效；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链；理由见 `aifei-trace/docs/design.md` §5。
+  - `aifei-i18n` 的 `web.I18nHandler` / `web.LocaleExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`——Web 接入点即 Handler 链成员，必须可被使用方 `addHandler` 进链（与 `aifei-trace` 同构）；理由见 `aifei-i18n/docs/design.md` §5.7。
 - **缓存 / Redis 出口基线**：**跨实例 / 公共缓存**与 Redis 场景一律优先自研库 `aifei-cache`，不得直接引入 Jedis / Redisson / Lettuce / Spring Data Redis（`aifei-cache` 自身的实现内核除外）。
 - **内部内存缓存不受上一条约束**：模块内部为消除重复计算而使用的**进程内内存缓存**（如反射元数据 / 方法注解解析结果缓存、静态常量映射、`ClassValue` / `ConcurrentHashMap` 等纯 JDK 结构）属实现细节，**不属于**「缓存 / Redis 出口基线」的管辖范围，**应按需保留使用**，不得以「不加缓存」为由一并禁用。此类缓存须满足：不引入外部依赖、不改变公共行为、随对象 / 类生命周期正确回收（优先 `ClassValue` 等可随类卸载回收的结构，避免静态容器强引用 `Class` / `Method` 阻塞卸载）。
 - **已登记的 Redis 出口例外**（模块须先在此登记，模块文档不得单方面声明；除此之外 Redis 场景仍一律优先 `aifei-cache`）：
-  - `aifei-mq` 的 `redisstream` 后端使用 `redis.clients:jedis:8.0.1` 直连 Redis，**不经过 `aifei-cache`**——Redis Streams 的 stream / consumer-group / `XREADGROUP` 语义超出 `aifei-cache` 的 Cache / Counter 抽象，无法经其门面表达；该后端标注**实验性、未真机验证**，随包提供但不承诺运行期语义；理由见 `aifei-mq/docs/design.md` §4.10 / §9 / §10。
+  - `aifei-mq` 的 `redisstream` 后端使用 `redis.clients:jedis:8.0.1` 直连 Redis，**不经过 `aifei-cache`**——Redis Streams 的 stream / consumer-group / `XREADGROUP` 语义超出 `aifei-cache` 的 Cache / Counter 抽象，无法经其门面表达；该后端标注**实验性、未真机验证**，随包提供但不承诺运行期语义；理由见 `aifei-mq/docs/design.md` §4.10 / §9。
 - 不得引入模块 `AGENTS.md` 明确禁止的依赖，也不得为绕开约束而引入等价替身。
 
 ### 命名约定（类型后缀语义）
@@ -165,7 +165,6 @@
 - [ ] 每类规则仍只有唯一定义点，实现类未复制规则；多实现模块已遵循共同契约底线，允许差异已在模块 `docs/design.md` 逐项列明（单实现模块不适用）。
 - [ ] 架构门禁测试未被放宽；公共 API 未暴露具体实现类型。
 - [ ] 公共行为变化已同步 `docs/design.md` 与 `README.md`（及其他相关文档），并有测试覆盖。
-- [ ] 实现或根例外登记完成后，已将设计文档 §文档状态 与 §待明确事项 的相关条目从「待落地 / 待执行 / 需拍板 / 提请补登」更新为已定档结论，并引用对应代码或根 `AGENTS.md` 条目。
 - [ ] 新增/改动的注释符合「注释规范」，文件头版权块未被改写。
 - [ ] 新增类型的后缀符合「命名约定」：无状态工具类用 `Util`，有状态门面用 `Kit`。
 - [ ] `git status` 无 `AD` 残留；未提交构建产物、IDE 文件、日志与凭据。

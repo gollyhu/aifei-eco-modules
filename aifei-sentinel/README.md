@@ -350,5 +350,5 @@ mvn test
 
 ## 相关文档
 
-- 设计目标、行为契约与关键决策：[设计文档](docs/design.md)
+- 公共面与行为契约：[设计文档](docs/design.md)
 - 测试策略与用例清单：[测试文档](docs/testing.md)

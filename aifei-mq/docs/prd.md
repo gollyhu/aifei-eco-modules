@@ -1,4 +1,4 @@
-# aifei-mq 模块需求（任务输入）
+# PRD：aifei-mq（异步消息 SDK）
 
 > **归档状态：历史任务输入，不再维护**（2026-11-03 归档）。本文是 `aifei-mq` 立项时的任务输入快照，**不作为现行设计依据**；现行事实见 `aifei-mq/docs/design.md`、`README.md`、`AGENTS.md`。文内「首批后端仅内存」「公共门面 `MqKit`」等表述已被实现超越。
 

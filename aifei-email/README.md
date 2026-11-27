@@ -476,9 +476,9 @@ IMAP / POP3 收信、退信与打开点击追踪、发送记录持久化、内�
 
 ### 文档索引
 
-- 契约事实来源（签名 / 决策 / 门禁 / AC）：[docs/design.md](docs/design.md)
+- 公共面签名与架构约束：[docs/design.md](docs/design.md)
 - 测试策略与用例清单：[docs/testing.md](docs/testing.md)
-- 开发约束（改代码前必读）：[AGENTS.md](AGENTS.md)
+- 开发约束：[AGENTS.md](AGENTS.md)
 - 第三方许可证声明：[LICENSE](LICENSE) / [NOTICE](NOTICE)
 - 零外网演示工程：[aifei-email-demo](../aifei-email-demo/README.md)（端口 18190，mock 发送）
 

@@ -7,14 +7,8 @@
 ## 开发前提
 
 - **改代码前必读 `docs/design.md`**（尤其 §5 包结构与文件清单、§6 公共 API 逐字签名、§7 配置键名、§10 门禁）。
-- 需求事实来源是 `docs/需求/aifei-pay.md`。**需求与设计冲突时，先改设计决策再改代码**；设计决策变更须回写 `docs/design.md` 对应章节。
+- 需求事实来源是 `docs/prd.md`。**需求与设计冲突时，先改设计决策再改代码**；设计决策变更须回写 `docs/design.md` 对应章节。
 - 未经设计决策，不得自行确定契约类行为（异常类型与消息、值对象字段、配置键名、验签凭据选取规则、金额单位等），也不得新增或扩大公共 API 面。
-
-## 交付性质
-
-`aifei-pay` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / 路由 / HIO / 表结构 / `Db+Row` / `Generator` / UI 页面。坐标 `io.github.gollyhu:aifei-pay:1.0.0-SNAPSHOT`（`packaging=jar`），公共 API + `model` 值对象 + `spi` + `internal` 实现 + `aifei.PayPlugin` / `PayHandler` 同处一个 JAR。V2.0 起模块定位为 IJPay 多渠道聚合，公共面不再出现 `AliPay*` 类型；V2.1 起支付宝按版本隔离：`alipay2` = `IJPay-AliPay` V2，`alipay3` = `IJPay-AliPay-V3`，`alipay` 为非法类型。
-
-**不适用范围（不得据此模块约束要求）**：表结构 / `Db+Row` / `Generator`（零 DB）；`@Path` Service 与 HIO（模块无入站 HTTP 面）；页面 / 原型基线（无 UI，且**已裁决不配 demo 工程**）。
 
 ## 硬性约束
 

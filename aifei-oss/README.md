@@ -126,6 +126,6 @@ public class FileService {
 
 ## 文档
 
-- `docs/design.md`：设计契约与决策（设计事实来源）。
+- `docs/design.md`：公共面签名与架构约束。
 - `AGENTS.md`：开发约束与验证命令。
 - `docs/testing.md`：测试策略与用例清单。

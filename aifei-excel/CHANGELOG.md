@@ -28,14 +28,8 @@
 - **门面形态**：`Excel` 为有生命周期的流式会话对象，`ExcelKit` 为无装配期的一次性便捷门面；均随取随用（不需要 Plugin）。
 - 首版无存量调用方，无迁移动作。
 
-### 验证
-
-- `mvn clean verify` = 61 例 / 0 failure / 0 error / 0 skipped（门禁 14 例 + 功能 47 例），`BUILD SUCCESS`。
-- 主 JAR 全部 class major = 52（Java 8）；`dependency:tree` 仅允许清单（aifei provided + easyexcel optional + junit test）。
-- QA 第 2 轮 `IS_PASS: YES`；门禁变异探针实证有效；示例工程 `/page` 200、导出真实 xlsx（PK 头）、解析回读 `code=0 rows=12`。
-
 ### 已知问题
 
-- **POI 4.1.2 安全公告（P1，非阻塞）**：EasyExcel 3.3.2 固定依赖 POI 4.1.2；换用 5.5.1 需对 easyexcel 做 exclusion + 显式声明，可能破坏 EasyExcel 3.3.2 针对 POI 4.1.2 的二进制兼容。本版按定档锁 `com.alibaba:easyexcel:3.3.2` / POI 4.1.2 不动，是否未来整体升级由主理人决定，实现期不私自变更。
+- **POI 4.1.2 安全公告（P1，非阻塞）**：EasyExcel 3.3.2 固定依赖 POI 4.1.2；换用 5.5.1 需对 easyexcel 做 exclusion + 显式声明，可能破坏 EasyExcel 3.3.2 针对 POI 4.1.2 的二进制兼容。本版锁定 `com.alibaba:easyexcel:3.3.2` / POI 4.1.2。
 - **`slf4j-api:1.7.32` 随 EasyExcel 传递**（仅 API，无绑定）：库模块源码零 `org.slf4j.*` 引用；消费方若已有其它 slf4j 版本由依赖仲裁决定，本模块不声明日志绑定。
-- 本期不支持 CSV / 模板导出 / 公式图片富文本 / 自定义转换器 SPI / 多 Sheet 编排等（边界见 `README.md`「本期不做」与 `docs/design.md` §1.3），属明确范围而非缺陷。
+- 本期不支持 CSV / 模板导出 / 公式图片富文本 / 自定义转换器 SPI / 多 Sheet 编排等，属明确范围而非缺陷。

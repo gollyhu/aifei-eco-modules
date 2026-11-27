@@ -446,5 +446,5 @@ cd aifei-websocket && mvn clean verify
 
 ## 相关文档
 
-- 设计事实来源（定位、契约、行为语义、验收）：[docs/design.md](docs/design.md)
-- 开发约定（硬约束、包边界与门禁、唯一定义点、验证命令）：[AGENTS.md](AGENTS.md)
+- 公共面签名与架构约束：[docs/design.md](docs/design.md)
+- 开发约束：[AGENTS.md](AGENTS.md)

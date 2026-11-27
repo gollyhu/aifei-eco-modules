@@ -6,12 +6,10 @@
 
 ## 文档
 
-各文档的定位与分工见 `AGENTS.md` 的「文档分工」表：
-
 | 文档 | 内容 |
 | --- | --- |
 | `docs/开发规范/微信接入规范.md` | **接入前必读**：接入步骤、后台配置、上线检查清单 |
-| `docs/design.md` | 分层设计、关键决策与数据格式契约 |
+| `docs/design.md` | 分层设计与数据格式契约 |
 | `docs/testing.md` | 测试策略与用例清单 |
 | `AGENTS.md` | 开发约束、文档分工与提交前检查清单 |
 
@@ -37,10 +35,10 @@
 </dependency>
 ```
 
-`aifei` 为 **`provided`**、不传递，应用须自行声明；编译依赖与禁用依赖清单见 `docs/design.md` 3.2 与 `AGENTS.md` 硬性约束。
+`aifei` 为 **`provided`**、不传递，应用须自行声明。
 
 ```java
-// 必须注册在 FrontHandler 之前，否则微信首验 GET 会被渲染成首页（详见 design.md 5.3）
+// 必须注册在 FrontHandler 之前，否则微信首验 GET 会被渲染成首页
 settings.addHandler(new WeixinHandler<>(
         new MyWeixinIo(),
         WeixinAccountProvider.of(WeixinAccount.of(appId, secret, token, aesKey)),
@@ -60,7 +58,7 @@ WxApiConfig.set(new JdkHttpClient(), new MemoryAccessTokenCache());
 - 微信要求 5 秒内响应：**回调链路禁止同步调用 Api**。
 - **SDK 不做幂等去重**：消息按 `MsgId`、支付回调按 `out_trade_no` 由业务自行幂等；多实例部署须把 `AccessTokenCache` 换为共享实现。
 
-契约的完整依据见 `docs/design.md` 4.5 与 `docs/开发规范/微信接入规范.md` 第 6 节；`WeixinHandler` 的注册顺序约束见 `docs/design.md` 5.3。
+完整接入步骤与上线检查清单见 `docs/开发规范/微信接入规范.md`；`WeixinHandler` 须注册在 `FrontHandler` 之前。
 
 ## 测试
 
@@ -68,4 +66,4 @@ WxApiConfig.set(new JdkHttpClient(), new MemoryAccessTokenCache());
 cd aifei-weixin && mvn clean test      # 不联网、不连数据库
 ```
 
-用例数量与分层见 `docs/testing.md`；架构门禁 `KernelBindingTest` 的断言见 `docs/testing.md` 4.1；应用侧注册顺序由文档约定 + 消费方自行保障（`WeixinHandler` 须注册在 `FrontHandler` 之前）。
+应用侧注册顺序由消费方自行保障（`WeixinHandler` 须注册在 `FrontHandler` 之前）。

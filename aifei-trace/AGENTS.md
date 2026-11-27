@@ -9,12 +9,6 @@
 - **改代码前必读 `docs/design.md`**（尤其 §5 的 8 类型逐字签名、§7 的行为契约与异常语义表、§10 的门禁 10 例）。需求与设计冲突时，**先改设计决策再改代码**。
 - 未经设计决策，不得自行确定契约类行为（空值语义、异常类型与消息、生成格式、提取失败处置、前缀形态等），也不得新增或扩大公共 API 面。
 
-## 交付性质
-
-`aifei-trace` 是 aifei 生态的**库模块（可被应用依赖的 SDK）**，**不是应用工程**：没有 `AppConfig` / `Launcher` / `service/` 包 / `webapp/` / HTTP 路由 / HIO / 表结构 / Db+Row / Generator / UI 页面；也没有 Plugin、配置键、internal 包、SPI。坐标 `io.github.gollyhu:aifei-trace:1.0.0-SNAPSHOT`（`packaging=jar`），全模块 8 公共类型即全部实现。
-
-**不适用范围（不得据此模块约束要求）**：表结构 / `Db+Row` / `Generator`（零 DB）；`@Path` Service 与 HIO（`TraceHandler` 是挂在使用方 Handler 链上的接入构件，不是路由）；页面 / 原型基线（`aifei-trace-demo` 单页由前端直接实装，不经原型与 QA 基线门禁）；Plugin 装配（trace 无连接资源、无配置可解析，装配动作全部发生在使用方 AppConfig 内）。
-
 ## 硬性约束
 
 ### 技术基线
@@ -31,8 +25,8 @@
 ### 公共面收敛（不得放宽）
 
 - 根包 `cn.hg.aifei.trace` **精确 6 个公共类型**：`TraceKit` / `TraceContext` / `TraceIdGenerator` / `DefaultTraceIdGenerator` / `TraceLog` / `TraceLogFactory`；`cn.hg.aifei.trace.web` **精确 2 个**：`TraceHandler` / `TraceIdExtractor`。**不得增删、不得改名**；新增/变更须先改 `docs/design.md` §5 并过设计决策。
-- **公共面框架类型例外（已登记，根 `AGENTS.md`「已登记的公共面框架类型例外」清单）**：`TraceLog` / `TraceLogFactory` 签名暴露 `cn.aifei.log.Log` / `LogFactory`（仅限根包这两个文件）；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`（仅限 web 包这两个文件）。除这两组外，公共面**零第三方类型**。新增例外必须先在根 `AGENTS.md` 登记并改 `docs/design.md` §2，再改门禁 ②。
-- **无 internal 包**：8 公共类型即全部实现（对 aifei-http 范式的有意偏离，见 design.md §2 决策 5）；不得引入任何隐藏实现类。
+- **公共面框架类型例外（已登记，根 `AGENTS.md`「已登记的公共面框架类型例外」清单）**：`TraceLog` / `TraceLogFactory` 签名暴露 `cn.aifei.log.Log` / `LogFactory`（仅限根包这两个文件）；`web.TraceHandler` / `web.TraceIdExtractor` 暴露 `cn.aifei.core.Handler` / `Input` / `Output`（仅限 web 包这两个文件）。除这两组外，公共面**零第三方类型**。新增例外必须先在根 `AGENTS.md` 登记并改 `docs/design.md` §5，再改门禁 ②。
+- **无 internal 包**：8 公共类型即全部实现（对 aifei-http 范式的有意偏离，见 design.md §5）；不得引入任何隐藏实现类。
 - `TraceKit` 是 Kit 判据的**显式命名例外**：无装配生命周期、任何时刻调用成立、永不抛「未装配」异常（对齐官方 LogKit / TraceKit 形态）；不得据此把其它需要装配的类型照此命名。
 - 生成器契约（非空、仅 `[0-9a-f]`、固定 32 位小写十六进制）由 `TraceIdGenerator` javadoc 声明，**模块运行期不校验产出**（决策 7）。
 
@@ -109,4 +103,4 @@ mvn dependency:tree                                  # 断言：仅 aifei(provid
 - 涉及**公共行为**的改动，必须同步 `docs/design.md`（契约）与 `README.md`（用法 / 手动传递指引）；公共 API 签名变更须先改 design.md §5 并过设计决策，**严禁先斩后奏**。
 - 术语必须与 `docs/design.md` §3 统一：TraceId / SpanId / 链路上下文 / 生成器 TraceIdGenerator / 提取器 TraceIdExtractor / 接入处理器 TraceHandler / 日志装饰器 TraceLog / 回退生成 fallback。
 - 模块为**单实现**，根 `AGENTS.md` 的「多实现契约底线 / 允许差异双清单」条款不适用；若未来引入第二实现（如分布式生成器），须先在 design.md 补共同底线与允许差异双清单。
-- 不得因 demo 页面需求回头要求模块新增公共 API（design.md §12 事项 8）。
+- 不得因 demo 页面需求回头要求模块新增公共 API（design.md §13）。

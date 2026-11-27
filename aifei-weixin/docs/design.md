@@ -1,7 +1,5 @@
 # aifei-weixin 设计文档
 
-> 版本：1.0.0 ｜ 关联：`README.md`（接入用法）、`docs/开发规范/微信接入规范.md`（接入规范）、`docs/testing.md`（测试与用例清单）、`AGENTS.md`（开发约束）
-
 ## 1. 背景与目标
 
 微信公众平台服务端开发需要自行落地一批协议细节：SHA-1 验签、AES-256-CBC 消息加解密、安全 XML 解析、`access_token` 生命周期、被动回复 XML 结构；微信支付 V3 还需要 RSA 签名与验签、AES-256-GCM 解密、平台证书轮换。这些细节分散在官方文档中，直接实现容易在编码、填充、签名串格式上出错。
@@ -12,23 +10,10 @@
 
 | 目标 | 落地方式 |
 | --- | --- |
-| 依赖隔离 | 唯一编译依赖 `cn.aifei:aifei`（`provided`，由消费方自带）；不引入第三方 HTTP / JSON / 密码学库 |
+| 依赖隔离 | `cn.aifei:aifei` 与 `cn.hg.aifei.tools` 均为 `provided`（消费方自带），`fastjson2` 为 `provided`；不引入第三方 HTTP / 密码学库 |
 | 传输无关 | 协议内核不感知 HTTP：回调链路经 `WeixinIo` SPI 适配，Api 链路经 `HttpClient` / `PayHttpClient` SPI 适配 |
 | 业务零协议细节 | 业务只实现 `MsgHandler` 钩子（返回 `OutMsg`）与账号 / 缓存 SPI，不接触 XML、签名与加解密 |
 | 纯 JDK 实现 | 加解密、签名、GCM、mTLS 全部使用 JDK 自带 API，且限定 Java 8 可用范围 |
-
-## 2. 关键决策
-
-| 决策 | 结论 | 事实依据 |
-| --- | --- | --- |
-| 协议内核 | 自研极简内核（XML / 签名 / 加解密 / 消息模型），不引入外部微信 SDK | 微信报文结构极简，自研可将依赖收敛到零；`XmlBuilder` 注释明确「不引入 XML 库」 |
-| 业务扩展形态 | 钩子返回 `OutMsg` 而非直接 render | `MsgHandler` 注释：业务代码感知不到 HTTP，返回 `null` 表示不回复 |
-| XXE 防护 | `XmlUtil` 禁 DOCTYPE、禁外部实体、禁外部 DTD、禁 XInclude、禁实体展开 | 该类注释记录了 XXE 是同类实现的已知历史问题 |
-| HTTP 实现 | `JdkHttpClient` 基于 `HttpURLConnection`，并抽 `HttpClient` 接口 | 接口注释：便于单测注入伪实现；线上零第三方依赖 |
-| 支付 HTTP 与公众号 HTTP 分离 | 支付单独定义 `PayHttpClient` + `PayHttpResponse`，不复用 `HttpClient` | 支付需按状态码与响应体判别业务错误（非 2xx 不在传输层抛异常），且需注入 `SSLContext` 做 mTLS |
-| 小程序 token | 复用公众号 `ApiCaller` 的 token 链路与缓存实例 | `MiniAppApi` 直接委托 `ApiCaller` 的 `appId`/`secret` 重载 |
-| Api 层装配 | 静态门面 `WxApiConfig` / `WxPayConfig`，不使用 aifei `Prop` | `core.*` 与 `pay.*` 不依赖 aifei 内核，无法使用 `PropKit`；这两层需能在非 aifei 环境独立使用 |
-| 回调接入方式 | 实现 aifei `Handler` 旁路（`WeixinHandler`），不注册拦截器 | 首验为 GET、消息为 POST，且需自行读 body、写 `text/xml`、结束交换 |
 
 ## 3. 总体架构
 
@@ -69,7 +54,9 @@
 
 | 依赖 | scope | 说明 |
 | --- | --- | --- |
-| `cn.aifei:aifei` | `provided` | 提供 `Handler` / `Input` / `Output` / `Log` 与 fastjson2；不传递，消费方自带 |
+| `cn.aifei:aifei` | `provided` | 提供 `Handler` / `Input` / `Output` / `Log`；不传递，消费方自带 |
+| `com.alibaba.fastjson2:fastjson2` | `provided` | JSON 序列化/反序列化，源码直接引用；消费方自带 |
+| `io.github.gollyhu:aifei-tools` | `optional` | 复用 random / crypto / xml 工具（`RandomUtil` / `Sha1Util` / `XmlUtil` 等）；不向下游传递 |
 | `junit:junit` | `test` | 单元测试 |
 
 明确不依赖的组件清单与 Java 8 兼容要求见 `AGENTS.md` 的「硬性约束 → 技术栈」（唯一定义点）。

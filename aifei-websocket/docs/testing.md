@@ -1,10 +1,7 @@
 # aifei-websocket 测试文档
 
-> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
 
 本文件说明 `aifei-websocket` 的测试分层、运行方式、契约测试机制、当前基线与新增测试约定。
-
-四份文档的分工：`README.md` 面向使用者；`docs/design.md` 是契约与设计决策的事实来源；`AGENTS.md` 面向开发代理；**本文件面向测试维护者**（测试结构、运行与新增约定）。
 
 ## 1. 运行方式
 
@@ -23,11 +20,11 @@ mvn test -Dtest=Rfc6455FrameCodecTest :: 单个测试类
 
 | 层次 | 测试类 | 用例数 | 职责 |
 | --- | --- | --- | --- |
-| 契约（客户端） | `ClientContractTest`（抽象基类）→ `internal/jdk/JdkWebSocketClientTest` | 13 | `WebSocketClient` / `ClientListener` 公共行为只断言一次，实现类继承运行 |
-| 契约（服务端） | `ServerContractTest`（抽象基类）→ `internal/jdk/JdkWebSocketServerTest` | 9 | `WebSocketServer` / `ServerListener` 公共行为只断言一次，实现类继承运行 |
+| 契约（客户端） | `ClientContractTest`（抽象基类）→ `internal/jdk/JdkWebSocketClientTest` | 14 | `WebSocketClient` / `ClientListener` 公共行为只断言一次，实现类继承运行 |
+| 契约（服务端） | `ServerContractTest`（抽象基类）→ `internal/jdk/JdkWebSocketServerTest` | 11 | `WebSocketServer` / `ServerListener` 公共行为只断言一次，实现类继承运行 |
 | 端到端 | `internal/jdk/LoopbackTest` | 9 | 进程内回环：建连、双向文本 / 二进制、广播、关闭、断线自动重连、服务端停止下 1001 |
-| 协议 | `internal/jdk/Rfc6455HandshakeTest` | 14 | HTTP Upgrade 握手：`Sec-WebSocket-Accept` 计算、非法版本 / Key / 响应、附加请求头 |
-| 协议 | `internal/jdk/Rfc6455FrameCodecTest` | 20 | 帧编解码：掩码、125 / 126 / 127 长度边界、部分读取、控制帧、非法操作码、关闭载荷 |
+| 协议 | `internal/jdk/Rfc6455HandshakeTest` | 15 | HTTP Upgrade 握手：`Sec-WebSocket-Accept` 计算、非法版本 / Key / 响应、附加请求头 |
+| 协议 | `internal/jdk/Rfc6455FrameCodecTest` | 21 | 帧编解码：掩码、125 / 126 / 127 长度边界、部分读取、控制帧、非法操作码、关闭载荷 |
 | 传输 | `internal/jdk/JdkWebSocketConnectionTest` | 7 | 分片聚合、控制帧穿插、自动 pong、`1.5 ×` 心跳超时、关闭竞态与资源释放 |
 | 公共类型 | `MessageTest` | 9 | `Message` 文本 / 二进制语义与大小 |
 | 公共类型 | `ConnectionStateTest` | 10 | 连接状态迁移与非法迁移断言 |
@@ -35,7 +32,7 @@ mvn test -Dtest=Rfc6455FrameCodecTest :: 单个测试类
 | 接入层 | `aifei/WebSocketConfigLoaderTest` | 13 | `Prop` → `ClientConfig` / `ServerConfig`，含必填键缺失与语法非法 |
 | 架构门禁 | `ArchitectureBoundaryTest` | 5 | 包边界与公共面大小（见 §5） |
 
-**合计：11 个可运行测试类 + 2 个抽象契约基类，116 个用例**（其中 22 项由两个契约基类声明、经子类继承执行）。
+**合计：11 个可运行测试类 + 2 个抽象契约基类，121 个用例**（其中 25 项由两个契约基类声明、经子类继承执行）。
 
 ## 3. 契约测试机制
 
@@ -69,8 +66,8 @@ mvn test -Dtest=Rfc6455FrameCodecTest :: 单个测试类
 | 项 | 值 |
 | --- | --- |
 | 可运行测试类 | 11（另 2 个抽象契约基类） |
-| 用例总数 | **116** |
-| 结果 | `Tests run: 116, Failures: 0, Errors: 0, Skipped: 0`（与 §2 分层表逐类相加及 11 份 surefire 报告实测求和一致） |
+| 用例总数 | **121** |
+| 结果 | `Tests run: 121, Failures: 0, Errors: 0, Skipped: 0`（与分层表逐类相加及 11 份 surefire 报告实测求和一致） |
 | 编译目标 | Java 8（class major version = 52） |
 
 > 基线随功能演进更新；提交前 `mvn clean verify` 必须 0 failure / 0 error，且用例数不得减少。

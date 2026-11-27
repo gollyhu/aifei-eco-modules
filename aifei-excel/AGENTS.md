@@ -10,21 +10,6 @@
 - 未经设计决策，不得自行确定契约类行为（空值语义、异常类型与消息、批大小默认值、表头匹配规则、流所有权等），也不得新增或扩大公共 API 面。
 - 发现设计问题只回报主会话，不在实现期自行扩张或改写 `docs/design.md`。
 
-## 交付性质（库模块，非业务应用）
-
-`aifei-excel` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是业务应用工程**：没有 `AppConfig` / `Launcher` / `@Path` Service / `service/` 业务包 / `webapp/` / HTTP 路由 / 表结构 / `Db+Row` / `Generator` / Plugin / 配置键。坐标 `io.github.gollyhu:aifei-excel:1.0.0-SNAPSHOT`（`packaging=jar`），根包**精确 5 公共类型** + `internal.easyexcel` 非承诺适配层同处一个 JAR。
-
-**不适用章节（不得据此模块约束要求）**：
-
-| 模板章节 | 结论 | 理由 |
-| --- | --- | --- |
-| 业务服务 / 子系统拓扑 | 不适用 | 单一 JAR 库，只分「根包公共 API / internal 适配层」两个技术层 |
-| 业务库表 / `Db+Row` / `Generator` / `Model` | 不适用 | 零 DB，与数据仅经 `InputStream` / `OutputStream` 交互；门禁③反向断言 |
-| 服务拓扑 / `@Path` / HIO / 路由 / 拦截器 | 不适用 | 库模块本体无入站 HTTP 面；真实端点只在 `aifei-excel-demo` |
-| 部署架构 / 容量规划 | 不适用 | 随使用方应用部署；内存边界以 API 契约表达 |
-| 数据层 / 前端页面设计交付 | 不适用 | 无数据层；demo 单页由前端直接实装，不经原型与 QA 基线门禁 |
-| `AppConfig` / `Launcher` / Plugin / 配置键 | 不适用 | 无连接资源、无配置可解析；全部行为由方法入参显式传入 |
-
 ## 硬性约束
 
 ### 技术基线
@@ -69,7 +54,7 @@
 | ⑬ | `errorMessagesOnlyInErrors` | 消息前缀 `excel: ` 只允许在 `internal/easyexcel/ExcelErrors.java` |
 | ⑭ | `testSourcesOfflineOnly` | 测试源码 `http(s)://` host 只能是 `127.0.0.1` / `localhost` |
 
-门禁**不得为兼容错误用法而放宽或绕过**；新增例外必须先改 `docs/design.md` §3 再改断言并提请主会话登记。门禁外构建期断言：主 JAR 全部 class major = 52（`javap` 抽查 `Excel` / `ExcelKit` / `BatchReadListener`）；`mvn dependency:tree` 只出现 §10.2 允许清单。
+门禁**不得为兼容错误用法而放宽或绕过**；新增例外必须先改 `docs/design.md` §10 再改断言并提请主会话登记。门禁外构建期断言：主 JAR 全部 class major = 52（`javap` 抽查 `Excel` / `ExcelKit` / `BatchReadListener`）；`mvn dependency:tree` 只出现 §10.2 允许清单。
 
 ## 唯一定义点清单（实现类不得复制）
 

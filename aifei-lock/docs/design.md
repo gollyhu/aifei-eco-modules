@@ -12,7 +12,7 @@
 | 释放 | Lua CAS 删除（cache 侧 `removeIfEquals`） |
 | 续期 | Lua CAS 续期（cache 侧 `expireIfEquals`） |
 
-加锁成功后 cache 侧会追加一次 `cacheNames()` 登记（`SADD`），属**附加命令**：不参与互斥判断，其失败也不得改变加锁结论（见决策 7）。
+加锁成功后 cache 侧会追加一次 `cacheNames()` 登记（`SADD`），属**附加命令**：不参与互斥判断，其失败也不得改变加锁结论。登记失败时 `LockKit.tryLock` 抛 `LockException`（**不返回 `null`**），而锁可能已落库，调用方按「结果未知」处理、残留锁由租约自然过期兜底（最坏窗口 = 本次 `lease`）；本模块不实现「异常后二次 `get` 比对 token」的补偿确认——那会引入第三条往返与新竞态，违反「锁语义只依赖三条原子命令」。登记缺失只让 `cacheNames()` 少一个名字，不影响互斥。不在 `aifei-cache` 侧为该 `SADD` 失败做降级（会修改 cache 既有方法行为，违反其 1.1.0「只新增条件操作」的版本边界）。
 
 **不做**：分布式事务、单机 / caffeine 后端（静默无互斥比报错更危险）、可重入、公平排队、读写锁、锁丢失回调、JDBC 后端、多实例、自动续期看门狗。
 
@@ -58,7 +58,7 @@ cache 侧异常契约：参数非法抛 `IllegalArgumentException`（**先于**�
 - `lease` 是创建时的租约时长，`renew()` 以它重设 TTL——无参、租约随句柄携带。
 - `release()` / `renew()` / `close()` 无 name / token 入参，配对安全由句柄绑定保证。
 - 不提供 `getLock(name)`；句柄只对应一次持有，不能存全局字段。
-- 不重写 `equals` / `hashCode`（见决策 3）。
+- 不重写 `equals` / `hashCode`，采用对象身份比较——句柄代表「一次持有」，同名两次持有互不相等；若按 `name` 相等，两个句柄放进 `Set` / `Map` 会互相覆盖、掩盖重复持有。
 
 ## 4. 契约
 
@@ -74,6 +74,7 @@ cache 侧异常契约：参数非法抛 `IllegalArgumentException`（**先于**�
 - 有限等待：`tryLock(name, lease, wait)`。`wait > 0` 时**先立即尝试一次**（不睡眠），失败后按固定 50ms 间隔轮询，无退避、无抖动、无配置。
 - 单次睡眠取 `min(50ms, 剩余等待)`；截止时间用单调时钟（`System.nanoTime()`），否则 `wait < 50ms` 会睡过窗口、系统时钟回拨会多等。
 - `token` 由 `LockNames.newToken()` 生成后作为入参传给存储层；存储层不得自行生成（CAS 期望值的一部分，生成点唯一）。
+- 句柄在 `tryAcquire` 返回 `true` 之后才构造；构造过程不执行 I/O、不抛受检异常。唯一可能的失败是 `Error`（如 OOM），此时不做补偿释放——锁由租约自然过期兜底，避免在 `Error` 路径上再做一次 I/O。
 
 ### 4.3 等待与中断
 
@@ -89,7 +90,7 @@ cache 侧异常契约：参数非法抛 `IllegalArgumentException`（**先于**�
 ### 4.4 释放与续期
 
 - 必须 CAS（值匹配才执行），不得使用无条件 `remove` / `expire`；比较基准为序列化后的字节（cache 侧以二进制安全 `eval` 按字节传递期望值，不经字符串中转；`token` 为 `String` 时字节确定性成立）。
-- `release()`：`true` = 本次释放成功；`false` = 非持有者（已过期或已释放）。
+- `release()`：`true` = 本次释放成功；`false` = 非持有者（已过期或已释放）。抛 `LockException` 只表示「是否删除未知」——重试安全且不推断锁状态；只有 `renew()` 返回 `false` 才是「确认丢失」。把「未知」当成「已丢失」会诱导业务做多余的补偿动作。
 - `renew()`：`true` = 成功；`false` = 值不匹配（锁已丢失），业务须立即停手。
 - `close()`：等价于 `release()` 并吞掉异常，永不抛；失败由 `release()` 记 ERROR，`close()` 不再重复记录。
 
@@ -143,42 +144,6 @@ cache 侧异常契约：参数非法抛 `IllegalArgumentException`（**先于**�
 
 `__LOCK__` 不含 `:`，通过 cache 侧 `requireCacheName` 校验。
 
-## 6. 设计决策
-
-### 决策 1：`Lock` 用 final class，下游不能 mock
-
-**取舍**：句柄不可伪造、不可继承，代价是下游无法用 JDK 代理替身；Java 8 下 Mockito 需 inline mock maker 才能 mock final class。
-
-**替代路径**：替身放在 `LockStore` 层——测试经 `LockHolder.register(FakeLockStore)` 注入，不对句柄做 mock。
-
-### 决策 2：`supportsCas()` 抛异常时 `open()` 包装为 `IllegalStateException`
-
-包装为 `IllegalStateException("lock backend capability check failed")` 并保留 cause，`Error` 不捕获；启动期失败一律 `IllegalStateException`，不复用运行期的 `LockException` 包装规则。
-
-**理由**：cache 1.1.0 的 `supportsCas()` 无 I/O，该分支对内置后端不可达，属防御与测试替身路径；保留它是为了「实例方法抛异常」不被误判成「后端不支持」。
-
-### 决策 3：`Lock` 不重写 `equals` / `hashCode`
-
-采用对象身份比较——句柄代表「一次持有」，同名两次持有互不相等。若按 `name` 相等，两个句柄放进 `Set` / `Map` 会互相覆盖，掩盖重复持有。
-
-### 决策 4：构造句柄失败时锁由租约兜底
-
-`tryAcquire` 返回 `true` 之后才构造句柄，构造过程不执行 I/O、不抛受检异常；唯一可能的失败是 `Error`（如 OOM）。此时**不做补偿释放**——避免在 `Error` 路径上再做一次 I/O，锁由租约自然过期。
-
-### 决策 5：等待窗口用例标注离线，不进默认 CI
-
-`wait = 10ms` 且总耗时 ≤ 35ms 的断言对 CI 抖动敏感，故用 `-Dlock.timing=true` 开关控制、默认跳过；容差**不放大到 100ms**，否则「睡满剩余等待」的退化实现也能通过。
-
-### 决策 6：`release()` 也遵守「异常 ≠ 丢失」
-
-抛 `LockException` 只表示「是否删除未知」，重试安全且不推断锁状态；只有 `renew()` 返回 `false` 才是「确认丢失」。理由：CAS 删除重试不会误删他人锁，而把「未知」当成「已丢失」会诱导业务做多余的补偿动作。
-
-### 决策 7：拒在 `aifei-cache` 侧为 `putIfAbsent` 的 `SADD` 登记失败做降级
-
-那会修改 cache 既有方法行为，与其 1.1.0「只新增条件操作」的版本边界冲突。
-
-**代价与承接**：登记失败时 `LockKit.tryLock` 抛 `LockException`（**不返回 `null`**），而锁可能已落库；调用方按「结果未知」处理，残留锁由租约自然过期兜底，最坏窗口 = 本次 `lease`。本模块**不实现**「异常后二次 `get` 比对 token」的补偿确认：那会引入第三条往返与新的竞态，违反「锁语义只依赖三条原子命令」。登记缺失只让 `cacheNames()` 少一个名字，不影响互斥。
-
 ## 7. 测试策略
 
 - 运行期实例经 `LockHolder.register(...)` / `clear()` 注入与清理，测试结束必须 `clear()`。
@@ -196,7 +161,7 @@ cache 侧异常契约：参数非法抛 `IllegalArgumentException`（**先于**�
 | --- | --- |
 | Redis 真后端端到端 | 由 `CacheLockStoreIntegrationTest` 承担，默认跳过，开启见本节集成开关；连不上必须失败。 |
 | 计时窗口对 CI 抖动的敏感性 | 由 `LockTimingOfflineTest` 承担，默认跳过，开启见本节计时开关；仅本地 / 离线执行。 |
-| 多实例互斥 / 集群场景 | v1 不覆盖（见 §1 范围与 README 能力边界）。 |
+| 多实例互斥 / 集群场景 | v1 不覆盖（见 §1 定位与范围、§4.7 能力边界）。 |
 | 真实 `aifei-cache` 装配异常路径 | 由 `LockPluginTest` 启动校验用例与集成用例交叉覆盖，非集成态用能力替身。 |
 
 ## 8. 验收对照

@@ -1,4 +1,4 @@
-# aifei-excel 测试策略
+# aifei-excel 测试文档
 
 > 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
 
@@ -55,7 +55,7 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 | ⑬ | `errorMessagesOnlyInErrors` | 消息前缀 `excel: ` 只允许在 `internal/easyexcel/ExcelErrors.java`（测试断言除外） |
 | ⑭ | `testSourcesOfflineOnly` | 测试源码 URL 字面量 host 只能是 `127.0.0.1` / `localhost` |
 
-> **门禁外构建期断言**：主 JAR 全部 class major = 52（`javap` 抽查 `Excel` / `ExcelKit` / `BatchReadListener`）；`mvn dependency:tree` 只出现允许清单（§10.2 / 本文件「运行方式」）。门禁不得为兼容错误用法而放宽；新增例外须先改 `docs/design.md` §3 再改断言并提请主会话登记。
+> **门禁外构建期断言**：主 JAR 全部 class major = 52（`javap` 抽查 `Excel` / `ExcelKit` / `BatchReadListener`）；`mvn dependency:tree` 只出现允许清单（§10.2 / 本文件「运行方式」）。门禁不得为兼容错误用法而放宽。
 
 ## 功能覆盖清单（47 例）
 
@@ -89,10 +89,10 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 | AC-13（构建） | `mvn clean verify` = 61 例 0/0/0/0 | 通过 |
 | AC-14（文档） | README / design / testing / AGENTS + 根导航齐全；本期不做与 optional 警告在 README | 通过 |
 
-> QA 第 2 轮最终关 `IS_PASS: YES`、路由 `NoOne`；无遗留阻塞问题。上表「通过」依据该结论与发布关复跑输出。
+
 
 ## 新增用例约定
 
-- 新增公共行为用例须同步 `docs/design.md`（契约）与 `README.md`（用法）；改门禁须先改设计决策并提请主会话登记。
+- 新增公共行为用例须同步 `docs/design.md`（契约）与 `README.md`（用法）；改门禁须先改设计决策。
 - 测试 POJO 用业务视角命名；样本一律在 `target/` 现场生成，不提交二进制；URL 字面量只用 `127.0.0.1` / `localhost`。
 - 门禁外依赖口径由 `dependency:tree` 人工核对：除 `aifei(provided)` / `easyexcel(optional)` 及其传递项 / `junit(test)` 外出现任何条目即依赖失控。

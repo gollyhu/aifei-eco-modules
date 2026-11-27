@@ -13,8 +13,8 @@
 > **模块定位与边界（基线）**：底座只做四件事，并做到极致、冻结边界——**locale 贯通的取文案 + 整包下发 + JDK 格式化 + 开放来源**；其余全部以扩展点形式交给业务方。
 >
 > - **做什么**：单条取文案（唯一回退链、缺译不 500）、整包语言包下发（四字段 JSON、`messages` 稳定排序、与单点同源）、Locale 贯通到 JDK 数值/百分比/货币/日期格式化（零自建规则数据）、来源开放扩展（实现 `MessageSource` 显式注册即可，零改模块代码）。
-> - **不做什么**（交给业务方，底座只留挂点）：复数 / 性别 / 序数 / 语境形态、度量衡换算、前端 i18n 运行时与 TypeScript key 类型检查、语言切换 UI 与全局状态、URL 路径 / 子域名 / 浏览器语言识别、热重载触发编排。挂点分别是自定义 `MessageSource` 拆 key、`#lang(tag)` / `I18nKit.local(tag)` 显式注入、`Accept-Language` + `LocaleExtractor`、四字段 JSON 契约、业务侧显式 `I18nKit.refresh()`；详见 `docs/design.md` §1.5。
-> - **冻结边界**：公共面精确 10 类型、恰好 4 个配置键、回退链唯一不可配、Java 8 class major 52；扩张须先走 `docs/design.md` 设计决策。
+> - **不做什么**（交给业务方，底座只留挂点）：复数 / 性别 / 序数 / 语境形态、度量衡换算、前端 i18n 运行时与 TypeScript key 类型检查、语言切换 UI 与全局状态、URL 路径 / 子域名 / 浏览器语言识别、热重载触发编排。挂点分别是自定义 `MessageSource` 拆 key、`#lang(tag)` / `I18nKit.local(tag)` 显式注入、`Accept-Language` + `LocaleExtractor`、四字段 JSON 契约、业务侧显式 `I18nKit.refresh()`。
+> - **冻结边界**：公共面精确 10 类型、恰好 4 个配置键、回退链唯一不可配、Java 8 class major 52。
 
 1. 单条取文案，自带唯一回退链：`按 locale 逐来源 → 默认 locale 逐来源 → 返回 key 原文`，缺译永不 500。
 2. 支持 `{0}` 位置占位插值（缺参占位符原样保留）。

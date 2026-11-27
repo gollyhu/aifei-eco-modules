@@ -6,23 +6,9 @@
 
 ## 开发前提
 
-- **改代码前必读 `docs/design.md`**（尤其 §1.1 模块划分、§2 文件清单、§3 公共类型逐字签名、§6 依赖与 21 例门禁、§7 约定/异常语义/唯一定义点、§8 已定档决策，以及 §11 通用原语增量设计 / §11.7 的 33 例门禁）。需求与设计冲突时，**先改设计决策再改代码**。
+- **改代码前必读 `docs/design.md`**（尤其 §1.1 模块划分、§2 文件清单、§3 公共类型逐字签名、§6 依赖与门禁（33 例见 §11.7）、§7 约定/异常语义/唯一定义点、§11 通用原语子包 / §11.7 的 33 例门禁）。需求与设计冲突时，**先改设计决策再改代码**。
 - 未经设计决策，不得自行确定契约类行为：空值语义、异常类型与消息、默认值（TTL/capacity/maxFailures/查询模式）、并发策略、哨兵与退化口径等；也不得新增或扩大公共 API 面。
 - 发现设计问题只回报主理人，**不在实现期自行扩张或改写 `docs/design.md`**。公共面签名不可行时先回写 `docs/design.md` §3，不得先斩后奏。
-
-## 交付性质（库模块，非业务应用）
-
-`aifei-tools` 是 aifei 生态的**库模块（SDK，可被应用依赖）**，**不是应用工程**。坐标 `io.github.gollyhu:aifei-tools:1.0.0-SNAPSHOT`（`packaging=jar`），包名 `cn.hg.aifei.tools`，Java 8（class major 52）。定位「极简工具集」：**根包零公共类型**，九个工具按子包隔离、各自独立可用、无跨工具抽象。
-
-**不适用章节（不得据此模块约束要求）**：
-
-| 常规章节 | 结论 | 理由 |
-| --- | --- | --- |
-| 业务服务 / 子系统拓扑 / `@Path` / HIO / 路由 / 拦截器 | 不适用 | 单一 JAR 库、无入站 HTTP 面；无 Plugin 装配期 |
-| 表结构 / `Db+Row` / `Generator` / `java.sql` | 不适用 | 零 DB，门禁⑦反向断言全模块无 `import java.sql.` |
-| 页面 / 原型 / QA 基线门禁 | 不适用 | 无页面；本轮不配 demo（T12 本轮不做） |
-| `AppConfig implements AifeiConfig` / `Launcher` / 配置键 | 不适用 | 无连接资源、无配置可解析；行为全部由方法入参显式传入 |
-| provider / SPI / `META-INF/services` | 不适用 | 门禁⑬反向断言禁用 |
 
 ## 硬性约束
 
@@ -46,7 +32,7 @@ pom 只允许下列五项，属性 `<ip2region.version>3.3.7</ip2region.version>
 | `junit:junit:4.13.2` | **test** | 单测 + 门禁 |
 
 - **不得新增其它第三方依赖**；不得引入任何日志绑定（`slf4j-simple` / `logback` / `log4j` 一律禁止，门禁⑦）。
-- 版本实证（见 design §0）：ip2region 锁 **3.3.7**（3.3.8 已切 Java 11 基线，有实证故弃用）；zxing core 3.5.3 已 `javap` 实测 class major 52；javase 因拖入 `jcommander`/`jai-imageio-core` 不引。
+- 版本实证（见 design §1.2）：ip2region 锁 **3.3.7**（3.3.8 已切 Java 11 基线，有实证故弃用）；zxing core 3.5.3 已 `javap` 实测 class major 52；javase 因拖入 `jcommander`/`jai-imageio-core` 不引。
 - **根 `AGENTS.md` 登记清单为空**（公共面零框架/第三方类型、无 compile 例外）。新增 compile 例外或公共面框架类型须先在根 `AGENTS.md` 登记。
 
 ### 公共面收敛（不得放宽）
@@ -66,7 +52,7 @@ pom 只允许下列五项，属性 `<ip2region.version>3.3.7</ip2region.version>
 | `xml` | `XmlUtil` / `XmlException`（2） |
 | `codec` | `CodecUtil` / `CodecException`（2） |
 
-- **不得增删、不得改名**；新增公共类型或改签名须先回写 `docs/design.md` §3 过设计决策再改门禁期望集合。**唯一已定档方法级例外**：`IpRegion.of(String,String,String,String,String)` 静态工厂（design §8-E1），供 `ipdb.internal` 构造公共值对象，五个 getter 与「字段永不为 null」契约冻结不变。
+- **不得增删、不得改名**；新增公共类型或改签名须先回写 `docs/design.md` §3 过设计决策再改门禁期望集合。**唯一已定档方法级例外**：`IpRegion.of(String,String,String,String,String)` 静态工厂（design §3），供 `ipdb.internal` 构造公共值对象，五个 getter 与「字段永不为 null」契约冻结不变。
 - 公共签名**零第三方类型、零框架类型**：只含 JDK 类型（`InputStream` / `String` / `UnaryOperator` / 基本类型等）+ 本模块类型；不出现 `org.lionsoul.*` / `com.google.zxing.*` / `cn.aifei.*` / `cn.hg.aifei.cache.*`（门禁⑧）。
 - **无 Plugin、无配置键、无 SPI、无 `aifei` 接入包、零 `cn.aifei.*` 引用、零日志绑定、零 DB、零 Web 面**（门禁⑥⑦⑬）。
 
@@ -168,14 +154,14 @@ cn.hg.aifei.tools.codec       codec：2 公共类型 + internal（非承诺）
 
 ## 已定档行为契约红线（QA 与后续改动的依据）
 
-以下均为 `docs/design.md` §7/§8 已定档口径，**改代码即改契约，须先回写设计**：
+以下均为 `docs/design.md` §7 口径，**改代码即改契约，须先回写设计**：
 
 - **ip**：默认模式 `VECTOR_INDEX`（两参重载同）；三模式 FILE_ONLY/VECTOR_INDEX/CONTENT 映射内核 NoCache/VIndexCache/FullCache，对同 IP 同 xdb 结果须一致；并发 = 实例独占 + 内核 `SearcherPool`（searchers = CPU 核数、fairLock=false，不自建 ThreadLocal、不裸用 `xdb.Searcher`）；`IpRegion` 五段字段永不为 null，`"0"`/`"Reserved"`→空串、查不到返回五字段全空串对象；`close()` 幂等、关闭后查询抛可读 `IpException`；xdb 路径显式入参、不打包不联网。
 - **`IpRegion.of(...)`**：只把 null 归一为空串（`x == null ? "" : x` 五段同构），**空白串属合法内容、原样保留**（不 trim、不归一）。
 - **captcha**：`verify` 一次性消费（成功即删、失败计数、超限失效，业务失败返回 `false` 不抛异常）；默认 TTL=120s / capacity=10000 / maxFailures=5；默认进程内 LRU，切集群走 optional aifei-cache；token = `SecureRandom` 32 字节 Base64 URL 无填充，不可从图片反推。
 - **qr**：`encode`/`decode` 均保留；`encode(null)`/`decode(null)`/`decode(空 byte[])` 抛 `QrException`；空串 `""` 合法且可往返（实现用私有区单字符 `\uE000` 哨兵）；**单个 U+E000 字符往返被误归一为空串属已知限制、不列入验收、QA 不落断言**；decode 失败抛 `QrException` 保留 cause、不返回 null；`decode(InputStream)` 不关闭调用方流；`QrOptions` 冻结为 size/margin/EC 三项 + `defaults()`/`of()`（默认 300/4/M、UTF-8 内部固定）；不加流式输出。
 - **mask**：通用 `mask` + 9 默认规则（phone/idCard/bankCard/email/name/fixedPhone/password/address/ip）初始在册不可删，`maskXxx(x)≡use("xxx").apply(x)`、`replace` 后跟随；value 为 null 返回 null、空串返回空串；`keepLeft`/`keepRight` 负数抛 `MaskException`；`maskIp` 按分隔符特征打码——含 `.` 按 `.` 分段，含 `:` 视为 IPv6 且 `::` 先展开为完整 8 段再打码（首段 + 其余每段一个 `*`，示例 IPv6 为 7 个 `*`），等价写法结果一致、畸形输入健壮不抛异常，无分隔符退化为保留首字符 + 等长 `*`；内容文本非法一律不抛 `MaskException`，`MaskException` 仅用于规则注册与负数 keep。
-- **kdf**：`KdfKit.derive(spec, ikm)` 按 `spec.getAlgorithm()` 分派到 `HkdfEngine` / `Pbkdf2Engine` / `HmacEngine`；algorithm 合法值集合 {HKDF, PBKDF2, HMAC} 在 `KdfSpec` 工厂内校验、非法抛 `KdfException`；`KdfSpec` 三静态工厂是构造唯一入口、值对象不可变（私有构造器、salt/info 防御性拷贝）；HKDF salt 可空（默认全 0 HashLen 字节）、info 可空；PBKDF2 salt 不可空、iterations > 0；HMAC 无 salt/iterations（getSalt 返回 null、getIterations 返回 0）；HMAC 派生原语为 `HMAC(ikm, ikm)`（自 HMAC，输出 HashLen 字节，spec.keyLen 仅校验合法性、不影响输出长度）；`javax.crypto.*` / `java.security.*` import 仅 `kdf/internal/`（captcha/internal 既有 `SecureRandom` 保留，门禁⑲偏离已记录）；公共签名零 JDK 加密类型、零第三方（门禁⑳′）；PBKDF2 实现偏离原设计 `SecretKeyFactory` 手法，改用手动 HMAC PRF 循环（见 design §8-F 实现期偏离记录）。
+- **kdf**：`KdfKit.derive(spec, ikm)` 按 `spec.getAlgorithm()` 分派到 `HkdfEngine` / `Pbkdf2Engine` / `HmacEngine`；algorithm 合法值集合 {HKDF, PBKDF2, HMAC} 在 `KdfSpec` 工厂内校验、非法抛 `KdfException`；`KdfSpec` 三静态工厂是构造唯一入口、值对象不可变（私有构造器、salt/info 防御性拷贝）；HKDF salt 可空（默认全 0 HashLen 字节）、info 可空；PBKDF2 salt 不可空、iterations > 0；HMAC 无 salt/iterations（getSalt 返回 null、getIterations 返回 0）；HMAC 派生原语为 `HMAC(ikm, ikm)`（自 HMAC，输出 HashLen 字节，spec.keyLen 仅校验合法性、不影响输出长度）；`javax.crypto.*` / `java.security.*` import 仅 `kdf/internal/`（captcha/internal 既有 `SecureRandom` 保留，门禁⑲偏离已记录）；公共签名零 JDK 加密类型、零第三方（门禁⑳′）；PBKDF2 实现偏离原设计 `SecretKeyFactory` 手法，改用手动 HMAC PRF 循环（见 design §7）。
 - **crypto**：文本编码固定 UTF-8；SHA-1 输出 40 位小写十六进制或标准 Base64；HMAC 遵循 RFC 2104 参数顺序（key 在前、data 在后）并输出标准 Base64；`expected` / `actual` 任一为 null 时常量时间比较返回 false 不抛异常；算法不可用保留底层 cause。
 - **random**：`randomString(length)` 字符集固定 62 个 ASCII 字母数字，`length >= 0`、0 返回空串、负数抛 `RandomException`；`token()` 为 32 字节安全随机源转无填充 Base64URL（43 字符）；唯一共享状态为 JDK 线程安全的 `SecureRandom`；不与 captcha 互引。
 - **xml**：`parse` 返回 JDK 保序映射、只取根节点直接子元素、同名取首、非元素节点跳过；六项 XXE 硬化在 `XmlParser` 单点定义，文档类型声明命中即抛异常不展开；`escape` 只做五实体单次替换；不硬编码协议根节点与字段名。
@@ -185,7 +171,7 @@ cn.hg.aifei.tools.codec       codec：2 公共类型 + internal（非承诺）
 
 - 测试全部**零联网**，URL host 仅 `127.0.0.1`/`localhost`（门禁⑭）；不提交 xdb 二进制——内嵌 base64 最小样本（`support/IpSampleData.java`）测试期解码到 `target/`。
 - 断言消息照抄 `docs/design.md` §7.2 与 `*Errors` 的逐字措辞，不得用常量拼期望值（否则措辞漂移无法被发现）。
-- maskIp 固定向量直接用 design §8-D14 已实测样本；新增失败路径必须同时落三处：`*Errors` 消息构造、design §7.2 消息表、测试逐字断言。
+- maskIp 固定向量直接用 design §7 固定向量；新增失败路径必须同时落三处：`*Errors` 消息构造、design §7.2 消息表、测试逐字断言。
 - 已修复缺陷必须固化为回归测试；测试须独立、幂等。
 
 ## 注释规范
@@ -213,7 +199,7 @@ javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findst
 
 - **冻结契约（改动须先过设计决策并更新测试断言）**：28 个公共类型与 §3 / §11.3 逐字签名；九类异常消息措辞与前缀唯一定义点；region 五段解析与 `"0"`→空串语义；依赖坐标/scope（含 zxing 不引 javase，四个新子包无新增第三方）；默认模式 VECTOR_INDEX 与并发策略；`IpRegion.of` null 归一口径；maskIp IPv6 展开与退化口径；qr 空串哨兵契约；四个新子包的 null / 空串 / Base64 / 保序 / 五实体 / 原样返回语义与零协议语义；33 例门禁判定口径（原 21 例逐字保留，唯一放宽为⑲ import 边界，新增 12 例）。
 - **可自主演进（不破坏门禁与冻结契约前提下）**：`internal/*` 实现细节与私有工具类；测试样本的具体字节与桩实现；文档措辞与 javadoc 细化；demo（本轮不配，后续可选立项）。
-- 本模块为 Java 8 / class major 52 硬基线；若将来拟放宽 Java 基线（如 ip2region 3.3.8），须重走设计决策并同步 design §0 实证记录。
+- 本模块为 Java 8 / class major 52 硬基线；若将来拟放宽 Java 基线（如 ip2region 3.3.8），须重走设计决策并同步 design §1.2。
 
 ## 文档同步要求
 
@@ -227,7 +213,7 @@ javap -verbose target/classes/cn/hg/aifei/tools/crypto/CryptoUtil.class | findst
 1. **新增子包**：落 `cn.hg.aifei.tools.<新工具>`；公共类型放子包直接子级、internal 实现放 `<子包>/internal/`；根包精确 0 公共类型恒定，不创建 `package-info.java`。同构骨架参照 design §10.1。
 2. **门禁纯追加**：在 `ArchitectureBoundaryTest.java` 追加「新子包公共面精确 N + 集合相等」断言；引入新内核则追加「该 import 仅允许在新子包 internal」边界断言；新消息前缀纳入门禁⑪、公共签名零第三方扩充门禁⑧覆盖。**原 21 例逐字不删改、不放宽**（已定档例外仅 §11.7 的⑲ import 边界放宽），只做追加（例数 21 → N，验证命令期望数同步改写）。
 3. **不改既有签名**：既有九子包 28 个公共类型与 §3 / §11.3 逐字签名、§8 决策全部冻结；新工具公共签名只含 JDK + 本模块类型、零第三方/框架类型、公共方法无 `throws`、javadoc 写全；后缀 `XxxUtil`（无状态）/ `XxxKit`（有状态门面），不另立 `XxxHelper`/`XxxSupport`/`XxxTool`。
-4. **文档四同步**：先回写 `docs/design.md`（§1.1 / §2 / §3 / §5 / §6.2 / §9）过设计决策，再同步 `README.md`、本文件（公共面清单/门禁表/唯一定义点）与 `docs/testing.md`；测试按各子包同构（`PublicApiContract` + 功能测试 + internal 单测）。
+4. **文档四同步**：先回写 `docs/design.md`（§1.1 / §2 / §3 / §6.2 / §9）过设计决策，再同步 `README.md`、本文件（公共面清单/门禁表/唯一定义点）与 `docs/testing.md`；测试按各子包同构（`PublicApiContract` + 功能测试 + internal 单测）。
 
 - **依赖**：新内核一律 `optional` 阻断传递、缺失首次调用抛可读模块异常；`aifei` 仍 provided；零日志绑定。
 - **不做跨工具抽象**：不引入统一 `Tool` 接口、公共基类或 `common/` 层，工具之间零依赖、零互相引用。

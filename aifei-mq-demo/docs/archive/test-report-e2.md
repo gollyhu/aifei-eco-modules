@@ -1,9 +1,8 @@
 # aifei-mq-demo · E2 事件分发演示 · 独立验收报告
 
-> **归档状态：历史验收快照，不再维护**（2026-11-03 归档）。文中 P1「T04 文档收口未完成」与「`design-e2.md` §9 Q2 写 2 域 5 类型」等结论已过时：README 端点表与演示脚本已补全 E2 三端点，`design-e2.md` §9 Q2 已改为 2 域 6 类型。
+> **历史验收快照，不再维护**（2026-11-03 归档）。文中 P1「T04 文档收口未完成」等结论已过时，不应据此判断当前状态。
 
-> 验收人：QA 工程师 严过关｜判定依据：`docs/aifei-mq-demo/design-e2.md`（区块契约为准）+ 现有 `README.md`（回归基线）+ 验收矩阵
-> 结论摘要：**功能与契约全项 PASS（10/10），零阻断缺陷；发现 1 项 P1 文档收口缺口（T04 未完成）**
+> 结论摘要：功能与契约全项 PASS（10/10），零阻断缺陷；发现 1 项 P1 文档收口缺口。
 
 ## 1. 执行环境
 
@@ -14,7 +13,7 @@
 | 编译告警 | 仅 4 条 javac 「source/target 8 已过时」选项告警（既有，非新增），无 error |
 | 运行 | `stop-demo.bat` → `start-demo.bat`，HTTP 18100；启动日志：`装配期已订阅: __MAIN__ / aifei.mq.demo.topic + E2 域 [order-events, pay-events] × 6 条(按实例)` |
 | 依赖 | 本地仓库 `aifei-mq:1.0.0` / `aifei-all:1.1.1`，未 install、未加依赖 |
-| 环境说明 | **验收期间 18100 存在外部并发调用**（观察到非我发起的 `created/paid` 计数漂移与一次外部 clear，随后进程被外部 `stop-demo.bat` 杀掉）。为取得无噪声证据，另用同一 `target/classes` + 同配置在 **18101** 起独立实例复核矩阵 2–7，两轮结果一致；报告以孤立实例证据为准，并在涉及处标注。验收结束已 `stop-demo.bat` 清理（18100/18101 均无监听） |
+| 环境说明 | 验收期间 18100 存在外部并发调用，故另用同一 `target/classes` + 同配置在 **18101** 起独立实例复核矩阵 2–7，两轮结果一致；报告以孤立实例证据为准。验收结束已 `stop-demo.bat` 清理（18100/18101 均无监听） |
 
 ## 2. 逐项矩阵
 
@@ -28,7 +27,7 @@
   - `__MAIN__`：`subscribedTopics=["aifei.mq.demo.topic","order-events","pay-events"]`、`subscribedTopicCount=3`
   - `demoA` / `demoB`：`subscribedTopics=["order-events","pay-events"]`、`subscribedTopicCount=2`
   - 三实例 `subscribers` 均含两条 `{"name":"E2EventListener","source":"startup"}`（`__MAIN__` 另有 `DemoMessageListener/startup`）
-- 说明：矩阵括注「每实例 3 主题」与设计 §8.1「`demoA`/`demoB` 0→2」不一致；按**设计文档（契约）**判 PASS（`demoA/B=2` 正是 §8.1 的显式要求，`3` 仅对 `__MAIN__` 成立）。
+- 说明：矩阵括注「每实例 3 主题」与 §8.1「`demoA`/`demoB` 0→2」不一致；按契约判 PASS（`demoA/B=2` 为显式要求，`3` 仅对 `__MAIN__` 成立）。
 
 ### 项 3 `event/send` —— PASS
 - 命令：`curl -s "…/mq/demo/event/send?instance=__MAIN__&domain=order-events&type=created&bizId=A1001"`
@@ -84,10 +83,10 @@
 - `aifei-mq/**` **无任何 Java / pom 改动**；`git diff` 仅有 `AGENTS.md`/`README.md`/`docs/design.md` 共 105 行文档新增（内容为库侧 §5.8「E2 定档」文档，属上一轮库侧任务，`design-e2.md` 头部即将其列为输入）；本轮 demo 实现产物与其零交集。
 - `pom.xml` 差异为空（`git diff --stat -- *.xml` 无输出），无新增依赖/插件。
 - 无运行期动态 topic 机制：新类与 `DemoAppConfig` 中无 `declare/createTopic` 一类调用；`subscribe/unsubscribe` 仅出现在既有页面端点（未改语义）。
-- `git status` 改动集合与设计 §2 文件清单逐一对应：新增 `E2Topics/E2DispatchTable/E2EventListener` + `docs/aifei-mq-demo/design-e2.md`；修改 `DemoAppConfig`、`MqDemoService`、`demo.html`、`mq-demo.js`、`mq-test.css`。工作区另有 `DemoMessageLog/DemoMessageListener/MqInstanceCatalog` 等改动，经 diff 核对属**上一轮多实例改造**（per-instance 分片、构造器注入实例名），非本轮 E2 增量。
+- `git status` 改动集合与设计 §2 文件清单逐一对应：新增 `E2Topics/E2DispatchTable/E2EventListener` + `docs/aifei-mq-demo/design-e2.md`；修改 `DemoAppConfig`、`MqDemoService`、`demo.html`、`mq-demo.js`、`mq-test.css`。
 - Java 8 兼容：编译 `target 1.8` 通过；新类仅用 `java.time` / `LinkedHashMap` / `ConcurrentHashMap`，无 `var`/`record`/文本块。分层污染：0（无 Controller/Render/Repository/Mapper/DTO）。SQL：本轮无 SQL。事务：无 `commit()`。
 
-### 项 10 补充核对（实现者自报偏差）
+### 项 10 补充核对
 | # | 偏差 | 判定 | 依据 |
 | --- | --- | --- | --- |
 | ① | `dispatch/clear` 的 `data` 是 dispatch 的**同构超集**（多 `domainTopics/typeOptions/defaultDomain/defaultType/lastPayload`） | **可接受** | 设计 §7 对 clear 列出的字段（`instance/totalReceived/unknownCount/rowCount/rows`）全部存在且为全 0，属纯附加；且前端 `applyDispatch(env.data)` 依赖 `domainTopics/typeOptions` 保持下拉候选，回落「最小集」会清空下拉。字段名复用 `putDispatch` 单一定义点，未新造字段名、未返回裸 Map |
@@ -108,15 +107,9 @@
 
 | # | 级别 | 问题 | 影响 | 归属 |
 | --- | --- | --- | --- | --- |
-| 1 | **P1** | **T04 文档收口未完成**：① `aifei-mq-demo/README.md` 端点表缺 `event/send`／`event/dispatch`／`event/dispatch/clear` 三行，演示脚本缺 E2 步骤；② `docs/aifei-mq-demo/ui-prototype.md` 无 E2 区块登记（`grep E2/事件分发` 零命中）；③ `docs/aifei-mq-demo/design.md` 仍保留已失效断言：第 731 行「`demoA` → `subscribedTopics:[]`」、第 741 行「取消后 `subscribedTopics:[]`」、第 763 行 R10「本设计**不做**多实例装配期订阅」——三者均已被 §8.1 有意偏差推翻且未补记 | 功能无影响；读者按旧文档验收会误判 `demoA` 订阅数为 0 | `aifei-service-engineer`（T04） |
-| 2 | P2 | `design-e2.md` §9 Q2 的「2 域 5 类型」与实现 6 类型不一致（项 10③） | 文档口径与实现漂移 | 同上（随 T04 一并改） |
-| 3 | 环境 | 验收期间 18100 被外部会话并发驱动（非我发起的发送与清空、并有一次 `stop-demo.bat` 杀掉进程）；已在 18101 孤立实例复核，结论一致。不影响代码判定，但**同一 18100 端口上并行验收会互相污染计数与消息流** | 后续验收须独占端口 | 调度人（团队约定） |
-
-## 6. 最终路由判定
-
-- **功能/契约层：NoOne**（矩阵 1–10 全 PASS，零源码缺陷、零测试缺陷；未发现断言与 PRD/设计冲突之处，故无回退实现成员的代码缺陷单）
-- **文档层：Engineer —— `aifei-service-engineer`**（补 T04 三处：README 端点表 + 演示脚本、`ui-prototype.md` E2 区块登记、`design.md` §7.3/§R10 失效断言 + §9 Q2 类型口径）
-- **阻断性**：无。文档修正为 P1 可并行的收尾项，不影响 E2 基线锁定与演示可用性。
+| 1 | **P1** | **T04 文档收口未完成**：README 端点表与演示脚本缺 E2 内容，`ui-prototype.md` 无 E2 区块登记，`design.md` 仍保留已失效断言 | 功能无影响；读者按旧文档验收会误判 `demoA` 订阅数为 0 | — |
+| 2 | P2 | `design-e2.md` §9 Q2 的「2 域 5 类型」与实现 6 类型不一致（项 10③） | 文档口径与实现漂移 | — |
+| 3 | 环境 | 验收期间 18100 被外部会话并发驱动；已在 18101 孤立实例复核，结论一致。同一端口并行验收会互相污染计数与消息流 | 后续验收须独占端口 | — |
 
 ## 7. Aifei 检查清单
 

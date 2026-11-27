@@ -1,18 +1,9 @@
-# aifei-i18n 测试策略与用例清单（QA 独立复验版）
+# aifei-i18n 测试文档
 
-> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
-> 复验人：策市袁（Yuan）· Aifei 开发专家团测试工程师（独立 QA，不采信实现侧自评）
-> 复验日期：2026-11-19
-> 事实来源：`docs/design.md`（§11 门禁、§15 AC↔实现映射、§8.1 三处易混边界）、`docs/需求/aifei-i18n.md`（§6.1 的 16 条 P0 / 75 条 AC 矩阵，§十一 Enjoy 模板指令增量）
-> 关卡依据：`.codebuddy/rules/quality-gates.md` §4 测试关 DoD
-> 环境：Windows / Git Bash，JDK 21（`source`/`target`=1.8，主 JAR class major = 52），Maven 3.x，surefire 3.2.5
->
-> 本文由测试角色在实现完成后补全为 **QA 独立复验版**：所有「结果」来自本人实际执行输出，非阅读推断；
-> 引用用例逐条对照 `src/test/java` 真实 `@Test` 方法核验，0 条虚构。
 
 ---
 
-## 〇、QA 复验结论（先看结论）
+## 〇、结论摘要
 
 | 项 | 结论 |
 | --- | --- |
@@ -20,13 +11,9 @@
 | AC 覆盖 | **75 / 75** 条 AC 每条至少一条**已执行**用例（含本轮 QA 新增补强用例） |
 | 架构门禁 | 13 例全绿；变异探针证明公共面门禁真能拦住「多一个 public 类」 |
 | 字节码 | 独立 javap 核验：target/classes 全部 **40 个 class**（32 顶层 + 8 个 `$` 嵌套类，对应 32 个主源文件）**major = 52** |
-| 智能路由 | 发现 **3 处测试自身缺陷**（日志级别断言缺失×1 类、一致性边界缺失×1 类、Thread.sleep×1 处）→ **全部自修**；**源码缺陷 0** → 无需退回寇戴码 |
 | 变异/边界探针 | 5 个（3 个源码变异 + 1 个日志分级边界 + 1 个一致性边界），全部按预期命中 |
 | 离线纪律 | 零联网、零 Thread.sleep、kv 无真实集成测试（默认关闭） |
-| **放行判定** | **放行（PASS）** — 无 P0/P1 遗留，质量关卡 §4 五项 DoD 全部达标 |
-
-> 基线对照：开发声称 97 用例 / 0-0；交付负责人独立重跑 97 / 0-0。本人复验基线同样为 97 / 0-0（见 §六 QA 复验记录），
-> 随后**新增 12 条补强用例**（日志分级 9 + 一致性边界 3）→ 最终 126 / 0-0（含 DirectiveTest 13 例、I18nKitTest 后续补强 4 例与本轮优化 WARN 路径 2 例）。
+| **放行判定** | **放行（PASS）** — 无 P0/P1 遗留，质量关卡五项 DoD 全部达标 |
 
 ---
 
@@ -35,11 +22,9 @@
 - **零联网 / 零外部服务**：单测不连真实数据库、KV、HTTP；测试源码 URL 仅允许回环地址（门禁 ⑬，QA 独立扫描确认无外网 URL 字面量）。
 - **零 Thread.sleep**：TTL 到期用例采用「极小 TTL + nanoTime 有界轮询」，连续 3 次重跑稳定。测试源码 **0 处实际 sleep 调用**。
 - **测试替身**：`support/FakeMessageSource`（可配置稳定名 / 数据 / 可列举开关 / get/list 故障开关 / 调用计数）覆盖存储型 / 快照型 / 代理型来源（AC-04-3）；`support/FakeDbAccessor`（db 访问替身）。
-- **QA 新增替身**：`support/RecordingLogFactory`（可插拔日志工厂，按「级别+首参」录制日志）——注入框架 `LogKit`，用于独立断言日志分级口径（AC-02-2/09-6/14-5/15-4）。`@After` 恢复原工厂，测试间无污染。
 - **跨 provider 稳定断言**：涉及 JDK 输出字面量的用例只断言「不相等 / 含本币种符号 / 月份名与日的相对位置 / 小数位」，不写死符号字符与完整日期串（设计 §9.8）。
 - **状态隔离**：`@After` 清理 `I18nHolder` / `LocaleContext` / `LocaleMeta` 判定器 / 日志工厂，用例无顺序依赖。
 - **真实来源集成测试（默认关闭）**：`DbSourceIntegrationTest`（H2 内存库）/ `KvSourceIntegrationTest`（回环 Redis）以系统属性开关控制，默认关闭；开启用 `mvn test -Ddb.integration=true` 或 `-Dkv.integration=true -Dredis.uri=redis://127.0.0.1:6379/0`，开启后连不上必须失败（不静默跳过）。
-- **Demo 分工**：Q7 已于 §十一 突破，新建 `aifei-i18n-demo` 做真实 Enjoy 渲染端到端核对；模块内测试零联网、零 HTTP 依赖。
 - **端到端基线**：126 用例全绿、两项门禁（公共面精确 10 类型 + `ClassFileVersionTest` class major 52）全绿；demo 的 `page` / `bundle` / `rtl` / `money` 端点真实启动渲染均为 HTTP 200，内容符合四字段 JSON 与 Enjoy 渲染契约（端点清单见 `aifei-i18n-demo/README.md`）。
 
 ---
@@ -56,12 +41,12 @@
 | `LocaleResolverTest` | 四级优先级 / 规范化 / 请求头容错 | AC-08 / AC-14-3 / AC-12-6 | 13 |
 | `web/I18nHandlerTest` | 绑定 / 异常路径清理 / 同线程不串语言 | AC-08-3/05/06 | 6 |
 | `aifei/I18nPluginTest` | 装配幂等 / 重名 / 依赖探测 / 配置校验 / 未装配调用 | AC-04/11/12 | 15 |
-| **`QaLogLevelTest`**（QA 新增） | 日志分级独立断言：未命中 DEBUG / 故障·跳过·降级 WARN；本轮优化补测 refresh/load 的 WARN 路径 | AC-02-2 / 09-6 / 14-5 / 15-1/15-4/15-5 + 优化项 1/2 | 9 |
-| **`QaConsistencyTest`**（QA 新增） | 一致性边界：缓存下 / refresh 后 / 不可列举例外 | AC-10-1/10-2/10-3/10-4 | 3 |
+| **`QaLogLevelTest`** | 日志分级独立断言：未命中 DEBUG / 故障·跳过·降级 WARN；本轮优化补测 refresh/load 的 WARN 路径 | AC-02-2 / 09-6 / 14-5 / 15-1/15-4/15-5 + 优化项 1/2 | 9 |
+| **`QaConsistencyTest`** | 一致性边界：缓存下 / refresh 后 / 不可列举例外 | AC-10-1/10-2/10-3/10-4 | 3 |
 | `enjoy/directive/DirectiveTest` | 三条 Enjoy 指令：lang 位置无关 / 优先级链 / dir / IAE / 真实 Engine 渲染（AC-INC-01~13，§十一） | AC-INC-01~13 | 13 |
 | `support/FakeMessageSource` | 测试替身（非测试类） | — | — |
 | `support/FakeDbAccessor` | db 访问替身（非测试类） | — | — |
-| `support/RecordingLogFactory`（QA 新增） | 日志录制替身（非测试类） | — | — |
+| `support/RecordingLogFactory` | 日志录制替身（非测试类） | — | — |
 
 > 合计 `@Test` = 13+1+22(I18nKitTest)+18+13+13+6+15+9+3+13(DirectiveTest) = **126**，与实测一致。
 
@@ -93,9 +78,6 @@
 
 ## 四、AC ↔ 用例 ↔ 结果全覆盖矩阵（75 / 75）
 
-> 每条 AC 至少对应一条**已执行**用例；「结果」列为本人独立复验后的真实判定。用例名逐条对照源码核验，0 虚构。
-> QA 新增用例以 **【QA新增】** 标注。
-
 ### REQ-P0-01 单条文案取用（3/3）
 
 | AC | 承载用例 | 结果 |
@@ -109,7 +91,7 @@
 | AC | 承载用例 | 结果 |
 | --- | --- | --- |
 | AC-02-1 | `I18nKitTest#messageMissReturnsKeyNoThrow` | PASS |
-| AC-02-2 | **【QA新增】**`QaLogLevelTest#missLogsDebugOnly`（DEBUG 含 key+locale，无 WARN/ERROR）；原 `messageMissReturnsKeyNoThrow` 仅验行为 | PASS |
+| AC-02-2 | `QaLogLevelTest#missLogsDebugOnly`（DEBUG 含 key+locale，无 WARN/ERROR）；原 `messageMissReturnsKeyNoThrow` 仅验行为 | PASS |
 | AC-02-3 | `I18nKitTest#emptyStringIsHit`（空串命中不回退） | PASS |
 
 ### REQ-P0-03 回退链唯一且不可配（3/3）
@@ -177,16 +159,16 @@
 | AC-09-3 | `BundleExportTest#keyOrderStableAcrossExports`（连续两次一致 + TreeMap 自然序） | PASS |
 | AC-09-4 | `BundleExportTest#exportIgnoresContext`（显式 locale 不受上下文影响） | PASS |
 | AC-09-5 | `BundleExportTest#localizedValuesAreStringsAndRawPlaceholders` | PASS |
-| AC-09-6 | **【QA新增】**`QaLogLevelTest#nonListableSourceLogsWarnOnExport`（WARN 含稳定名）；原 `BundleExportTest#nonListableSourceSkippedButSingleHitWorks` 仅验行为 | PASS |
+| AC-09-6 | `QaLogLevelTest#nonListableSourceLogsWarnOnExport`（WARN 含稳定名）；原 `BundleExportTest#nonListableSourceSkippedButSingleHitWorks` 仅验行为 | PASS |
 
 ### REQ-P0-10 单点与整包一致性（4/4）
 
 | AC | 承载用例 | 结果 |
 | --- | --- | --- |
-| AC-10-1 | `BundleExportTest#singleAndBundleConsistent` + **【QA新增】**`QaConsistencyTest#nonListableOnlyKeyIsLegitimateException`（可列举 K 逐 key 相等） | PASS |
-| AC-10-2 | **【QA新增】**`QaConsistencyTest#consistentWhenCachePopulated`（缓存已存在时逐 key 一致） | PASS |
-| AC-10-3 | **【QA新增】**`QaConsistencyTest#consistentAfterRefresh`（refresh 后逐 key 一致） | PASS |
-| AC-10-4 | **【QA新增】**`QaConsistencyTest#nonListableOnlyKeyIsLegitimateException` + `BundleExportTest#nonListableSourceSkippedButSingleHitWorks` | PASS |
+| AC-10-1 | `BundleExportTest#singleAndBundleConsistent` + `QaConsistencyTest#nonListableOnlyKeyIsLegitimateException`（可列举 K 逐 key 相等） | PASS |
+| AC-10-2 | `QaConsistencyTest#consistentWhenCachePopulated`（缓存已存在时逐 key 一致） | PASS |
+| AC-10-3 | `QaConsistencyTest#consistentAfterRefresh`（refresh 后逐 key 一致） | PASS |
+| AC-10-4 | `QaConsistencyTest#nonListableOnlyKeyIsLegitimateException` + `BundleExportTest#nonListableSourceSkippedButSingleHitWorks` | PASS |
 
 ### REQ-P0-11 来源依赖缺失即启动失败（4/4）
 
@@ -225,17 +207,17 @@
 | AC-14-2 | `BundleExportTest#dirRtlFromJdk`（ar=rtl / zh-CN=ltr）+ 门禁⑩（唯一定义点、无方向表） | PASS |
 | AC-14-3 | `BundleExportTest#illegalLocaleThrows`（`zh_CN_`→IAE）+ `LocaleResolverTest#acceptLanguageSkipsIllegalSegment`（请求头忽略） | PASS |
 | AC-14-4 | `BundleExportTest#normalizedLocaleExportConsistent`（`zh_CN` 与 `zh-CN` 逐字一致） | PASS |
-| AC-14-5 | **【QA新增】**`QaLogLevelTest#dirDegradationLogsWarn`（降级 ltr + WARN）；原 `BundleExportTest#dirDegradesToLtrWhenCapabilityUnavailable` 仅验降级行为 | PASS |
+| AC-14-5 | `QaLogLevelTest#dirDegradationLogsWarn`（降级 ltr + WARN）；原 `BundleExportTest#dirDegradesToLtrWhenCapabilityUnavailable` 仅验降级行为 | PASS |
 
 ### REQ-P0-15 来源运行期故障不中断（5/5）
 
 | AC | 承载用例 | 结果 |
 | --- | --- | --- |
-| AC-15-1 | `I18nKitTest#sourceFailureFallsBackNoThrow` + **【QA新增】**`QaLogLevelTest#sourceFailureLogsWarnWithNameAndKey`（WARN 含 db） | PASS |
-| AC-15-2 | `I18nKitTest#allSourcesFailReturnsKey` + **【QA新增】**`QaLogLevelTest#allSourcesFailLogsWarnPerSource` | PASS |
+| AC-15-1 | `I18nKitTest#sourceFailureFallsBackNoThrow` + `QaLogLevelTest#sourceFailureLogsWarnWithNameAndKey`（WARN 含 db） | PASS |
+| AC-15-2 | `I18nKitTest#allSourcesFailReturnsKey` + `QaLogLevelTest#allSourcesFailLogsWarnPerSource` | PASS |
 | AC-15-3 | `I18nKitTest#sourceFailureTriggersDefaultLocaleFallback`（变异探针已证有效） | PASS |
-| AC-15-4 | **【QA新增】**`QaLogLevelTest#sourceFailureLogsWarnWithNameAndKey` / `#allSourcesFailLogsWarnPerSource` / `#debugAndWarnLevelsAreDistinct`（WARN 含稳定名+key，区别于未命中 DEBUG） | PASS |
-| AC-15-5 | `BundleExportTest#listFailureSkippedExportSucceeds` + **【QA新增】**`QaLogLevelTest#listFailureLogsWarnOnExport`（WARN 含 db） | PASS |
+| AC-15-4 | `QaLogLevelTest#sourceFailureLogsWarnWithNameAndKey` / `#allSourcesFailLogsWarnPerSource` / `#debugAndWarnLevelsAreDistinct`（WARN 含稳定名+key，区别于未命中 DEBUG） | PASS |
+| AC-15-5 | `BundleExportTest#listFailureSkippedExportSucceeds` + `QaLogLevelTest#listFailureLogsWarnOnExport`（WARN 含 db） | PASS |
 
 ### REQ-P0-16 最小格式化能力（9/9）
 
@@ -251,11 +233,11 @@
 | AC-16-8 | `FormatKitTest#defaultStyleIsMedium`（省略档位与显式 MEDIUM 逐字一致）+ AC-12-1（不占配置键） | PASS |
 | AC-16-9 | `FormatKitTest#nullStyleThrows` / `#nullCurrencyThrows` / `#nullZoneThrows` / `#nullDateThrows`（枚举编译期挡四档外取值 + null→IAE） | PASS |
 
-**覆盖统计**：16 条 P0 / 75 条 AC 全部有一一对应的已执行用例与 PASS 结果；其中 9 条 AC 由 QA 本轮新增用例补强了行为之外的日志级别 / 一致性边界断言。
+**覆盖统计**：16 条 P0 / 75 条 AC 全部有一一对应的已执行用例与 PASS 结果。
 
 ---
 
-## 五、变异探针与边界验证（证明测试不是摆设）
+## 五、变异探针与边界验证
 
 > 变异探针在 `/tmp/i18n-mutation` 临时副本执行（交付源码零改动，前后 md5 校验一致）；每轮只改一处、跑对应测试、随即删除副本。
 
@@ -267,25 +249,23 @@
 | 4 | 边界探针（日志分级） | 注入 `RecordingLogFactory`，按级别录制并断言 | — | 未命中路径 WARN=0/DEBUG≥1；故障路径 DEBUG=0/WARN≥1；跳过/降级均产生含要素的 WARN | PASS：日志口径 DEBUG/WARN 分明且可定位 |
 | 5 | 边界探针（一致性） | 缓存已填充 / refresh 后 / 不可列举例外三态逐 key 比对 | — | 3 例全 PASS：两路径逐 key 相等；仅不可列举来源的 key 整包不含 | PASS：一致性边界成立 |
 
-**探针 4 关键实证**：dir 降级 WARN 实际消息为 `i18n dir 判定能力不可用，已降级为 ltr: locale=zh_CN, ...`（`Locale.toString()` 格式），本人初版断言误写 `zh-CN` 导致 1 处失败——判定为**测试自身缺陷**，自修为断言 `locale=` 字段存在（AC-14-5 只要求含 locale、不规定格式），重跑全绿。此项计入缺陷台账 DEF-QA-01。
 
-**探针清理取证**：临时副本已 `rm -rf` 删除；交付源码 `FormatSupport.java`（md5 `40e67db…`）、`FallbackChain.java`（md5 `50b09d3…`）前后一致，未被变异污染。
 
 ---
 
-## 六、QA 独立复验记录
+## 六、构建与计数
 
 ### 1. 构建与计数
 
-| 阶段 | 命令 | 真实输出 | 结论 |
+| 场景 | 命令 | 输出 | 结论 |
 | --- | --- | --- | --- |
-| 基线复验 | `mvn clean verify`（副本前，交付原样） | `Tests run: 97, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS`（8.971 s） | PASS：与开发/交付负责人基线一致，但**未采信**，继续深查 |
-| 补强后 | `mvn clean verify`（新增 QaLogLevelTest / QaConsistencyTest + 自修 sleep 后） | `Tests run: 124, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS` | PASS（历史阶段值） |
-| 本轮优化补测后 | `mvn clean verify`（QaLogLevelTest 新增 refresh/load WARN 2 例） | `Tests run: 126, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS` | PASS（最终值） |
+
+
+| 最终 | `mvn clean verify` | `Tests run: 126, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS` | PASS |
 
 逐类实测（最终 126）：`I18nPluginTest` 15 / `ArchitectureBoundaryTest` 13 / `BundleExportTest` 13 / `ClassFileVersionTest` 1 / `FormatKitTest` 18 / `I18nKitTest` 22 / `LocaleResolverTest` 13 / `QaConsistencyTest` 3 / `QaLogLevelTest` 9 / `I18nHandlerTest` 6 / `DirectiveTest` 13 = **126**。
 
-### 2. 重点核查清单逐项独立验证（team-lead 派单 10 项）
+### 2. 重点核查清单逐项验证（10 项）
 
 | # | 核查项 | 独立验证方法与结论 |
 | --- | --- | --- |
@@ -309,30 +289,18 @@
 | kv 集成默认关闭 | PASS | 无真实 KV/DB/HTTP 集成测试；`kv` 命中语义以 FakeMessageSource 覆盖，依赖缺失以隔离 ClassLoader 探针覆盖 |
 | 依赖范围 | PASS | `mvn dependency:tree`：`aifei:provided` + `aifei-cache:provided,optional` + `junit:test`，零 compile 第三方 |
 
-### 4. 本轮优化补测（5 项优化中的 2 条 WARN 路径）
-
-| 用例 | 触发方式 | 实测断言 | 结果 |
-| --- | --- | --- | --- |
-| `QaLogLevelTest#refreshFailureLogsWarnAndContinuesOtherSources` | `FakeMessageSource.refreshFailing(true)` + `I18nKit.refresh()` | WARN 含稳定名 db；故障源与健康源 refresh 各 1 次（不中断）；无 ERROR；随后未命中仍 DEBUG 且无 WARN | PASS |
-| `QaLogLevelTest#propertiesReadFailureLogsWarnAndYieldsEmptySource` | TCCL 替换为「读即抛 IOException」InputStream 的 ClassLoader + `new PropertiesSource(name)` | WARN 含资源名；空来源（get=null / list 空）；无 ERROR；构造不抛、不启动失败 | PASS |
-
-> 两条均按 `RecordingLogFactory` 口径只断言级别 + 关键片段，不写死完整消息；`@After` 恢复原日志工厂与 TCCL，状态隔离。替身 `FakeMessageSource` 仅新增 refresh 故障开关与调用计数，未改产品源码。
-> 本轮智能路由：源码缺陷 0、测试自身缺陷 0，无需回流；门禁 13 例断言零放宽、全绿。
-
 ---
 
-## 七、缺陷台账（智能路由）
+## 七、缺陷台账
 
-| 编号 | 类型 | 等级 | 归属 | 位置 | 路由判定 | 状态 |
-| --- | --- | --- | --- | --- | --- | --- |
-| DEF-QA-01 | 测试断言错误 | P3 | 测试（本人） | `QaLogLevelTest#dirDegradationLogsWarn` | 测试自身缺陷 → **自修** | FIXED |
-| DEF-QA-02 | 覆盖缺口（日志级别） | P2 | 测试（本人） | 原 97 用例无日志级别断言 | 测试自身缺陷 → **自修**（新增 QaLogLevelTest 7 例） | FIXED |
-| DEF-QA-03 | 覆盖缺口（一致性边界） | P3 | 测试（本人） | 原 BundleExportTest 缺缓存下/refresh 后一致性 | 测试自身缺陷 → **自修**（新增 QaConsistencyTest 3 例） | FIXED |
-| DEF-QA-04 | 测试纪律（Thread.sleep） | P3 | 测试（本人） | `I18nKitTest#ttlExpiryReloads` 原 `sleep(80L)` | 测试自身缺陷 → **自修**（无 sleep 有界轮询） | FIXED |
+| 编号 | 类型 | 等级 | 位置 | 处理 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| DEF-QA-01 | 测试断言错误 | P3 | `QaLogLevelTest#dirDegradationLogsWarn` | 修正断言 | FIXED |
+| DEF-QA-02 | 覆盖缺口（日志级别） | P2 | 原 97 用例无日志级别断言 | 新增 QaLogLevelTest 7 例 | FIXED |
+| DEF-QA-03 | 覆盖缺口（一致性边界） | P3 | 原 BundleExportTest 缺缓存下/refresh 后一致性 | 新增 QaConsistencyTest 3 例 | FIXED |
+| DEF-QA-04 | 测试纪律（Thread.sleep） | P3 | `I18nKitTest#ttlExpiryReloads` 原 `sleep(80L)` | 改为无 sleep 有界轮询 | FIXED |
 
-- **源码缺陷：0** — 三处变异探针证明现有测试对真实源码缺陷敏感，且产品源码行为与 design §8.2 / AC 语义逐条一致，无需退回寇戴码。
-- **DEF-QA-01 事实**：初版断言要求 WARN 消息含 `zh-CN`，实际 `LocaleMeta` 打印 `Locale.toString()`=`zh_CN`；AC-14-5 只要求含 locale、不规定格式 → 测试断言过严，非产品缺陷。
-- 本轮 4 项缺陷全部为测试自身问题，**全部自修完成并回归通过**；智能路由结论：**无需源码回流，放行**。
+- 4 项缺陷均为测试用例问题，已全部修正并回归通过。
 
 ---
 
@@ -359,7 +327,7 @@ for f in $(find target/classes -name '*.class'); do javap -verbose "$f" | grep -
 
 ---
 
-## 十、新增约定（供后续维护）
+## 十、新增约定
 
 - 新增用例前先读 `docs/design.md` §5（公共面签名）与 §15（AC 映射）；**不得**为让用例通过而放宽门禁或扩大公共面。
 - 断言日志分级时统一用 `RecordingLogFactory`（`@Before` 注入 / `@After` 恢复），只断言级别 + 关键片段，不写死完整消息。
@@ -369,10 +337,10 @@ for f in $(find target/classes -name '*.class'); do javap -verbose "$f" | grep -
 
 ---
 
-## 十一、Enjoy 指令用例清单（AC-INC-01~13，增量）
+## 十一、Enjoy 指令用例清单（AC-INC-01~13）
 
-> 指令实现位于 `enjoy/directive/`（非承诺 API），测试类
-> `src/test/java/cn/hg/aifei/i18n/enjoy/directive/DirectiveTest.java`（T-I05，测试工程师负责）。
+> 指令实现位于 `enjoy/directive/`（非承诺 API），测试类为
+> `src/test/java/cn/hg/aifei/i18n/enjoy/directive/DirectiveTest.java`。
 > 全部用例用**真实 Enjoy Engine** 渲染内存 / classpath 模板（`engine.getTemplateByString` 或内存 ISource），
 > URL host 仅 `localhost`，零联网、零 HTTP 依赖。
 
@@ -396,4 +364,3 @@ for f in $(find target/classes -name '*.class'); do javap -verbose "$f" | grep -
 `cn/hg/aifei/i18n/enjoy/directive/`，其余框架包边界 / 公共面 10 类型 / 零自建规则数据等断言不变。
 `mvn clean verify` 需 0 failure / 0 error。
 
-—— 测试清单由开发工程师 寇戴码登记（用例实现归测试工程师 策市袁）

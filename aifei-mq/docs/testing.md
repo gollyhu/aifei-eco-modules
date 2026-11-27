@@ -1,6 +1,5 @@
-# aifei-mq 测试策略
+# aifei-mq 测试文档
 
-> 版本：1.0.0 ｜ 关联：`docs/design.md`（设计依据）、`README.md`（使用说明）
 
 本文面向测试维护者：说明测试结构、覆盖口径、运行方式与新增约定。
 
@@ -20,8 +19,8 @@ mvn test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbsent   # 单方法
 
 | 测试类 | 类型 | 覆盖 |
 | --- | --- | --- |
-| `ArchitectureBoundaryTest` | 架构门禁（6 例） | 包边界、公共面 8 类型、services 声明与 provider 类型一致（设计 §12） |
-| `MessageBusContractTest` | 契约基类（abstract） | `MessageBus` 的**共同底线**（§5.6 A）；提供异步轮询等待钩子；本身不含独立用例 |
+| `ArchitectureBoundaryTest` | 架构门禁（6 例） | 包边界、公共面 8 类型、services 声明与 provider 类型一致 |
+| `MessageBusContractTest` | 契约基类（abstract） | `MessageBus` 的**共同底线**；提供异步轮询等待钩子；本身不含独立用例 |
 | `MqConfigTest` | 单元 | 配置默认值、类型白名单、实例前缀与后端键读取、命名实例解析与校验 |
 | `MessageTest` / `SendResultTest` | 单元 | 值对象校验、防御性拷贝、值语义 |
 | `MqValidatorTest` | 单元 | 参数校验规则与异常类型 |
@@ -44,7 +43,7 @@ mvn test -Dtest=MqConfigTest#shouldDefaultToMemoryWhenTypeAbsent   # 单方法
 
 ## 契约测试约定
 
-`MessageBusContractTest` 以抽象工厂 `protected abstract MessageBus newBus();` 承载契约，新增后端只需新增子类实现 `newBus()`。基类**只断言跨后端共同底线**（§5.6 A）；后端专有行为（投递模型、线程模型、有序性、投递保证与重复、持久化、无订阅者时的消息去留、`messageId` 格式、消费位点 / 消费组、取消的尽力语义）**不得写入基类**。
+`MessageBusContractTest` 以抽象工厂 `protected abstract MessageBus newBus();` 承载契约，新增后端只需新增子类实现 `newBus()`。基类**只断言跨后端共同底线**；后端专有行为（投递模型、线程模型、有序性、投递保证与重复、持久化、无订阅者时的消息去留、`messageId` 格式、消费位点 / 消费组、取消的尽力语义）**不得写入基类**。
 
 - **异步后端适配**：真实后端投递异步，基类提供轮询等待钩子，投递类断言一律「等待条件成立（带超时）」；断言使用的容器须线程安全。
 - **投递强度**：真实后端为 at-least-once，基类只断言「至少收到且内容正确」，**不得断言「恰好一次」**；「恰好一次」是内存后端特性，落 `MemoryMessageBusContractTest`。
@@ -66,7 +65,7 @@ mvn test "-Dtest=RedisStreamMessageBusContractTest" "-Dredisstream.integration=t
 - **开关名与连接参数须与 `pom.xml` 的 `systemPropertyVariables` 逐字一致**；PowerShell 下 `-D` 必须整体加引号。
 - **自清理**：每个用例用随机 topic / 消费组 / 客户端标识隔离，`@After` 关闭总线；broker 侧自动创建的 topic 无法经客户端删除，命名带随机前缀便于运维清理。
 - **失败位置随后端而异**：`mqtt` / `mqtt5` / `rabbitmq` 启动期 fail-fast（`newBus()` 即建连）；`rocketmq` / `kafka` / `redisstream` 懒连接（故障延迟到首个收发）——**不得**把「建总线未报错」当作「后端可达」。
-- **验证状态**：`rocketmq` / `rabbitmq` / `redisstream` 已真机验证；`mqtt` / `mqtt5` / `kafka` 尚无真机 broker 验证，默认 `mvn clean verify` 的 `Skipped: 60` 即这 6 类各 10 条。
+- **验证状态**：`rocketmq` / `rabbitmq` / `redisstream` 已真机验证；`mqtt` / `mqtt5` / `kafka` 未做真机 broker 验证，默认 `mvn clean verify` 的 `Skipped: 60` 即这 6 类各 10 条。
 
 ## 新增约定
 

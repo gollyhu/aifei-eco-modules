@@ -137,7 +137,7 @@ public class OrderRow {
 
 **业务方只 `catch`、不要 `new`**（构造器为 `public` 是因内部唯一构造点与公共类型不同包，并非对外构造入口）。所有失败都不降级：不返回半截数据、不静默跳过错误行、不吞 cause。
 
-## 本期不做（边界）
+## 能力边界
 
 CSV 读写；模板导出；公式 / 图片 / 富文本 / 批注 / 合并单元格 / 超链接；自定义转换器 SPI；JSR-303 / Bean Validation；provider / SPI / 多后端；独立配置键 / Plugin / 命名实例；加密 / 密码保护 / 数字签名文档；多 Sheet 高级编排（读写默认单 Sheet：读第 0 个 Sheet、写单 Sheet）；流式读的随机访问与回退（回调后不可回退、不缓存历史批）。
 
@@ -147,7 +147,7 @@ CSV 读写；模板导出；公式 / 图片 / 富文本 / 批注 / 合并单元�
 
 ```bash
 cd aifei-excel
-mvn clean verify                                  # 必须 0 failure / 0 error（61 例，含门禁 14 例）
+mvn clean verify                                  # 必须 0 failure / 0 error
 mvn test -Dtest=ArchitectureBoundaryTest           # 仅跑架构门禁（14 例）
 mvn dependency:tree                               # 断言：仅 aifei(provided) + easyexcel(optional) + junit(test)
 javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major version"   # 期望 52
@@ -164,7 +164,7 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 7. **字段能继承吗？** 本期只扫当前类声明字段，不含父类；`static` / `transient` 跳过。
 8. **流由谁关闭？** 调用方。本模块读不关 `in`、`finish()` / `close()` 不关 `out`。
 9. **为什么 `ExcelKit` 不需要装配？** 它是无生命周期的一次性门面，随取随用；与 `aifei-http` 的 `HttpKit`（依赖 `HttpPlugin` 装配、未装配即失败）是两种门面形态。
-10. **POI 4.1.2 的安全公告怎么处理？** 本版按定档锁 `com.alibaba:easyexcel:3.3.2` / POI 4.1.2（EasyExcel 3.3.2 固定依赖该版本；换 5.5.1 需 exclusion + 显式声明，可能破坏其二进制兼容）。该风险登记为 P1 非阻塞，是否整体升级由主理人决定，本版不私自变更。
+10. **POI 4.1.2 的安全公告怎么处理？** 本版锁定 `com.alibaba:easyexcel:3.3.2` / POI 4.1.2（EasyExcel 3.3.2 固定依赖该版本；换 5.5.1 需 exclusion + 显式声明，可能破坏其二进制兼容）。该风险为非阻塞项，升级与否由接入方决定。
 
 ## 示例工程
 
@@ -174,7 +174,7 @@ javap -verbose target/classes/cn/hg/aifei/excel/Excel.class | findstr "major ver
 
 | 文档 | 内容 |
 | --- | --- |
-| `docs/design.md` | 契约事实来源：公共面逐字签名、注解与内存边界、异常语义表、门禁、AC |
-| `docs/testing.md` | 测试策略、门禁 14 例 + 功能 47 例、AC ↔ 用例 ↔ 结果台账 |
+| `docs/design.md` | 公共面签名、注解与内存边界、异常语义 |
+| `docs/testing.md` | 测试策略与用例清单 |
 | `AGENTS.md` | 开发约束：硬约束、包边界、唯一定义点、验证命令 |
 | `CHANGELOG.md` | 版本变更与升级动作 |

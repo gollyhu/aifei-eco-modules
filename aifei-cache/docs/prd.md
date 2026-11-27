@@ -1,4 +1,4 @@
-# aifei-cache 1.1.0 需求（任务输入）
+# PRD：aifei-cache 1.1.0（多实例缓存与计数 SDK）
 
 > 本文件是任务输入，不是 PRD / 设计。本版本是 `aifei-lock` 的前置包，必须先发布；lock 依赖本 release 版本，不同批发布。
 

@@ -1,6 +1,6 @@
 # AGENTS.md — aifei-audit 开发约束
 
-> 面向开发代理。契约事实来源：`docs/design.md`；需求：`docs/prd.md` 与 `docs/需求/aifei-audit.md`。
+> 面向开发代理。契约事实来源：`docs/design.md`；需求：`docs/prd.md`。
 
 ## 硬约束
 
